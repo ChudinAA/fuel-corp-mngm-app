@@ -1,4 +1,5 @@
 import { Combobox } from "@/components/ui/combobox";
+import { isPriceContractRequired } from "@shared/price-contract-selection";
 import {
   FormField,
   FormItem,
@@ -646,8 +647,9 @@ export function PriceFormFields({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <FormField control={control} name="contractId" render={({ field }) => (
           <FormItem>
-            <FormLabel>Договор</FormLabel>
-            <Select value={field.value || ""} onValueChange={(id) => {
+            <FormLabel>Договор{!isPriceContractRequired(counterpartyType) ? " (необязательно)" : ""}</FormLabel>
+            <Select value={field.value || "__none__"} onValueChange={(value) => {
+              const id = value === "__none__" ? "" : value;
               field.onChange(id);
               const selected = contractsForParty.find((item) => item.id === id);
               setValue("contractNumber", selected?.contractNumber || "");
@@ -655,6 +657,7 @@ export function PriceFormFields({
             }}>
               <FormControl><SelectTrigger><SelectValue placeholder="Выберите договор" /></SelectTrigger></FormControl>
               <SelectContent>
+                {!isPriceContractRequired(counterpartyType) && <SelectItem value="__none__">Без договора</SelectItem>}
                 {contractsForParty.map((item) => <SelectItem key={item.id} value={item.id}>
                   {item.contractNumber} — {item.contractName}{item.parentContractId ? " (приложение)" : ""}
                 </SelectItem>)}

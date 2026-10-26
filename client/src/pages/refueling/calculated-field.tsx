@@ -32,11 +32,11 @@ export function CalculatedField({
 
   return (
     <div className="space-y-1 flex-1">
-      <Label className="text-xs text-muted-foreground flex items-center gap-1">
+      <Label className="text-xs text-muted-foreground flex h-4 items-center gap-1 leading-4">
         <Calculator className="h-3 w-3" />
         {label}
       </Label>
-      <div className="flex items-center gap-2 h-10 px-3 bg-muted rounded-md">
+      <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md">
         {isLoading ? (
           <Skeleton className="h-5 w-20" />
         ) : status ? (

@@ -11,7 +11,7 @@ export function ContractHint({ contractNumber, contractName }: ContractHintProps
 
   return (
     <div
-      className="min-h-4 h-4 truncate text-xs leading-4 text-muted-foreground"
+      className="block h-4 min-h-4 w-full truncate text-xs leading-4 text-muted-foreground"
       title={text || undefined}
       aria-label={text || "Договор не указан"}
     >

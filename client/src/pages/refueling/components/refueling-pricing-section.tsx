@@ -272,7 +272,7 @@ export function RefuelingPricingSection({
           </div>
         </div>
       )}
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid items-start gap-3 md:grid-cols-4">
         {!isWarehouseSupplier &&
         purchasePrices.length > 0 &&
         !(basisServicePrice && productType === PRODUCT_TYPE.SERVICE) &&
@@ -290,8 +290,8 @@ export function RefuelingPricingSection({
               const selectedContract = getSelectedPriceContract(purchasePrices, effectiveValue);
 
               return (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
+                <FormItem className="space-y-1">
+                  <FormLabel className="flex h-4 items-center text-xs leading-4 text-muted-foreground">
                     Покупка
                   </FormLabel>
                   <div className="flex gap-1">
@@ -346,8 +346,8 @@ export function RefuelingPricingSection({
                       </Button>
                     )}
                   </div>
-                  <FormMessage />
                   <ContractHint contractNumber={selectedContract?.contractNumber} contractName={(selectedContract as any)?.contractName} />
+                  <FormMessage />
                 </FormItem>
               );
             }}
@@ -425,8 +425,8 @@ export function RefuelingPricingSection({
               }
 
               return (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
+                <FormItem className="space-y-1">
+                  <FormLabel className="flex h-4 items-center text-xs leading-4 text-muted-foreground">
                     Продажа
                   </FormLabel>
                   <div className="flex gap-1">
@@ -481,8 +481,8 @@ export function RefuelingPricingSection({
                       </Button>
                     )}
                   </div>
-                  <FormMessage />
                   <ContractHint contractNumber={selectedContract?.contractNumber} contractName={(selectedContract as any)?.contractName} />
+                  <FormMessage />
                 </FormItem>
               );
             }}

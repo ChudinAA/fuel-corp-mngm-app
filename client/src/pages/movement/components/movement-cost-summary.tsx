@@ -102,63 +102,77 @@ export function MovementCostSummary({
   return (
     <div className="space-y-3">
       <div className={gridClass}>
-        <div className="flex items-end gap-1">
+        <div>
           {watchMovementType === MOVEMENT_TYPE.SUPPLY && availablePrices.length > 0 ? (
             <FormField
               control={form.control}
               name="selectedPurchasePriceId"
               render={({ field }) => (
-                <FormItem className="flex-1 space-y-1">
-                  <FormLabel className="text-xs text-muted-foreground flex items-center gap-1">Цена закупки</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      setSelectedPurchasePriceId(value);
-                      field.onChange(value);
-                    }}
-                    value={selectedPurchasePriceId}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="select-purchase-price">
-                        <SelectValue placeholder="Выберите цену" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {availablePrices.map((p) => (
-                        <SelectItem
-                          key={`${p.priceId}-${p.index}`}
-                          value={`${p.priceId}-${p.index}`}
-                        >
-                          {formatNumber(p.price)} ₽/кг
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <FormItem className="space-y-1">
+                  <FormLabel className="flex h-4 items-center text-xs leading-4 text-muted-foreground">Цена закупки</FormLabel>
+                  <div className="flex gap-1">
+                    <Select
+                      onValueChange={(value) => {
+                        setSelectedPurchasePriceId(value);
+                        field.onChange(value);
+                      }}
+                      value={selectedPurchasePriceId}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-purchase-price" className="flex-1">
+                          <SelectValue placeholder="Выберите цену" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {availablePrices.map((p) => (
+                          <SelectItem
+                            key={`${p.priceId}-${p.index}`}
+                            value={`${p.priceId}-${p.index}`}
+                          >
+                            {formatNumber(p.price)} ₽/кг
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {hasPermission("prices", "create") && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        onClick={() => setAddPurchasePriceOpen(true)}
+                        data-testid="button-add-purchase-price-inline"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                   <ContractHint contractNumber={selectedPrice?.contractNumber} contractName={selectedPrice?.contractName} />
                 </FormItem>
               )}
             />
           ) : (
-            <CalculatedField
-              label="Цена закупки"
-              value={
-                purchasePrice !== null ? formatNumber(purchasePrice) : "нет цены!"
-              }
-              suffix={purchasePrice !== null ? " ₽/кг" : ""}
-            />
+            <div className="flex items-end gap-1">
+              <CalculatedField
+                label="Цена закупки"
+                value={
+                  purchasePrice !== null ? formatNumber(purchasePrice) : "нет цены!"
+                }
+                suffix={purchasePrice !== null ? " ₽/кг" : ""}
+              />
+              {hasPermission("prices", "create") &&
+                watchMovementType === MOVEMENT_TYPE.SUPPLY && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => setAddPurchasePriceOpen(true)}
+                    data-testid="button-add-purchase-price-inline"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
+            </div>
           )}
-          {hasPermission("prices", "create") &&
-            watchMovementType === MOVEMENT_TYPE.SUPPLY && (
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                onClick={() => setAddPurchasePriceOpen(true)}
-                data-testid="button-add-purchase-price-inline"
-                className={availablePrices.length > 0 ? "mb-0" : ""}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            )}
         </div>
 
         <CalculatedField

@@ -1230,7 +1230,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 items-start md:grid-cols-5 gap-4">
               {purchasePrices.length > 0 ? (
                 <FormField
                   control={form.control}
@@ -1253,8 +1253,8 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                     }
 
                     return (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
+                      <FormItem className="space-y-1">
+                        <FormLabel className="flex h-4 items-center text-xs leading-4 text-muted-foreground">
                           Покупка
                         </FormLabel>
                         <div className="flex gap-1">
@@ -1309,11 +1309,11 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                             </Button>
                           )}
                         </div>
+                        <ContractHint
+                          contractNumber={getSelectedPriceContract(purchasePrices, effectiveValue)?.contractNumber}
+                          contractName={(getSelectedPriceContract(purchasePrices, effectiveValue) as any)?.contractName}
+                        />
                         <FormMessage />
-                      <ContractHint
-                        contractNumber={getSelectedPriceContract(purchasePrices, effectiveValue)?.contractNumber}
-                        contractName={(getSelectedPriceContract(purchasePrices, effectiveValue) as any)?.contractName}
-                      />
                       </FormItem>
                     );
                   }}
@@ -1357,8 +1357,8 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                     }
 
                     return (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
+                      <FormItem className="space-y-1">
+                        <FormLabel className="flex h-4 items-center text-xs leading-4 text-muted-foreground">
                           Продажа
                         </FormLabel>
                         <div className="flex gap-1">
@@ -1413,11 +1413,11 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                             </Button>
                           )}
                         </div>
+                        <ContractHint
+                          contractNumber={getSelectedPriceContract(salePrices, effectiveValue)?.contractNumber}
+                          contractName={(getSelectedPriceContract(salePrices, effectiveValue) as any)?.contractName}
+                        />
                         <FormMessage />
-                      <ContractHint
-                        contractNumber={getSelectedPriceContract(salePrices, effectiveValue)?.contractNumber}
-                        contractName={(getSelectedPriceContract(salePrices, effectiveValue) as any)?.contractName}
-                      />
                       </FormItem>
                     );
                   }}

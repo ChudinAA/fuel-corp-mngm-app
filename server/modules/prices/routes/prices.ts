@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { isPriceContractRequired } from "@shared/price-contract-selection";
 import { storage } from "../../../storage/index";
 import { insertPriceSchema } from "@shared/schema";
 import { z } from "zod";
@@ -237,7 +238,7 @@ export function registerPricesRoutes(app: Express) {
         const body = req.body;
 
         const requiresNomenclature = ["kerosene", "pvkj", "service"].includes(String(body.productType));
-        if (!body.contractId) {
+        if (isPriceContractRequired(String(body.counterpartyType)) && !body.contractId) {
           return res.status(400).json({ message: "Выберите договор из справочника" });
         }
         if (requiresNomenclature && !body.nomenclatureId) {
@@ -249,15 +250,17 @@ export function registerPricesRoutes(app: Express) {
             return res.status(400).json({ message: "Номенклатура не соответствует выбранному типу продукта" });
           }
         }
-        const selectedContract = await storage.catalogs.getContract(String(body.contractId));
-        if (!selectedContract) {
+        const selectedContract = body.contractId
+          ? await storage.catalogs.getContract(String(body.contractId))
+          : undefined;
+        if (body.contractId && !selectedContract) {
           return res.status(400).json({ message: "Выбранный договор не найден или удалён" });
         }
         const contractMatchesCounterparty =
           body.counterpartyRole === "supplier"
-            ? selectedContract.supplierId === body.counterpartyId
-            : selectedContract.buyerId === body.counterpartyId;
-        if (!contractMatchesCounterparty) {
+            ? selectedContract?.supplierId === body.counterpartyId
+            : selectedContract?.buyerId === body.counterpartyId;
+        if (selectedContract && !contractMatchesCounterparty) {
           return res.status(400).json({ message: "Договор не относится к выбранному контрагенту" });
         }
 
@@ -292,7 +295,9 @@ export function registerPricesRoutes(app: Express) {
 
         const processedData = {
           ...body,
-          contractNumber: selectedContract.contractNumber,
+          contractId: selectedContract?.id || null,
+          contractNumber: selectedContract?.contractNumber || null,
+          contractAppendix: selectedContract?.parentContractId ? selectedContract.contractNumber : null,
           priceValues: body.priceValues?.map((pv: { price: string }) =>
             JSON.stringify({ price: parseFloat(pv.price) }),
           ),
@@ -389,7 +394,14 @@ export function registerPricesRoutes(app: Express) {
         const patchLimitType = body.limitType || "volume";
         const processedData = {
           ...body,
-          ...(selectedContractForUpdate ? { contractNumber: selectedContractForUpdate.contractNumber } : {}),
+          ...(selectedContractForUpdate
+            ? {
+                contractNumber: selectedContractForUpdate.contractNumber,
+                contractAppendix: selectedContractForUpdate.parentContractId ? selectedContractForUpdate.contractNumber : null,
+              }
+            : body.contractId === null || body.contractId === ""
+              ? { contractId: null, contractNumber: null, contractAppendix: null }
+              : {}),
           priceValues: body.priceValues?.map((pv: { price: string }) =>
             JSON.stringify({ price: parseFloat(pv.price) }),
           ),

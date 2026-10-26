@@ -38,3 +38,9 @@ Price dropdowns display only amounts and units; show the selected price's contra
 **Why:** the user requested uncluttered price choices and aligned controls; a carrier can have multiple contracts and route tariffs.
 
 **How to apply:** reserve helper-line height even without contract text so selecting a contract does not shift neighboring fields. Preserve existing tariffs and historical movements with missing catalog links rather than guessing their identity.
+
+For a new price, choose the linked counterparty's latest contract or appendix by contract date, then compare numbers naturally (10 after 9). If an appendix and its parent share the newest date, prefer the appendix, regardless of the parent's number. Keep a manual selection until the counterparty changes. Refueling-abroad prices may have no contract; other new price types require one.
+
+**Why:** appendices usually contain newer terms, but an international refueling price may legitimately exist without a contract.
+
+**How to apply:** never infer a contract for historical prices or replace a manual choice during background refresh. Validate the contract requirement consistently in UI and API. Align price controls by their actual control heights; a fixed hint height alone does not align fallback calculated fields and adjacent add buttons.

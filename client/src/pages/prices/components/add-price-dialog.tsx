@@ -32,6 +32,7 @@ import type { PriceFormData, PriceDialogProps } from "../types";
 import { useDateCheck } from "../hooks/use-date-check";
 import { PriceFormFields } from "./price-form-fields";
 import { PriceChecksPanel } from "./price-checks-panel";
+import { getLatestPriceContract, isPriceContractRequired } from "@shared/price-contract-selection";
 
 export function AddPriceDialog({
   editPrice,
@@ -233,78 +234,31 @@ export function AddPriceDialog({
     watchDateTo,
   ]);
 
-  const watchContractNumber = form.watch("contractNumber");
-
-  // When counterparty identity changes in create mode — clear contract fields so auto-fill can populate them fresh
+  const { data: directoryContracts, isSuccess: contractsLoaded } = useQuery<any[]>({
+    queryKey: ["/api/contracts"],
+    enabled: open,
+  });
   const prevCounterpartyKeyRef = useRef<string>("");
   useEffect(() => {
-    if (editPrice) return;
+    if (!open) {
+      prevCounterpartyKeyRef.current = "";
+      return;
+    }
+    if (editPrice || !contractsLoaded || !directoryContracts) return;
     const key = `${watchCounterpartyId}|${watchCounterpartyType}|${watchCounterpartyRole}`;
-    if (prevCounterpartyKeyRef.current && prevCounterpartyKeyRef.current !== key) {
-      form.setValue("contractId", "");
-      form.setValue("contractNumber", "");
-      form.setValue("contractAppendix", "");
-    }
+    if (prevCounterpartyKeyRef.current === key) return;
+    const changedParty = Boolean(prevCounterpartyKeyRef.current);
     prevCounterpartyKeyRef.current = key;
-  }, [watchCounterpartyId, watchCounterpartyType, watchCounterpartyRole, editPrice]);
-
-  // When contractNumber changes (user edits it) — clear appendix so it gets re-calculated
-  const prevContractNumberRef = useRef<string>("");
-  const isAutoFillingRef = useRef(false);
-  useEffect(() => {
-    if (editPrice) return;
-    const prev = prevContractNumberRef.current;
-    const current = watchContractNumber || "";
-    prevContractNumberRef.current = current;
-    // Clear appendix when user changes contract number (not from auto-fill)
-    if (prev !== current && !isAutoFillingRef.current) {
-      form.setValue("contractAppendix", "");
-    }
-  }, [watchContractNumber, editPrice]);
-
-  // Fetch last contract info — staleTime:0 so it always re-fetches on queryKey change
-  const { data: contractInfo } = useQuery<{ contractNumber: string | null; nextAppendix: string | null }>({
-    queryKey: [
-      "/api/prices/last-contract-info",
-      watchCounterpartyId,
-      watchCounterpartyType,
-      watchCounterpartyRole,
-      watchContractNumber || "",
-    ],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        counterpartyId: watchCounterpartyId,
-        counterpartyType: watchCounterpartyType,
-        counterpartyRole: watchCounterpartyRole,
-      });
-      if (watchContractNumber) params.set("contractNumber", watchContractNumber);
-      const res = await fetch(`/api/prices/last-contract-info?${params}`, {
-        credentials: "include",
-      });
-      if (!res.ok) return { contractNumber: null, nextAppendix: null };
-      return res.json();
-    },
-    enabled: !editPrice && !!watchCounterpartyId && !!watchCounterpartyType && !!watchCounterpartyRole,
-    staleTime: 0,
-    gcTime: 0,
-  });
-
-  // Auto-fill contractNumber and contractAppendix from fetched data
-  useEffect(() => {
-    if (!editPrice && contractInfo && watchCounterpartyId) {
-      const currentContract = form.getValues("contractNumber");
-      const currentAppendix = form.getValues("contractAppendix");
-      isAutoFillingRef.current = true;
-      if (!currentContract && contractInfo.contractNumber) {
-        form.setValue("contractNumber", contractInfo.contractNumber);
-      }
-      if (!currentAppendix && contractInfo.nextAppendix) {
-        form.setValue("contractAppendix", contractInfo.nextAppendix);
-      }
-      // Reset flag after React has processed the setValue calls
-      setTimeout(() => { isAutoFillingRef.current = false; }, 0);
-    }
-  }, [contractInfo, editPrice, watchCounterpartyId]);
+    if (!changedParty && form.getValues("contractId")) return;
+    const selected = getLatestPriceContract(directoryContracts.filter((item) =>
+      watchCounterpartyId && !item.deletedAt && (watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
+        ? item.supplierId === watchCounterpartyId
+        : item.buyerId === watchCounterpartyId),
+    ));
+    form.setValue("contractId", selected?.id || "");
+    form.setValue("contractNumber", selected?.contractNumber || "");
+    form.setValue("contractAppendix", selected?.parentContractId ? selected.contractNumber : "");
+  }, [open, watchCounterpartyId, watchCounterpartyType, watchCounterpartyRole, editPrice, contractsLoaded, directoryContracts, form]);
 
   const { data: bases } = useQuery<Base[]>({ queryKey: ["/api/bases"] });
   const { data: suppliers } = useQuery<Supplier[]>({
@@ -425,7 +379,7 @@ export function AddPriceDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: PriceFormData) => {
-      if (!editPrice && !data.contractId) throw new Error("Выберите договор из справочника");
+      if (!editPrice && isPriceContractRequired(data.counterpartyType) && !data.contractId) throw new Error("Выберите договор из справочника");
       if (!editPrice && ["kerosene", "pvkj", "service"].includes(data.productType) && !data.nomenclatureId) {
         throw new Error("Выберите номенклатуру");
       }
