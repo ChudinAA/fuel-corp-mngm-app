@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, pool } from "../server/db";
-import { PRODUCT_TYPE } from "../shared/constants";
+import { PRODUCT_TYPE, SOURCE_TYPE } from "../shared/constants";
 import { aircraftRefueling } from "../server/modules/refueling/entities/refueling";
 import { AircraftRefuelingStorage } from "../server/modules/refueling/storage/aircraft-refueling-storage";
 import { suppliers } from "../server/modules/suppliers/entities/suppliers";
@@ -301,6 +301,212 @@ test("rolling back a deleted multi-product refueling order restores original row
     }
     if (customerId) {
       await db.delete(customers).where(sql`${customers.id} = ${customerId}`);
+    }
+  }
+});
+
+test("rolling back a legacy deleted single refueling restores only its original row and movement", async (t) => {
+  const schemaResult = await db.execute(sql`
+    SELECT
+      to_regclass('aircraft_refueling') IS NOT NULL
+        AND to_regclass('warehouse_transactions') IS NOT NULL
+        AND to_regclass('audit_log') IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name = 'aircraft_refueling'
+            AND column_name = 'refueling_order_id'
+        ) AS has_refueling_order_schema
+  `);
+  if (!schemaResult.rows[0]?.has_refueling_order_schema) {
+    t.skip("The configured database has not been migrated to the refueling-order schema.");
+    return;
+  }
+
+  const storage = new AircraftRefuelingStorage();
+  let supplierId: string | undefined;
+  let customerId: string | undefined;
+  let warehouseId: string | undefined;
+  let dealIds: string[] = [];
+  let movementIds: string[] = [];
+  let auditEntryId: string | undefined;
+
+  try {
+    const [supplier] = await db
+      .insert(suppliers)
+      .values({ name: `legacy-restore-test-supplier-${crypto.randomUUID()}` })
+      .returning();
+    supplierId = supplier.id;
+
+    const [customer] = await db
+      .insert(customers)
+      .values({
+        name: `legacy-restore-test-customer-${crypto.randomUUID()}`,
+        module: "refueling",
+      })
+      .returning();
+    customerId = customer.id;
+
+    const [warehouse] = await db
+      .insert(warehouses)
+      .values({
+        name: `legacy-restore-test-warehouse-${crypto.randomUUID()}`,
+        currentBalance: "100",
+        averageCost: "10",
+      })
+      .returning();
+    warehouseId = warehouse.id;
+
+    const legacyCreated = await storage.createRefueling({
+      refuelingDate: new Date().toISOString(),
+      productType: PRODUCT_TYPE.KEROSENE,
+      supplierId,
+      buyerId: customerId,
+      warehouseId,
+      quantityKg: 12,
+      purchasePrice: 10,
+      purchaseAmount: 120,
+      salePrice: 15,
+      saleAmount: 180,
+      isDraft: false,
+    } as any);
+    dealIds.push(legacyCreated.id);
+    const unrelatedCreated = await storage.createRefueling({
+      refuelingDate: new Date().toISOString(),
+      productType: PRODUCT_TYPE.KEROSENE,
+      supplierId,
+      buyerId: customerId,
+      warehouseId,
+      quantityKg: 5,
+      purchasePrice: 10,
+      purchaseAmount: 50,
+      salePrice: 15,
+      saleAmount: 75,
+      isDraft: false,
+    } as any);
+    dealIds.push(unrelatedCreated.id);
+
+    // Older records had no order grouping identifier. Keep two such records
+    // together in the fixture to ensure a rollback is scoped to its row ID.
+    await db
+      .update(aircraftRefueling)
+      .set({ refuelingOrderId: null })
+      .where(inArray(aircraftRefueling.id, dealIds));
+
+    const legacyDeal = await db.query.aircraftRefueling.findFirst({
+      where: eq(aircraftRefueling.id, dealIds[0]),
+    });
+    const unrelatedDeal = await db.query.aircraftRefueling.findFirst({
+      where: eq(aircraftRefueling.id, dealIds[1]),
+    });
+    assert.ok(legacyDeal);
+    assert.ok(legacyDeal.transactionId);
+    assert.ok(unrelatedDeal);
+    assert.ok(unrelatedDeal.transactionId);
+    assert.equal(legacyDeal.refuelingOrderId, null);
+    assert.equal(unrelatedDeal.refuelingOrderId, null);
+    movementIds = [legacyDeal.transactionId, unrelatedDeal.transactionId];
+
+    const { refuelingOrderId: _legacyGroupId, ...legacyAuditData } = legacyDeal;
+    await storage.deleteRefuelingOrder(legacyDeal.id);
+    const [auditEntry] = await db
+      .insert(auditLog)
+      .values({
+        entityType: "aircraft_refueling",
+        entityId: legacyDeal.id,
+        operation: AUDIT_OPERATIONS.DELETE,
+        oldData: legacyAuditData,
+      })
+      .returning();
+    auditEntryId = auditEntry.id;
+
+    const [deletedLegacyMovement, activeUnrelatedMovement] = await Promise.all([
+      db.query.warehouseTransactions.findFirst({
+        where: eq(warehouseTransactions.id, legacyDeal.transactionId),
+      }),
+      db.query.warehouseTransactions.findFirst({
+        where: eq(warehouseTransactions.id, unrelatedDeal.transactionId),
+      }),
+    ]);
+    assert.ok(deletedLegacyMovement?.deletedAt);
+    assert.equal(activeUnrelatedMovement?.deletedAt, null);
+
+    const rollback = await RollbackService.rollback({
+      auditLogId: auditEntry.id,
+      context: { userName: "legacy-single-refueling-restore-test" },
+    });
+    assert.equal(rollback.success, true, rollback.message);
+
+    const restoredRows = await db
+      .select()
+      .from(aircraftRefueling)
+      .where(inArray(aircraftRefueling.id, dealIds));
+    const restoredLegacyDeal = restoredRows.find((deal) => deal.id === legacyDeal.id);
+    const unchangedUnrelatedDeal = restoredRows.find(
+      (deal) => deal.id === unrelatedDeal.id,
+    );
+    assert.ok(restoredLegacyDeal);
+    assert.equal(restoredLegacyDeal.deletedAt, null);
+    assert.equal(restoredLegacyDeal.transactionId, legacyDeal.transactionId);
+    assert.ok(unchangedUnrelatedDeal);
+    assert.equal(unchangedUnrelatedDeal.deletedAt, null);
+    assert.equal(unchangedUnrelatedDeal.transactionId, unrelatedDeal.transactionId);
+    assert.equal(unchangedUnrelatedDeal.quantityKg, unrelatedDeal.quantityKg);
+
+    const restoredMovements = await db
+      .select()
+      .from(warehouseTransactions)
+      .where(inArray(warehouseTransactions.id, movementIds));
+    assert.equal(restoredMovements.length, 2);
+    assert.ok(restoredMovements.every((movement) => !movement.deletedAt));
+    for (const dealId of dealIds) {
+      const movementsForDeal = await db
+        .select()
+        .from(warehouseTransactions)
+        .where(
+          and(
+            eq(warehouseTransactions.sourceId, dealId),
+            eq(warehouseTransactions.sourceType, SOURCE_TYPE.REFUELING),
+          ),
+        );
+      assert.equal(movementsForDeal.length, 1, "rollback must not create a duplicate movement");
+    }
+
+    const finalWarehouse = await db.query.warehouses.findFirst({
+      where: eq(warehouses.id, warehouseId),
+    });
+    assert.equal(Number(finalWarehouse?.currentBalance), 83);
+  } finally {
+    if (auditEntryId) {
+      await db.delete(auditLog).where(eq(auditLog.id, auditEntryId));
+    }
+    if (dealIds.length) {
+      await db
+        .delete(auditLog)
+        .where(
+          and(
+            eq(auditLog.entityType, "aircraft_refueling"),
+            inArray(auditLog.entityId, dealIds),
+          ),
+        );
+      await db
+        .delete(aircraftRefueling)
+        .where(inArray(aircraftRefueling.id, dealIds));
+    }
+    if (movementIds.length) {
+      await db
+        .delete(warehouseTransactions)
+        .where(inArray(warehouseTransactions.id, movementIds));
+    }
+    if (warehouseId) {
+      await db.delete(warehouses).where(eq(warehouses.id, warehouseId));
+    }
+    if (supplierId) {
+      await db.delete(suppliers).where(eq(suppliers.id, supplierId));
+    }
+    if (customerId) {
+      await db.delete(customers).where(eq(customers.id, customerId));
     }
   }
 });
