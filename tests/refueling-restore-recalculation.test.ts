@@ -692,6 +692,205 @@ test("restoring an older refueling movement recalculates both fuel products in s
     assert.fail("The fixture transaction should have been rolled back.");
   } catch (error) {
     if (error !== rollbackMarker) throw error;
+  }
+});
+
+test("shared warehouse recalculation includes both source transfer costs in either cascade order", async (t) => {
+  const rollbackMarker = new Error("Rollback integration-test fixtures");
+
+  try {
+    await db.transaction(async (tx) => {
+      const productType = PRODUCT_TYPE.KEROSENE;
+      const sourceSpecs = [
+        { openingBalance: 100, openingCost: 10, oldSale: 20, receiptQty: 40, receiptPrice: 15 },
+        { openingBalance: 80, openingCost: 20, oldSale: 10, receiptQty: 20, receiptPrice: 30 },
+      ];
+
+      for (const sourceOrder of [[0, 1], [1, 0]]) {
+        const fixtureId = crypto.randomUUID();
+        const openingDate = "2026-02-01T10:00:00.000Z";
+        const oldSaleDate = "2026-02-02T10:00:00.000Z";
+        const receiptDate = "2026-02-03T10:00:00.000Z";
+        const transferDate = "2026-02-04T10:00:00.000Z";
+
+        const [destination] = await tx
+          .insert(warehouses)
+          .values({
+            name: `shared-destination-${fixtureId}`,
+            currentBalance: "10",
+            averageCost: "4",
+            pvkjBalance: "0",
+            pvkjAverageCost: "0",
+          })
+          .returning();
+        await tx.insert(warehouseTransactions).values({
+          warehouseId: destination.id,
+          transactionType: TRANSACTION_TYPE.INVENTORY,
+          productType,
+          quantity: "10",
+          balanceBefore: "0",
+          balanceAfter: "10",
+          averageCostBefore: "0",
+          averageCostAfter: "4",
+          sum: "40",
+          transactionDate: openingDate,
+        });
+
+        const sources: Array<{ warehouseId: string; oldSaleId: string }> = [];
+        for (const [index, spec] of sourceSpecs.entries()) {
+          const [source] = await tx
+            .insert(warehouses)
+            .values({
+              name: `shared-source-${fixtureId}-${index}`,
+              currentBalance: String(spec.openingBalance),
+              averageCost: String(spec.openingCost),
+              pvkjBalance: "0",
+              pvkjAverageCost: "0",
+            })
+            .returning();
+          await tx.insert(warehouseTransactions).values({
+            warehouseId: source.id,
+            transactionType: TRANSACTION_TYPE.INVENTORY,
+            productType,
+            quantity: String(spec.openingBalance),
+            balanceBefore: "0",
+            balanceAfter: String(spec.openingBalance),
+            averageCostBefore: "0",
+            averageCostAfter: String(spec.openingCost),
+            sum: String(spec.openingBalance * spec.openingCost),
+            transactionDate: openingDate,
+          });
+
+          const { transaction: oldSale } =
+            await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+              tx,
+              source.id,
+              TRANSACTION_TYPE.SALE,
+              productType,
+              SOURCE_TYPE.MOVEMENT,
+              crypto.randomUUID(),
+              spec.oldSale,
+              0,
+              undefined,
+              oldSaleDate,
+            );
+          await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
+            tx,
+            oldSale.id,
+          );
+
+          const [supply] = await tx
+            .insert(movement)
+            .values({
+              movementDate: receiptDate,
+              movementType: "supply",
+              productType,
+              toWarehouseId: source.id,
+              quantityKg: String(spec.receiptQty),
+              totalCost: String(spec.receiptQty * spec.receiptPrice),
+              purchasePrice: String(spec.receiptPrice),
+              costPerKg: String(spec.receiptPrice),
+            })
+            .returning();
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            source.id,
+            TRANSACTION_TYPE.RECEIPT,
+            productType,
+            SOURCE_TYPE.MOVEMENT,
+            supply.id,
+            spec.receiptQty,
+            spec.receiptQty * spec.receiptPrice,
+            undefined,
+            receiptDate,
+          );
+
+          const staleAverageCost =
+            (spec.openingBalance * spec.openingCost +
+              spec.receiptQty * spec.receiptPrice) /
+            (spec.openingBalance + spec.receiptQty);
+          const [transfer] = await tx
+            .insert(movement)
+            .values({
+              movementDate: transferDate,
+              movementType: "transfer",
+              productType,
+              fromWarehouseId: source.id,
+              toWarehouseId: destination.id,
+              quantityKg: "10",
+              totalCost: (10 * staleAverageCost).toFixed(2),
+              purchasePrice: staleAverageCost.toFixed(6),
+              costPerKg: staleAverageCost.toFixed(6),
+            })
+            .returning();
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            source.id,
+            TRANSACTION_TYPE.TRANSFER_OUT,
+            productType,
+            SOURCE_TYPE.MOVEMENT,
+            transfer.id,
+            10,
+            0,
+            undefined,
+            transferDate,
+          );
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            destination.id,
+            TRANSACTION_TYPE.TRANSFER_IN,
+            productType,
+            SOURCE_TYPE.MOVEMENT,
+            transfer.id,
+            10,
+            Number(transfer.totalCost),
+            undefined,
+            transferDate,
+          );
+          sources.push({ warehouseId: source.id, oldSaleId: oldSale.id });
+        }
+
+        for (const source of sources) {
+          await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
+            tx,
+            source.oldSaleId,
+          );
+        }
+
+        await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+          tx,
+          sourceOrder.map((index) => ({
+            warehouseId: sources[index].warehouseId,
+            afterDate: oldSaleDate,
+            productType,
+          })),
+        );
+
+        const refreshedDestination = await tx.query.warehouses.findFirst({
+          where: eq(warehouses.id, destination.id),
+        });
+        assert.equal(Number(refreshedDestination?.currentBalance), 30);
+        assert.ok(
+          Math.abs(Number(refreshedDestination?.averageCost) - 12.629667) < 0.000001,
+          `destination average cost in source order ${sourceOrder.join("→")}: ${refreshedDestination?.averageCost}`,
+        );
+
+        const transferRows = await tx
+          .select({ totalCost: movement.totalCost })
+          .from(movement)
+          .where(eq(movement.toWarehouseId, destination.id));
+        assert.deepEqual(
+          transferRows.map((row) => Number(row.totalCost)).sort((a, b) => a - b),
+          [116.67, 222.22],
+          `both recalculated movement costs in source order ${sourceOrder.join("→")}`,
+        );
+      }
+
+      throw rollbackMarker;
+    });
+    assert.fail("The fixture transaction should have been rolled back.");
+  } catch (error) {
+    if (error !== rollbackMarker) throw error;
   } finally {
     await pool.end();
   }

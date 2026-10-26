@@ -21,8 +21,6 @@ export class EquipmentRecalculationService {
     visitedWarehouses?: Set<string>,
   ) {
     const visited = visitedEquipments || new Set<string>();
-    const visitedWh = visitedWarehouses || new Set<string>();
-
     const equipmentKey = `${equipmentId}:${productType}`;
     if (visited.has(equipmentKey)) {
       console.log(
@@ -30,7 +28,34 @@ export class EquipmentRecalculationService {
       );
       return;
     }
+
     visited.add(equipmentKey);
+    try {
+      await this.recalculateEquipmentChain(
+        tx,
+        equipmentId,
+        afterDate,
+        productType,
+        updatedById,
+        visited,
+        visitedWarehouses,
+      );
+    } finally {
+      visited.delete(equipmentKey);
+    }
+  }
+
+  private static async recalculateEquipmentChain(
+    tx: any,
+    equipmentId: string,
+    afterDate: string,
+    productType: string,
+    updatedById?: string,
+    visitedEquipments?: Set<string>,
+    visitedWarehouses?: Set<string>,
+  ) {
+    const visited = visitedEquipments || new Set<string>();
+    const visitedWh = visitedWarehouses || new Set<string>();
 
     console.log(
       `[EquipmentRecalculationService] Recalculating equipment ${equipmentId} from ${afterDate}, productType=${productType}`,
