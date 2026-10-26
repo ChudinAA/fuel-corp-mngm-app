@@ -32,6 +32,33 @@ const testDates = {
   equipmentTransfer: "2026-01-06T10:00:00.000Z",
 };
 
+const refuelingFeeScenarios = [
+  {
+    label: "both fees enabled",
+    agentFeeEnabled: true,
+    otherServiceEnabled: true,
+    expectedProfit: 75.33,
+  },
+  {
+    label: "agent fee disabled",
+    agentFeeEnabled: false,
+    otherServiceEnabled: true,
+    expectedProfit: 80.33,
+  },
+  {
+    label: "other service fee disabled",
+    agentFeeEnabled: true,
+    otherServiceEnabled: false,
+    expectedProfit: 78.33,
+  },
+  {
+    label: "both fees disabled",
+    agentFeeEnabled: false,
+    otherServiceEnabled: false,
+    expectedProfit: 83.33,
+  },
+] as const;
+
 test("restoring an older refueling movement recalculates both fuel products in storage and equipment", async (t) => {
   const rollbackMarker = new Error("Rollback integration-test fixtures");
 
@@ -645,43 +672,81 @@ test("restoring an older refueling movement recalculates both fuel products in s
           .select()
           .from(equipmentTransactions)
           .where(eq(equipmentTransactions.id, oldEquipmentSale.id));
-        const [refreshedWarehouseRefueling] = await tx
-          .select({
-            purchasePrice: aircraftRefueling.purchasePrice,
-            purchaseAmount: aircraftRefueling.purchaseAmount,
-            profit: aircraftRefueling.profit,
-          })
-          .from(aircraftRefueling)
-          .where(eq(aircraftRefueling.id, warehouseRefueling.id));
-        const [refreshedEquipmentRefueling] = await tx
-          .select({
-            purchasePrice: aircraftRefueling.purchasePrice,
-            purchaseAmount: aircraftRefueling.purchaseAmount,
-            profit: aircraftRefueling.profit,
-          })
-          .from(aircraftRefueling)
-          .where(eq(aircraftRefueling.id, equipmentRefueling.id));
         assert.equal(restoredWarehouseTx?.deletedAt, null);
         assert.equal(restoredEquipmentTx[0]?.deletedAt, null);
-        for (const [label, refueling] of [
-          ["warehouse", refreshedWarehouseRefueling],
-          ["equipment", refreshedEquipmentRefueling],
-        ] as const) {
-          assert.equal(
-            Number(refueling?.purchasePrice),
-            11.666667,
-            `${label} refueling purchase price after recalculation`,
-          );
-          assert.equal(
-            Number(refueling?.purchaseAmount),
-            116.67,
-            `${label} refueling purchase amount after recalculation`,
-          );
-          assert.equal(
-            Number(refueling?.profit),
-            75.33,
-            `${label} refueling profit after recalculation`,
-          );
+
+        for (const scenario of refuelingFeeScenarios) {
+          if (!scenario.agentFeeEnabled || !scenario.otherServiceEnabled) {
+            await tx
+              .update(aircraftRefueling)
+              .set({
+                isAgentFeeEnabled: scenario.agentFeeEnabled,
+                isOtherServiceEnabled: scenario.otherServiceEnabled,
+              })
+              .where(eq(aircraftRefueling.id, warehouseRefueling.id));
+            await tx
+              .update(aircraftRefueling)
+              .set({
+                isAgentFeeEnabled: scenario.agentFeeEnabled,
+                isOtherServiceEnabled: scenario.otherServiceEnabled,
+              })
+              .where(eq(aircraftRefueling.id, equipmentRefueling.id));
+
+            // Repeat the late-movement recalculation after changing fee flags so
+            // both warehouse and equipment refuelings exercise the same update path.
+            await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+              tx,
+              [{
+                warehouseId: warehouse.id,
+                afterDate: testDates.oldOrder,
+                productType,
+              }],
+            );
+            await EquipmentRecalculationService.recalculateEquipmentFromDate(
+              tx,
+              equipment.id,
+              testDates.oldOrder,
+              productType,
+            );
+          }
+
+          const [refreshedWarehouseRefueling] = await tx
+            .select({
+              purchasePrice: aircraftRefueling.purchasePrice,
+              purchaseAmount: aircraftRefueling.purchaseAmount,
+              profit: aircraftRefueling.profit,
+            })
+            .from(aircraftRefueling)
+            .where(eq(aircraftRefueling.id, warehouseRefueling.id));
+          const [refreshedEquipmentRefueling] = await tx
+            .select({
+              purchasePrice: aircraftRefueling.purchasePrice,
+              purchaseAmount: aircraftRefueling.purchaseAmount,
+              profit: aircraftRefueling.profit,
+            })
+            .from(aircraftRefueling)
+            .where(eq(aircraftRefueling.id, equipmentRefueling.id));
+
+          for (const [label, refueling] of [
+            ["warehouse", refreshedWarehouseRefueling],
+            ["equipment", refreshedEquipmentRefueling],
+          ] as const) {
+            assert.equal(
+              Number(refueling?.purchasePrice),
+              11.666667,
+              `${label} refueling purchase price (${scenario.label})`,
+            );
+            assert.equal(
+              Number(refueling?.purchaseAmount),
+              116.67,
+              `${label} refueling purchase amount (${scenario.label})`,
+            );
+            assert.equal(
+              Number(refueling?.profit),
+              scenario.expectedProfit,
+              `${label} refueling profit (${scenario.label})`,
+            );
+          }
         }
         assert.ok(openingWarehouseTx && openingEquipmentTx);
       }
@@ -692,6 +757,59 @@ test("restoring an older refueling movement recalculates both fuel products in s
     assert.fail("The fixture transaction should have been rolled back.");
   } catch (error) {
     if (error !== rollbackMarker) throw error;
+  }
+});
+
+test("refueling recalculation excludes disabled fees from profit", async () => {
+  for (const scenario of refuelingFeeScenarios) {
+    let updatedRefueling: Record<string, unknown> | undefined;
+    const refuelingId = `refueling-${scenario.label}`;
+    const tx = {
+      query: {
+        aircraftRefueling: {
+          findFirst: async () => ({
+            id: refuelingId,
+            productType: PRODUCT_TYPE.KEROSENE,
+            quantityKg: "10",
+            salePrice: "20",
+            agentFee: "5",
+            isAgentFeeEnabled: scenario.agentFeeEnabled,
+            otherServiceFee: "3",
+            isOtherServiceEnabled: scenario.otherServiceEnabled,
+          }),
+        },
+      },
+      update: () => ({
+        set: (values: Record<string, unknown>) => ({
+          where: async () => {
+            updatedRefueling = values;
+          },
+        }),
+      }),
+    };
+
+    await WarehouseRecalculationService.updateRelatedDeal(
+      tx,
+      SOURCE_TYPE.REFUELING,
+      refuelingId,
+      11.666667,
+    );
+
+    assert.equal(
+      Number(updatedRefueling?.purchasePrice),
+      11.666667,
+      `${scenario.label} purchase price`,
+    );
+    assert.equal(
+      Number(updatedRefueling?.purchaseAmount),
+      116.67,
+      `${scenario.label} purchase amount`,
+    );
+    assert.equal(
+      Number(updatedRefueling?.profit),
+      scenario.expectedProfit,
+      `${scenario.label} profit`,
+    );
   }
 });
 
