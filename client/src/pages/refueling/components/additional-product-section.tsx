@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { X, Plus } from "lucide-react";
 import type { Supplier, Base, Warehouse, Price } from "@shared/schema";
+import type { AircraftRefueling } from "@shared/schema";
 import {
   PRODUCT_TYPE,
   BASE_TYPE,
@@ -76,6 +77,8 @@ export interface AdditionalProductSectionHandle {
 
 interface AdditionalProductSectionProps {
   productType: string;
+  editData?: AircraftRefueling | null;
+  canRemove?: boolean;
   onRemove: () => void;
   // Common shared values from parent form
   supplierId: string;
@@ -106,6 +109,8 @@ export const AdditionalProductSection = forwardRef<
   (
     {
       productType,
+      editData,
+      canRemove = true,
       onRemove,
       supplierId,
       buyerId,
@@ -130,18 +135,25 @@ export const AdditionalProductSection = forwardRef<
   ) => {
     const { hasPermission } = useAuth();
 
-    const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
-      useState<string>("");
-    const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-    const [isPriceRecharge, setIsPriceRecharge] = useState(false);
-    const [isPvkjRecharge, setIsPvkjRecharge] = useState(false);
-    const [setSalePriceZero, setSetSalePriceZero] = useState(false);
-    const [isAgentFeeEnabled, setIsAgentFeeEnabled] = useState(true);
-    const [isOtherServiceEnabled, setIsOtherServiceEnabled] = useState(true);
+    const [selectedPurchasePriceId, setSelectedPurchasePriceId] = useState<string>(
+      editData?.purchasePriceId
+        ? `${editData.purchasePriceId}-${editData.purchasePriceIndex ?? 0}`
+        : "",
+    );
+    const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>(
+      editData?.salePriceId
+        ? `${editData.salePriceId}-${editData.salePriceIndex ?? 0}`
+        : "",
+    );
+    const [isPriceRecharge, setIsPriceRecharge] = useState(!!editData?.isPriceRecharge);
+    const [isPvkjRecharge, setIsPvkjRecharge] = useState(!!editData?.isPvkjRecharge);
+    const [setSalePriceZero, setSetSalePriceZero] = useState(!!editData?.setSalePriceZero);
+    const [isAgentFeeEnabled, setIsAgentFeeEnabled] = useState(editData?.isAgentFeeEnabled !== false);
+    const [isOtherServiceEnabled, setIsOtherServiceEnabled] = useState(editData?.isOtherServiceEnabled !== false);
 
     const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
     const [addSalePriceOpen, setAddSalePriceOpen] = useState(false);
-    const [nomenclatureId, setNomenclatureId] = useState("");
+    const [nomenclatureId, setNomenclatureId] = useState((editData as any)?.nomenclatureId || "");
     const { data: nomenclatureList = [] } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
     const nomenclatureOptions = nomenclatureList.filter((item) => item.productType === productType);
     useEffect(() => {
@@ -169,6 +181,7 @@ export const AdditionalProductSection = forwardRef<
 
     // Auto-select first purchase price
     useEffect(() => {
+      if (editData) return;
       if (supplierId && purchasePrices.length > 0 && !isWarehouseSupplier) {
         const firstId = `${purchasePrices[0].id}-0`;
         setSelectedPurchasePriceId(firstId);
@@ -177,6 +190,7 @@ export const AdditionalProductSection = forwardRef<
 
     // Auto-select first sale price
     useEffect(() => {
+      if (editData) return;
       if (buyerId && salePrices.length > 0) {
         const firstId = `${salePrices[0].id}-0`;
         setSelectedSalePriceId(firstId);
@@ -224,8 +238,8 @@ export const AdditionalProductSection = forwardRef<
       selectedSalePriceId,
       selectedSupplier,
       productType,
-      isEditing: false,
-      initialQuantityKg: 0,
+      isEditing: !!editData,
+      initialQuantityKg: Number.parseFloat(editData?.quantityKg || "0"),
       initialWarehouseBalance: 0,
       refuelingDate,
       isPriceRecharge,
@@ -371,6 +385,8 @@ export const AdditionalProductSection = forwardRef<
               variant="ghost"
               size="icon"
               onClick={onRemove}
+              disabled={!canRemove}
+              aria-label={`Убрать ${productLabel} из заказа`}
               className="h-7 w-7 text-muted-foreground hover:text-destructive"
             >
               <X className="h-4 w-4" />

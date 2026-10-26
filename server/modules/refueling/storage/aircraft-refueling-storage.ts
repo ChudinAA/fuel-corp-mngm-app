@@ -1,4 +1,5 @@
 import { eq, desc, asc, sql, or, isNull, and, inArray, ilike } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import { db } from "server/db";
 import {
   aircraftRefueling,
@@ -145,6 +146,7 @@ export class AircraftRefuelingStorage {
         desc(aircraftRefueling.refuelingDate),
         // Группировка по номеру РТ внутри одной даты
         sql`COALESCE(${aircraftRefueling.orderNumber}, '')`,
+        sql`COALESCE(${aircraftRefueling.refuelingOrderId}::text, ${aircraftRefueling.id}::text)`,
         // Сортировка по типу продукта внутри группы РТ: керосин → ПВКЖ → услуга → прочее
         sql`CASE WHEN ${aircraftRefueling.productType} = 'kerosene' THEN 0 WHEN ${aircraftRefueling.productType} = 'pvkj' THEN 1 WHEN ${aircraftRefueling.productType} = 'service' THEN 2 ELSE 3 END`,
       )
@@ -204,7 +206,7 @@ export class AircraftRefuelingStorage {
     return await db.transaction(async (tx) => {
       const [created] = await tx
         .insert(aircraftRefueling)
-        .values(data)
+        .values({ ...data, refuelingOrderId: data.refuelingOrderId || randomUUID() } as any)
         .returning();
 
       // Для услуги заправки или черновика не создаем транзакции на складе
@@ -268,10 +270,11 @@ export class AircraftRefuelingStorage {
   ): Promise<AircraftRefueling[]> {
     return db.transaction(async (tx) => {
       const createdItems: AircraftRefueling[] = [];
+      const refuelingOrderId = randomUUID();
       for (const data of items) {
         const [created] = await tx
           .insert(aircraftRefueling)
-          .values(data as any)
+          .values({ ...data, refuelingOrderId } as any)
           .returning();
 
         if (
@@ -323,6 +326,254 @@ export class AircraftRefuelingStorage {
         createdItems.push(created);
       }
       return createdItems;
+    });
+  }
+
+  async getRefuelingOrder(anchorId: string): Promise<AircraftRefueling[]> {
+    const anchor = await db.query.aircraftRefueling.findFirst({
+      where: and(
+        eq(aircraftRefueling.id, anchorId),
+        isNull(aircraftRefueling.deletedAt),
+      ),
+    });
+    if (!anchor) return [];
+    return db.query.aircraftRefueling.findMany({
+      where: and(
+        anchor.refuelingOrderId
+          ? eq(aircraftRefueling.refuelingOrderId, anchor.refuelingOrderId)
+          : eq(aircraftRefueling.id, anchor.id),
+        isNull(aircraftRefueling.deletedAt),
+      ),
+      orderBy: [
+        sql`CASE WHEN ${aircraftRefueling.productType} = 'kerosene' THEN 0 WHEN ${aircraftRefueling.productType} = 'pvkj' THEN 1 WHEN ${aircraftRefueling.productType} = 'service' THEN 2 ELSE 3 END`,
+      ],
+    });
+  }
+
+  private async reverseOrderDealStock(tx: any, deal: AircraftRefueling, userId?: string) {
+    if (
+      deal.isDraft ||
+      (deal.productType !== PRODUCT_TYPE.KEROSENE &&
+        deal.productType !== PRODUCT_TYPE.PVKJ)
+    ) {
+      return;
+    }
+    if (deal.equipmentTransactionId) {
+      await EquipmentTransactionService.deleteTransactionAndRevertEquipment(
+        tx,
+        deal.equipmentTransactionId,
+        userId,
+      );
+    } else if (deal.transactionId) {
+      await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
+        tx,
+        deal.transactionId,
+        userId,
+      );
+    }
+  }
+
+  private async applyOrderDealStock(
+    tx: any,
+    deal: AircraftRefueling,
+    userId?: string,
+  ): Promise<AircraftRefueling> {
+    if (
+      deal.isDraft ||
+      (!deal.warehouseId && !deal.equipmentId) ||
+      (deal.productType !== PRODUCT_TYPE.KEROSENE &&
+        deal.productType !== PRODUCT_TYPE.PVKJ)
+    ) {
+      return deal;
+    }
+
+    let transactionId: string | null = null;
+    let equipmentTransactionId: string | null = null;
+    if (deal.equipmentId) {
+      const transaction =
+        await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+          tx,
+          deal.equipmentId,
+          TRANSACTION_TYPE.SALE,
+          deal.productType,
+          SOURCE_TYPE.REFUELING,
+          deal.id,
+          Number.parseFloat(deal.quantityKg),
+          Number.parseFloat(deal.purchaseAmount || "0"),
+          userId,
+          deal.refuelingDate,
+        );
+      equipmentTransactionId = transaction.id;
+    } else if (deal.warehouseId) {
+      const result =
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          deal.warehouseId,
+          TRANSACTION_TYPE.SALE,
+          deal.productType,
+          SOURCE_TYPE.REFUELING,
+          deal.id,
+          Number.parseFloat(deal.quantityKg),
+          Number.parseFloat(deal.purchaseAmount || "0"),
+          userId,
+          deal.refuelingDate,
+        );
+      transactionId = result.transaction.id;
+    }
+
+    const [updated] = await tx
+      .update(aircraftRefueling)
+      .set({ transactionId, equipmentTransactionId })
+      .where(eq(aircraftRefueling.id, deal.id))
+      .returning();
+    return updated;
+  }
+
+  /**
+   * Replaces the products in a refueling order atomically. Existing deal IDs are
+   * retained for product types that remain in the order.
+   */
+  async updateRefuelingOrder(
+    anchorId: string,
+    items: InsertAircraftRefueling[],
+    userId?: string,
+  ): Promise<{ oldDeals: AircraftRefueling[]; deals: AircraftRefueling[] }> {
+    if (items.length < 1 || items.length > 3) {
+      throw new Error("Заказ должен содержать от одного до трёх продуктов");
+    }
+    const productTypes = items.map((item) => String(item.productType || ""));
+    if (
+      new Set(productTypes).size !== productTypes.length ||
+      productTypes.some(
+        (type) =>
+          type !== PRODUCT_TYPE.KEROSENE &&
+          type !== PRODUCT_TYPE.PVKJ &&
+          type !== PRODUCT_TYPE.SERVICE,
+      )
+    ) {
+      throw new Error("В заказе не должно быть повторяющихся или неизвестных продуктов");
+    }
+
+    return db.transaction(async (tx) => {
+      const [anchor] = await tx
+        .select()
+        .from(aircraftRefueling)
+        .where(
+          and(
+            eq(aircraftRefueling.id, anchorId),
+            isNull(aircraftRefueling.deletedAt),
+          ),
+        );
+      if (!anchor) throw new Error("Заказ заправки не найден");
+
+      const oldDeals = await tx
+        .select()
+        .from(aircraftRefueling)
+        .where(
+          and(
+            anchor.refuelingOrderId
+              ? eq(aircraftRefueling.refuelingOrderId, anchor.refuelingOrderId)
+              : eq(aircraftRefueling.id, anchor.id),
+            isNull(aircraftRefueling.deletedAt),
+          ),
+        )
+        .orderBy(asc(aircraftRefueling.id))
+        .for("update");
+      if (!oldDeals.some((deal) => deal.id === anchorId)) {
+        throw new Error("Заказ изменён другим пользователем. Обновите список и попробуйте снова");
+      }
+      const refuelingOrderId = anchor.refuelingOrderId || randomUUID();
+      const existingByType = new Map(
+        oldDeals.map((deal) => [String(deal.productType), deal] as const),
+      );
+
+      // Reverse every prior movement before applying the new order state.
+      for (const deal of oldDeals) {
+        await this.reverseOrderDealStock(tx, deal, userId);
+      }
+
+      const keptTypes = new Set(productTypes);
+      for (const deal of oldDeals) {
+        if (!keptTypes.has(deal.productType)) {
+          await tx
+            .update(aircraftRefueling)
+            .set({ deletedAt: sql`NOW()`, deletedById: userId })
+            .where(eq(aircraftRefueling.id, deal.id));
+        }
+      }
+
+      const savedDeals: AircraftRefueling[] = [];
+      for (const item of items) {
+        const current = existingByType.get(String(item.productType));
+        let deal: AircraftRefueling;
+        if (current) {
+          const [updated] = await tx
+            .update(aircraftRefueling)
+            .set({
+              ...item,
+              refuelingOrderId,
+              transactionId: null,
+              equipmentTransactionId: null,
+              createdById: current.createdById,
+              updatedById: userId,
+              updatedAt: sql`NOW()`,
+            } as any)
+            .where(eq(aircraftRefueling.id, current.id))
+            .returning();
+          deal = updated;
+        } else {
+          const [created] = await tx
+            .insert(aircraftRefueling)
+            .values({
+              ...item,
+              refuelingOrderId,
+              createdById: userId,
+            } as any)
+            .returning();
+          deal = created;
+        }
+        savedDeals.push(await this.applyOrderDealStock(tx, deal, userId));
+      }
+      return { oldDeals, deals: savedDeals };
+    });
+  }
+
+  async deleteRefuelingOrder(anchorId: string, userId?: string): Promise<AircraftRefueling[]> {
+    return db.transaction(async (tx) => {
+      const [anchor] = await tx
+        .select()
+        .from(aircraftRefueling)
+        .where(
+          and(
+            eq(aircraftRefueling.id, anchorId),
+            isNull(aircraftRefueling.deletedAt),
+          ),
+        );
+      if (!anchor) return [];
+      const deals = await tx
+        .select()
+        .from(aircraftRefueling)
+        .where(
+          and(
+            anchor.refuelingOrderId
+              ? eq(aircraftRefueling.refuelingOrderId, anchor.refuelingOrderId)
+              : eq(aircraftRefueling.id, anchor.id),
+            isNull(aircraftRefueling.deletedAt),
+          ),
+        )
+        .orderBy(asc(aircraftRefueling.id))
+        .for("update");
+      if (!deals.some((deal) => deal.id === anchorId)) return [];
+      for (const deal of deals) {
+        await this.reverseOrderDealStock(tx, deal, userId);
+      }
+      for (const deal of deals) {
+        await tx
+          .update(aircraftRefueling)
+          .set({ deletedAt: sql`NOW()`, deletedById: userId })
+          .where(eq(aircraftRefueling.id, deal.id));
+      }
+      return deals;
     });
   }
 

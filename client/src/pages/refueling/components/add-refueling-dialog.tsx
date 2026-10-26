@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   MinimizableDialog,
@@ -23,6 +24,9 @@ import { RefuelingForm, type RefuelingFormHandle } from "./refueling-form";
 import type { AddRefuelingDialogProps } from "../types";
 import { EQUIPMENT_TYPE } from "@shared/constants";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { apiRequest } from "@/lib/queryClient";
+import type { AircraftRefueling } from "@shared/schema";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 export function AddRefuelingDialog({
   isOpen,
@@ -34,6 +38,55 @@ export function AddRefuelingDialog({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<RefuelingFormHandle>(null);
   const { showError, ErrorModalComponent } = useErrorModal();
+  const orderQuery = useQuery<AircraftRefueling[]>({
+    queryKey: ["/api/refueling/order", editRefueling?.id],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/refueling/order/${editRefueling!.id}`);
+      return response.json();
+    },
+    enabled: isOpen && !!editRefueling?.id && !isCopy,
+    staleTime: 30_000,
+  });
+  const [orderSnapshot, setOrderSnapshot] = useState<{
+    id: string;
+    deals: AircraftRefueling[];
+  } | null>(null);
+  useEffect(() => {
+    if (!isOpen || !editRefueling?.id || isCopy) {
+      setOrderSnapshot(null);
+      return;
+    }
+    if (orderQuery.isFetching || orderQuery.isError || !orderQuery.data) return;
+    setOrderSnapshot((current) =>
+      current?.id === editRefueling.id
+        ? current
+        : { id: editRefueling.id, deals: orderQuery.data },
+    );
+  }, [
+    isOpen,
+    editRefueling?.id,
+    isCopy,
+    orderQuery.isFetching,
+    orderQuery.isError,
+    orderQuery.data,
+  ]);
+  const snapshotMatches = orderSnapshot?.id === editRefueling?.id;
+  const orderDeals = isCopy
+    ? editRefueling ? [editRefueling] : []
+    : snapshotMatches
+      ? orderSnapshot?.deals || []
+      : orderQuery.data || (editRefueling ? [editRefueling] : []);
+  const isOrderLoading =
+    !!editRefueling && !isCopy && !snapshotMatches && orderQuery.isFetching;
+  const isOrderMissing =
+    !!editRefueling &&
+    !isCopy &&
+    !orderQuery.isFetching &&
+    (orderQuery.isError || orderQuery.data?.length === 0);
+  const primaryDeal =
+    orderDeals.find((deal) => deal.productType === PRODUCT_TYPE.KEROSENE) ||
+    orderDeals[0] ||
+    editRefueling;
   const dialogTitle = isCopy
     ? equipmentType === EQUIPMENT_TYPE.LIK ? "Копирование заправки ОП" : "Копирование заправки"
     : editRefueling
@@ -72,9 +125,13 @@ export function AddRefuelingDialog({
       return;
     }
     if (formRef.current) {
-      await formRef.current.saveAsDraft();
-      setShowExitConfirm(false);
-      onClose();
+      try {
+        await formRef.current.saveAsDraft();
+        setShowExitConfirm(false);
+        onClose();
+      } catch (error) {
+        showError(error instanceof Error ? error : new Error("Не удалось сохранить черновик"), "refueling");
+      }
     }
   };
 
@@ -102,18 +159,25 @@ export function AddRefuelingDialog({
               <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
             </div>
           </DialogHeader>
-          <RefuelingForm
-            ref={formRef}
-            onSuccess={onClose}
-            equipmentType={equipmentType}
-            editData={
-              editRefueling
-                ? isCopy
-                  ? { ...editRefueling, id: undefined as any }
-                  : editRefueling
-                : null
-            }
-          />
+          {isOrderLoading ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Загружаем все сделки заказа…</div>
+          ) : isOrderMissing ? (
+            <div className="py-8 text-center text-sm text-destructive">Не удалось загрузить состав заказа. Закройте окно и попробуйте ещё раз.</div>
+          ) : (
+            <RefuelingForm
+              ref={formRef}
+              onSuccess={onClose}
+              equipmentType={equipmentType}
+              editData={
+                editRefueling
+                  ? isCopy
+                    ? { ...editRefueling, id: undefined as any }
+                    : primaryDeal
+                  : null
+              }
+              editDeals={editRefueling && !isCopy ? orderDeals : undefined}
+            />
+          )}
         </MinimizableDialogContent>
       </MinimizableDialog>
       {MinimizedBar}

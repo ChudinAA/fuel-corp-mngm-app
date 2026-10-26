@@ -283,40 +283,39 @@ export function RefuelingTable({
   const allDeals = (refuelingDeals as any)?.data || [];
   const deals = allDeals;
 
-  // Вычисляем принадлежность к группе РТ (Номер РТ + та же дата) для визуальной группировки
+  // Only rows with the same stable order ID are grouped; legacy rows stay independent.
   const rtGroupInfo = useMemo(() => {
     const result = new Map<string, { isGrouped: boolean; isFirstInGroup: boolean; isLastInGroup: boolean; groupProfit: number | null }>();
-    const computeForList = (dealList: any[]) => {
-      // Собираем суммарную прибыль по каждой группе (orderNumber + date)
-      const groupProfits = new Map<string, number>();
-      dealList.forEach((deal) => {
-        if (!deal.orderNumber) return;
-        const key = `${deal.orderNumber}_${formatDate(deal.refuelingDate)}`;
+    const groupStats = new Map<
+      string,
+      { count: number; profit: number; firstId: string; lastId: string }
+    >();
+    deals.forEach((deal: any) => {
+        if (!deal.refuelingOrderId) return;
+        const key = deal.refuelingOrderId;
         const p = deal.profit !== null && deal.profit !== undefined ? parseFloat(deal.profit) : 0;
-        groupProfits.set(key, (groupProfits.get(key) ?? 0) + p);
+        const previous = groupStats.get(key);
+        groupStats.set(key, {
+          count: (previous?.count || 0) + 1,
+          profit: (previous?.profit || 0) + p,
+          firstId: previous?.firstId || deal.id,
+          lastId: deal.id,
+        });
       });
-      dealList.forEach((deal, idx) => {
-        if (!deal.orderNumber) {
+      deals.forEach((deal: any) => {
+        if (!deal.refuelingOrderId) {
           result.set(deal.id, { isGrouped: false, isFirstInGroup: false, isLastInGroup: false, groupProfit: null });
           return;
         }
-        const sameDate = formatDate(deal.refuelingDate);
-        const groupKey = `${deal.orderNumber}_${sameDate}`;
-        const prev = idx > 0 ? dealList[idx - 1] : null;
-        const next = idx < dealList.length - 1 ? dealList[idx + 1] : null;
-        const prevSame = !!(prev && prev.orderNumber === deal.orderNumber && formatDate(prev.refuelingDate) === sameDate);
-        const nextSame = !!(next && next.orderNumber === deal.orderNumber && formatDate(next.refuelingDate) === sameDate);
-        const isGrouped = prevSame || nextSame;
+        const stats = groupStats.get(deal.refuelingOrderId)!;
+        const isGrouped = stats.count > 1;
         result.set(deal.id, {
           isGrouped,
-          isFirstInGroup: isGrouped && !prevSame,
-          isLastInGroup: isGrouped && !nextSame,
-          groupProfit: isGrouped ? (groupProfits.get(groupKey) ?? null) : null,
+          isFirstInGroup: isGrouped && stats.firstId === deal.id,
+          isLastInGroup: isGrouped && stats.lastId === deal.id,
+          groupProfit: isGrouped ? stats.profit : null,
         });
       });
-    };
-    computeForList(deals.filter((d: any) => isCreatedToday(d.createdAt)));
-    computeForList(deals.filter((d: any) => !isCreatedToday(d.createdAt)));
     return result;
   }, [deals]);
 
@@ -668,7 +667,7 @@ export function RefuelingTable({
                         isToday && !deal.isDraft && "bg-emerald-50/30 dark:bg-emerald-950/10",
                         deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200",
                         !deal.isDraft && lastCreatedDealId === deal.id && "new-deal-flash",
-                        // Визуальная группировка по Номеру РТ — боковые и торцевые рамки
+                        // Stable order grouping; order number/date coincidences do not merge rows.
                         _gInfo.isGrouped && !deal.isDraft && !isToday && "bg-sky-50/20 dark:bg-sky-950/10",
                         _gInfo.isGrouped && !deal.isDraft && "border-l-2 border-r-2 border-l-sky-300/60 border-r-sky-300/60 dark:border-l-sky-700/50 dark:border-r-sky-700/50",
                         _gInfo.isFirstInGroup && !deal.isDraft && "border-t-2 border-t-sky-300/60 dark:border-t-sky-700/50",
@@ -855,7 +854,7 @@ export function RefuelingTable({
                     {formatCurrencyForTable(deal.profit)}
                   </TableCell>
                   <TableCell className="p-1 sticky right-0 bg-background">
-                    {((equipmentType === EQUIPMENT_TYPE.COMMON &&
+                      {(!_gInfo.isGrouped || _gInfo.isFirstInGroup) && ((equipmentType === EQUIPMENT_TYPE.COMMON &&
                       !deal.equipmentId) ||
                       equipmentType === EQUIPMENT_TYPE.LIK) && (
                       <RefuelingDealActions
@@ -879,7 +878,7 @@ export function RefuelingTable({
                       <TableRow key={`rt-profit-${deal.id}`} className="border-l-2 border-r-2 border-b-2 border-l-sky-300/60 border-r-sky-300/60 border-b-sky-300/60 dark:border-l-sky-700/50 dark:border-r-sky-700/50 dark:border-b-sky-700/50 bg-sky-50/30 dark:bg-sky-950/15 hover:bg-sky-50/40">
                         <TableCell colSpan={100} className="py-0.5 px-2">
                           <div className="flex items-center justify-end gap-2">
-                            <span className="text-[10px] text-muted-foreground">Итого по РТ {deal.orderNumber}:</span>
+                            <span className="text-[10px] text-muted-foreground">Итого по заказу {deal.orderNumber || ""}:</span>
                             <span className={`text-[11px] font-semibold ${_gProfit < 0 ? "text-destructive" : "text-green-600"}`}>
                               {formatCurrencyForTable(String(_gProfit))}
                             </span>
@@ -930,8 +929,8 @@ export function RefuelingTable({
           setDeleteDialogOpen(false);
           setDealToDelete(null);
         }}
-        title="Удалить заправку?"
-        description="Вы уверены, что хотите удалить эту заправку? Это действие нельзя отменить."
+        title="Удалить заказ заправки?"
+        description="Будут удалены все сделки заказа, а связанные складские остатки восстановлены. Это действие нельзя отменить."
       />
 
       <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>

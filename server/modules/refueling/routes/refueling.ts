@@ -12,6 +12,17 @@ import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { AuditService } from "../../audit/services/audit-service";
 import { SSEService } from "../../../services/sse-service";
 
+const refuelingProductLabel = (type: string) =>
+  type === "kerosene" ? "Керосин" : type === "pvkj" ? "ПВКЖ" : type === "service" ? "Услуга" : type;
+
+const getOrderProductSummary = (deals: Array<{ productType: string; quantityKg?: unknown }>) =>
+  deals
+    .map((deal) => {
+      const quantity = Number(deal.quantityKg || 0);
+      return `${refuelingProductLabel(deal.productType)}${quantity ? ` — ${quantity} кг` : ""}`;
+    })
+    .join(", ");
+
 export function registerRefuelingOperationsRoutes(app: Express) {
   app.get(
     "/api/refueling",
@@ -41,7 +52,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
       let allowedWarehouseIds: string[] | null = null;
       if (equipmentType === "lik") {
         allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
-          req.session.userId as string,
+          String(req.session.userId),
         );
       }
 
@@ -119,6 +130,24 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     }
   );
 
+  app.get(
+    "/api/refueling/order/:id",
+    requireAuth,
+    requireAnyPermission(["refueling", "lik-refueling"], "view"),
+    async (req, res) => {
+      try {
+        const deals = await storage.aircraftRefueling.getRefuelingOrder(req.params.id);
+        if (!deals.length) {
+          return res.status(404).json({ message: "Заказ заправки не найден" });
+        }
+        res.json(deals);
+      } catch (error) {
+        console.error("Error fetching refueling order:", error);
+        res.status(500).json({ message: "Ошибка загрузки заказа заправки" });
+      }
+    },
+  );
+
   app.post(
     "/api/refueling/check-duplicate",
     requireAuth,
@@ -137,17 +166,12 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     "/api/refueling",
     requireAuth,
     requireAnyPermission(["refueling", "lik-refueling"], "create"),
-    auditLog({
-      entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
-      operation: AUDIT_OPERATIONS.CREATE,
-      getNewData: (req) => req.body,
-    }),
     async (req, res) => {
       try {
         // For LIK refueling, check warehouse access
         if (req.body.equipmentType === "lik" && req.body.warehouseId) {
           const allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
-            req.session.userId as string,
+            String(req.session.userId),
           );
           if (allowedWarehouseIds !== null && !allowedWarehouseIds.includes(req.body.warehouseId)) {
             return res.status(403).json({ message: "Нет доступа к указанному складу" });
@@ -156,9 +180,17 @@ export function registerRefuelingOperationsRoutes(app: Express) {
 
         const data = insertAircraftRefuelingSchema.parse({
           ...req.body,
-          createdById: req.session.userId,
+            createdById: String(req.session.userId),
         });
         const item = await storage.aircraftRefueling.createRefueling(data);
+        await AuditService.log({
+          entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
+          entityId: item.id,
+          operation: AUDIT_OPERATIONS.CREATE,
+          newData: item,
+          context: (req as any).auditContext || getAuditContext(req),
+          extraMeta: { orderProducts: getOrderProductSummary([item]) },
+        });
         SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
@@ -179,6 +211,17 @@ export function registerRefuelingOperationsRoutes(app: Express) {
       try {
         const requestSchema = z.object({
           deals: z.array(insertAircraftRefuelingSchema).min(1).max(3),
+        }).superRefine(({ deals }, context) => {
+          const types = deals.map((deal) => deal.productType || "");
+          if (
+            types.some((type) => !["kerosene", "pvkj", "service"].includes(type)) ||
+            new Set(types).size !== types.length
+          ) {
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Заказ должен содержать разные продукты: керосин, ПВКЖ и/или услугу",
+            });
+          }
         });
         const { deals } = requestSchema.parse(req.body);
         const userId = String(req.session.userId);
@@ -209,6 +252,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         );
 
         const context = (req as any).auditContext || getAuditContext(req);
+        const productSummary = getOrderProductSummary(created);
         await Promise.all(
           created.map((item) =>
             AuditService.log({
@@ -217,6 +261,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
               operation: AUDIT_OPERATIONS.CREATE,
               newData: item,
               context,
+              extraMeta: { orderProducts: productSummary },
             }).catch((auditError) => {
               console.error("Error logging refueling order item audit:", auditError);
             }),
@@ -257,7 +302,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         // For LIK refueling, check warehouse access
         if (req.body.equipmentType === "lik" && req.body.warehouseId) {
           const allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
-            req.session.userId as string,
+            String(req.session.userId),
           );
           if (allowedWarehouseIds !== null && !allowedWarehouseIds.includes(req.body.warehouseId)) {
             return res.status(403).json({ message: "Нет доступа к указанному складу" });
@@ -280,26 +325,161 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     }
   );
 
+  app.put(
+    "/api/refueling/order/:id",
+    requireAuth,
+    requireAnyPermission(["refueling", "lik-refueling"], "edit"),
+    async (req, res) => {
+      try {
+        const requestSchema = z.object({
+          deals: z.array(insertAircraftRefuelingSchema).min(1).max(3),
+        }).superRefine(({ deals }, context) => {
+          const types = deals.map((deal) => deal.productType || "");
+          if (
+            types.some((type) => !["kerosene", "pvkj", "service"].includes(type)) ||
+            new Set(types).size !== types.length
+          ) {
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Заказ должен содержать разные продукты: керосин, ПВКЖ и/или услугу",
+            });
+          }
+        });
+        const { deals } = requestSchema.parse(req.body);
+        const userId = String(req.session.userId);
+        for (const deal of deals) {
+          if (deal.equipmentType === "lik" && deal.warehouseId) {
+            const allowedWarehouseIds =
+              await storage.warehouses.getUserAllowedLikWarehouseIds(userId);
+            if (
+              allowedWarehouseIds !== null &&
+              !allowedWarehouseIds.includes(deal.warehouseId)
+            ) {
+              return res.status(403).json({ message: "Нет доступа к указанному складу" });
+            }
+          }
+        }
+        const validatedDeals = deals.map((deal) =>
+          insertAircraftRefuelingSchema.parse({ ...deal, updatedById: userId }),
+        );
+        const { oldDeals, deals: savedDeals } =
+          await storage.aircraftRefueling.updateRefuelingOrder(
+            req.params.id,
+            validatedDeals,
+            userId,
+          );
+        const context = (req as any).auditContext || getAuditContext(req);
+        const oldByType = new Map(oldDeals.map((deal) => [deal.productType, deal]));
+        const newByType = new Map(savedDeals.map((deal) => [deal.productType, deal]));
+        const productSummary = getOrderProductSummary(savedDeals);
+        const previousProductSummary = getOrderProductSummary(oldDeals);
+
+        await Promise.all([
+          ...savedDeals.map((deal) => {
+            const old = oldByType.get(deal.productType);
+            return AuditService.log({
+              entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
+              entityId: deal.id,
+              operation: old ? AUDIT_OPERATIONS.UPDATE : AUDIT_OPERATIONS.CREATE,
+              oldData: old || undefined,
+              newData: deal,
+              context,
+              extraMeta: { orderProducts: productSummary },
+            });
+          }),
+          ...oldDeals
+            .filter((deal) => !newByType.has(deal.productType))
+            .map((deal) =>
+              AuditService.log({
+                entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
+                entityId: deal.id,
+                operation: AUDIT_OPERATIONS.DELETE,
+                oldData: deal,
+                context,
+                extraMeta: { orderProducts: previousProductSummary },
+              }),
+            ),
+        ]);
+        SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
+        res.json(savedDeals);
+      } catch (error: any) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: error.errors[0].message });
+        }
+        console.error("Error updating refueling order:", error?.message || error);
+        res.status(500).json({ message: error?.message || "Ошибка обновления заказа заправки" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/refueling/order/:id",
+    requireAuth,
+    requireAnyPermission(["refueling", "lik-refueling"], "delete"),
+    async (req, res) => {
+      try {
+        const oldDeals = await storage.aircraftRefueling.deleteRefuelingOrder(
+          req.params.id,
+          String(req.session.userId),
+        );
+        if (!oldDeals.length) {
+          return res.status(404).json({ message: "Заказ заправки не найден" });
+        }
+        const context = (req as any).auditContext || getAuditContext(req);
+        const productSummary = getOrderProductSummary(oldDeals);
+        await Promise.all(
+          oldDeals.map((deal) =>
+            AuditService.log({
+              entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
+              entityId: deal.id,
+              operation: AUDIT_OPERATIONS.DELETE,
+              oldData: deal,
+              context,
+              extraMeta: { orderProducts: productSummary },
+            }),
+          ),
+        );
+        SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
+        res.json({ message: "Заказ заправки удалён", deletedDeals: oldDeals.length });
+      } catch (error: any) {
+        console.error("Error deleting refueling order:", error?.message || error);
+        res.status(500).json({ message: error?.message || "Ошибка удаления заказа заправки" });
+      }
+    },
+  );
+
   app.delete(
     "/api/refueling/:id",
     requireAuth,
     requireAnyPermission(["refueling", "lik-refueling"], "delete"),
-    auditLog({
-      entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
-      operation: AUDIT_OPERATIONS.DELETE,
-      getOldData: async (req) => {
-        const item = await storage.aircraftRefueling.getRefueling(req.params.id);
-        return item;
-      },
-    }),
     async (req, res) => {
       try {
-        const id = req.params.id;
-        await storage.aircraftRefueling.deleteRefueling(id, req.session.userId);
+        const oldDeals = await storage.aircraftRefueling.deleteRefuelingOrder(
+          req.params.id,
+          String(req.session.userId),
+        );
+        if (!oldDeals.length) {
+          return res.status(404).json({ message: "Заказ заправки не найден" });
+        }
+        const context = (req as any).auditContext || getAuditContext(req);
+        const productSummary = getOrderProductSummary(oldDeals);
+        await Promise.all(
+          oldDeals.map((deal) =>
+            AuditService.log({
+              entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
+              entityId: deal.id,
+              operation: AUDIT_OPERATIONS.DELETE,
+              oldData: deal,
+              context,
+              extraMeta: { orderProducts: productSummary },
+            }),
+          ),
+        );
         SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json({ message: "Заправка удалена" });
-      } catch (error) {
-        res.status(500).json({ message: "Ошибка удаления заправки" });
+        res.json({ message: "Заказ заправки удалён", deletedDeals: oldDeals.length });
+      } catch (error: any) {
+        console.error("Error deleting refueling:", error?.message || error);
+        res.status(500).json({ message: error?.message || "Ошибка удаления заказа заправки" });
       }
     }
   );

@@ -51,7 +51,7 @@ export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { e
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await apiRequest("DELETE", `/api/refueling/${id}`);
+      const res = await apiRequest("DELETE", `/api/refueling/order/${id}`);
       return res.json();
     },
     onSuccess: () => {
@@ -64,8 +64,8 @@ export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { e
         });
       }
       toast({
-        title: "Заправка удалена",
-        description: "Заправка ВС успешно удалена",
+        title: "Заказ удалён",
+        description: "Заказ заправки и связанные складские движения удалены",
       });
     },
     onError: (error: Error) => {

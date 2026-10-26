@@ -39,6 +39,7 @@ export const aircraftRefueling = pgTable(
     nomenclatureId: uuid("nomenclature_id").references(() => nomenclature.id),
     aircraftNumber: text("aircraft_number"),
     orderNumber: text("order_number"),
+    refuelingOrderId: uuid("refueling_order_id"),
     flightNumber: text("flight_number"),
     supplierId: uuid("supplier_id")
       .notNull()
@@ -119,6 +120,9 @@ export const aircraftRefueling = pgTable(
     ),
     equipmentIdx: index("aircraft_refueling_equipment_idx").on(
       table.equipmentId,
+    ),
+    refuelingOrderIdx: index("aircraft_refueling_order_idx").on(
+      table.refuelingOrderId,
     ),
   }),
 );

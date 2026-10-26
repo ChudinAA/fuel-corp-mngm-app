@@ -76,7 +76,7 @@ export interface RefuelingFormHandle {
 export const RefuelingForm = forwardRef<
   RefuelingFormHandle,
   RefuelingFormProps
->(({ onSuccess, editData, equipmentType = EQUIPMENT_TYPE.COMMON }, ref) => {
+>(({ onSuccess, editData, editDeals, equipmentType = EQUIPMENT_TYPE.COMMON }, ref) => {
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
@@ -112,12 +112,36 @@ export const RefuelingForm = forwardRef<
   const [additionalVolumes, setAdditionalVolumes] = useState<
     Record<string, RefuelingVolume>
   >({});
+  const [isPrimaryProductIncluded, setIsPrimaryProductIncluded] = useState(true);
   const additionalProductRefs = useRef<
     Map<string, React.RefObject<AdditionalProductSectionHandle>>
   >(new Map());
   const [addProductPopoverOpen, setAddProductPopoverOpen] = useState(false);
 
   const initialValuesRef = useRef<RefuelingFormData | null>(null);
+
+  useEffect(() => {
+    if (!editDeals?.length) return;
+    const otherDeals = editDeals.filter((deal) => deal.id !== editData?.id);
+    const products = otherDeals.map((deal) => ({
+      id: `${deal.productType}-${deal.id}`,
+      productType: deal.productType,
+      deal,
+    }));
+    const initialVolumes: Record<string, RefuelingVolume> = {};
+    products.forEach(({ id, deal }) => {
+      initialVolumes[id] = {
+        inputMode: (deal.inputMode as "liters" | "kg") ||
+          (deal.quantityLiters ? "liters" : "kg"),
+        quantityLiters: deal.quantityLiters?.toString() || "",
+        density: deal.density?.toString() || "0.8",
+        quantityKg: deal.quantityKg?.toString() || "",
+      };
+    });
+    setAdditionalProducts(products);
+    setAdditionalVolumes(initialVolumes);
+    setIsPrimaryProductIncluded(true);
+  }, [editDeals, editData?.id]);
 
   const form = useForm<RefuelingFormData>({
     resolver: zodResolver(refuelingFormSchema),
@@ -155,7 +179,89 @@ export const RefuelingForm = forwardRef<
     }),
     saveAsDraft: async () => {
       const values = form.getValues();
-      if (editData?.id) {
+      if (editData?.id && editDeals?.length) {
+        const { purchasePriceId, purchasePriceIndex, salePriceId, salePriceIndex } =
+          extractPriceIdsForSubmit(
+            selectedPurchasePriceId,
+            selectedSalePriceId,
+            purchasePrices,
+            salePrices,
+            isWarehouseSupplier,
+          );
+        const commonPayload = {
+          nomenclatureId: values.nomenclatureId || null,
+          supplierId: values.supplierId || null,
+          buyerId: values.buyerId || null,
+          isDraft: true,
+          inputMode: values.inputMode || inputMode,
+          warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
+          basis: selectedBasis || null,
+          basisId: values.basisId || null,
+          customerBasis: customerBasis || null,
+          customerBasisId: values.customerBasisId || null,
+          refuelingDate: values.refuelingDate
+            ? format(values.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
+            : null,
+          quantityKg: calculatedKg ? Number.parseFloat(calculatedKg) : null,
+          quantityLiters: values.quantityLiters ? Number.parseFloat(values.quantityLiters) : null,
+          density: values.density ? Number.parseFloat(values.density) : null,
+          aircraftNumber: values.aircraftNumber || null,
+          orderNumber: values.orderNumber || null,
+          flightNumber: values.flightNumber || null,
+          notes: values.notes || null,
+          isApproxVolume: values.isApproxVolume || false,
+          isPlannedDeal: values.isPlannedDeal || false,
+          equipmentType,
+          equipmentId: equipmentType === EQUIPMENT_TYPE.LIK ? selectedEquipmentId || null : null,
+        };
+        const mainPayload = {
+          ...commonPayload,
+          productType: values.productType,
+          purchasePrice: purchasePrice ?? null,
+          purchasePriceId: purchasePriceId || null,
+          purchasePriceIndex: purchasePriceIndex ?? null,
+          salePrice: salePrice ?? null,
+          salePriceId: salePriceId || null,
+          salePriceIndex: salePriceIndex ?? null,
+          purchaseAmount: purchaseAmount ?? null,
+          saleAmount: saleAmount ?? null,
+          agentFee: agentFee ?? null,
+          agentFeeRate: agentFeeRate || null,
+          isAgentFeeEnabled,
+          otherServiceFee: otherServiceFee || null,
+          otherServiceName: otherServiceName || null,
+          otherServiceType: otherServiceType || null,
+          otherServiceQuantity: otherServiceQuantity ? Number.parseFloat(otherServiceQuantity) : null,
+          isOtherServiceEnabled,
+          profit: profit ?? null,
+          isPriceRecharge: values.isPriceRecharge || false,
+          isPvkjRecharge: values.isPvkjRecharge || false,
+          setSalePriceZero: values.setSalePriceZero || false,
+        };
+        const additionalPayloads = additionalProducts
+          .map((product) => {
+            const payload = additionalProductRefs.current.get(product.id)?.current?.getPayload();
+            return payload ? { ...commonPayload, ...payload } : null;
+          })
+          .filter(Boolean);
+        const deals = [
+          ...(isPrimaryProductIncluded ? [mainPayload] : []),
+          ...additionalPayloads,
+        ];
+        if (deals.length === 0) {
+          showError("В заказе должен остаться хотя бы один продукт.");
+          return;
+        }
+        await apiRequest("PUT", `/api/refueling/order/${editData.id}`, {
+          deals,
+        });
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0] as string;
+            return key?.startsWith("/api/refueling") || key?.startsWith("/api/warehouses");
+          },
+        });
+      } else if (editData?.id) {
         await updateMutation.mutateAsync({ ...values, isDraft: true, id: editData.id });
       } else {
         // Build common payload
@@ -220,7 +326,20 @@ export const RefuelingForm = forwardRef<
       return (
         JSON.stringify(currentValues) !==
         JSON.stringify(initialValuesRef.current)
-      );
+      ) || JSON.stringify(additionalProducts.map((product) => ({
+        productType: product.productType,
+        volume: additionalVolumes[product.id],
+      }))) !== JSON.stringify((editDeals || [])
+        .filter((deal) => deal.id !== editData?.id)
+        .map((deal) => ({
+          productType: deal.productType,
+          volume: {
+            inputMode: deal.inputMode || (deal.quantityLiters ? "liters" : "kg"),
+            quantityLiters: deal.quantityLiters?.toString() || "",
+            density: deal.density?.toString() || "0.8",
+            quantityKg: deal.quantityKg?.toString() || "",
+          },
+        }))) || !isPrimaryProductIncluded;
     },
   }));
 
@@ -734,6 +853,30 @@ export const RefuelingForm = forwardRef<
     },
   });
 
+  const updateOrderMutation = useMutation({
+    mutationFn: async (deals: object[]) => {
+      const response = await apiRequest("PUT", `/api/refueling/order/${editData?.id}`, {
+        deals,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0] as string;
+          return key?.startsWith("/api/refueling") || key?.startsWith("/api/warehouses");
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/refueling/contract-used"] });
+      toast({
+        title: "Заказ обновлён",
+        description: "Состав и сделки заказа заправки сохранены",
+      });
+      onSuccess?.();
+    },
+    onError: (error: Error) => showError(error, "refueling"),
+  });
+
   // Helper: builds the common (shared) payload fields from form data
   const buildCommonPayload = (data: RefuelingFormData, isDraft: boolean) => ({
     nomenclatureId: data.nomenclatureId || null,
@@ -852,10 +995,10 @@ export const RefuelingForm = forwardRef<
   // Compute available product types for the "Add Product" button
   const usedProductTypes = useMemo(() => {
     const used = new Set<string>();
-    used.add(watchProductType);
+    if (isPrimaryProductIncluded) used.add(watchProductType);
     additionalProducts.forEach((p) => used.add(p.productType));
     return used;
-  }, [watchProductType, additionalProducts]);
+  }, [watchProductType, additionalProducts, isPrimaryProductIncluded]);
 
   const availableProductsToAdd = useMemo(
     () => PRODUCT_TYPES.filter((p) => !usedProductTypes.has(p.value)),
@@ -863,6 +1006,11 @@ export const RefuelingForm = forwardRef<
   );
 
   const handleAddProduct = (productType: string) => {
+    if (!isPrimaryProductIncluded && productType === watchProductType) {
+      setIsPrimaryProductIncluded(true);
+      setAddProductPopoverOpen(false);
+      return;
+    }
     const id = `${productType}-${Date.now()}`;
     const newRef = createRef<AdditionalProductSectionHandle>();
     additionalProductRefs.current.set(id, newRef);
@@ -906,8 +1054,9 @@ export const RefuelingForm = forwardRef<
   };
 
   const sourceVolumes = [
-    watchProductType === PRODUCT_TYPE.KEROSENE ||
-    watchProductType === PRODUCT_TYPE.PVKJ
+    isPrimaryProductIncluded &&
+    (watchProductType === PRODUCT_TYPE.KEROSENE ||
+    watchProductType === PRODUCT_TYPE.PVKJ)
       ? {
           productType: watchProductType,
           kg:
@@ -943,7 +1092,7 @@ export const RefuelingForm = forwardRef<
     .map(({ productType, kg }) => `${productType}:${kg}`)
     .join("|");
   const hasServiceProduct =
-    watchProductType === PRODUCT_TYPE.SERVICE ||
+    (isPrimaryProductIncluded && watchProductType === PRODUCT_TYPE.SERVICE) ||
     additionalProducts.some((product) => product.productType === PRODUCT_TYPE.SERVICE);
 
   useEffect(() => {
@@ -954,7 +1103,7 @@ export const RefuelingForm = forwardRef<
       density: current?.density || "0.8",
       quantityKg: String(serviceQuantityKg),
     });
-    if (watchProductType === PRODUCT_TYPE.SERVICE) {
+    if (isPrimaryProductIncluded && watchProductType === PRODUCT_TYPE.SERVICE) {
       const nextVolume = syncedVolume();
       form.setValue("inputMode", "kg", { shouldDirty: false });
       form.setValue("quantityKg", nextVolume.quantityKg, { shouldDirty: false });
@@ -969,14 +1118,14 @@ export const RefuelingForm = forwardRef<
         [service.id]: syncedVolume(previous[service.id]),
       }));
     }
-  }, [sourceVolumeSignature, serviceQuantityKg, hasServiceProduct, watchProductType, additionalProducts, form]);
+  }, [sourceVolumeSignature, serviceQuantityKg, hasServiceProduct, watchProductType, additionalProducts, form, isPrimaryProductIncluded]);
 
   const onSubmit = async (data: RefuelingFormData, isDraftSubmit?: boolean) => {
     const productType = watchProductType;
     const isDraft = isDraftSubmit ?? data.isDraft;
 
     // Если не черновик, выполняем полную валидацию основного продукта
-    if (!isDraft) {
+    if (!isDraft && isPrimaryProductIncluded) {
       if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
         showError("Укажите корректное количество топлива.");
         return;
@@ -1005,15 +1154,19 @@ export const RefuelingForm = forwardRef<
         showError(supplierContractVolumeStatus.message);
         return;
       }
-    } else {
+    } else if (isDraft) {
       if (!data.supplierId || !data.buyerId) {
         showError("Для сохранения черновика необходимо выбрать поставщика и покупателя.");
         return;
       }
     }
+    if (!isDraft && !isPrimaryProductIncluded && additionalProducts.length === 0) {
+      showError("В заказе должен остаться хотя бы один продукт.");
+      return;
+    }
 
     // Editing mode — single record, no additional products
-    if (editData && editData.id) {
+    if (editData && editData.id && !editDeals?.length) {
       updateMutation.mutate({ ...data, isDraft, id: editData.id });
       return;
     }
@@ -1084,7 +1237,15 @@ export const RefuelingForm = forwardRef<
       })
       .filter(Boolean) as object[];
 
-    const allPayloads = [mainPayload, ...additionalPayloads];
+    const allPayloads = [
+      ...(isPrimaryProductIncluded ? [mainPayload] : []),
+      ...additionalPayloads,
+    ];
+
+    if (editData?.id && editDeals?.length) {
+      updateOrderMutation.mutate(allPayloads);
+      return;
+    }
 
     // For single product creation — use existing flow with duplicate check
     if (additionalPayloads.length === 0) {
@@ -1117,6 +1278,8 @@ export const RefuelingForm = forwardRef<
         >
           <RefuelingMainFields
             preserveLegacySelection={isEditing && !editData?.nomenclatureId}
+            lockProductType={!!editDeals?.length}
+            primaryProductRemoved={!isPrimaryProductIncluded}
             form={form}
             refuelingSuppliers={refuelingSuppliers}
             customers={customers}
@@ -1137,7 +1300,19 @@ export const RefuelingForm = forwardRef<
             warehouses={warehouses}
           />
 
-          {additionalProducts.length > 0 ? (
+          {editDeals?.length && isPrimaryProductIncluded && additionalProducts.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-destructive"
+              onClick={() => setIsPrimaryProductIncluded(false)}
+            >
+              Убрать {PRODUCT_TYPES.find((product) => product.value === watchProductType)?.label || watchProductType} из заказа
+            </Button>
+          )}
+
+          {isPrimaryProductIncluded && (additionalProducts.length > 0 ? (
             <ProductVolumeSection
               productLabel={
                 PRODUCT_TYPES.find((product) => product.value === watchProductType)
@@ -1178,9 +1353,9 @@ export const RefuelingForm = forwardRef<
               setInputMode={setInputMode}
               calculatedKg={calculatedKg}
             />
-          )}
+          ))}
 
-          <RefuelingPricingSection
+          {isPrimaryProductIncluded && <RefuelingPricingSection
             form={form}
             isWarehouseSupplier={isWarehouseSupplier}
             purchasePrices={purchasePrices}
@@ -1211,7 +1386,7 @@ export const RefuelingForm = forwardRef<
             isOtherServiceEnabled={isOtherServiceEnabled}
             onAgentFeeEnabledChange={setIsAgentFeeEnabled}
             onOtherServiceEnabledChange={setIsOtherServiceEnabled}
-          />
+          />}
 
           <div className="grid gap-4 md:grid-cols-2 items-end">
             <FormField
@@ -1285,6 +1460,8 @@ export const RefuelingForm = forwardRef<
                 key={ap.id}
                 ref={ref}
                 productType={ap.productType}
+                editData={editDeals?.find((deal) => deal.productType === ap.productType)}
+                canRemove={isPrimaryProductIncluded || additionalProducts.length > 1}
                 onRemove={() => handleRemoveAdditionalProduct(ap.id)}
                 supplierId={watchSupplierId}
                 buyerId={watchBuyerId}
@@ -1319,7 +1496,7 @@ export const RefuelingForm = forwardRef<
           })}
 
           {/* "Add Product" button — only when not editing, not all 3 products selected */}
-          {!isEditing && availableProductsToAdd.length > 0 && (
+          {(!isEditing || !!editDeals?.length) && availableProductsToAdd.length > 0 && (
             <div className="flex items-center">
               <Popover open={addProductPopoverOpen} onOpenChange={setAddProductPopoverOpen}>
                 <PopoverTrigger asChild>
@@ -1385,6 +1562,7 @@ export const RefuelingForm = forwardRef<
                   createMutation.isPending ||
                   createAllMutation.isPending ||
                   updateMutation.isPending ||
+                  updateOrderMutation.isPending ||
                   isChecking
                 }
                 onClick={() => {
@@ -1400,6 +1578,7 @@ export const RefuelingForm = forwardRef<
                 {createMutation.isPending ||
                 createAllMutation.isPending ||
                 updateMutation.isPending ||
+                updateOrderMutation.isPending ||
                 isChecking ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
@@ -1413,6 +1592,7 @@ export const RefuelingForm = forwardRef<
                 createMutation.isPending ||
                 createAllMutation.isPending ||
                 updateMutation.isPending ||
+                updateOrderMutation.isPending ||
                 isChecking
               }
               onClick={() => {
@@ -1428,6 +1608,7 @@ export const RefuelingForm = forwardRef<
               {createMutation.isPending ||
               createAllMutation.isPending ||
               updateMutation.isPending ||
+              updateOrderMutation.isPending ||
               isChecking ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -4,6 +4,7 @@ import type { AircraftRefueling } from "@shared/schema";
 export interface RefuelingFormProps {
   onSuccess?: () => void;
   editData?: AircraftRefueling | null;
+  editDeals?: AircraftRefueling[];
   equipmentType?: string;
 }
 

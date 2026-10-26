@@ -32,6 +32,8 @@ import { BaseTypeBadge } from "@/components/base-type-badge";
 
 interface RefuelingMainFieldsProps {
   preserveLegacySelection?: boolean;
+  lockProductType?: boolean;
+  primaryProductRemoved?: boolean;
   form: UseFormReturn<RefuelingFormData>;
   refuelingSuppliers: Supplier[];
   customers: Customer[] | undefined;
@@ -54,6 +56,8 @@ interface RefuelingMainFieldsProps {
 
 export function RefuelingMainFields({
   preserveLegacySelection = false,
+  lockProductType = false,
+  primaryProductRemoved = false,
   form,
   refuelingSuppliers,
   customers,
@@ -195,7 +199,11 @@ export function RefuelingMainFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Продукт</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              {primaryProductRemoved ? (
+                <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
+                  Основной продукт исключён из заказа
+                </div>
+              ) : <Select onValueChange={field.onChange} value={field.value} disabled={lockProductType}>
                 <FormControl>
                   <SelectTrigger data-testid="select-product-type">
                     <SelectValue placeholder="Выберите продукт" />
@@ -208,12 +216,12 @@ export function RefuelingMainFields({
                     </SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
+              </Select>}
               <FormMessage />
             </FormItem>
           )}
         />
-        {["kerosene", "pvkj", "service"].includes(productType || "") && (
+        {!primaryProductRemoved && ["kerosene", "pvkj", "service"].includes(productType || "") && (
           <FormField control={form.control} name="nomenclatureId" render={({ field }) => (
             <FormItem>
               <FormLabel>Номенклатура</FormLabel>
