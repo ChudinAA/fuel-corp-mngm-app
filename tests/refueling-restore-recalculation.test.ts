@@ -695,15 +695,31 @@ test("restoring an older refueling movement recalculates both fuel products in s
   }
 });
 
-test("shared warehouse recalculation includes both source transfer costs in either cascade order", async (t) => {
+test("restoring an older sale preserves delivery and storage costs in shared warehouse transfers", async (t) => {
   const rollbackMarker = new Error("Rollback integration-test fixtures");
 
   try {
     await db.transaction(async (tx) => {
       const productType = PRODUCT_TYPE.KEROSENE;
       const sourceSpecs = [
-        { openingBalance: 100, openingCost: 10, oldSale: 20, receiptQty: 40, receiptPrice: 15 },
-        { openingBalance: 80, openingCost: 20, oldSale: 10, receiptQty: 20, receiptPrice: 30 },
+        {
+          openingBalance: 100,
+          openingCost: 10,
+          oldSale: 20,
+          receiptQty: 40,
+          receiptPrice: 15,
+          deliveryCost: 12.34,
+          storageCost: 5.67,
+        },
+        {
+          openingBalance: 80,
+          openingCost: 20,
+          oldSale: 10,
+          receiptQty: 20,
+          receiptPrice: 30,
+          deliveryCost: 23.45,
+          storageCost: 6.78,
+        },
       ];
 
       for (const sourceOrder of [[0, 1], [1, 0]]) {
@@ -821,6 +837,8 @@ test("shared warehouse recalculation includes both source transfer costs in eith
               totalCost: (10 * staleAverageCost).toFixed(2),
               purchasePrice: staleAverageCost.toFixed(6),
               costPerKg: staleAverageCost.toFixed(6),
+              deliveryCost: String(spec.deliveryCost),
+              storageCost: String(spec.storageCost),
             })
             .returning();
           await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -871,18 +889,31 @@ test("shared warehouse recalculation includes both source transfer costs in eith
         });
         assert.equal(Number(refreshedDestination?.currentBalance), 30);
         assert.ok(
-          Math.abs(Number(refreshedDestination?.averageCost) - 12.629667) < 0.000001,
+          Math.abs(Number(refreshedDestination?.averageCost) - 14.237667) < 0.000001,
           `destination average cost in source order ${sourceOrder.join("→")}: ${refreshedDestination?.averageCost}`,
         );
 
         const transferRows = await tx
-          .select({ totalCost: movement.totalCost })
+          .select({
+            totalCost: movement.totalCost,
+            deliveryCost: movement.deliveryCost,
+            storageCost: movement.storageCost,
+          })
           .from(movement)
           .where(eq(movement.toWarehouseId, destination.id));
         assert.deepEqual(
-          transferRows.map((row) => Number(row.totalCost)).sort((a, b) => a - b),
-          [116.67, 222.22],
-          `both recalculated movement costs in source order ${sourceOrder.join("→")}`,
+          transferRows
+            .map((row) => ({
+              totalCost: Number(row.totalCost),
+              deliveryCost: Number(row.deliveryCost),
+              storageCost: Number(row.storageCost),
+            }))
+            .sort((a, b) => a.totalCost - b.totalCost),
+          [
+            { totalCost: 134.68, deliveryCost: 12.34, storageCost: 5.67 },
+            { totalCost: 252.45, deliveryCost: 23.45, storageCost: 6.78 },
+          ],
+          `recalculated movement costs preserve delivery and storage expenses in source order ${sourceOrder.join("→")}`,
         );
       }
 
