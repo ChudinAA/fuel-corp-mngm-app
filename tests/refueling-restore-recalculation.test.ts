@@ -25,6 +25,8 @@ const testDates = {
   oldOrder: "2026-01-02T10:00:00.000Z",
   laterReceipt: "2026-01-03T10:00:00.000Z",
   laterSale: "2026-01-04T10:00:00.000Z",
+  warehouseTransfer: "2026-01-05T10:00:00.000Z",
+  equipmentTransfer: "2026-01-06T10:00:00.000Z",
 };
 
 test("restoring an older refueling movement recalculates both fuel products in storage and equipment", async (t) => {
@@ -222,6 +224,192 @@ test("restoring an older refueling movement recalculates both fuel products in s
           testDates.laterSale,
         );
 
+        const [equipmentTransferWarehouse] = await tx
+          .insert(warehouses)
+          .values({
+            name: `restore-equipment-chain-warehouse-${productType}-${crypto.randomUUID()}`,
+            currentBalance: isPvkj ? "0" : "10",
+            averageCost: isPvkj ? "0" : "8",
+            pvkjBalance: isPvkj ? "10" : "0",
+            pvkjAverageCost: isPvkj ? "8" : "0",
+          })
+          .returning();
+        await tx.insert(warehouseTransactions).values({
+          warehouseId: equipmentTransferWarehouse.id,
+          transactionType: TRANSACTION_TYPE.INVENTORY,
+          productType,
+          quantity: "10",
+          balanceBefore: "0",
+          balanceAfter: "10",
+          averageCostBefore: "0",
+          averageCostAfter: "8",
+          sum: "80",
+          transactionDate: testDates.opening,
+        });
+        const [equipmentToWarehouseTransfer] = await tx
+          .insert(equipmentMovement)
+          .values({
+            movementDate: testDates.warehouseTransfer,
+            movementType: "tzk_to_storage",
+            productType,
+            fromEquipmentId: equipment.id,
+            toWarehouseId: equipmentTransferWarehouse.id,
+            quantityKg: "20",
+            totalCost: "200",
+            costPerKg: "10",
+          })
+          .returning();
+        await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+          tx,
+          equipment.id,
+          TRANSACTION_TYPE.TRANSFER_OUT,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          equipmentToWarehouseTransfer.id,
+          20,
+          200,
+          undefined,
+          testDates.warehouseTransfer,
+        );
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          equipmentTransferWarehouse.id,
+          TRANSACTION_TYPE.TRANSFER_IN,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          equipmentToWarehouseTransfer.id,
+          20,
+          200,
+          undefined,
+          testDates.warehouseTransfer,
+        );
+
+        // Add a downstream warehouse -> warehouse -> equipment chain. Restoring
+        // the old sale changes the quantity remaining at the later receipt,
+        // which changes its average cost and must flow through both transfers.
+        const [receivingWarehouse] = await tx
+          .insert(warehouses)
+          .values({
+            name: `restore-chain-warehouse-${productType}-${crypto.randomUUID()}`,
+            currentBalance: isPvkj ? "0" : "10",
+            averageCost: isPvkj ? "0" : "8",
+            pvkjBalance: isPvkj ? "10" : "0",
+            pvkjAverageCost: isPvkj ? "8" : "0",
+          })
+          .returning();
+        const [receivingEquipment] = await tx
+          .insert(equipments)
+          .values({
+            name: `restore-chain-equipment-${productType}-${crypto.randomUUID()}`,
+            currentBalance: isPvkj ? "0" : "5",
+            averageCost: isPvkj ? "0" : "12",
+            pvkjBalance: isPvkj ? "5" : "0",
+            pvkjAverageCost: isPvkj ? "12" : "0",
+          })
+          .returning();
+
+        await tx.insert(warehouseTransactions).values({
+          warehouseId: receivingWarehouse.id,
+          transactionType: TRANSACTION_TYPE.INVENTORY,
+          productType,
+          quantity: "10",
+          balanceBefore: "0",
+          balanceAfter: "10",
+          averageCostBefore: "0",
+          averageCostAfter: "8",
+          sum: "80",
+          transactionDate: testDates.opening,
+        });
+        await tx.insert(equipmentTransactions).values({
+          equipmentId: receivingEquipment.id,
+          transactionType: TRANSACTION_TYPE.INVENTORY,
+          productType,
+          quantity: "5",
+          balanceBefore: "0",
+          balanceAfter: "5",
+          averageCostBefore: "0",
+          averageCostAfter: "12",
+          sum: "60",
+          transactionDate: testDates.opening,
+        });
+
+        const [warehouseTransfer] = await tx
+          .insert(movement)
+          .values({
+            movementDate: testDates.warehouseTransfer,
+            movementType: "transfer",
+            productType,
+            fromWarehouseId: warehouse.id,
+            toWarehouseId: receivingWarehouse.id,
+            quantityKg: "20",
+            totalCost: "200",
+            purchasePrice: "10",
+            costPerKg: "10",
+          })
+          .returning();
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          warehouse.id,
+          TRANSACTION_TYPE.TRANSFER_OUT,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          warehouseTransfer.id,
+          20,
+          200,
+          undefined,
+          testDates.warehouseTransfer,
+        );
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          receivingWarehouse.id,
+          TRANSACTION_TYPE.TRANSFER_IN,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          warehouseTransfer.id,
+          20,
+          200,
+          undefined,
+          testDates.warehouseTransfer,
+        );
+
+        const [equipmentTransfer] = await tx
+          .insert(equipmentMovement)
+          .values({
+            movementDate: testDates.equipmentTransfer,
+            movementType: "storage_to_tzk",
+            productType,
+            fromWarehouseId: receivingWarehouse.id,
+            toEquipmentId: receivingEquipment.id,
+            quantityKg: "10",
+            totalCost: "100",
+            costPerKg: "10",
+          })
+          .returning();
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          receivingWarehouse.id,
+          TRANSACTION_TYPE.TRANSFER_OUT,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          equipmentTransfer.id,
+          10,
+          100,
+          undefined,
+          testDates.equipmentTransfer,
+        );
+        await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+          tx,
+          receivingEquipment.id,
+          TRANSACTION_TYPE.TRANSFER_IN,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          equipmentTransfer.id,
+          10,
+          100,
+          undefined,
+          testDates.equipmentTransfer,
+        );
+
         // Restore the original refueling stock movements after the newer activity.
         await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
           tx,
@@ -268,8 +456,8 @@ test("restoring an older refueling movement recalculates both fuel products in s
           isPvkj ? refreshedEquipment[0]?.pvkjAverageCost : refreshedEquipment[0]?.averageCost,
         );
 
-        assert.equal(warehouseBalance, 110, `warehouse ${productType} balance`);
-        assert.equal(equipmentBalance, 110, `equipment ${productType} balance`);
+        assert.equal(warehouseBalance, 90, `warehouse ${productType} balance`);
+        assert.equal(equipmentBalance, 90, `equipment ${productType} balance`);
         assert.ok(
           Math.abs(warehouseAverageCost - 11.666667) < 0.000001,
           `warehouse ${productType} average cost: ${warehouseAverageCost}`,
@@ -277,6 +465,103 @@ test("restoring an older refueling movement recalculates both fuel products in s
         assert.ok(
           Math.abs(equipmentAverageCost - 11.6667) < 0.0001,
           `equipment ${productType} average cost: ${equipmentAverageCost}`,
+        );
+
+        const refreshedReceivingWarehouse =
+          await tx.query.warehouses.findFirst({
+            where: eq(warehouses.id, receivingWarehouse.id),
+          });
+        const refreshedReceivingEquipment =
+          await tx.query.equipments.findFirst({
+            where: eq(equipments.id, receivingEquipment.id),
+          });
+        const downstreamWarehouseBalance = Number(
+          isPvkj
+            ? refreshedReceivingWarehouse?.pvkjBalance
+            : refreshedReceivingWarehouse?.currentBalance,
+        );
+        const downstreamWarehouseAverageCost = Number(
+          isPvkj
+            ? refreshedReceivingWarehouse?.pvkjAverageCost
+            : refreshedReceivingWarehouse?.averageCost,
+        );
+        const downstreamEquipmentBalance = Number(
+          isPvkj
+            ? refreshedReceivingEquipment?.pvkjBalance
+            : refreshedReceivingEquipment?.currentBalance,
+        );
+        const downstreamEquipmentAverageCost = Number(
+          isPvkj
+            ? refreshedReceivingEquipment?.pvkjAverageCost
+            : refreshedReceivingEquipment?.averageCost,
+        );
+
+        assert.equal(
+          downstreamWarehouseBalance,
+          20,
+          `downstream warehouse ${productType} balance after transfer cascade`,
+        );
+        assert.ok(
+          Math.abs(downstreamWarehouseAverageCost - 10.444333) < 0.00001,
+          `downstream warehouse ${productType} average cost: ${downstreamWarehouseAverageCost}`,
+        );
+        assert.equal(
+          downstreamEquipmentBalance,
+          15,
+          `downstream equipment ${productType} balance after transfer cascade`,
+        );
+        assert.ok(
+          Math.abs(downstreamEquipmentAverageCost - 10.963) < 0.001,
+          `downstream equipment ${productType} average cost: ${downstreamEquipmentAverageCost}`,
+        );
+
+        const refreshedEquipmentTransferWarehouse =
+          await tx.query.warehouses.findFirst({
+            where: eq(warehouses.id, equipmentTransferWarehouse.id),
+          });
+        const equipmentToWarehouseBalance = Number(
+          isPvkj
+            ? refreshedEquipmentTransferWarehouse?.pvkjBalance
+            : refreshedEquipmentTransferWarehouse?.currentBalance,
+        );
+        const equipmentToWarehouseAverageCost = Number(
+          isPvkj
+            ? refreshedEquipmentTransferWarehouse?.pvkjAverageCost
+            : refreshedEquipmentTransferWarehouse?.averageCost,
+        );
+        assert.equal(
+          equipmentToWarehouseBalance,
+          30,
+          `warehouse receiving fuel from equipment ${productType} balance`,
+        );
+        assert.ok(
+          Math.abs(equipmentToWarehouseAverageCost - 10.444333) < 0.00001,
+          `warehouse receiving fuel from equipment ${productType} average cost: ${equipmentToWarehouseAverageCost}`,
+        );
+
+        const updatedWarehouseTransfer =
+          await tx.query.movement.findFirst({
+            where: eq(movement.id, warehouseTransfer.id),
+          });
+        const updatedEquipmentTransfer =
+          await tx.query.equipmentMovement.findFirst({
+            where: eq(equipmentMovement.id, equipmentTransfer.id),
+          });
+        const updatedEquipmentToWarehouseTransfer =
+          await tx.query.equipmentMovement.findFirst({
+            where: eq(equipmentMovement.id, equipmentToWarehouseTransfer.id),
+          });
+        assert.ok(
+          Math.abs(Number(updatedWarehouseTransfer?.totalCost) - 233.33) < 0.01,
+          `warehouse transfer cost should follow restored source average cost: ${updatedWarehouseTransfer?.totalCost}`,
+        );
+        assert.ok(
+          Math.abs(Number(updatedEquipmentTransfer?.totalCost) - 104.44) < 0.01,
+          `equipment transfer cost should follow recalculated warehouse average cost: ${updatedEquipmentTransfer?.totalCost}`,
+        );
+        assert.ok(
+          Math.abs(Number(updatedEquipmentToWarehouseTransfer?.totalCost) - 233.33) < 0.01,
+          `warehouse transfer cost should follow restored equipment average cost: ${updatedEquipmentToWarehouseTransfer?.totalCost}`,
         );
 
         const restoredWarehouseTx = await tx.query.warehouseTransactions.findFirst({

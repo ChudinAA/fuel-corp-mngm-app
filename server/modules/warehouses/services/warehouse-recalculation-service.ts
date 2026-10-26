@@ -418,7 +418,26 @@ export class WarehouseRecalculationService {
         return parseFloat(movementRecord.totalCost || "0");
       }
 
-      // Проверяем, не является ли источником СЗ (equipmentMovement)
+      // Перемещение из топливного оборудования может быть пересчитано до того,
+      // как обновлена строка исходной транзакции. Берём стоимость из записи
+      // перемещения, которую каскад уже обновил.
+      const equipmentMovementRecord =
+        await tx.query.equipmentMovement.findFirst({
+          where: and(
+            eq(equipmentMovement.id, sourceId),
+            isNull(equipmentMovement.deletedAt),
+          ),
+        });
+      if (equipmentMovementRecord) {
+        const totalCost = parseFloat(equipmentMovementRecord.totalCost || "0");
+        if (totalCost > 0) return totalCost;
+        const costPerKg = parseFloat(
+          equipmentMovementRecord.costPerKg || "0",
+        );
+        if (costPerKg > 0) return costPerKg * quantity;
+      }
+
+      // Запасной путь для старых перемещений без стоимости в записи движения.
       const equipmentTx = await tx.query.equipmentTransactions.findFirst({
         where: and(
           eq(equipmentTransactions.sourceType, SOURCE_TYPE.MOVEMENT),

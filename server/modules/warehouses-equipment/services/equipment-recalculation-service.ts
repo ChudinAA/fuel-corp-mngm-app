@@ -256,6 +256,8 @@ export class EquipmentRecalculationService {
     visitedEquipments?: Set<string>,
     visitedWarehouses?: Set<string>,
   ) {
+    if (transactionType !== TRANSACTION_TYPE.TRANSFER_OUT) return;
+
     console.log(
       "        [updateEquipmentMovement]",
       movementId,
@@ -279,8 +281,6 @@ export class EquipmentRecalculationService {
       })
       .where(eq(equipmentMovement.id, movementId));
     console.log("        ✓ Перемещение оборудования обновлено");
-
-    if (transactionType !== TRANSACTION_TYPE.TRANSFER_OUT) return;
 
     const visited = visitedEquipments || new Set<string>();
     const visitedWh = visitedWarehouses || new Set<string>();
