@@ -29,42 +29,50 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     requireAuth,
     requireAnyPermission(["refueling", "lik-refueling"], "view"),
     async (req, res) => {
-      const offset = parseInt(req.query.offset as string) || 0;
-      const pageSize = parseInt(req.query.pageSize as string) || 100;
-      const equipmentType = req.query.equipmentType as string | undefined;
-      const search = req.query.search as string | undefined;
+      try {
+        const offset = parseInt(req.query.offset as string) || 0;
+        const pageSize = parseInt(req.query.pageSize as string) || 100;
+        const equipmentType = req.query.equipmentType as string | undefined;
+        const search = req.query.search as string | undefined;
 
-      const filters: Record<string, string[]> = {};
-      Object.entries(req.query).forEach(([key, value]) => {
-        if (key.startsWith("filter_") && typeof value === "string") {
-          const columnId = key.replace("filter_", "");
-          filters[columnId] = value.split(",").filter(Boolean);
+        const filters: Record<string, string[]> = {};
+        Object.entries(req.query).forEach(([key, value]) => {
+          if (key.startsWith("filter_") && typeof value === "string") {
+            const columnId = key.replace("filter_", "");
+            filters[columnId] = value.split(",").filter(Boolean);
+          }
+        });
+
+        // Поддержка диапазона дат из фильтра
+        const dateFrom = req.query.dateFrom as string | undefined;
+        const dateTo = req.query.dateTo as string | undefined;
+        if (dateFrom) filters["dateFrom"] = [dateFrom];
+        if (dateTo) filters["dateTo"] = [dateTo];
+
+        // For LIK refueling, get allowed warehouse IDs for the current user
+        let allowedWarehouseIds: string[] | null = null;
+        if (equipmentType === "lik") {
+          allowedWarehouseIds =
+            await storage.warehouses.getUserAllowedLikWarehouseIds(
+              String(req.session.userId),
+            );
         }
-      });
 
-      // Поддержка диапазона дат из фильтра
-      const dateFrom = req.query.dateFrom as string | undefined;
-      const dateTo = req.query.dateTo as string | undefined;
-      if (dateFrom) filters["dateFrom"] = [dateFrom];
-      if (dateTo) filters["dateTo"] = [dateTo];
-
-      // For LIK refueling, get allowed warehouse IDs for the current user
-      let allowedWarehouseIds: string[] | null = null;
-      if (equipmentType === "lik") {
-        allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
-          String(req.session.userId),
+        const result = await (storage.aircraftRefueling as any).getRefuelings(
+          offset,
+          pageSize,
+          equipmentType,
+          search,
+          filters,
+          allowedWarehouseIds,
         );
+        res.json(result);
+      } catch (error) {
+        console.error("Error loading aircraft refueling list:", error);
+        res.status(500).json({
+          message: "Не удалось загрузить список заправок ВС",
+        });
       }
-
-      const result = await (storage.aircraftRefueling as any).getRefuelings(
-        offset,
-        pageSize,
-        equipmentType,
-        search,
-        filters,
-        allowedWarehouseIds,
-      );
-      res.json(result);
     }
   );
 
