@@ -57,6 +57,9 @@ export class Pool {
     fakeNpxPath,
     `#!/bin/sh
 printf '%s\\n' "$*" >> "$MOCK_NPX_LOG"
+if [ "$MOCK_FAIL_SCHEMA_PREP" = "1" ] && [ "$1" = "drizzle-kit" ] && [ "$2" = "push" ]; then
+  exit 23
+fi
 `,
   );
   chmodSync(fakeNpxPath, 0o755);
@@ -142,6 +145,22 @@ test("accepts a separate TEST_DATABASE_URL and runs the isolated test flow", (t)
   assert.equal(result.poolEvents[0]?.type, "connect");
   assert.match(result.poolEvents[1]?.sql ?? "", /^CREATE DATABASE "stock_test_/);
   assert.ok(result.poolEvents.some((event) => event.type === "query" && /^DROP DATABASE IF EXISTS "stock_test_/.test(event.sql)));
-  assert.ok(result.npxCalls.some((args) => args.includes("drizzle-kit push --force")));
-  assert.ok(result.npxCalls.some((args) => args.includes("tsx --test")));
+  assert.deepEqual(result.npxCalls, [
+    "drizzle-kit push --force",
+    "tsx --test tests/stock-restore-calculations.test.ts tests/refueling-restore-recalculation.test.ts tests/refueling-order-restore.test.ts tests/refueling-order-atomicity.test.ts tests/rollback-restore-atomicity.test.ts",
+  ]);
+});
+
+test("does not start restoration tests when schema preparation fails", (t) => {
+  const { run } = createRunnerHarness(t);
+  const result = run({
+    TEST_DATABASE_URL: "postgres://tester:secret@test-db.example:5432/stock_test_admin",
+    DATABASE_URL: "postgres://user:pass@db.example/app",
+    NEON_DATABASE_URL: "postgres://user:pass@neon.example/app",
+    MOCK_FAIL_SCHEMA_PREP: "1",
+  });
+
+  assert.equal(result.status, 23, result.stderr || result.stdout);
+  assert.deepEqual(result.npxCalls, ["drizzle-kit push --force"]);
+  assert.ok(result.poolEvents.some((event) => event.type === "query" && /^DROP DATABASE IF EXISTS "stock_test_/.test(event.sql)));
 });
