@@ -156,15 +156,15 @@ async function createFixture(
 
 async function cleanupFixture(fixture: Fixture) {
   const dealIds = fixture.deals.map((deal) => deal.id);
-  if (fixture.equipmentIds.length) {
-    await db
-      .delete(equipmentTransactions)
-      .where(inArray(equipmentTransactions.equipmentId, fixture.equipmentIds));
-  }
   if (dealIds.length) {
     await db
       .delete(aircraftRefueling)
       .where(inArray(aircraftRefueling.id, dealIds));
+  }
+  if (fixture.equipmentIds.length) {
+    await db
+      .delete(equipmentTransactions)
+      .where(inArray(equipmentTransactions.equipmentId, fixture.equipmentIds));
   }
   await db
     .delete(warehouseTransactions)
@@ -242,7 +242,7 @@ function editDeal(deal: any, quantityKg: number, refuelingDate: string, warehous
   };
 }
 
-test("refueling order edits and failures preserve deals, movements, and stock atomically", async () => {
+test("refueling order edits and failures preserve deals, movements, and stock atomically", async (t) => {
   const schemaResult = await db.execute(sql`
     SELECT
       to_regclass('aircraft_refueling') IS NOT NULL

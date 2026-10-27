@@ -15,7 +15,7 @@ function createRunnerHarness(t) {
   const poolLog = join(directory, "pool.log");
   const npxLog = join(directory, "npx.log");
   const loaderPath = join(directory, "loader.mjs");
-  const mockDriverPath = join(directory, "mock-neon.mjs");
+  const mockDriverPath = join(directory, "mock-pg.mjs");
   const fakeNpxPath = join(binDirectory, "npx");
 
   t.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -24,7 +24,7 @@ function createRunnerHarness(t) {
     loaderPath,
     `import { pathToFileURL } from "node:url";
 export async function resolve(specifier, context, nextResolve) {
-  if (specifier === "@neondatabase/serverless") {
+  if (specifier === "pg") {
     return { url: pathToFileURL(process.env.MOCK_DRIVER_PATH).href, shortCircuit: true };
   }
   return nextResolve(specifier, context);
@@ -37,13 +37,27 @@ export async function resolve(specifier, context, nextResolve) {
 function record(event) {
   appendFileSync(process.env.MOCK_POOL_LOG, JSON.stringify(event) + "\\n");
 }
-export const neonConfig = {};
 export class Pool {
   constructor(options) {
     record({ type: "connect", connectionString: options.connectionString });
   }
-  async query(sql) {
-    record({ type: "query", sql });
+  async connect() {
+    return {
+      async query(sql, params = []) {
+        record({ type: "query", sql, params });
+        if (sql.includes("FROM pg_database")) {
+          return { rows: JSON.parse(process.env.MOCK_DATABASES_JSON ?? "[]").map((datname) => ({ datname })) };
+        }
+        if (sql.includes("pg_try_advisory_lock")) {
+          const active = JSON.parse(process.env.MOCK_ACTIVE_DATABASES_JSON ?? "[]");
+          return { rows: [{ acquired: !active.includes(params[0]) }] };
+        }
+        return { rows: [] };
+      },
+      release() {
+        record({ type: "release" });
+      },
+    };
   }
   async end() {
     record({ type: "end" });
@@ -143,7 +157,7 @@ test("accepts a separate TEST_DATABASE_URL and runs the isolated test flow", (t)
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(result.poolEvents[0]?.type, "connect");
-  assert.match(result.poolEvents[1]?.sql ?? "", /^CREATE DATABASE "stock_test_/);
+  assert.ok(result.poolEvents.some((event) => event.type === "query" && /^CREATE DATABASE "stock_test_/.test(event.sql)));
   assert.ok(result.poolEvents.some((event) => event.type === "query" && /^DROP DATABASE IF EXISTS "stock_test_/.test(event.sql)));
   assert.deepEqual(result.npxCalls, [
     "drizzle-kit push --force",
@@ -163,4 +177,32 @@ test("does not start restoration tests when schema preparation fails", (t) => {
   assert.equal(result.status, 23, result.stderr || result.stdout);
   assert.deepEqual(result.npxCalls, ["drizzle-kit push --force"]);
   assert.ok(result.poolEvents.some((event) => event.type === "query" && /^DROP DATABASE IF EXISTS "stock_test_/.test(event.sql)));
+});
+
+test("removes only inactive databases matching the unique stock-test naming convention", (t) => {
+  const { run } = createRunnerHarness(t);
+  const staleDatabase = "stock_test_456_0123456789abcdef0123456789abcdef";
+  const activeDatabase = "stock_test_789_abcdef0123456789abcdef0123456789";
+  const malformedNames = [
+    "stock_test_admin",
+    "stock_test_123_ABCDEF0123456789ABCDEF0123456789",
+    "stock_test_0_0123456789abcdef0123456789abcdef",
+    "application",
+  ];
+  const result = run({
+    TEST_DATABASE_URL: "postgres://tester:secret@test-db.example:5432/stock_test_admin",
+    DATABASE_URL: "postgres://user:pass@db.example/app",
+    NEON_DATABASE_URL: "postgres://user:pass@neon.example/app",
+    MOCK_DATABASES_JSON: JSON.stringify([staleDatabase, activeDatabase, ...malformedNames]),
+    MOCK_ACTIVE_DATABASES_JSON: JSON.stringify([activeDatabase]),
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const dropStatements = result.poolEvents
+    .filter((event) => event.type === "query" && event.sql.startsWith("DROP DATABASE"))
+    .map((event) => event.sql);
+  assert.ok(dropStatements.some((sql) => sql === `DROP DATABASE IF EXISTS "${staleDatabase}"`));
+  assert.ok(dropStatements.every((sql) => !sql.includes(activeDatabase)));
+  assert.ok(malformedNames.every((name) => dropStatements.every((sql) => !sql.includes(name))));
+  assert.match(result.stdout, new RegExp(`Leaving active test database ${activeDatabase}`));
 });

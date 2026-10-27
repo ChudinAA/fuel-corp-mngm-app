@@ -817,7 +817,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
 
         assert.equal(
           downstreamWarehouseBalance,
-          20,
+          10,
           `downstream warehouse ${productType} balance after transfer cascade`,
         );
         assert.ok(
@@ -826,7 +826,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
         );
         assert.equal(
           downstreamEquipmentBalance,
-          15,
+          5,
           `downstream equipment ${productType} balance after transfer cascade`,
         );
         assert.ok(

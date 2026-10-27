@@ -1,10 +1,7 @@
 import { spawn } from "node:child_process";
 import { constants as osConstants } from "node:os";
 import { randomUUID } from "node:crypto";
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import ws from "ws";
-
-neonConfig.webSocketConstructor = ws;
+import { Pool } from "pg";
 
 let activeChild;
 let receivedSignal;
@@ -23,6 +20,52 @@ function getDatabaseTarget(connectionString) {
     return `${url.hostname.toLowerCase()}:${port}/${database}`;
   } catch {
     throw new Error("TEST_DATABASE_URL must be a valid PostgreSQL connection URL.");
+  }
+}
+
+const testDatabaseNamePattern = /^stock_test_[1-9][0-9]*_[0-9a-f]{32}$/;
+
+function quoteIdentifier(identifier) {
+  return `"${identifier.replaceAll('"', '""')}"`;
+}
+
+async function tryAcquireDatabaseLock(client, databaseName) {
+  const result = await client.query(
+    "SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired",
+    [databaseName],
+  );
+  return result.rows[0]?.acquired === true;
+}
+
+async function releaseDatabaseLock(client, databaseName) {
+  await client.query(
+    "SELECT pg_advisory_unlock(hashtextextended($1, 0))",
+    [databaseName],
+  );
+}
+
+async function removeStaleTestDatabases(client) {
+  const result = await client.query(
+    "SELECT datname FROM pg_database WHERE datname ~ '^stock_test_[1-9][0-9]*_[0-9a-f]{32}$'",
+  );
+
+  for (const row of result.rows) {
+    const databaseName = row.datname;
+    if (!testDatabaseNamePattern.test(databaseName)) {
+      continue;
+    }
+
+    if (!(await tryAcquireDatabaseLock(client, databaseName))) {
+      console.log(`Leaving active test database ${databaseName} untouched.`);
+      continue;
+    }
+
+    try {
+      await client.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)}`);
+      console.log(`Removed stale test database ${databaseName}.`);
+    } finally {
+      await releaseDatabaseLock(client, databaseName);
+    }
   }
 }
 
@@ -97,11 +140,19 @@ async function main() {
     DATABASE_URL: testUrl.toString(),
   };
   const adminPool = new Pool({ connectionString: testDatabaseUrl });
+  let adminClient;
+  let databaseLockAcquired = false;
   const failures = [];
   let databaseCreated = false;
 
   try {
-    await adminPool.query(`CREATE DATABASE "${databaseName}"`);
+    adminClient = await adminPool.connect();
+    await removeStaleTestDatabases(adminClient);
+    databaseLockAcquired = await tryAcquireDatabaseLock(adminClient, databaseName);
+    if (!databaseLockAcquired) {
+      throw new Error(`Could not reserve temporary database name ${databaseName}.`);
+    }
+    await adminClient.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
     databaseCreated = true;
     console.log(`Preparing isolated test database ${databaseName} with the current application schema...`);
     if (receivedSignal) {
@@ -130,7 +181,7 @@ async function main() {
   } finally {
     if (databaseCreated) {
       try {
-        await adminPool.query(`DROP DATABASE IF EXISTS "${databaseName}"`);
+        await adminClient.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)}`);
       } catch (error) {
         failures.push(
           new Error(`Could not clean up temporary database ${databaseName}.`, {
@@ -139,6 +190,14 @@ async function main() {
         );
       }
     }
+    if (databaseLockAcquired) {
+      try {
+        await releaseDatabaseLock(adminClient, databaseName);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    adminClient?.release();
     try {
       await adminPool.end();
     } catch (error) {

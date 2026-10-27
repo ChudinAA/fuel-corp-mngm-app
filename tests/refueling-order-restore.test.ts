@@ -8,10 +8,12 @@ import { AircraftRefuelingStorage } from "../server/modules/refueling/storage/ai
 import { suppliers } from "../server/modules/suppliers/entities/suppliers";
 import { customers } from "../server/modules/customers/entities/customers";
 import {
+  recalculationQueue,
   warehouses,
   warehouseTransactions,
 } from "../server/modules/warehouses/entities/warehouses";
 import {
+  equipmentRecalculationQueue,
   equipments,
   equipmentTransactions,
 } from "../server/modules/warehouses-equipment/entities/equipment";
@@ -697,6 +699,9 @@ test("rolling back a legacy deleted single refueling restores only its original 
         .where(inArray(warehouseTransactions.id, movementIds));
     }
     if (warehouseId) {
+      await db
+        .delete(recalculationQueue)
+        .where(eq(recalculationQueue.warehouseId, warehouseId));
       await db.delete(warehouses).where(eq(warehouses.id, warehouseId));
     }
     if (supplierId) {
@@ -868,6 +873,12 @@ test("rolling back a legacy deleted equipment refueling restores its original mo
         .where(eq(equipmentTransactions.id, movementId));
     }
     if (equipmentId) {
+      await db
+        .delete(equipmentRecalculationQueue)
+        .where(eq(equipmentRecalculationQueue.equipmentId, equipmentId));
+      await db
+        .delete(equipmentTransactions)
+        .where(eq(equipmentTransactions.equipmentId, equipmentId));
       await db.delete(equipments).where(eq(equipments.id, equipmentId));
     }
     if (supplierId) {

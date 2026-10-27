@@ -209,6 +209,7 @@ export class AircraftRefuelingStorage {
         .insert(aircraftRefueling)
         .values({ ...data, refuelingOrderId: data.refuelingOrderId || randomUUID() } as any)
         .returning();
+      let result = created;
 
       // Для услуги заправки или черновика не создаем транзакции на складе
       if (
@@ -232,10 +233,12 @@ export class AircraftRefuelingStorage {
               created.refuelingDate,
             );
 
-          await tx
+          const [updated] = await tx
             .update(aircraftRefueling)
             .set({ equipmentTransactionId: transaction.id })
-            .where(eq(aircraftRefueling.id, created.id));
+            .where(eq(aircraftRefueling.id, created.id))
+            .returning();
+          result = updated;
         } else if (created.warehouseId) {
           const { transaction } =
             await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -251,14 +254,16 @@ export class AircraftRefuelingStorage {
               created.refuelingDate,
             );
 
-          await tx
+          const [updated] = await tx
             .update(aircraftRefueling)
             .set({ transactionId: transaction.id })
-            .where(eq(aircraftRefueling.id, created.id));
+            .where(eq(aircraftRefueling.id, created.id))
+            .returning();
+          result = updated;
         }
       }
 
-      return created;
+      return result;
     });
   }
 
