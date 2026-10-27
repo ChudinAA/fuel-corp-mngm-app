@@ -33,7 +33,8 @@ import {
   Package,
   Loader2,
 } from "lucide-react";
-import type { Equipment, EquipmentTransaction } from "@shared/schema";
+import type { EquipmentTransaction } from "@shared/schema";
+import type { EquipmentApi } from "../types";
 import {
   formatPricePerTonne,
   formatTonnes,
@@ -44,7 +45,7 @@ import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 
 interface EquipmentDetailsDialogProps {
-  equipment: Equipment;
+  equipment: EquipmentApi;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -137,7 +138,11 @@ export function EquipmentDetailsDialog({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Керосин: {formatTonnes(kilogramsToTonnes(Number(equipment.currentBalance || 0)))} т
+                Керосин: {formatTonnes(
+                  equipment.currentBalanceTonnes !== undefined
+                    ? Number(equipment.currentBalanceTonnes)
+                    : kilogramsToTonnes(Number(equipment.currentBalance || 0)),
+                )} т
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -149,7 +154,11 @@ export function EquipmentDetailsDialog({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                ПВКЖ: {formatTonnes(kilogramsToTonnes(Number(equipment.pvkjBalance || 0)))} т
+                ПВКЖ: {formatTonnes(
+                  equipment.pvkjBalanceTonnes !== undefined
+                    ? Number(equipment.pvkjBalanceTonnes)
+                    : kilogramsToTonnes(Number(equipment.pvkjBalance || 0)),
+                )} т
               </CardTitle>
             </CardHeader>
             <CardContent>

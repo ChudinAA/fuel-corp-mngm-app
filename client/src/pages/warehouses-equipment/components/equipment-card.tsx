@@ -9,7 +9,7 @@ import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
-import type { Equipment } from "@shared/schema";
+import type { EquipmentApi } from "../types";
 import {
   formatPricePerTonne,
   formatTonnes,
@@ -21,9 +21,9 @@ import { ProductTypeBadge } from "@/components/product-type-badge";
 import { PRODUCT_TYPE } from "@shared/constants";
 
 interface EquipmentCardProps {
-  equipment: Equipment;
-  onEdit: (equipment: Equipment) => void;
-  onViewDetails: (equipment: Equipment) => void;
+  equipment: EquipmentApi;
+  onEdit: (equipment: EquipmentApi) => void;
+  onViewDetails: (equipment: EquipmentApi) => void;
   isLinked?: boolean;
   warehouseId?: string;
 }
@@ -42,9 +42,15 @@ export function EquipmentCard({
   const cost = parseFloat(equipment.averageCost || "0");
   const pvkjBalance = parseFloat(equipment.pvkjBalance || "0");
   const pvkjCost = parseFloat(equipment.pvkjAverageCost || "0");
-  const balanceTonnes = kilogramsToTonnes(balance);
+  const balanceTonnes =
+    equipment.currentBalanceTonnes !== undefined
+      ? Number(equipment.currentBalanceTonnes)
+      : kilogramsToTonnes(balance);
   const costPerTonne = pricePerKilogramToPerTonne(cost);
-  const pvkjBalanceTonnes = kilogramsToTonnes(pvkjBalance);
+  const pvkjBalanceTonnes =
+    equipment.pvkjBalanceTonnes !== undefined
+      ? Number(equipment.pvkjBalanceTonnes)
+      : kilogramsToTonnes(pvkjBalance);
   const pvkjCostPerTonne = pricePerKilogramToPerTonne(pvkjCost);
   const isInactive = equipment.isActive === "false";
   const { hasPermission } = useAuth();

@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
+import { equipmentToApi } from "../equipment-api-adapters";
 
 export function registerEquipmentRoutes(app: Router) {
   const router = Router();
@@ -15,7 +16,7 @@ export function registerEquipmentRoutes(app: Router) {
     requirePermission("equipment", "view"),
     async (req, res) => {
       const data = await equipmentStorage.getEquipments();
-      res.json(data);
+      res.json(data.map(equipmentToApi));
     },
   );
 
@@ -26,7 +27,7 @@ export function registerEquipmentRoutes(app: Router) {
     async (req, res) => {
       const data = await equipmentStorage.getEquipment(req.params.id);
       if (!data) return res.status(404).json({ message: "Not found" });
-      res.json(data);
+      res.json(equipmentToApi(data));
     },
   );
 
@@ -51,7 +52,7 @@ export function registerEquipmentRoutes(app: Router) {
         });
 
         SSEService.notifyEntityChanged("warehouses-equipment-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(data);
+        res.status(201).json(equipmentToApi(data));
       } catch (error: any) {
         res.status(409).json({ message: error.message || "Ошибка при создании СЗ" });
       }
@@ -76,7 +77,7 @@ export function registerEquipmentRoutes(app: Router) {
         });
         if (!data) return res.status(404).json({ message: "Not found" });
         SSEService.notifyEntityChanged("warehouses-equipment-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(data);
+        res.json(equipmentToApi(data));
       } catch (error: any) {
         res.status(500).json({ message: error.message || "Ошибка при обновлении СЗ" });
       }

@@ -12,6 +12,7 @@ import { warehouses } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { RecalculationQueueService } from "../services/recalculation-queue-service";
 import { format } from "date-fns";
+import { equipmentToApi } from "../../warehouses-equipment/equipment-api-adapters";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get(
@@ -600,7 +601,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       try {
         const id = req.params.id;
         const equipment = await storage.equipment.getEquipmentsByWarehouse(id);
-        res.json(equipment);
+        res.json(equipment.map(equipmentToApi));
       } catch (error: any) {
         console.error("Error fetching warehouse equipment:", error);
         res

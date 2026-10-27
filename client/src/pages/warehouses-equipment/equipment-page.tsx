@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Truck, History, Plane, Warehouse } from "lucide-react";
 import { AuditPanel } from "@/components/audit-panel";
-import type { Warehouse as WarehouseType, Equipment } from "@shared/schema";
+import type { Warehouse as WarehouseType } from "@shared/schema";
 import { WarehouseCard } from "../warehouses/components/warehouse-card";
 import { WarehouseDetailsDialog } from "../warehouses/components/warehouse-details-dialog";
 import { AddWarehouseDialog } from "../warehouses/components/add-warehouse-dialog";
@@ -16,12 +16,13 @@ import { AddEquipmentDialog } from "./components/add-equipment-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { EQUIPMENT_TYPE } from "@shared/constants";
 import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import type { EquipmentApi } from "./types";
 
 export default function EquipmentsPage() {
   const [search, setSearch] = useState("");
-  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
+  const [editingEquipment, setEditingEquipment] = useState<EquipmentApi | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [viewingEquipment, setViewingEquipment] = useState<Equipment | null>(null);
+  const [viewingEquipment, setViewingEquipment] = useState<EquipmentApi | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   const [editingWarehouse, setEditingWarehouse] = useState<WarehouseType | null>(null);
@@ -37,7 +38,7 @@ export default function EquipmentsPage() {
     queryKey: ["/api/warehouses/lik"],
   });
 
-  const { data: allEquipments = [], isLoading: equipmentsLoading } = useQuery<Equipment[]>({
+  const { data: allEquipments = [], isLoading: equipmentsLoading } = useQuery<EquipmentApi[]>({
     queryKey: ["/api/warehouses-equipment"],
     refetchInterval: 10000,
   });
@@ -53,17 +54,23 @@ export default function EquipmentsPage() {
   const filteredEquipments = allEquipments
     .filter((e) => e.name.toLowerCase().includes(searchLower))
     .sort((a, b) => {
-      const balA = parseFloat(a.currentBalance || "0");
-      const balB = parseFloat(b.currentBalance || "0");
+      const balA =
+        a.currentBalanceTonnes !== undefined
+          ? Number(a.currentBalanceTonnes)
+          : kilogramsToTonnes(Number(a.currentBalance || "0"));
+      const balB =
+        b.currentBalanceTonnes !== undefined
+          ? Number(b.currentBalanceTonnes)
+          : kilogramsToTonnes(Number(b.currentBalance || "0"));
       return balB - balA;
     });
 
-  const handleEditEquipment = (equipment: Equipment) => {
+  const handleEditEquipment = (equipment: EquipmentApi) => {
     setEditingEquipment(equipment);
     setIsDialogOpen(true);
   };
 
-  const handleViewDetails = (equipment: Equipment) => {
+  const handleViewDetails = (equipment: EquipmentApi) => {
     setViewingEquipment(equipment);
     setIsDetailsDialogOpen(true);
   };
@@ -153,26 +160,40 @@ export default function EquipmentsPage() {
                     Средства заправки
                   </h2>
                   {(() => {
-                    const totalKeroseneKg = filteredEquipments.reduce((s, eq) => s + parseFloat(eq.currentBalance || "0"), 0);
-                    const totalPvkjKg = filteredEquipments.reduce((s, eq) => s + parseFloat(eq.pvkjBalance || "0"), 0);
+                    const totalKeroseneTonnes = filteredEquipments.reduce(
+                      (sum, eq) =>
+                        sum +
+                        (eq.currentBalanceTonnes !== undefined
+                          ? Number(eq.currentBalanceTonnes)
+                          : kilogramsToTonnes(Number(eq.currentBalance || "0"))),
+                      0,
+                    );
+                    const totalPvkjTonnes = filteredEquipments.reduce(
+                      (sum, eq) =>
+                        sum +
+                        (eq.pvkjBalanceTonnes !== undefined
+                          ? Number(eq.pvkjBalanceTonnes)
+                          : kilogramsToTonnes(Number(eq.pvkjBalance || "0"))),
+                      0,
+                    );
                     return (
                       <div className="flex items-center gap-2 flex-wrap">
-                        {totalKeroseneKg > 0 && (
+                        {totalKeroseneTonnes > 0 && (
                           <span className="text-xs text-foreground normal-case tracking-normal">
                             Остаток керосина:{" "}
                             <span className="font-semibold">
-                              {formatTonnes(kilogramsToTonnes(totalKeroseneKg))} т
+                              {formatTonnes(totalKeroseneTonnes)} т
                             </span>
                           </span>
                         )}
-                        {totalKeroseneKg > 0 && totalPvkjKg > 0 && (
+                        {totalKeroseneTonnes > 0 && totalPvkjTonnes > 0 && (
                           <span className="text-muted-foreground text-xs">·</span>
                         )}
-                        {totalPvkjKg > 0 && (
+                        {totalPvkjTonnes > 0 && (
                           <span className="text-xs text-foreground normal-case tracking-normal">
                             Остаток ПВКЖ:{" "}
                             <span className="font-semibold">
-                              {formatTonnes(kilogramsToTonnes(totalPvkjKg))} т
+                              {formatTonnes(totalPvkjTonnes)} т
                             </span>
                           </span>
                         )}
