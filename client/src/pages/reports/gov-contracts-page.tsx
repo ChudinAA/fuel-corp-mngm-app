@@ -15,6 +15,7 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { Pencil, Trash2, Plus, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { formatTonnes, kilogramsToTonnes, tonnesToKilograms } from "@shared/units";
 
 interface Customer {
   id: string;
@@ -167,10 +168,21 @@ export default function GovContractsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const plannedVolumeTonnes = formData.plannedVolume.trim() === ""
+      ? null
+      : Number(formData.plannedVolume);
+    if (plannedVolumeTonnes !== null && (!Number.isFinite(plannedVolumeTonnes) || plannedVolumeTonnes < 0)) {
+      showError("Введите плановый объем в тоннах, не меньше нуля");
+      return;
+    }
+    const payload = {
+      ...formData,
+      plannedVolume: plannedVolumeTonnes === null ? "" : String(tonnesToKilograms(plannedVolumeTonnes)),
+    };
     if (editingContract) {
-      updateMutation.mutate({ id: editingContract.id, data: formData });
+      updateMutation.mutate({ id: editingContract.id, data: payload });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(payload);
     }
   };
 
@@ -185,7 +197,9 @@ export default function GovContractsPage() {
       endDate: contract.endDate.substring(0, 10),
       totalAmount: contract.totalAmount || "",
       productType: contract.productType || "",
-      plannedVolume: contract.plannedVolume || "",
+      plannedVolume: contract.plannedVolume
+        ? kilogramsToTonnes(Number(contract.plannedVolume)).toFixed(5)
+        : "",
       status: contract.status,
       notes: contract.notes || "",
     });
@@ -345,10 +359,11 @@ export default function GovContractsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Плановый объем (кг)</Label>
+                <Label>Плановый объем (т)</Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  min="0"
+                  step="0.00001"
                   value={formData.plannedVolume}
                   onChange={(e) => setFormData({ ...formData, plannedVolume: e.target.value })}
                 />
@@ -403,8 +418,8 @@ export default function GovContractsPage() {
                     <TableHead className="text-right">Сумма контракта</TableHead>
                     <TableHead className="text-right">Текущая сумма</TableHead>
                     <TableHead className="text-right">Остаток</TableHead>
-                    <TableHead className="text-right">Плановый объем</TableHead>
-                    <TableHead className="text-right">Факт. объем</TableHead>
+                    <TableHead className="text-right">Плановый объем (т)</TableHead>
+                    <TableHead className="text-right">Факт. объем (т)</TableHead>
                     <TableHead className="text-right">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -428,10 +443,14 @@ export default function GovContractsPage() {
                         {contract.remainingAmount ? `${parseFloat(contract.remainingAmount).toLocaleString()} ₽` : "-"}
                       </TableCell>
                       <TableCell className="text-right">
-                        {contract.plannedVolume ? `${parseFloat(contract.plannedVolume).toLocaleString()} кг` : "-"}
+                        {contract.plannedVolume
+                          ? `${formatTonnes(kilogramsToTonnes(Number(contract.plannedVolume)))} т`
+                          : "-"}
                       </TableCell>
                       <TableCell className="text-right">
-                        {contract.actualVolume ? `${parseFloat(contract.actualVolume).toLocaleString()} кг` : "-"}
+                        {contract.actualVolume
+                          ? `${formatTonnes(kilogramsToTonnes(Number(contract.actualVolume)))} т`
+                          : "-"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

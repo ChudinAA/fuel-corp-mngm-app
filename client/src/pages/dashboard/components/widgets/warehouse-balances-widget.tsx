@@ -4,13 +4,11 @@ import { Warehouse } from "lucide-react";
 import { BaseWidget } from "../base-widget";
 import { WidgetProps } from "../../types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 interface WarehouseBalance {
   name: string;
   current: number;
-  max: number;
-  percentage: number;
 }
 
 export default function WarehouseBalancesWidget({ isEditMode, onRemove }: WidgetProps) {
@@ -34,20 +32,11 @@ export default function WarehouseBalancesWidget({ isEditMode, onRemove }: Widget
         <div className="space-y-3">
           {data && data.length > 0 ? (
             data.map((wh, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex justify-between text-sm">
+              <div key={idx} className="flex justify-between gap-3 text-sm">
                   <span className="truncate">{wh.name}</span>
-                  <span className="text-muted-foreground">
-                    {wh.percentage.toFixed(0)}%
+                  <span className="text-muted-foreground whitespace-nowrap">
+                    {formatTonnes(kilogramsToTonnes(wh.current))} т
                   </span>
-                </div>
-                <Progress 
-                  value={wh.percentage} 
-                  className={wh.percentage < 20 ? "bg-red-100" : ""}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {wh.current.toLocaleString('ru-RU')} / {wh.max.toLocaleString('ru-RU')} кг
-                </p>
               </div>
             ))
           ) : (

@@ -14,6 +14,7 @@ import { FileText, Download, TrendingUp, DollarSign, Package, FileCheck, Truck, 
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 interface ManagementReportData {
   salesMetrics: {
@@ -74,6 +75,8 @@ interface ManagementReport {
 }
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
+const formatLegacyKilogramsAsTonnes = (value: string | number | null | undefined) =>
+  formatTonnes(kilogramsToTonnes(Number(value || 0)));
 
 export default function ManagementReportPage() {
   const { toast } = useToast();
@@ -329,7 +332,7 @@ export default function ManagementReportPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {parseFloat(reportData.warehouseMetrics.totalBalance).toLocaleString()} кг
+                  {formatLegacyKilogramsAsTonnes(reportData.warehouseMetrics.totalBalance)} т
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Стоимость: {parseFloat(reportData.warehouseMetrics.totalValue).toLocaleString()} ₽
@@ -413,7 +416,7 @@ export default function ManagementReportPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Канал</TableHead>
-                      <TableHead className="text-right">Объем (кг)</TableHead>
+                      <TableHead className="text-right">Объем (т)</TableHead>
                       <TableHead className="text-right">Выручка (₽)</TableHead>
                       <TableHead className="text-right">Прибыль (₽)</TableHead>
                       <TableHead className="text-right">Маржа (%)</TableHead>
@@ -423,7 +426,7 @@ export default function ManagementReportPage() {
                     <TableRow>
                       <TableCell className="font-medium">ОПТ</TableCell>
                       <TableCell className="text-right">
-                        {parseFloat(reportData.salesMetrics.optSales.totalVolume).toLocaleString()}
+                        {formatLegacyKilogramsAsTonnes(reportData.salesMetrics.optSales.totalVolume)}
                       </TableCell>
                       <TableCell className="text-right">
                         {parseFloat(reportData.salesMetrics.optSales.totalRevenue).toLocaleString()}
@@ -438,7 +441,7 @@ export default function ManagementReportPage() {
                     <TableRow>
                       <TableCell className="font-medium">ЗВС</TableCell>
                       <TableCell className="text-right">
-                        {parseFloat(reportData.salesMetrics.refuelingSales.totalVolume).toLocaleString()}
+                        {formatLegacyKilogramsAsTonnes(reportData.salesMetrics.refuelingSales.totalVolume)}
                       </TableCell>
                       <TableCell className="text-right">
                         {parseFloat(reportData.salesMetrics.refuelingSales.totalRevenue).toLocaleString()}
@@ -453,7 +456,7 @@ export default function ManagementReportPage() {
                     <TableRow className="font-semibold">
                       <TableCell>Итого</TableCell>
                       <TableCell className="text-right">
-                        {parseFloat(reportData.salesMetrics.combined.totalVolume).toLocaleString()}
+                        {formatLegacyKilogramsAsTonnes(reportData.salesMetrics.combined.totalVolume)}
                       </TableCell>
                       <TableCell className="text-right">
                         {parseFloat(reportData.salesMetrics.combined.totalRevenue).toLocaleString()}
@@ -486,7 +489,7 @@ export default function ManagementReportPage() {
                     <TableRow>
                       <TableCell className="font-medium">Общий остаток</TableCell>
                       <TableCell className="text-right">
-                        {parseFloat(reportData.warehouseMetrics.totalBalance).toLocaleString()} кг
+                        {formatLegacyKilogramsAsTonnes(reportData.warehouseMetrics.totalBalance)} т
                       </TableCell>
                     </TableRow>
                     <TableRow>

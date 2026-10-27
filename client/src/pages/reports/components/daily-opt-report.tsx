@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 interface DailyOptReportProps {
   date: string;
@@ -23,8 +24,8 @@ export function DailyOptReport({ date }: DailyOptReportProps) {
     deal.dealDate?.startsWith(date)
   ) || [];
 
-  const totalQuantity = filteredDeals.reduce((sum: number, deal: any) => 
-    sum + (parseFloat(deal.quantityKg) || 0), 0
+  const totalQuantityTonnes = filteredDeals.reduce((sum: number, deal: any) =>
+    sum + kilogramsToTonnes(parseFloat(deal.quantityKg) || 0), 0
   );
   const totalPurchase = filteredDeals.reduce((sum: number, deal: any) => 
     sum + (parseFloat(deal.purchaseAmount) || 0), 0
@@ -56,8 +57,8 @@ export function DailyOptReport({ date }: DailyOptReportProps) {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardDescription>Объем (кг)</CardDescription>
-            <CardTitle className="text-2xl">{totalQuantity.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</CardTitle>
+            <CardDescription>Объем (т)</CardDescription>
+            <CardTitle className="text-2xl">{formatTonnes(totalQuantityTonnes)}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
@@ -92,7 +93,7 @@ export function DailyOptReport({ date }: DailyOptReportProps) {
                     <TableHead>Поставщик</TableHead>
                     <TableHead>Покупатель</TableHead>
                     <TableHead>Базис</TableHead>
-                    <TableHead className="text-right">Объем (кг)</TableHead>
+                    <TableHead className="text-right">Объем (т)</TableHead>
                     <TableHead className="text-right">Закупка</TableHead>
                     <TableHead className="text-right">Продажа</TableHead>
                     <TableHead className="text-right">Прибыль</TableHead>
@@ -106,7 +107,7 @@ export function DailyOptReport({ date }: DailyOptReportProps) {
                       <TableCell>{deal.buyer?.name || '-'}</TableCell>
                       <TableCell>{deal.basis || '-'}</TableCell>
                       <TableCell className="text-right font-medium">
-                        {parseFloat(deal.quantityKg || 0).toLocaleString('ru-RU')}
+                        {formatTonnes(kilogramsToTonnes(parseFloat(deal.quantityKg || "0")))}
                       </TableCell>
                       <TableCell className="text-right">
                         {parseFloat(deal.purchaseAmount || 0).toLocaleString('ru-RU')} ₽

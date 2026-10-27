@@ -11,6 +11,7 @@ import { Calendar as CalendarIcon, Download, TrendingUp, TrendingDown } from "lu
 import { format, startOfMonth, endOfMonth, subMonths, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 type PeriodPreset = "month" | "quarter" | "year" | "custom";
 type GroupBy = "day" | "week" | "month";
@@ -181,7 +182,7 @@ export default function AnalyticsPage() {
               <CardHeader className="pb-2">
                 <CardDescription>Общий объем</CardDescription>
                 <CardTitle className="text-2xl">
-                  {isLoading ? "..." : `${(summary?.totalVolume || 0).toLocaleString("ru-RU")} кг`}
+                  {isLoading ? "..." : `${formatTonnes(kilogramsToTonnes(Number(summary?.totalVolume || 0)))} т`}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -226,7 +227,7 @@ export default function AnalyticsPage() {
                         <div>
                           <div className="font-medium">{supplier.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {supplier.volume.toLocaleString("ru-RU")} кг
+                            {formatTonnes(kilogramsToTonnes(Number(supplier.volume || 0)))} т
                           </div>
                         </div>
                       </div>
@@ -266,7 +267,7 @@ export default function AnalyticsPage() {
                         <div>
                           <div className="font-medium">{buyer.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {buyer.volume.toLocaleString("ru-RU")} кг
+                            {formatTonnes(kilogramsToTonnes(Number(buyer.volume || 0)))} т
                           </div>
                         </div>
                       </div>
@@ -312,7 +313,7 @@ export default function AnalyticsPage() {
               <CardHeader className="pb-2">
                 <CardDescription>Общий объем</CardDescription>
                 <CardTitle className="text-2xl">
-                  {isLoading ? "..." : `${(summary?.totalVolume || 0).toLocaleString("ru-RU")} кг`}
+                  {isLoading ? "..." : `${formatTonnes(kilogramsToTonnes(Number(summary?.totalVolume || 0)))} т`}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -342,7 +343,7 @@ export default function AnalyticsPage() {
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium">{item.type}</span>
                         <span className="text-muted-foreground">
-                          {item.volume.toLocaleString("ru-RU")} кг ({item.percentage.toFixed(1)}%)
+                          {formatTonnes(kilogramsToTonnes(Number(item.volume || 0)))} т ({item.percentage.toFixed(1)}%)
                         </span>
                       </div>
                       <div className="h-2 bg-secondary rounded-full overflow-hidden">

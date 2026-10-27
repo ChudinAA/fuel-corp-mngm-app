@@ -4,7 +4,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   ShoppingCart, 
   Plane, 
-  Warehouse, 
   TrendingUp,
   TrendingDown,
   DollarSign,
@@ -12,11 +11,11 @@ import {
   AlertTriangle,
   CheckCircle2
 } from "lucide-react";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 interface DashboardStats {
   optDealsToday: number;
   refuelingToday: number;
-  warehouseAlerts: number;
   totalProfitMonth: number;
   pendingDeliveries: number;
   totalVolumeSold: number;
@@ -119,8 +118,6 @@ interface RecentOperation {
 interface WarehouseStat {
   name: string;
   current: number;
-  max: number;
-  percentage: number;
 }
 
 interface WeekStats {
@@ -195,7 +192,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Оптовые сделки сегодня"
           value={stats?.optDealsToday ?? 0}
@@ -216,14 +213,6 @@ export default function DashboardPage() {
           description="Общая прибыль"
           icon={DollarSign}
           loading={isLoading}
-        />
-        <StatCard
-          title="Оповещения склада"
-          value={stats?.warehouseAlerts ?? 0}
-          description="Требуют внимания"
-          icon={Warehouse}
-          loading={isLoading}
-          variant={stats?.warehouseAlerts && stats.warehouseAlerts > 0 ? "warning" : "success"}
         />
       </div>
 
@@ -285,34 +274,20 @@ export default function DashboardPage() {
                       <Skeleton className="h-4 w-32" />
                       <Skeleton className="h-4 w-20" />
                     </div>
-                    <Skeleton className="h-2 w-full" />
                   </div>
                 ))}
               </div>
             ) : warehouseStats && warehouseStats.length > 0 ? (
               <div className="space-y-4">
                 {warehouseStats.map((warehouse) => {
-                  const isLow = warehouse.percentage < 20;
-                  
                   return (
-                    <div key={warehouse.name} className="space-y-2">
+                    <div key={warehouse.name} className="space-y-1">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">{warehouse.name}</span>
-                        <span className={isLow ? "text-yellow-600" : "text-muted-foreground"}>
-                          {formatNumber(warehouse.current)} кг
+                        <span className="text-muted-foreground">
+                          {formatTonnes(kilogramsToTonnes(warehouse.current))} т
                         </span>
                       </div>
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all ${
-                            isLow ? 'bg-yellow-500' : 'bg-primary'
-                          }`}
-                          style={{ width: `${warehouse.percentage}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {warehouse.percentage.toFixed(1)}% заполнено
-                      </p>
                     </div>
                   );
                 })}
@@ -342,8 +317,8 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Заправок ВС</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-2xl font-semibold">{isLoadingWeek ? <Skeleton className="h-8 w-20 mx-auto" /> : formatNumber(weekStats?.volumeSoldWeek ?? 0)}</p>
-                <p className="text-xs text-muted-foreground">кг продано</p>
+                <p className="text-2xl font-semibold">{isLoadingWeek ? <Skeleton className="h-8 w-20 mx-auto" /> : formatTonnes(kilogramsToTonnes(weekStats?.volumeSoldWeek ?? 0))}</p>
+                <p className="text-xs text-muted-foreground">тонн продано</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">
                 <p className="text-2xl font-semibold">{isLoadingWeek ? <Skeleton className="h-8 w-24 mx-auto" /> : formatCurrency(weekStats?.profitWeek ?? 0)}</p>

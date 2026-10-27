@@ -11,6 +11,7 @@ import {
 import { widgetDefinitions, dashboardConfigurations, dashboardTemplates } from "../entities/dashboard";
 import { IDashboardStorage, WidgetDefinition, DashboardConfiguration, DashboardLayout, DashboardWidget } from "./types";
 import { MOVEMENT_TYPE, SOURCE_TYPE } from "@shared/constants";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 export class DashboardStorage implements IDashboardStorage {
   async getDashboardStats(): Promise<{
@@ -43,16 +44,9 @@ export class DashboardStorage implements IDashboardStorage {
       .where(and(eq(aircraftRefueling.refuelingDate, todayStr), isNull(aircraftRefueling.deletedAt)));
     const refuelingToday = Number(refuelingTodayResult?.count || 0);
 
-    // Проверка складов с низким остатком (< 20%)
-    const warehousesList = await db.select().from(warehouses).where(isNull(warehouses.deletedAt));
-    let warehouseAlerts = 0;
-    for (const wh of warehousesList) {
-      const currentBalance = parseFloat(wh.currentBalance || "0");
-      const maxCapacity = parseFloat(wh.storageCost || "100000");
-      if (maxCapacity > 0 && currentBalance / maxCapacity < 0.2) {
-        warehouseAlerts++;
-      }
-    }
+    // Keep the legacy response field, but disable the alert calculation:
+    // storageCost is a price per tonne, not a physical capacity.
+    const warehouseAlerts = 0;
 
     // Прибыль за месяц - суммируем поле profit из opt и aircraftRefueling
     const [optProfitResult] = await db
@@ -135,7 +129,7 @@ export class DashboardStorage implements IDashboardStorage {
         type: SOURCE_TYPE.OPT,
         description: `${supplier?.name || deal.supplierId} → ${
           buyer?.name || deal.buyerId
-        }: ${parseFloat(deal.quantityKg || "0").toLocaleString("ru-RU")} кг`,
+        }: ${formatTonnes(kilogramsToTonnes(parseFloat(deal.quantityKg || "0")))} т`,
         time: deal.createdAt,
         status: "success",
       });
@@ -154,9 +148,7 @@ export class DashboardStorage implements IDashboardStorage {
         type: SOURCE_TYPE.REFUELING,
         description: `${refueling.basis || "База"}: ${
           refueling.aircraftNumber || "ВС"
-        }, ${parseFloat(refueling.quantityKg || "0").toLocaleString(
-          "ru-RU"
-        )} кг`,
+        }, ${formatTonnes(kilogramsToTonnes(parseFloat(refueling.quantityKg || "0")))} т`,
         time: refueling.createdAt,
         status: "success",
       });
@@ -210,9 +202,7 @@ export class DashboardStorage implements IDashboardStorage {
 
       operations.push({
         type: SOURCE_TYPE.MOVEMENT,
-        description: `${fromName} → ${toName}: ${parseFloat(
-          mov.quantityKg || "0"
-        ).toLocaleString("ru-RU")} кг`,
+        description: `${fromName} → ${toName}: ${formatTonnes(kilogramsToTonnes(parseFloat(mov.quantityKg || "0")))} т`,
         time: mov.createdAt,
         status:
           mov.movementType === MOVEMENT_TYPE.SUPPLY ? "success" : "pending",
@@ -307,6 +297,9 @@ export class DashboardStorage implements IDashboardStorage {
 
     // Фильтрация виджетов по правам пользователя
     return allWidgets.filter(widget => {
+      if (widget.widgetKey === "warehouse_alerts") {
+        return false;
+      }
       if (!widget.requiredPermissions || widget.requiredPermissions.length === 0) {
         return true;
       }
@@ -508,18 +501,7 @@ export class DashboardStorage implements IDashboardStorage {
   }
 
   private async getWarehouseAlertsWidget() {
-    const warehousesList = await db.select().from(warehouses).where(isNull(warehouses.deletedAt));
-    let alertCount = 0;
-
-    for (const wh of warehousesList) {
-      const currentBalance = parseFloat(wh.currentBalance || "0");
-      const maxCapacity = parseFloat(wh.storageCost || "100000");
-      if (maxCapacity > 0 && currentBalance / maxCapacity < 0.2) {
-        alertCount++;
-      }
-    }
-
-    return { value: alertCount };
+    return { value: 0, enabled: false };
   }
 
   private async getWarehouseBalancesWidget() {
@@ -532,8 +514,6 @@ export class DashboardStorage implements IDashboardStorage {
     return warehousesList.map(wh => ({
       name: wh.name,
       current: parseFloat(wh.currentBalance || "0"),
-      max: parseFloat(wh.storageCost || "100000"),
-      percentage: (parseFloat(wh.currentBalance || "0") / parseFloat(wh.storageCost || "100000")) * 100,
     }));
   }
 }

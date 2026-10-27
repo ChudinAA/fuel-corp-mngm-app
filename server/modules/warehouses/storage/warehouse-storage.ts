@@ -440,19 +440,10 @@ export class WarehouseStorage {
       where: and(eq(warehouses.isActive, true), isNull(warehouses.deletedAt)),
     });
 
-    const stats = warehousesList.map((wh) => {
-      const currentBalance = parseFloat(wh.currentBalance || "0");
-      const maxCapacity = parseFloat(wh.storageCost || "100000");
-      const percentage =
-        maxCapacity > 0 ? (currentBalance / maxCapacity) * 100 : 0;
-
-      return {
-        name: wh.name,
-        current: currentBalance,
-        max: maxCapacity,
-        percentage: percentage,
-      };
-    });
+    const stats = warehousesList.map((wh) => ({
+      name: wh.name,
+      current: parseFloat(wh.currentBalance || "0"),
+    }));
 
     return stats;
   }
