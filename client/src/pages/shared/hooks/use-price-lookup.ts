@@ -12,7 +12,7 @@ interface PriceLookupParams {
   nomenclatureId?: string;
   date: Date | null;
   enabled?: boolean;
-  priceUnit?: "kg" | "liter";
+  priceUnit?: "tonne" | "liter";
 }
 
 export function usePriceLookup({

@@ -65,7 +65,7 @@ export function useTransportationFilters({
     nomenclatureId,
     date: dealDate ?? null,
     enabled: !!supplierId && !!basisId && !!customerBasisId && !!dealDate && isAviaService,
-    priceUnit: inputMode === "liters" ? "liter" : "kg",
+    priceUnit: inputMode === "liters" ? "liter" : "tonne",
   });
 
   const saleLookup = usePriceLookup({
@@ -78,7 +78,7 @@ export function useTransportationFilters({
     nomenclatureId,
     date: dealDate ?? null,
     enabled: !!buyerId && !!customerBasisId && !!dealDate,
-    priceUnit: inputMode === "liters" ? "liter" : "kg",
+    priceUnit: inputMode === "liters" ? "liter" : "tonne",
   });
 
   const purchasePrices = useMemo(

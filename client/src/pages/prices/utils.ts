@@ -2,7 +2,12 @@
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { PRODUCT_TYPE } from "@shared/constants";
-import { formatPricePerTonne, pricePerKilogramToPerTonne } from "@shared/units";
+import {
+  formatPricePerTonne,
+  formatTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
+import type { PriceApi } from "./types";
 
 export const formatNumber = (value: string | number | null) => {
   if (value === null) return "—";
@@ -50,6 +55,40 @@ export const getPriceDisplay = (
   } catch {
     return "—";
   }
+};
+
+export const getApiPriceDisplay = (
+  priceRate: PriceApi["priceRate"],
+  symbol: string,
+) => {
+  if (!priceRate || priceRate.values.length === 0) return "—";
+  return priceRate.values
+    .map((rate) =>
+      rate === null ? "—" : `${formatPricePerTonne(rate)} ${symbol}`,
+    )
+    .join(", ");
+};
+
+export const formatContractVolumeLimit = (
+  contractVolume: PriceApi["contractVolume"],
+) => {
+  if (!contractVolume || contractVolume.limit === null) return "—";
+  return `${formatTonnes(contractVolume.limit)} т`;
+};
+
+export const formatContractVolumeUsed = (
+  contractVolume: PriceApi["contractVolume"],
+) => {
+  if (
+    !contractVolume ||
+    contractVolume.used === null ||
+    contractVolume.used <= 0
+  ) {
+    return "—";
+  }
+  return contractVolume.usedUnit === "tonne"
+    ? `${formatTonnes(contractVolume.used)} т`
+    : `${formatNumberForTable(contractVolume.used)} л`;
 };
 
 export const getProductTypeLabel = (productType: string) => {

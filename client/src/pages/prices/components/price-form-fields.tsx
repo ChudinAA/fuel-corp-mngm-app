@@ -570,9 +570,9 @@ export function PriceFormFields({
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => field.onChange("kg")}
+                    onClick={() => field.onChange("tonne")}
                     className={`px-2 py-1 text-xs rounded-md border transition-colors ${
-                      field.value === "kg"
+                      field.value === "tonne"
                         ? "bg-primary text-primary-foreground border-primary"
                         : "border-input hover-elevate"
                     }`}

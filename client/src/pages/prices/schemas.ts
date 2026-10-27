@@ -51,6 +51,6 @@ export const priceFormSchema = z.object({
   currency: z.string().optional().default("RUB").describe("Валюта"),
   currencyId: z.string().optional(),
   loadingBasisId: z.string().optional(),
-  priceUnit: z.enum(["kg", "liter"]).default("kg").describe("Единица цены"),
+  priceUnit: z.enum(["tonne", "liter"]).default("tonne").describe("Единица цены"),
   contractLimitEnabled: z.boolean().default(true).describe("Лимит по договору"),
 });

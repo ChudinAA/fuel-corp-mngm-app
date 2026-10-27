@@ -17,7 +17,7 @@ interface UseRefuelingFiltersProps {
   allBases: Base[];
   equipmentType?: string;
   warehouses?: Warehouse[];
-  priceUnit?: "kg" | "liter";
+  priceUnit?: "tonne" | "liter";
 }
 
 export function useRefuelingFilters({

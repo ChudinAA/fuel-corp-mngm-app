@@ -30,7 +30,6 @@ import {
 import {
   kilogramsToTonnes,
   pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
   tonnesToKilograms,
 } from "@shared/units";
 import { priceFormSchema } from "../schemas";
@@ -88,7 +87,7 @@ export function AddPriceDialog({
       contractNumber: "",
       contractAppendix: "",
       notes: "",
-      priceUnit: "kg" as "kg" | "liter",
+      priceUnit: "tonne" as "tonne" | "liter",
       contractLimitEnabled: true,
     },
   });
@@ -105,15 +104,24 @@ export function AddPriceDialog({
     prevEditPriceRef.current = editPrice;
 
     if (editPrice) {
-      const editPriceUnit = editPrice.priceUnit === "liter" ? "liter" : "kg";
+      const editPriceUnit =
+        editPrice.priceRate?.unit ??
+        (editPrice.priceUnit === "liter" ? "liter" : "tonne");
       let parsedPriceValues = [{ price: "" }];
-      if (editPrice.priceValues && editPrice.priceValues.length > 0) {
+      if (editPrice.priceRate) {
+        parsedPriceValues = editPrice.priceRate.values.map((price) => ({
+          price: price === null ? "" : price.toFixed(2),
+        }));
+        if (parsedPriceValues.length === 0) {
+          parsedPriceValues = [{ price: "" }];
+        }
+      } else if (editPrice.priceValues && editPrice.priceValues.length > 0) {
         try {
           parsedPriceValues = editPrice.priceValues.map((pv: string) => {
             const parsed = JSON.parse(pv);
             const storedPrice = Number(parsed.price);
             if (!Number.isFinite(storedPrice)) return { price: "" };
-            const displayPrice = editPriceUnit === "kg"
+            const displayPrice = editPriceUnit === "tonne"
               ? pricePerKilogramToPerTonne(storedPrice)
               : storedPrice;
             return { price: displayPrice.toFixed(2) };
@@ -139,9 +147,14 @@ export function AddPriceDialog({
         currency: editPrice.currency || "RUB",
         currencyId: editPrice.currencyId || undefined,
         limitType: ((editPrice as any).limitType as "volume" | "amount") || "volume",
-        volume: editPrice.volume
-          ? kilogramsToTonnes(Number(editPrice.volume)).toFixed(5)
-          : "",
+        volume:
+          editPrice.contractVolume?.limit !== undefined
+            ? editPrice.contractVolume.limit === null
+              ? ""
+              : editPrice.contractVolume.limit.toFixed(5)
+            : editPrice.volume
+              ? kilogramsToTonnes(Number(editPrice.volume)).toFixed(5)
+              : "",
         maxDealAmount: (editPrice as any).maxDealAmount || "",
         priceValues: parsedPriceValues,
         contractNumber: editPrice.contractNumber || "",
@@ -175,7 +188,7 @@ export function AddPriceDialog({
         contractNumber: "",
         contractAppendix: "",
         notes: "",
-        priceUnit: "kg" as "kg" | "liter",
+        priceUnit: "tonne" as "tonne" | "liter",
         contractLimitEnabled: true,
       });
       dateCheck.setResult(null);
@@ -212,7 +225,7 @@ export function AddPriceDialog({
         contractNumber: "",
         contractAppendix: "",
         notes: "",
-        priceUnit: "kg" as "kg" | "liter",
+        priceUnit: "tonne" as "tonne" | "liter",
         contractLimitEnabled: true,
         ...inlineDefaults,
       };
@@ -410,25 +423,40 @@ export function AddPriceDialog({
         currency: data.currency,
         currencyId: data.currencyId || null,
         limitType: data.limitType || "volume",
-        volume: (!data.contractLimitEnabled || data.limitType === "amount")
-          ? null
-          : data.volume
-            ? String(tonnesToKilograms(Number(data.volume)))
-            : null,
+        contractVolume: {
+          limitUnit: "tonne" as const,
+          limit:
+            !data.contractLimitEnabled || data.limitType === "amount" || !data.volume
+              ? null
+              : editPrice?.contractVolume?.limit !== null &&
+                  editPrice?.contractVolume?.limit !== undefined &&
+                  Number(data.volume).toFixed(5) ===
+                    editPrice.contractVolume.limit.toFixed(5)
+                ? editPrice.contractVolume.limit
+                : Number(data.volume),
+        },
         maxDealAmount: (!data.contractLimitEnabled || data.limitType !== "amount") ? null : (data.maxDealAmount || null),
-        priceValues: data.priceValues.map((value) => ({
-          price: String(
-            data.priceUnit === "kg"
-              ? pricePerTonneToPerKilogram(Number(value.price))
-              : Number(value.price),
-          ),
-        })),
+        priceRate: {
+          unit: data.priceUnit || "tonne",
+          values: data.priceValues.map((value, index) => {
+            const parsedValue = Number(value.price);
+            const originalRate = editPrice?.priceRate;
+            const originalValue =
+              originalRate && originalRate.unit === (data.priceUnit || "tonne")
+                ? originalRate.values[index]
+                : undefined;
+            return originalValue !== null &&
+              originalValue !== undefined &&
+              parsedValue.toFixed(2) === originalValue.toFixed(2)
+              ? originalValue
+              : parsedValue;
+          }),
+        },
         dateFrom: format(data.dateFrom, "yyyy-MM-dd"),
         dateTo: format(data.dateTo, "yyyy-MM-dd"),
         contractNumber: data.contractNumber || null,
         contractAppendix: data.contractAppendix || null,
         notes: data.notes || null,
-        priceUnit: data.priceUnit || "kg",
         contractLimitEnabled: data.contractLimitEnabled !== false,
       };
       if (editPrice) {
@@ -481,7 +509,7 @@ export function AddPriceDialog({
         contractNumber: "",
         contractAppendix: "",
         notes: "",
-        priceUnit: "kg" as "kg" | "liter",
+        priceUnit: "tonne" as "tonne" | "liter",
         contractLimitEnabled: true,
       });
       dateCheck.setResult(null);
@@ -571,7 +599,7 @@ export function AddPriceDialog({
       contractNumber: "",
       contractAppendix: "",
       notes: "",
-      priceUnit: "kg" as "kg" | "liter",
+      priceUnit: "tonne" as "tonne" | "liter",
       contractLimitEnabled: true,
     });
     dateCheck.setResult(null);

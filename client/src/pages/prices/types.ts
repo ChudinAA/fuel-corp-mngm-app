@@ -6,6 +6,19 @@ import {
 } from "@shared/constants";
 import type { Price } from "@shared/schema";
 
+export interface PriceApi extends Price {
+  priceRate?: {
+    unit: "tonne" | "liter";
+    values: Array<number | null>;
+  };
+  contractVolume?: {
+    limitUnit: "tonne";
+    limit: number | null;
+    usedUnit: "tonne" | "liter";
+    used: number | null;
+  };
+}
+
 export interface PriceFormData {
   dateFrom: Date;
   dateTo: Date;
@@ -27,12 +40,12 @@ export interface PriceFormData {
   currency?: string;
   currencyId?: string;
   loadingBasisId?: string;
-  priceUnit?: "kg" | "liter";
+  priceUnit?: "tonne" | "liter";
   contractLimitEnabled?: boolean;
 }
 
 export interface PriceDialogProps {
-  editPrice?: Price | null;
+  editPrice?: PriceApi | null;
   onEditComplete?: () => void;
   isInline?: boolean;
   inlineOpen?: boolean;
@@ -45,7 +58,7 @@ export interface PricesTableProps {
   dealTypeFilter: "all" | "wholesale" | "refueling" | "abroad";
   roleFilter: "all" | "supplier" | "buyer";
   productTypeFilter: string;
-  onEdit?: (price: Price) => void;
+  onEdit?: (price: PriceApi) => void;
 }
 
 export interface SelectionCheckState {

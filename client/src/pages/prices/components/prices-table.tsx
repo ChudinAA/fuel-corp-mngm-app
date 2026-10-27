@@ -61,10 +61,14 @@ import { useFilterReferenceData } from "@/hooks/use-filter-reference-data";
 import {
   formatNumber,
   formatNumberForTable,
+  formatContractVolumeLimit,
+  formatContractVolumeUsed,
   formatDate,
+  getApiPriceDisplay,
   getPriceDisplay,
   getProductTypeLabel,
 } from "../utils";
+import type { PriceApi } from "../types";
 import { cn } from "@/lib/utils";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -527,14 +531,23 @@ export function PricesTable({
                     <TableCell className="text-right font-medium">
                       <div className="flex items-center justify-end gap-1.5">
                         <span>
-                          {getPriceDisplay(
-                            price.priceValues,
-                            price.currencySymbol || "₽",
-                            price.priceUnit === "liter" ? "liter" : "kg",
-                          )}
+                          {(price as PriceApi).priceRate
+                            ? getApiPriceDisplay(
+                                (price as PriceApi).priceRate,
+                                price.currencySymbol || "₽",
+                              )
+                            : getPriceDisplay(
+                                price.priceValues,
+                                price.currencySymbol || "₽",
+                                price.priceUnit === "liter" ? "liter" : "kg",
+                              )}
                         </span>
                         <span className="text-[11px] text-muted-foreground font-normal border rounded px-1 py-0.5 leading-none">
-                          {price.priceUnit === "liter" ? "л" : "т"}
+                          {(price as PriceApi).priceRate?.unit === "liter" ||
+                          (!(price as PriceApi).priceRate &&
+                            price.priceUnit === "liter")
+                            ? "л"
+                            : "т"}
                         </span>
                       </div>
                     </TableCell>
@@ -543,9 +556,13 @@ export function PricesTable({
                         ? (price as any).maxDealAmount
                           ? `${formatNumberForTable((price as any).maxDealAmount)} ₽`
                           : "—"
-                        : price.volume
-                          ? `${formatTonnes(kilogramsToTonnes(Number(price.volume)))} т`
-                          : "—"}
+                        : (price as PriceApi).contractVolume
+                          ? formatContractVolumeLimit(
+                              (price as PriceApi).contractVolume,
+                            )
+                          : price.volume
+                            ? `${formatTonnes(kilogramsToTonnes(Number(price.volume)))} т`
+                            : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -554,9 +571,13 @@ export function PricesTable({
                             ? (price as any).soldAmount && parseFloat((price as any).soldAmount) > 0
                               ? `${formatNumberForTable((price as any).soldAmount)} ₽`
                               : "—"
-                            : price.soldVolume && parseFloat(price.soldVolume) > 0
-                              ? `${formatTonnes(kilogramsToTonnes(Number(price.soldVolume)))} т`
-                              : "—"}
+                            : (price as PriceApi).contractVolume
+                              ? formatContractVolumeUsed(
+                                  (price as PriceApi).contractVolume,
+                                )
+                              : price.soldVolume && parseFloat(price.soldVolume) > 0
+                                ? `${formatTonnes(kilogramsToTonnes(Number(price.soldVolume)))} т`
+                                : "—"}
                         </span>
                         <Tooltip>
                           <TooltipTrigger asChild>

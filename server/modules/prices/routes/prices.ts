@@ -7,6 +7,11 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
+import {
+  priceResponseToApi,
+  priceUnitFilterToStorage,
+  priceWriteFromApi,
+} from "../price-unit-adapters";
 
 export function registerPricesRoutes(app: Express) {
   app.get(
@@ -141,6 +146,13 @@ export function registerPricesRoutes(app: Express) {
             .json({ message: "Missing required parameters" });
         }
 
+        let legacyPriceUnit: string | undefined;
+        try {
+          legacyPriceUnit = priceUnitFilterToStorage(priceUnit);
+        } catch {
+          return res.status(400).json({ message: "Неизвестная единица цены" });
+        }
+
         const data = await storage.prices.findActivePrices({
           counterpartyId: counterpartyId as string,
           counterpartyRole: counterpartyRole as string,
@@ -150,10 +162,10 @@ export function registerPricesRoutes(app: Express) {
           productType: productType as string,
           nomenclatureId: nomenclatureId as string | undefined,
           date: date as string,
-          priceUnit: priceUnit as string | undefined,
+          priceUnit: legacyPriceUnit,
         });
 
-        res.json(data);
+        res.json(priceResponseToApi(data));
       } catch (error) {
         console.error("Price lookup error:", error);
         res.status(500).json({ message: "Error looking up prices" });
@@ -206,7 +218,7 @@ export function registerPricesRoutes(app: Express) {
           productType: resolveFilter("productType"),
         },
       );
-      res.json(data);
+        res.json(priceResponseToApi(data));
     },
   );
 
@@ -220,7 +232,7 @@ export function registerPricesRoutes(app: Express) {
       if (!price) {
         return res.status(404).json({ message: "Цена не найдена" });
       }
-      res.json(price);
+      res.json(priceResponseToApi(price));
     },
   );
 
@@ -235,7 +247,7 @@ export function registerPricesRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        const body = req.body;
+        const body = priceWriteFromApi(req.body);
 
         const requiresNomenclature = ["kerosene", "pvkj", "service"].includes(String(body.productType));
         if (isPriceContractRequired(String(body.counterpartyType)) && !body.contractId) {
@@ -311,7 +323,7 @@ export function registerPricesRoutes(app: Express) {
         const data = insertPriceSchema.parse(processedData);
         const item = await storage.prices.createPrice(data);
         SSEService.notifyEntityChanged("prices", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(item);
+        res.status(201).json(priceResponseToApi(item));
       } catch (error) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
@@ -337,7 +349,7 @@ export function registerPricesRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const body = req.body;
+        const body = priceWriteFromApi(req.body);
 
         // Валидация пересечения дат перед обновлением
         if (body.dateFrom && body.dateTo) {
@@ -416,7 +428,7 @@ export function registerPricesRoutes(app: Express) {
           return res.status(404).json({ message: "Цена не найдена" });
         }
         SSEService.notifyEntityChanged("prices", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(item);
+        res.json(priceResponseToApi(item));
       } catch (error) {
         console.error("Price update error:", error);
         res.status(500).json({ message: "Ошибка обновления цены" });

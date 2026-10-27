@@ -105,7 +105,7 @@ export function useMovementCalculations({
     nomenclatureId,
     date: watchMovementDate,
     enabled: !!watchSupplierId && !!watchBasisId && !!watchMovementDate,
-    priceUnit: inputMode === "liters" ? "liter" : "kg",
+    priceUnit: inputMode === "liters" ? "liter" : "tonne",
   });
 
   const availablePurchasePrices = useMemo(() => {
