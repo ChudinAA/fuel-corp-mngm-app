@@ -19,6 +19,7 @@ import { getPriceRateOptions } from "@/pages/shared/utils/price-rate";
 import {
   pricePerKilogramToPerTonne,
 } from "@shared/units";
+import { resolveWarehouseAverageCostPerTonne } from "@/pages/shared/utils/warehouse-balance-units";
 import {
   calculateMovementMassTonnes,
   calculateMovementPricePerTonne,
@@ -164,17 +165,24 @@ export function useMovementCalculations({
     watchProductType
   );
 
-  const warehousePriceAtDate = useMemo(() => {
+  const warehousePricePerTonneAtDate = useMemo(() => {
     if (isFromWarehouseLoading) return null;
-    return fromWarehouseData && typeof fromWarehouseData === 'object' && 'averageCost' in fromWarehouseData 
-      ? (fromWarehouseData.averageCost ? parseFloat(fromWarehouseData.averageCost) : null) 
+    const hasRate =
+      fromWarehouseData &&
+      typeof fromWarehouseData === "object" &&
+      (("averageCostPerTonne" in fromWarehouseData &&
+        fromWarehouseData.averageCostPerTonne != null) ||
+        ("averageCost" in fromWarehouseData &&
+          fromWarehouseData.averageCost != null));
+    return hasRate
+      ? resolveWarehouseAverageCostPerTonne(fromWarehouseData)
       : null;
   }, [fromWarehouseData, isFromWarehouseLoading]);
 
   const finalPurchasePricePerTonne = useMemo(() => {
     if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
-      if (warehousePriceAtDate !== null) {
-        return pricePerKilogramToPerTonne(warehousePriceAtDate);
+      if (warehousePricePerTonneAtDate !== null) {
+        return warehousePricePerTonneAtDate;
       }
       
       const fromWarehouse = warehouses.find(
@@ -182,12 +190,23 @@ export function useMovementCalculations({
       );
       if (fromWarehouse) {
         const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-        const averageCost = isPvkj
+        const averageCostPerTonne = isPvkj
+          ? fromWarehouse.pvkjAverageCostPerTonne
+          : fromWarehouse.averageCostPerTonne;
+        const averageCostPerKilogram = isPvkj
           ? fromWarehouse.pvkjAverageCost
           : fromWarehouse.averageCost;
-        return averageCost
-          ? pricePerKilogramToPerTonne(parseFloat(averageCost))
-          : null;
+        if (
+          averageCostPerTonne == null &&
+          averageCostPerKilogram == null
+        ) {
+          return null;
+        }
+        return resolveWarehouseAverageCostPerTonne(
+          undefined,
+          averageCostPerTonne,
+          averageCostPerKilogram,
+        );
       }
     }
     return selectedPurchasePricePerTonne;
@@ -197,7 +216,7 @@ export function useMovementCalculations({
     warehouses,
     watchProductType,
     selectedPurchasePricePerTonne,
-    warehousePriceAtDate
+    warehousePricePerTonneAtDate
   ]);
 
   const purchaseAmount = useMemo(() => {

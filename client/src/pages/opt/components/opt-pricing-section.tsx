@@ -57,8 +57,10 @@ interface OptPricingSectionProps {
     message: string;
   };
   warehouseBalanceAtDate: number | null;
+  warehouseBalanceAtDateTonnes?: number | null;
   isWarehouseBalanceLoading?: boolean;
   warehousePriceAtDate?: number | null;
+  finalTonnes: number;
 }
 
 export function OptPricingSection({
@@ -82,8 +84,10 @@ export function OptPricingSection({
   contractVolumeStatus,
   supplierContractVolumeStatus,
   warehouseBalanceAtDate,
+  warehouseBalanceAtDateTonnes,
   isWarehouseBalanceLoading,
   warehousePriceAtDate,
+  finalTonnes,
 }: OptPricingSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -118,29 +122,31 @@ export function OptPricingSection({
       return { status: "ok", message: "—" };
     }
 
-    const availableBalance =
-      warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
+    const availableBalanceTonnes =
+      warehouseBalanceAtDateTonnes != null
+        ? warehouseBalanceAtDateTonnes
+        : optLegacyKilogramsToTonnes(warehouseBalanceAtDate ?? 0);
 
     // Остаток на складе сейчас (без учета текущего ввода)
-    if (finalKg <= 0) {
+    if (finalTonnes <= 0) {
       return {
         status: "ok",
-        message: `${formatTonnes(optLegacyKilogramsToTonnes(availableBalance))} т`,
+        message: `${formatTonnes(availableBalanceTonnes)} т`,
       };
     }
 
     // Показываем сколько останется: (Доступно) - (Новый ввод)
-    const remaining = availableBalance - finalKg;
+    const remaining = availableBalanceTonnes - finalTonnes;
 
     if (remaining >= 0) {
       return {
         status: "ok",
-        message: `ОК: ${formatTonnes(optLegacyKilogramsToTonnes(remaining))} т`,
+        message: `ОК: ${formatTonnes(remaining)} т`,
       };
     } else {
       return {
         status: "error",
-        message: `Недостаточно! Доступно: ${formatTonnes(optLegacyKilogramsToTonnes(availableBalance))} т`,
+        message: `Недостаточно! Доступно: ${formatTonnes(availableBalanceTonnes)} т`,
       };
     }
   };

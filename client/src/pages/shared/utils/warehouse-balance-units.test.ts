@@ -3,9 +3,9 @@ import test from "node:test";
 import {
   resolveWarehouseAverageCostPerTonne,
   resolveWarehouseBalanceTonnes,
-} from "./warehouse-balance-utils";
+} from "./warehouse-balance-units";
 
-test("movement prefers explicit tonne balances and per-tonne costs", () => {
+test("warehouse balance units prefer explicit tonnes and per-tonne costs", () => {
   assert.equal(
     resolveWarehouseBalanceTonnes(
       { balanceTonnes: "1.23456", balance: "9999" },
@@ -24,7 +24,7 @@ test("movement prefers explicit tonne balances and per-tonne costs", () => {
   );
 });
 
-test("movement converts legacy snapshot and warehouse fields as fallback", () => {
+test("warehouse balance units convert legacy snapshot and record fields", () => {
   assert.equal(
     resolveWarehouseBalanceTonnes({ balance: "1250.01" }),
     1.25001,

@@ -19,6 +19,7 @@ import {
   refuelingTonnesToLegacyKg,
   type RefuelingPriceUnit,
 } from "../unit-calculations";
+import { resolveWarehouseBalanceTonnes } from "@/pages/shared/utils/warehouse-balance-units";
 
 interface UseRefuelingCalculationsProps {
   inputMode: "liters" | "tonnes";
@@ -116,29 +117,24 @@ export function useRefuelingCalculations({
 
   const warehouseBalanceAtDate = useMemo(() => {
     if (isHistoricalLoading || isCurrentLoading) return null;
-    
-    const histKg = warehouseData && typeof warehouseData === 'object' && 'balance' in warehouseData
-      ? parseFloat(warehouseData.balance)
-      : parseFloat(productType === PRODUCT_TYPE.PVKJ ? supplierWarehouse?.pvkjBalance || "0" : supplierWarehouse?.currentBalance || "0");
-      
-    const currKg = currentWarehouseData && typeof currentWarehouseData === 'object' && 'balance' in currentWarehouseData
-      ? parseFloat(currentWarehouseData.balance)
-      : parseFloat(productType === PRODUCT_TYPE.PVKJ ? supplierWarehouse?.pvkjBalance || "0" : supplierWarehouse?.currentBalance || "0");
-
-    const histTonnes =
-      warehouseData &&
-      typeof warehouseData === "object" &&
-      "balanceTonnes" in warehouseData &&
-      warehouseData.balanceTonnes != null
-        ? Number(warehouseData.balanceTonnes)
-        : kilogramsToTonnes(Number.isFinite(histKg) ? histKg : 0);
-    const currTonnes =
-      currentWarehouseData &&
-      typeof currentWarehouseData === "object" &&
-      "balanceTonnes" in currentWarehouseData &&
-      currentWarehouseData.balanceTonnes != null
-        ? Number(currentWarehouseData.balanceTonnes)
-        : kilogramsToTonnes(Number.isFinite(currKg) ? currKg : 0);
+    const fallbackBalanceTonnes =
+      productType === PRODUCT_TYPE.PVKJ
+        ? (supplierWarehouse as any)?.pvkjBalanceTonnes
+        : (supplierWarehouse as any)?.currentBalanceTonnes;
+    const fallbackBalanceKilograms =
+      productType === PRODUCT_TYPE.PVKJ
+        ? supplierWarehouse?.pvkjBalance
+        : supplierWarehouse?.currentBalance;
+    const histTonnes = resolveWarehouseBalanceTonnes(
+      warehouseData,
+      fallbackBalanceTonnes,
+      fallbackBalanceKilograms,
+    );
+    const currTonnes = resolveWarehouseBalanceTonnes(
+      currentWarehouseData,
+      fallbackBalanceTonnes,
+      fallbackBalanceKilograms,
+    );
     const baseBalanceTonnes = Math.min(
       Math.max(0, histTonnes),
       Math.max(0, currTonnes),

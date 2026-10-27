@@ -300,7 +300,13 @@ export function WarehouseDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatPricePerTonne(pricePerKilogramToPerTonne(Number(warehouse.averageCost || 0)))} ₽/т
+                {formatPricePerTonne(
+                  warehouse.averageCostPerTonne != null
+                    ? Number(warehouse.averageCostPerTonne)
+                    : pricePerKilogramToPerTonne(
+                        Number(warehouse.averageCost || 0),
+                      ),
+                )} ₽/т
               </p>
             </CardContent>
           </Card>
@@ -328,7 +334,13 @@ export function WarehouseDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatPricePerTonne(pricePerKilogramToPerTonne(Number(warehouse.pvkjAverageCost || 0)))} ₽/т
+                {formatPricePerTonne(
+                  warehouse.pvkjAverageCostPerTonne != null
+                    ? Number(warehouse.pvkjAverageCostPerTonne)
+                    : pricePerKilogramToPerTonne(
+                        Number(warehouse.pvkjAverageCost || 0),
+                      ),
+                )} ₽/т
               </p>
             </CardContent>
           </Card>

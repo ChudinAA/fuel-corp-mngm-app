@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 import { PRODUCT_TYPE } from "@shared/constants";
+import {
+  resolveWarehouseAverageCostPerTonne,
+} from "@/pages/shared/utils/warehouse-balance-units";
+import { calculateOptWarehouseBalanceTonnes } from "../warehouse-balance-utils";
 
 interface UseOptWarehouseBalanceProps {
   productType: string;
@@ -9,6 +13,7 @@ interface UseOptWarehouseBalanceProps {
   isEditing?: boolean;
   editQuantityKg?: string;
   initialCurrentBalance?: string;
+  initialCurrentBalanceTonnes?: string;
 }
 
 export function useOptWarehouseBalance({
@@ -18,6 +23,7 @@ export function useOptWarehouseBalance({
   isEditing,
   editQuantityKg,
   initialCurrentBalance,
+  initialCurrentBalanceTonnes,
 }: UseOptWarehouseBalanceProps) {
   const isBackdated = useMemo(() => {
     if (!dealDate) return false;
@@ -77,14 +83,49 @@ export function useOptWarehouseBalance({
     initialCurrentBalance,
   ]);
 
+  const availableBalanceTonnes = useMemo(() => {
+    if (!warehouseId) return null;
+    if (isHistoricalLoading || isCurrentLoading) return null;
+    return calculateOptWarehouseBalanceTonnes(
+      historicalData,
+      currentData,
+      initialCurrentBalanceTonnes,
+      initialCurrentBalance,
+      editQuantityKg,
+    );
+  }, [
+    warehouseId,
+    historicalData,
+    currentData,
+    isHistoricalLoading,
+    isCurrentLoading,
+    editQuantityKg,
+    initialCurrentBalance,
+    initialCurrentBalanceTonnes,
+  ]);
+
   const warehousePrice = useMemo(() => {
     if (isHistoricalLoading) return null;
     return historicalData && typeof historicalData === 'object' && 'averageCost' in historicalData ? (historicalData.averageCost ? parseFloat(historicalData.averageCost) : null) : null;
   }, [historicalData, isHistoricalLoading]);
 
+  const warehousePricePerTonne = useMemo(() => {
+    if (isHistoricalLoading) return null;
+    if (!historicalData || typeof historicalData !== "object") return null;
+    const hasRate =
+      ("averageCostPerTonne" in historicalData &&
+        historicalData.averageCostPerTonne != null) ||
+      ("averageCost" in historicalData && historicalData.averageCost != null);
+    return hasRate
+      ? resolveWarehouseAverageCostPerTonne(historicalData)
+      : null;
+  }, [historicalData, isHistoricalLoading]);
+
   return {
     availableBalance,
+    availableBalanceTonnes,
     warehousePrice,
+    warehousePricePerTonne,
     isLoading: isHistoricalLoading || isCurrentLoading,
   };
 }

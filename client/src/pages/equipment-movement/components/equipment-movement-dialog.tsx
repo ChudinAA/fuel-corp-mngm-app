@@ -184,7 +184,6 @@ export function EquipmentMovementDialog({
     calculatedKg,
     tonnesNum,
     purchaseAmount,
-    averageCostPerKg,
     averageCostPerTonne,
   } =
     useLikCalculations({
@@ -241,7 +240,7 @@ export function EquipmentMovementDialog({
         quantityLiters: data.quantityLiters ? data.quantityLiters : null,
         density: data.density ? data.density : null,
         totalCost: purchaseAmount,
-        costPerTonne: averageCostPerKg * 1_000,
+        costPerTonne: averageCostPerTonne,
         isDraft: !!isDraft,
       };
       const res = await apiRequest(

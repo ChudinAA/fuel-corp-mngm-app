@@ -75,7 +75,9 @@ export function useOptCalculations({
 
   const { 
     availableBalance: warehouseBalanceAtDate, 
+    availableBalanceTonnes: warehouseBalanceAtDateTonnes,
     warehousePrice: warehousePriceAtDate,
+    warehousePricePerTonne: warehousePricePerTonneAtDate,
     isLoading: isWarehouseBalanceLoading 
   } = useOptWarehouseBalance({
     productType,
@@ -84,6 +86,9 @@ export function useOptCalculations({
     isEditing,
     editQuantityKg: initialQuantityKg.toString(),
     initialCurrentBalance: productType === "pvkj" ? (supplierWarehouse as any)?.pvkjBalance : supplierWarehouse?.currentBalance,
+    initialCurrentBalanceTonnes: productType === "pvkj"
+      ? (supplierWarehouse as any)?.pvkjBalanceTonnes
+      : (supplierWarehouse as any)?.currentBalanceTonnes,
   });
 
   const {
@@ -117,11 +122,14 @@ export function useOptCalculations({
     isWarehouseSupplier && warehousePriceAtDate !== null
       ? warehousePriceAtDate
       : extractedPurchasePrice;
-  const purchasePricePerTonne = purchaseUsesKilograms
-    ? rawPurchasePrice === null
-      ? null
-      : pricePerKilogramToPerTonne(rawPurchasePrice)
-    : contractPricePerTonne(rawPurchasePrice, purchasePriceUnit, density);
+  const purchasePricePerTonne =
+    isWarehouseSupplier && warehousePricePerTonneAtDate !== null
+      ? warehousePricePerTonneAtDate
+      : purchaseUsesKilograms
+        ? rawPurchasePrice === null
+          ? null
+          : pricePerKilogramToPerTonne(rawPurchasePrice)
+        : contractPricePerTonne(rawPurchasePrice, purchasePriceUnit, density);
   const salePricePerTonne = contractPricePerTonne(
     extractedSalePrice,
     salePriceUnit,
@@ -330,6 +338,7 @@ export function useOptCalculations({
     contractVolumeStatus,
     supplierContractVolumeStatus,
     warehouseBalanceAtDate: (typeof warehouseBalanceAtDate === 'number' ? warehouseBalanceAtDate : (typeof warehouseBalanceAtDate === 'string' ? parseFloat(warehouseBalanceAtDate) : 0)) as number,
+    warehouseBalanceAtDateTonnes,
     isWarehouseBalanceLoading,
     warehousePriceAtDate,
   };

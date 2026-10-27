@@ -228,6 +228,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       contractVolumeStatus,
       supplierContractVolumeStatus,
       warehouseBalanceAtDate,
+      warehouseBalanceAtDateTonnes,
       isWarehouseBalanceLoading,
       warehousePriceAtDate,
     } = useOptCalculations({
@@ -786,18 +787,20 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
 
         // Проверяем достаточность объема на складе для складских поставщиков
         if (isWarehouseSupplier && supplierWarehouse) {
-          const availableBalance =
-            warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
+          const availableBalanceTonnes =
+            warehouseBalanceAtDateTonnes != null
+              ? warehouseBalanceAtDateTonnes
+              : optLegacyKilogramsToTonnes(warehouseBalanceAtDate ?? 0);
 
           // ВАЖНО: При проверке перед сохранением мы должны убедиться, что
           // остаток БЕЗ учета текущей сделки достаточен для нового объема
-          const baseBalance = isEditing
-            ? availableBalance - finalKg
-            : availableBalance;
+          const baseBalanceTonnes = isEditing
+            ? availableBalanceTonnes - finalTonnes
+            : availableBalanceTonnes;
 
-          if (baseBalance < 0) {
+          if (baseBalanceTonnes < 0) {
             showError(
-              `На складе "${supplierWarehouse.name}" на выбранную дату недостаточно топлива. Доступно: ${formatTonnes(optLegacyKilogramsToTonnes(baseBalance))} т, требуется: ${formatTonnes(optLegacyKilogramsToTonnes(finalKg))} т`,
+              `На складе "${supplierWarehouse.name}" на выбранную дату недостаточно топлива. Доступно: ${formatTonnes(baseBalanceTonnes)} т, требуется: ${formatTonnes(finalTonnes)} т`,
             );
             return;
           }
@@ -930,8 +933,10 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               contractVolumeStatus={contractVolumeStatus}
               supplierContractVolumeStatus={supplierContractVolumeStatus}
               warehouseBalanceAtDate={warehouseBalanceAtDate}
+              warehouseBalanceAtDateTonnes={warehouseBalanceAtDateTonnes}
               isWarehouseBalanceLoading={isWarehouseBalanceLoading}
               warehousePriceAtDate={warehousePriceAtDate}
+              finalTonnes={finalTonnes}
             />
 
             <div className="grid gap-4 md:grid-cols-2 items-end">

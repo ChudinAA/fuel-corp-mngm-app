@@ -5,7 +5,7 @@ import { formatTonnes } from "@shared/units";
 import {
   resolveWarehouseAverageCostPerTonne,
   resolveWarehouseBalanceTonnes,
-} from "../warehouse-balance-utils";
+} from "@/pages/shared/utils/warehouse-balance-units";
 
 interface UseWarehouseBalanceProps {
   watchMovementType: string;

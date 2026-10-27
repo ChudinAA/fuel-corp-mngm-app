@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import { EQUIPMENT_MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import {
   calculateEquipmentMovementTonnes,
-  equipmentMovementLegacyPricePerKgToPerTonne,
   equipmentMovementTonnesToLegacyKg,
   type EquipmentMovementInputMode,
 } from "../unit-calculations";
 import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
+import { resolveWarehouseAverageCostPerTonne } from "@/pages/shared/utils/warehouse-balance-units";
 
 interface UseLikCalculationsProps {
   form: any;
@@ -60,30 +60,47 @@ export function useLikCalculations({
     watchProductType,
   );
 
-  const averageCostPerKg = useMemo(() => {
+  const averageCostPerTonne = useMemo(() => {
+    const sourceWarehouse = isStorageToTzk
+      ? warehouses.find((w) => w.id === watchFromWarehouseId)
+      : undefined;
+    const sourceEquipment = !isStorageToTzk
+      ? equipments.find((e) => e.id === watchFromEquipmentId)
+      : undefined;
+
+    const explicitSourceRate = isStorageToTzk
+      ? watchProductType === PRODUCT_TYPE.PVKJ
+        ? sourceWarehouse?.pvkjAverageCostPerTonne
+        : sourceWarehouse?.averageCostPerTonne
+      : watchProductType === PRODUCT_TYPE.PVKJ
+        ? sourceEquipment?.pvkjAverageCostPerTonne
+        : sourceEquipment?.averageCostPerTonne;
+    const legacySourceRate = isStorageToTzk
+      ? watchProductType === PRODUCT_TYPE.PVKJ
+        ? sourceWarehouse?.pvkjAverageCost
+        : sourceWarehouse?.averageCost
+      : watchProductType === PRODUCT_TYPE.PVKJ
+        ? sourceEquipment?.pvkjAverageCost
+        : sourceEquipment?.averageCost;
+
     if (isStorageToTzk) {
-      // Prefer live averageCost from balance API (always up-to-date)
-      if (balanceData && typeof balanceData === "object" && "averageCost" in balanceData && balanceData.averageCost) {
-        return parseFloat(balanceData.averageCost as string);
-      }
-      // Fallback to warehouse list (may be stale after new movements)
-      const sourceWarehouse = warehouses.find((w) => w.id === watchFromWarehouseId);
-      if (!sourceWarehouse) return 0;
-      const costStr =
-        watchProductType === PRODUCT_TYPE.PVKJ
-          ? sourceWarehouse.pvkjAverageCost
-          : sourceWarehouse.averageCost;
-      return costStr ? parseFloat(costStr) : 0;
-    } else {
-      // TZK_TO_STORAGE or other: source is equipment
-      const sourceEquipment = equipments.find((e) => e.id === watchFromEquipmentId);
-      if (!sourceEquipment) return 0;
-      const costStr =
-        watchProductType === PRODUCT_TYPE.PVKJ
-          ? sourceEquipment.pvkjAverageCost
-          : sourceEquipment.averageCost;
-      return costStr ? parseFloat(costStr) : 0;
+      const liveRate =
+        balanceData &&
+        typeof balanceData === "object" &&
+        (("averageCostPerTonne" in balanceData &&
+          balanceData.averageCostPerTonne != null) ||
+          ("averageCost" in balanceData && balanceData.averageCost != null))
+          ? resolveWarehouseAverageCostPerTonne(balanceData)
+          : null;
+      if (liveRate !== null) return liveRate;
     }
+
+    if (explicitSourceRate == null && legacySourceRate == null) return 0;
+    return resolveWarehouseAverageCostPerTonne(
+      undefined,
+      explicitSourceRate,
+      legacySourceRate,
+    );
   }, [
     isStorageToTzk,
     balanceData,
@@ -94,8 +111,6 @@ export function useLikCalculations({
     equipments,
   ]);
 
-  const averageCostPerTonne =
-    equipmentMovementLegacyPricePerKgToPerTonne(averageCostPerKg) ?? 0;
   const purchaseAmount = tonnesNum * averageCostPerTonne;
 
   return {
@@ -103,7 +118,6 @@ export function useLikCalculations({
     calculatedTonnes,
     tonnesNum,
     kgNum,
-    averageCostPerKg,
     averageCostPerTonne,
     purchaseAmount,
   };
