@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
-import { inArray, sql } from "drizzle-orm";
+import { inArray, or, sql } from "drizzle-orm";
 import { db, pool } from "../server/db";
 import { PRODUCT_TYPE } from "../shared/constants";
 import { aircraftRefueling } from "../server/modules/refueling/entities/refueling";
@@ -185,7 +185,14 @@ async function readSnapshot(fixture: Fixture) {
     db
       .select()
       .from(aircraftRefueling)
-      .where(inArray(aircraftRefueling.id, dealIds)),
+      .where(
+        fixture.equipmentIds.length
+          ? or(
+              inArray(aircraftRefueling.id, dealIds),
+              inArray(aircraftRefueling.equipmentId, fixture.equipmentIds),
+            )
+          : inArray(aircraftRefueling.id, dealIds),
+      ),
     db
       .select()
       .from(warehouseTransactions)
@@ -497,6 +504,62 @@ test("refueling order edits and failures preserve deals, movements, and stock at
               Number(deal.quantityKg) + 5,
               "2026-10-26T10:00:00.000Z",
             ),
+          ),
+        ),
+        /Simulated failure/,
+      );
+      assert.equal(
+        appliedMovementCount,
+        1,
+        "the failure should occur after one equipment movement was applied",
+      );
+      assert.deepEqual(await readSnapshot(fixture), before);
+    } finally {
+      EquipmentTransactionService.createTransactionAndUpdateEquipment =
+        originalCreate;
+      await cleanupFixture(fixture);
+    }
+  });
+
+  await t.test("a failed equipment movement rolls back a newly created multi-product order", async () => {
+    const fixture = await createFixture(
+      [PRODUCT_TYPE.KEROSENE, PRODUCT_TYPE.PVKJ, PRODUCT_TYPE.SERVICE],
+      { useEquipment: true },
+    );
+    const before = await readSnapshot(fixture);
+    const originalCreate =
+      EquipmentTransactionService.createTransactionAndUpdateEquipment;
+    let appliedMovementCount = 0;
+    try {
+      (EquipmentTransactionService as any).createTransactionAndUpdateEquipment =
+        async (...args: any[]) => {
+          const result = await originalCreate.apply(
+            EquipmentTransactionService,
+            args,
+          );
+          appliedMovementCount += 1;
+          if (appliedMovementCount === 1) {
+            throw new Error(
+              "Simulated failure after applying the first equipment movement",
+            );
+          }
+          return result;
+        };
+
+      await assert.rejects(
+        storage.createRefuelings(
+          [PRODUCT_TYPE.KEROSENE, PRODUCT_TYPE.PVKJ, PRODUCT_TYPE.SERVICE].map(
+            (type) => ({
+              ...makeDeal(
+                type,
+                fixture.supplierId,
+                fixture.customerId,
+                fixture.warehouseIds[0],
+                type === PRODUCT_TYPE.SERVICE ? 3 : 10,
+              ),
+              equipmentId: fixture.equipmentIds[0],
+              warehouseId: null,
+            }),
           ),
         ),
         /Simulated failure/,
