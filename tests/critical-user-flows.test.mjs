@@ -981,6 +981,224 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     "restoring the equipment transfer restores its equipment ledger entry",
   );
 
+  // A later, higher-cost receipt makes a backdated equipment return recalculate
+  // its source cost and cascade that cost into the receiving warehouse.
+  const equipmentTopUp = await api("/api/equipment-movement", {
+    method: "POST",
+    expectedStatus: 201,
+    body: {
+      movementDate: "2026-11-01T09:00:00.000Z",
+      movementType: "storage_to_tzk",
+      productType: "kerosene",
+      nomenclatureId: keroseneNomenclature.id,
+      fromWarehouseId: warehouse.id,
+      toEquipmentId: transferEquipment.id,
+      quantityKg: "5",
+      totalCost: 100,
+      costPerKg: 20,
+      isDraft: false,
+      notes: "critical flow equipment cost checkpoint",
+    },
+  });
+  assert.ok(equipmentTopUp.id, "later equipment receipt is created");
+  assertStock(
+    await getStock("equipments", transferEquipment.id),
+    20,
+    12.5,
+    "equipment after later higher-cost receipt",
+  );
+
+  const returnWarehouseBefore = await getStock(
+    "warehouses",
+    transferWarehouse.id,
+  );
+  const equipmentReturn = await api("/api/equipment-movement", {
+    method: "POST",
+    expectedStatus: 201,
+    body: {
+      movementDate: "2026-11-02T09:00:00.000Z",
+      movementType: "tzk_to_storage",
+      productType: "kerosene",
+      nomenclatureId: keroseneNomenclature.id,
+      fromEquipmentId: transferEquipment.id,
+      toWarehouseId: transferWarehouse.id,
+      quantityKg: "5",
+      totalCost: 62.5,
+      costPerKg: 12.5,
+      isDraft: false,
+      notes: "critical flow equipment to warehouse",
+    },
+  });
+  const equipmentReturnId = equipmentReturn.id;
+  assert.ok(equipmentReturnId, "equipment-to-warehouse transfer is created");
+  assertStock(
+    await getStock("equipments", transferEquipment.id),
+    15,
+    12.5,
+    "equipment return source after create",
+  );
+  assertStock(
+    await getStock("warehouses", transferWarehouse.id),
+    returnWarehouseBefore.quantity + 5,
+    (returnWarehouseBefore.quantity * returnWarehouseBefore.averageCost + 62.5) /
+      (returnWarehouseBefore.quantity + 5),
+    "equipment return warehouse destination after create",
+  );
+
+  await api(`/api/equipment-movement/${equipmentReturnId}`, {
+    method: "PATCH",
+    body: {
+      movementDate: "2026-10-15T09:00:00.000Z",
+      movementType: "tzk_to_storage",
+      productType: "kerosene",
+      nomenclatureId: keroseneNomenclature.id,
+      fromEquipmentId: transferEquipment.id,
+      toWarehouseId: transferWarehouse.id,
+      quantityKg: "6",
+      totalCost: 75,
+      costPerKg: 12.5,
+      isDraft: false,
+      notes: "critical flow equipment return edited retroactively",
+    },
+  });
+  await waitForCompletedQueue(
+    "equipment_recalculation_queue",
+    "equipment_id",
+    transferEquipment.id,
+    "kerosene",
+  );
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    transferWarehouse.id,
+    "kerosene",
+  );
+  assertStock(
+    await getStock("equipments", transferEquipment.id),
+    14,
+    190 / 14,
+    "equipment return source after backdated edit",
+  );
+  assertStock(
+    await getStock("warehouses", transferWarehouse.id),
+    returnWarehouseBefore.quantity + 6,
+    (returnWarehouseBefore.quantity * returnWarehouseBefore.averageCost + 60) /
+      (returnWarehouseBefore.quantity + 6),
+    "equipment return warehouse destination after backdated edit",
+  );
+  const equipmentReturnRecord = await api(
+    `/api/equipment-movement/${equipmentReturnId}`,
+  );
+  assert.ok(
+    Math.abs(Number(equipmentReturnRecord.totalCost) - 60) < 0.011,
+    "retroactive equipment recalculation updates the return's transferred cost",
+  );
+  assert.ok(
+    Math.abs(Number(equipmentReturnRecord.costPerKg) - 10) < 0.011,
+    "return cost uses the equipment average at the backdated date",
+  );
+  const equipmentReturnEquipmentRow = await pool.query(
+    `SELECT transaction_type, quantity, sum, deleted_at
+     FROM equipment_transactions WHERE id = $1`,
+    [equipmentReturnRecord.sourceTransactionId],
+  );
+  assert.equal(equipmentReturnEquipmentRow.rows.length, 1);
+  assert.equal(equipmentReturnEquipmentRow.rows[0].transaction_type, "transfer_out");
+  assert.equal(Number(equipmentReturnEquipmentRow.rows[0].quantity), -6);
+  assert.ok(
+    Math.abs(Number(equipmentReturnEquipmentRow.rows[0].sum) - 60) < 0.011,
+    "equipment source ledger reflects the recalculated transferred cost",
+  );
+  assert.equal(equipmentReturnEquipmentRow.rows[0].deleted_at, null);
+  const equipmentReturnWarehouseRow = await pool.query(
+    `SELECT transaction_type, quantity, sum, deleted_at
+     FROM warehouse_transactions WHERE id = $1`,
+    [equipmentReturnRecord.warehouseTransactionId],
+  );
+  assert.equal(equipmentReturnWarehouseRow.rows.length, 1);
+  assert.equal(equipmentReturnWarehouseRow.rows[0].transaction_type, "transfer_in");
+  assert.equal(Number(equipmentReturnWarehouseRow.rows[0].quantity), 6);
+  assert.ok(
+    Math.abs(Number(equipmentReturnWarehouseRow.rows[0].sum) - 60) < 0.011,
+    "warehouse destination ledger receives the recalculated transfer cost",
+  );
+  assert.equal(equipmentReturnWarehouseRow.rows[0].deleted_at, null);
+
+  await waitForAuditOperations("equipment_movement", equipmentReturnId, ["CREATE", "UPDATE"]);
+  await api(`/api/equipment-movement/${equipmentReturnId}`, { method: "DELETE" });
+  await waitForCompletedQueue(
+    "equipment_recalculation_queue",
+    "equipment_id",
+    transferEquipment.id,
+    "kerosene",
+  );
+  assertStock(
+    await getStock("equipments", transferEquipment.id),
+    20,
+    12.5,
+    "equipment return source after delete",
+  );
+  assertStock(
+    await getStock("warehouses", transferWarehouse.id),
+    returnWarehouseBefore.quantity,
+    returnWarehouseBefore.averageCost,
+    "equipment return warehouse destination after delete",
+  );
+  const deletedReturnRows = await pool.query(
+    `SELECT
+       (SELECT COUNT(*)::int FROM equipment_transactions
+        WHERE source_type = 'movement' AND source_id = $1 AND deleted_at IS NOT NULL) AS equipment_count,
+       (SELECT COUNT(*)::int FROM warehouse_transactions
+        WHERE source_type = 'movement' AND source_id = $1 AND deleted_at IS NOT NULL) AS warehouse_count`,
+    [equipmentReturnId],
+  );
+  assert.equal(deletedReturnRows.rows[0].equipment_count, 1);
+  assert.equal(deletedReturnRows.rows[0].warehouse_count, 1);
+
+  const equipmentReturnDeleteAuditId = await latestAuditId(
+    "equipment_movement",
+    equipmentReturnId,
+  );
+  const restoredEquipmentReturn = await api(
+    `/api/audit/rollback/${equipmentReturnDeleteAuditId}`,
+    { method: "POST", body: {} },
+  );
+  assert.equal(restoredEquipmentReturn.success, true);
+  await waitForCompletedQueue(
+    "equipment_recalculation_queue",
+    "equipment_id",
+    transferEquipment.id,
+    "kerosene",
+  );
+  assertStock(
+    await getStock("equipments", transferEquipment.id),
+    14,
+    190 / 14,
+    "equipment return source after audit restore",
+  );
+  assertStock(
+    await getStock("warehouses", transferWarehouse.id),
+    returnWarehouseBefore.quantity + 6,
+    (returnWarehouseBefore.quantity * returnWarehouseBefore.averageCost + 60) /
+      (returnWarehouseBefore.quantity + 6),
+    "equipment return warehouse destination after audit restore",
+  );
+  await waitForAuditOperations(
+    "equipment_movement",
+    equipmentReturnId,
+    ["CREATE", "UPDATE", "DELETE", "RESTORE"],
+  );
+  const restoredReturnRows = await pool.query(
+    `SELECT
+       (SELECT COUNT(*)::int FROM equipment_transactions
+        WHERE source_type = 'movement' AND source_id = $1 AND deleted_at IS NULL) AS equipment_count,
+       (SELECT COUNT(*)::int FROM warehouse_transactions
+        WHERE source_type = 'movement' AND source_id = $1 AND deleted_at IS NULL) AS warehouse_count`,
+    [equipmentReturnId],
+  );
+  assert.equal(restoredReturnRows.rows[0].equipment_count, 1);
+  assert.equal(restoredReturnRows.rows[0].warehouse_count, 1);
+
   // Cashflow transactions are the monetary ledger: CRUD and audit rollback
   // must preserve date-based totals and linked movement references.
   const cashflowWindow = "/api/cashflow/summary?startDate=2026-10-01&endDate=2026-10-31";
