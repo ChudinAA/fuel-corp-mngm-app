@@ -59,6 +59,24 @@ const refuelingFeeScenarios = [
     otherServiceEnabled: false,
     expectedProfit: 83.33,
   },
+  {
+    label: "legacy null agent fee flag",
+    agentFeeEnabled: null,
+    otherServiceEnabled: true,
+    expectedProfit: 75.33,
+  },
+  {
+    label: "legacy null other service flag",
+    agentFeeEnabled: true,
+    otherServiceEnabled: null,
+    expectedProfit: 75.33,
+  },
+  {
+    label: "legacy null fee flags",
+    agentFeeEnabled: null,
+    otherServiceEnabled: null,
+    expectedProfit: 75.33,
+  },
 ] as const;
 
 test("restoring an older refueling movement recalculates both fuel products in storage and equipment", async (t) => {
