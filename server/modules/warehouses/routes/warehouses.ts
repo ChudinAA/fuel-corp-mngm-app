@@ -17,6 +17,7 @@ import {
   warehouseBalanceToApi,
   warehouseMonthlyStatsToApi,
   warehouseTransactionToApi,
+  warehouseToApi,
 } from "../warehouse-api-adapters";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
@@ -26,7 +27,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     requirePermission("warehouses", "view"),
     async (req, res) => {
       const data = await storage.warehouses.getAllWarehouses();
-      res.json(data);
+      res.json(data.map(warehouseToApi));
     },
   );
 
@@ -40,7 +41,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           req.session.userId as unknown as string,
         );
         const data = await storage.warehouses.getLikWarehouses(allowedIds);
-        res.json(data);
+        res.json(data.map(warehouseToApi));
       } catch (error) {
         res.status(500).json({ message: "Ошибка получения складов ОП" });
       }
@@ -57,7 +58,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       if (!warehouse) {
         return res.status(404).json({ message: "Склад не найден" });
       }
-      res.json(warehouse);
+      res.json(warehouseToApi(warehouse));
     },
   );
 
@@ -193,7 +194,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         }
 
         SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(item);
+        res.status(201).json(warehouseToApi(item));
       } catch (error: any) {
         console.error("Warehouse creation error:", error);
         if (error instanceof z.ZodError) {
@@ -350,7 +351,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           return res.status(404).json({ message: "Склад не найден" });
         }
         SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(item);
+        res.json(warehouseToApi(item));
       } catch (error) {
         console.error("Warehouse update error:", error);
         res.status(500).json({ message: "Ошибка обновления склада" });
@@ -435,7 +436,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         const updated = await storage.warehouses.getWarehouse(warehouseId);
         if (!updated) return res.status(404).json({ message: "Склад не найден" });
         SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(updated);
+        res.json(warehouseToApi(updated));
       } catch (error: any) {
         console.error("Pin warehouse error:", error);
         res.status(500).json({ message: "Ошибка закрепления склада", error: error.message });
@@ -475,7 +476,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         const updated = await storage.warehouses.getWarehouse(warehouseId);
         if (!updated) return res.status(404).json({ message: "Склад не найден" });
         SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(updated);
+        res.json(warehouseToApi(updated));
       } catch (error: any) {
         console.error("Set limit error:", error);
         res.status(500).json({ message: "Ошибка установки лимита", error: error.message });

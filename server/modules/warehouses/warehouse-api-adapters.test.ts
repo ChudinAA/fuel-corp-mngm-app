@@ -4,7 +4,24 @@ import {
   warehouseBalanceToApi,
   warehouseMonthlyStatsToApi,
   warehouseTransactionToApi,
+  warehouseToApi,
 } from "./warehouse-api-adapters";
+
+test("warehouse API adds explicit current tonne balances and per-tonne costs", () => {
+  const result = warehouseToApi({
+    currentBalance: "1234.56",
+    pvkjBalance: "0.01",
+    averageCost: "12.345678",
+    pvkjAverageCost: "9.876543",
+  });
+
+  assert.equal(result.currentBalance, "1234.56");
+  assert.equal(result.pvkjBalance, "0.01");
+  assert.equal(result.currentBalanceTonnes, "1.23456");
+  assert.equal(result.pvkjBalanceTonnes, "0.00001");
+  assert.equal(result.averageCostPerTonne, "12345.678");
+  assert.equal(result.pvkjAverageCostPerTonne, "9876.543");
+});
 
 test("warehouse balance API adds tonne fields without changing legacy values", () => {
   const result = warehouseBalanceToApi({

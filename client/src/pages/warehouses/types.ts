@@ -1,3 +1,12 @@
+import type { Warehouse } from "@shared/schema";
+
+export type WarehouseWithTonnes = Warehouse & {
+  currentBalanceTonnes?: string | null;
+  pvkjBalanceTonnes?: string | null;
+  averageCostPerTonne?: string | null;
+  pvkjAverageCostPerTonne?: string | null;
+};
+
 export interface WarehouseTransaction {
   id: string;
   warehouseId: string;

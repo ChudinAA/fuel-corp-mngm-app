@@ -48,7 +48,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import type { Warehouse, Base } from "@shared/schema";
-import type { WarehouseTransaction } from "../types";
+import type { WarehouseTransaction, WarehouseWithTonnes } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
 import {
   formatPricePerTonne,
@@ -63,7 +63,7 @@ import { InventoryDialog } from "./inventory-dialog";
 import { SetLimitDialog } from "./set-limit-dialog";
 
 interface WarehouseCardProps {
-  warehouse: Warehouse;
+  warehouse: WarehouseWithTonnes;
   onEdit: (warehouse: Warehouse) => void;
   onViewDetails: (warehouse: Warehouse) => void;
   isBase?: boolean;
@@ -112,10 +112,22 @@ export function WarehouseCard({
   const cost = parseFloat(warehouse.averageCost || "0");
   const pvkjBalance = parseFloat(warehouse.pvkjBalance || "0");
   const pvkjCost = parseFloat(warehouse.pvkjAverageCost || "0");
-  const balanceTonnes = kilogramsToTonnes(balance);
-  const costPerTonne = pricePerKilogramToPerTonne(cost);
-  const pvkjBalanceTonnes = kilogramsToTonnes(pvkjBalance);
-  const pvkjCostPerTonne = pricePerKilogramToPerTonne(pvkjCost);
+  const balanceTonnes =
+    warehouse.currentBalanceTonnes != null
+      ? Number(warehouse.currentBalanceTonnes)
+      : kilogramsToTonnes(balance);
+  const costPerTonne =
+    warehouse.averageCostPerTonne != null
+      ? Number(warehouse.averageCostPerTonne)
+      : pricePerKilogramToPerTonne(cost);
+  const pvkjBalanceTonnes =
+    warehouse.pvkjBalanceTonnes != null
+      ? Number(warehouse.pvkjBalanceTonnes)
+      : kilogramsToTonnes(pvkjBalance);
+  const pvkjCostPerTonne =
+    warehouse.pvkjAverageCostPerTonne != null
+      ? Number(warehouse.pvkjAverageCostPerTonne)
+      : pricePerKilogramToPerTonne(pvkjCost);
   const isInactive = !warehouse.isActive;
   const { hasPermission } = useAuth();
 
@@ -437,7 +449,7 @@ export function WarehouseCard({
             </div>
           </div>
 
-          {pvkjBalance > 0 && (
+          {pvkjBalanceTonnes > 0 && (
             <div className="space-y-2 pt-2 border-t">
               <div className="flex items-baseline justify-between">
                 <span className="text-lg font-semibold text-muted-foreground">

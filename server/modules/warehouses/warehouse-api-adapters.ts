@@ -11,6 +11,14 @@ export interface WarehouseBalanceSnapshot {
   [key: string]: unknown;
 }
 
+export interface WarehouseRecordSnapshot {
+  currentBalance: NumericValue;
+  pvkjBalance: NumericValue;
+  averageCost: NumericValue;
+  pvkjAverageCost: NumericValue;
+  [key: string]: unknown;
+}
+
 export interface WarehouseTransactionSnapshot {
   quantityKg: NumericValue;
   balanceBefore: NumericValue;
@@ -45,6 +53,20 @@ function perKilogramAsPerTonne(value: NumericValue): NumericValue {
     throw new TypeError(`Invalid legacy per-kilogram price: ${String(value)}`);
   }
   return pricePerKilogramToPerTonne(perKilogram).toFixed(3);
+}
+
+export function warehouseToApi<T extends WarehouseRecordSnapshot>(
+  warehouse: T,
+) {
+  return {
+    ...warehouse,
+    currentBalanceTonnes: kilogramsAsTonnes(warehouse.currentBalance),
+    pvkjBalanceTonnes: kilogramsAsTonnes(warehouse.pvkjBalance),
+    averageCostPerTonne: perKilogramAsPerTonne(warehouse.averageCost),
+    pvkjAverageCostPerTonne: perKilogramAsPerTonne(
+      warehouse.pvkjAverageCost,
+    ),
+  };
 }
 
 export function warehouseBalanceToApi<T extends WarehouseBalanceSnapshot>(

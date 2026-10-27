@@ -40,8 +40,8 @@ import {
   ChevronRight,
   Loader2,
 } from "lucide-react";
-import type { Warehouse, Base } from "@shared/schema";
-import type { WarehouseTransaction } from "../types";
+import type { Base } from "@shared/schema";
+import type { WarehouseTransaction, WarehouseWithTonnes } from "../types";
 import { formatCurrency } from "../utils";
 import {
   formatPricePerTonne,
@@ -58,7 +58,7 @@ import {
 import { ProductTypeBadge } from "@/components/product-type-badge";
 
 interface WarehouseDetailsDialogProps {
-  warehouse: Warehouse;
+  warehouse: WarehouseWithTonnes;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -284,7 +284,11 @@ export function WarehouseDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatTonnes(kilogramsToTonnes(Number(warehouse.currentBalance || 0)))} т
+                {formatTonnes(
+                  warehouse.currentBalanceTonnes != null
+                    ? Number(warehouse.currentBalanceTonnes)
+                    : kilogramsToTonnes(Number(warehouse.currentBalance || 0)),
+                )} т
               </p>
             </CardContent>
           </Card>
@@ -308,7 +312,11 @@ export function WarehouseDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatTonnes(kilogramsToTonnes(Number(warehouse.pvkjBalance || 0)))} т
+                {formatTonnes(
+                  warehouse.pvkjBalanceTonnes != null
+                    ? Number(warehouse.pvkjBalanceTonnes)
+                    : kilogramsToTonnes(Number(warehouse.pvkjBalance || 0)),
+                )} т
               </p>
             </CardContent>
           </Card>
