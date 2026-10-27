@@ -96,8 +96,8 @@ export class ReportsStorage implements IReportsStorage {
               isNull(opt.deletedAt)
             ),
             with: {
-              customer: true,
-              base: true,
+              buyer: true,
+              basis: true,
               warehouse: true,
             },
           });
@@ -110,7 +110,7 @@ export class ReportsStorage implements IReportsStorage {
               isNull(aircraftRefueling.deletedAt)
             ),
             with: {
-              base: true,
+              basis: true,
               warehouse: true,
             },
           });
@@ -123,8 +123,8 @@ export class ReportsStorage implements IReportsStorage {
               isNull(movement.deletedAt)
             ),
             with: {
-              sourceWarehouse: true,
-              destinationWarehouse: true,
+              fromWarehouse: true,
+              toWarehouse: true,
               carrier: true,
             },
           });
@@ -137,8 +137,8 @@ export class ReportsStorage implements IReportsStorage {
               isNull(exchangeDeals.deletedAt)
             ),
             with: {
-              sourceWarehouse: true,
-              destinationWarehouse: true,
+              seller: true,
+              buyer: true,
             },
           });
           break;

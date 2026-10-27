@@ -95,8 +95,8 @@ export function DepositForm({
     const { currencyMode, localCurrencyId } = computeInitialValues();
     const current = form.getValues();
     if (current.localCurrencyId === "" && localCurrencyId !== "") {
-      form.setValue("currencyMode", currencyMode, { shouldRender: true });
-      form.setValue("localCurrencyId", localCurrencyId, { shouldRender: true });
+      form.setValue("currencyMode", currencyMode);
+      form.setValue("localCurrencyId", localCurrencyId);
     }
   }, [currencies]);
 

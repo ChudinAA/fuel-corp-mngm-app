@@ -10,7 +10,7 @@ interface UseAutoPriceSelectionProps {
   editData: any;
   setSelectedPurchasePriceId: (id: string) => void;
   setSelectedSalePriceId: (id: string) => void;
-  formSetValue: (field: string, value: string) => void;
+  formSetValue: (...args: any[]) => void;
 }
 
 export function useAutoPriceSelection({

@@ -31,6 +31,7 @@ interface PaymentItem {
   paidDate: string | null;
   paidAmount: string | null;
   isRecurring: boolean;
+  notes: string | null;
 }
 
 const statusLabels: Record<string, string> = {

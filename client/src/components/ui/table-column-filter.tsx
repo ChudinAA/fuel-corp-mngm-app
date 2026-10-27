@@ -125,8 +125,8 @@ export function TableColumnFilter({
   }
 
   // --- Месяцы из опций ---
-  const monthGroupsFromOptions = React.useMemo(() => {
-    if (!isDateFilter) return []
+  const monthGroupsFromOptions = React.useMemo<Map<string, { values: string[]; label: string }>>(() => {
+    if (!isDateFilter) return new Map()
     const groups = new Map<string, { values: string[]; label: string }>()
     options.forEach((opt) => {
       const parts = opt.value.split(".")

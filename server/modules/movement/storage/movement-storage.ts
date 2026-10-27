@@ -31,14 +31,16 @@ export class MovementStorage implements IMovementStorage {
         createdBy: {
           columns: {
             id: true,
-            username: true,
+              firstName: true,
+              lastName: true,
             email: true,
           },
         },
         updatedBy: {
           columns: {
             id: true,
-            username: true,
+              firstName: true,
+              lastName: true,
             email: true,
           },
         },

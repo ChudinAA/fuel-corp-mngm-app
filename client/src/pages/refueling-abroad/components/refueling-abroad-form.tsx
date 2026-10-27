@@ -515,11 +515,11 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
 
   const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
     useRefuelingFilters({
-      supplierId: watchedValues.supplierId,
-      buyerId: watchedValues.buyerId,
+      supplierId: watchedValues.supplierId ?? "",
+      buyerId: watchedValues.buyerId ?? "",
       refuelingDate: watchedValues.refuelingDate ?? new Date(),
-      basisId: watchedValues.basisId,
-      customerBasisId: watchedValues.basisId,
+      basisId: watchedValues.basisId ?? "",
+      customerBasisId: watchedValues.basisId ?? "",
       productType: watchedValues.productType ?? PRODUCT_TYPE.KEROSENE,
       nomenclatureId: watchedValues.nomenclatureId || undefined,
       baseType: BASE_TYPE.ABROAD,
@@ -549,7 +549,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
   });
 
   const supplierBalanceStatus = useSupplierCardBalance({
-    supplierId: watchedValues.supplierId,
+    supplierId: watchedValues.supplierId ?? "",
     purchaseAmountUsd: calculations.purchaseAmountUsd,
     initialPurchaseAmountUsd:
       isEditing && !editData.isDraft
@@ -586,7 +586,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       : calculations.profitRub;
 
   const buyerBalanceStatus = useBuyerCardBalance({
-    buyerId: watchedValues.buyerId,
+    buyerId: watchedValues.buyerId ?? "",
     saleAmountUsd: calculations.saleAmountUsd,
     initialSaleAmountUsd:
       isEditing && !editData.isDraft
@@ -596,8 +596,8 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
 
   // Используем общий хук для автоматического выбора цен
   useAutoPriceSelection({
-    supplierId: watchedValues.supplierId,
-    buyerId: watchedValues.buyerId,
+    supplierId: watchedValues.supplierId ?? "",
+    buyerId: watchedValues.buyerId ?? "",
     purchasePrices,
     salePrices,
     isWarehouseSupplier: false,
@@ -995,7 +995,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                               value: s.id,
                               label: s.name,
                             }))}
-                            value={field.value}
+                            value={field.value ?? ""}
                             onValueChange={field.onChange}
                             placeholder="Выберите поставщика"
                             className="w-full"
@@ -1083,7 +1083,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                               value: c.id,
                               label: c.name,
                             }))}
-                            value={field.value}
+                            value={field.value ?? ""}
                             onValueChange={field.onChange}
                             placeholder="Выберите покупателя"
                             className="w-full"

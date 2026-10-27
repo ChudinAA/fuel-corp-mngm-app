@@ -191,8 +191,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       dealDate: watchDealDate,
       basisId: watchBasisId || "",
       customerBasisId: watchCustomerBasisId || "",
-      carrierId: watchCarrierId,
-      deliveryLocationId: watchDeliveryLocationId,
+      carrierId: watchCarrierId || "",
+      deliveryLocationId: watchDeliveryLocationId || "",
       productType: watchProductType || PRODUCT_TYPE.KEROSENE,
       nomenclatureId: watchNomenclatureId || undefined,
       suppliers,
@@ -223,9 +223,9 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       warehousePriceAtDate,
     } = useOptCalculations({
       inputMode,
-      quantityLiters: watchLiters,
-      density: watchDensity,
-      quantityKg: watchKg,
+      quantityLiters: watchLiters || "",
+      density: watchDensity || "",
+      quantityKg: watchKg || "",
       isWarehouseSupplier,
       supplierWarehouse,
       basisId: watchBasisId || "",
@@ -235,8 +235,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       selectedPurchasePriceId,
       selectedSalePriceId,
       deliveryCosts,
-      carrierId: watchCarrierId,
-      deliveryLocationId: watchDeliveryLocationId,
+      carrierId: watchCarrierId || "",
+      deliveryLocationId: watchDeliveryLocationId || "",
       isEditing: isEditing,
       initialQuantityKg: initialQuantityKg,
       dealDate: watchDealDate,
@@ -349,7 +349,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       purchasePrices,
       salePrices,
       isWarehouseSupplier,
-      productType: form.watch("productType") || PRODUCT_TYPE.KEROSENE,
       editData,
       setSelectedPurchasePriceId,
       setSelectedSalePriceId,
@@ -420,6 +419,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           selectedPurchasePriceId: purchasePriceCompositeId,
           selectedSalePriceId: salePriceCompositeId,
           isDraft: editData.isDraft || false,
+          isNoDeliveryRequired: editData.isNoDeliveryRequired ?? false,
         };
 
         initialValuesRef.current = resetValues;
@@ -849,6 +849,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
                         placeholder="Дополнительная информация..."
                         data-testid="input-notes"
                         {...field}
+                        value={field.value ?? ""}
                       />
                     </FormControl>
                     <FormMessage />

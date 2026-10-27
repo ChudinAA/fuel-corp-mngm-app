@@ -36,6 +36,12 @@ interface ColumnConfig {
   sensitive?: boolean;
 }
 
+interface ExportColumnsResponse {
+  columns: ColumnConfig[];
+  defaultColumns: string[];
+  displayName: string;
+}
+
 function getNestedValue(obj: any, path: string): any {
   return path.split(".").reduce((cur, key) => cur?.[key], obj);
 }
@@ -84,7 +90,7 @@ export function ExportDialog({
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState("settings");
 
-  const { data: columnsData, isLoading } = useQuery({
+  const { data: columnsData, isLoading } = useQuery<ExportColumnsResponse>({
     queryKey: [`/api/export/${moduleName}/columns`],
     enabled: isOpen,
   });

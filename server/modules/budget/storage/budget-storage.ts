@@ -81,8 +81,10 @@ export class BudgetStorage implements IBudgetStorage {
       throw new Error("Budget not found");
     }
 
-    const periodStart = budget.month;
-    const periodEnd = new Date(new Date(budget.month).setMonth(new Date(budget.month).getMonth() + 1)).toISOString();
+    const periodStart = budget.budgetMonth;
+    const periodEnd = new Date(
+      new Date(budget.budgetMonth).setMonth(new Date(budget.budgetMonth).getMonth() + 1),
+    ).toISOString();
 
     // Получаем продажи за период
     const [salesData] = await db
@@ -121,7 +123,7 @@ export class BudgetStorage implements IBudgetStorage {
 
     return {
       budgetId,
-      period: budget.month,
+      period: budget.budgetMonth,
       revenue: totalRevenue,
       profit: totalProfit,
       marginality: parseFloat(totalRevenue) > 0 
@@ -137,7 +139,7 @@ export class BudgetStorage implements IBudgetStorage {
       throw new Error("Budget not found");
     }
 
-    const revenue = parseFloat(budget.actualSalesVolume || budget.plannedSalesVolume || "0");
+    const revenue = parseFloat(budget.salesVolume || "0");
     const operatingExpenses = parseFloat(budget.operatingExpenses || "0");
     const otherExpenses = parseFloat(budget.otherExpenses || "0");
     const totalExpenses = operatingExpenses + otherExpenses;
@@ -148,7 +150,7 @@ export class BudgetStorage implements IBudgetStorage {
 
     return {
       budgetId,
-      period: budget.month,
+      period: budget.budgetMonth,
       metrics: {
         revenue: revenue.toString(),
         operatingExpenses: operatingExpenses.toString(),

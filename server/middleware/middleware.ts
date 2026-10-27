@@ -4,7 +4,7 @@ import { AuditContext } from "../modules/audit/services/audit-service";
 
 declare module "express-session" {
   interface SessionData {
-    userId: number;
+    userId: string;
   }
 }
 

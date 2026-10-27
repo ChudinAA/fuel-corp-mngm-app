@@ -119,7 +119,7 @@ export function registerDeliveryRoutes(app: Express) {
         }
         const data = {
           ...rawData,
-          costPerKg: rawData.costPerKg === "" ? null : rawData.costPerKg,
+          costPerKg: rawData.costPerKg === "" ? undefined : rawData.costPerKg,
           distance: rawData.distance === "" ? null : rawData.distance,
         };
 

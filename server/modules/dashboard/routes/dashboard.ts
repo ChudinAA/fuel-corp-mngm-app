@@ -192,6 +192,9 @@ export function registerDashboardRoutes(app: Express) {
       const config = await storage.dashboard.getUserDashboard(
         req.session.userId!,
       );
+      if (!config) {
+        return res.status(404).json({ message: "Dashboard configuration not found" });
+      }
 
       const exportData = {
         version: "1.0",

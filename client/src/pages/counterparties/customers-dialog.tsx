@@ -130,15 +130,15 @@ export function AddCustomerDialog({
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove } = (useFieldArray as any)({
     control: form.control,
-    name: "baseIds",
+    name: "baseIds" as any,
   });
 
   // Ensure there is at least one empty field for bases if the list is empty
   useEffect(() => {
     if (fields.length === 0) {
-      append("");
+      append("" as never);
     }
   }, [fields.length, append]);
 
@@ -181,7 +181,7 @@ export function AddCustomerDialog({
         isIntermediary: editCustomer.isIntermediary || false,
         isForeign: editCustomer.isForeign || false,
         withVAT: editCustomer.withVAT || false,
-        isActive: editCustomer.isActive,
+        isActive: editCustomer.isActive ?? false,
       });
     }
   }, [editCustomer, form]);
@@ -438,7 +438,7 @@ export function AddCustomerDialog({
                   </Button>
                 </div>
               </div>
-              {fields.map((field, index) => (
+          {fields.map((field: any, index: number) => (
                 <div
                   key={field.id}
                   ref={index === newlyAddedBasisIndex ? newBasisRef : undefined}

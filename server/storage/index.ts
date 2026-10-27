@@ -48,7 +48,7 @@ export class Storage {
   public logistics: LogisticsStorage;
   public prices: PriceStorage;
   public warehouses: WarehouseStorage;
-  public exchange: ExchangeStorage;
+  public exchange: ExchangeRatesStorage;
   public movement: MovementStorage;
   public opt: OptStorage;
   public aircraftRefueling: AircraftRefuelingStorage;
@@ -102,7 +102,8 @@ export class Storage {
     this.govContracts = new GovernmentContractStorage();
     this.budget = new BudgetStorage();
     this.managementReport = new ManagementReportStorage();
-    this.exchangeRates = new ExchangeRatesStorage();
+    this.exchange = new ExchangeRatesStorage();
+    this.exchangeRates = this.exchange;
     this.storageCards = new StorageCardsStorage();
     this.refuelingAbroad = new RefuelingAbroadStorage();
     this.currencies = new CurrenciesStorage();

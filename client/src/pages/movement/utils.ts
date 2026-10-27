@@ -18,9 +18,11 @@ export const formatCurrency = (value: string | number | null) => {
 export const formatDate = (dateStr: string) => 
   format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
 
-export const calculateKgFromLiters = (liters: number | null, density: number | null): number | null => {
-  if (!liters || !density) return null;
-  return parseFloat((liters * density).toFixed(0));
+export const calculateKgFromLiters = (liters: string | number | null, density: string | number | null): number | null => {
+  const litersValue = Number(liters);
+  const densityValue = Number(density);
+  if (!litersValue || !densityValue) return null;
+  return parseFloat((litersValue * densityValue).toFixed(0));
 };
 
 export const calculateValues = (
@@ -36,7 +38,7 @@ export const calculateValues = (
     ? calculateKgFromLiters(liters, density)
     : kg;
 
-  const kgNum = calculatedKg ? parseFloat(calculatedKg) : 0;
+  const kgNum = calculatedKg ? parseFloat(String(calculatedKg)) : 0;
   const purchasePrice = purchasePriceValue || 0;
   const purchaseAmount = kgNum * purchasePrice;
   const storageCost = storageCostPerKg ? kgNum * storageCostPerKg : 0;
@@ -45,7 +47,7 @@ export const calculateValues = (
   const costPerKg = kgNum > 0 ? totalCost / kgNum : 0;
 
   return {
-    calculatedKg,
+    calculatedKg: calculatedKg === null ? null : String(calculatedKg),
     purchasePrice,
     deliveryCost,
     totalCost,

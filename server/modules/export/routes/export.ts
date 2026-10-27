@@ -137,7 +137,7 @@ export function registerExportRoutes(app: Express) {
           }
 
           case "warehouses": {
-            data = await storage.warehouses.getWarehouses();
+            data = await storage.warehouses.getAllWarehouses();
             if (search) {
               const s = search.toLowerCase();
               data = data.filter((w: any) => w.name?.toLowerCase().includes(s));

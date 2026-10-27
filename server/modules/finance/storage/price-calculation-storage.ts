@@ -24,16 +24,19 @@ export class PriceCalculationStorage implements IPriceCalculationStorage {
   }
 
   async getPriceCalculations(filters?: { productType?: string; isTemplate?: boolean }): Promise<PriceCalculation[]> {
-    let query = db.select().from(priceCalculations).where(isNull(priceCalculations.deletedAt));
-
+    const conditions = [isNull(priceCalculations.deletedAt)];
     if (filters?.productType) {
-      query = query.where(eq(priceCalculations.productType, filters.productType)) as typeof query;
+      conditions.push(eq(priceCalculations.productType, filters.productType));
     }
     if (filters?.isTemplate !== undefined) {
-      query = query.where(eq(priceCalculations.isTemplate, filters.isTemplate)) as typeof query;
+      conditions.push(eq(priceCalculations.isTemplate, filters.isTemplate));
     }
 
-    return await query.orderBy(desc(priceCalculations.createdAt));
+    return db
+      .select()
+      .from(priceCalculations)
+      .where(and(...conditions))
+      .orderBy(desc(priceCalculations.createdAt));
   }
 
   async createPriceCalculation(data: InsertPriceCalculation): Promise<PriceCalculation> {

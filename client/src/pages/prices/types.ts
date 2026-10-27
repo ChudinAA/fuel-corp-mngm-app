@@ -45,7 +45,7 @@ export interface PricesTableProps {
   dealTypeFilter: "all" | "wholesale" | "refueling" | "abroad";
   roleFilter: "all" | "supplier" | "buyer";
   productTypeFilter: string;
-  onEdit: (price: Price) => void;
+  onEdit?: (price: Price) => void;
 }
 
 export interface SelectionCheckState {

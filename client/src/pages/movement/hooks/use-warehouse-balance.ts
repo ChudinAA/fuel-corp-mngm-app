@@ -56,7 +56,7 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
 
   const isLoading = isHistoricalLoading || isCurrentLoading;
 
-  return useMemo(() => {
+  return useMemo<WarehouseBalanceResult>(() => {
     if (watchMovementType !== MOVEMENT_TYPE.INTERNAL || !watchFromWarehouseId) {
       return { balance: 0, cost: 0, status: "ok", message: "—" };
     }
@@ -99,7 +99,7 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
     }
 
     if (kgNum <= 0) {
-      return { status: "ok", message: `${formatNumber(balance)} кг` };
+      return { balance, cost, status: "ok", message: `${formatNumber(balance)} кг` };
     }
     
     if (kgNum > 0) {

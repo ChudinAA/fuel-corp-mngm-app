@@ -43,5 +43,4 @@ export interface OptDealExtended extends Opt {
     id: string;
     name: string;
   } | null;
-  isApproxVolume?: boolean | null;
 }

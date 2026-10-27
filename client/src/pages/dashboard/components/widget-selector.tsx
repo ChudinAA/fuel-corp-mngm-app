@@ -184,7 +184,8 @@ export function WidgetSelector({
                     </p>
                     {(selectedCategory !== "all" || searchQuery) && (
                       <Button 
-                        variant="link" 
+                variant="ghost"
+                className="text-primary underline-offset-4 hover:underline"
                         onClick={() => {
                           setSelectedCategory("all");
                           setSearchQuery("");

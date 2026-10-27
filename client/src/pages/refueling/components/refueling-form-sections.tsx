@@ -74,6 +74,7 @@ export function VolumeInputSection({
                     data-testid="input-liters"
                     disabled={inputMode === "kg"}
                     {...field}
+                    value={field.value ?? ""}
                   />
                 </FormControl>
                 <FormMessage />
@@ -97,6 +98,7 @@ export function VolumeInputSection({
                     data-testid="input-density"
                     disabled={inputMode === "kg"}
                     {...field}
+                    value={field.value ?? ""}
                   />
                 </FormControl>
                 <FormMessage />
@@ -128,6 +130,7 @@ export function VolumeInputSection({
                       placeholder="0.00"
                       data-testid="input-kg"
                       {...field}
+                      value={field.value ?? ""}
                     />
                   </FormControl>
                   <FormMessage />

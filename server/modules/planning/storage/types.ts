@@ -168,7 +168,7 @@ export interface IPlanningStorage {
 
   getPlanningComments(entityType: string, entityId: string, fieldKey: string): Promise<PlanningCommentWithUser[]>;
   createPlanningComment(data: InsertPlanningComment): Promise<PlanningComment>;
-  updatePlanningComment(id: string, userId: string, data: { text?: string; isHighPriority?: boolean }): Promise<PlanningComment>;
+  updatePlanningComment(id: string, userId: string, data: { text?: string; isHighPriority?: boolean }): Promise<PlanningComment | null>;
   deletePlanningComment(id: string, userId: string): Promise<boolean>;
 
   getActuals(warehouseId: string, dateFrom: string, dateTo: string): Promise<ActualsByDate[]>;

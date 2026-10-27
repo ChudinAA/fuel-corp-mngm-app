@@ -1,4 +1,5 @@
 import { useState, Suspense, useEffect, useCallback } from "react";
+import type { ComponentType } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import GridLayout, { Layout, LayoutItem } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -27,6 +28,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+const DashboardGridLayout = GridLayout as ComponentType<any>;
 
 export default function CustomizableDashboard() {
   const [layout, setLayout] = useState<LayoutItem[]>([]);
@@ -318,12 +321,12 @@ export default function CustomizableDashboard() {
         <TabsContent value="main" className="mt-6">
           <div className="dashboard-container w-full min-h-[500px]">
             {widgets.length > 0 ? (
-                <GridLayout
+                <DashboardGridLayout
                   className="layout"
                   layout={layout}
-                  onLayoutChange={(l) => handleLayoutChange([...l])}
-                  onDragStop={(l) => handleLayoutChange([...l])}
-                  onResizeStop={(l) => handleLayoutChange([...l])}
+                  onLayoutChange={(l: Layout) => handleLayoutChange([...l])}
+                  onDragStop={(l: Layout) => handleLayoutChange([...l])}
+                  onResizeStop={(l: Layout) => handleLayoutChange([...l])}
                   cols={12}
                   rowHeight={100}
                   width={gridWidth}
@@ -377,7 +380,7 @@ export default function CustomizableDashboard() {
                     </div>
                   );
                 })}
-              </GridLayout>
+                </DashboardGridLayout>
             ) : (
               <Card className="p-12 text-center">
                 <p className="text-muted-foreground mb-4">

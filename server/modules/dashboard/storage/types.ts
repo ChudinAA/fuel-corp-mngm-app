@@ -3,16 +3,17 @@ export interface WidgetDefinition {
   id: string;
   widgetKey: string;
   name: string;
-  description?: string;
+  description?: string | null;
   category: string;
   defaultWidth: number;
   defaultHeight: number;
   minWidth: number;
   minHeight: number;
-  requiredPermissions: string[];
+  requiredPermissions: string[] | null;
   configSchema?: any;
   isActive: boolean;
-  createdAt: string;
+  createdAt: string | null;
+  updatedAt?: string | null;
 }
 
 export interface DashboardWidget {
@@ -36,11 +37,11 @@ export interface DashboardLayout {
 export interface DashboardConfiguration {
   id: string;
   userId: string;
-  isDefault: boolean;
+  isDefault: boolean | null;
   layout: DashboardLayout[];
   widgets: DashboardWidget[];
-  createdAt: string;
-  updatedAt?: string;
+  createdAt: string | null;
+  updatedAt?: string | null;
 }
 
 export interface IDashboardStorage {

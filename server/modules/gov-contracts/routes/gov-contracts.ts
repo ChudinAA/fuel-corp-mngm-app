@@ -4,6 +4,8 @@ import { storage } from "../../../storage/index";
 import { insertGovernmentContractSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog } from "../../audit/middleware/audit-middleware";
+import { AUDIT_OPERATIONS, ENTITY_TYPES } from "../../audit/entities/audit";
 
 export function registerGovernmentContractRoutes(app: Express) {
   // Get government contracts
@@ -60,7 +62,7 @@ export function registerGovernmentContractRoutes(app: Express) {
 
 
   // Update contract from sales data
-  app.post("/api/gov-contracts/:id/update-from-sales", requireAuth, requirePermission("reports", "edit"), logAudit, async (req, res) => {
+  app.post("/api/gov-contracts/:id/update-from-sales", requireAuth, requirePermission("reports", "edit"), auditLog({ entityType: ENTITY_TYPES.GOVERNMENT_CONTRACT, operation: AUDIT_OPERATIONS.UPDATE }), async (req, res) => {
     try {
       const result = await storage.govContracts.updateContractFromSales(req.params.id);
       res.json(result);
@@ -80,7 +82,7 @@ export function registerGovernmentContractRoutes(app: Express) {
   });
 
   // Bulk update all active contracts
-  app.post("/api/gov-contracts/bulk-update-from-sales", requireAuth, requirePermission("reports", "edit"), logAudit, async (req, res) => {
+  app.post("/api/gov-contracts/bulk-update-from-sales", requireAuth, requirePermission("reports", "edit"), async (req, res) => {
     try {
       const activeContracts = await storage.govContracts.getGovernmentContracts({ status: 'active' });
       

@@ -12,6 +12,7 @@ import {
   serial,
   uuid,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -30,14 +31,14 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
-  roleId: uuid("role_id").references(() => roles.id),
+  roleId: uuid("role_id").references((): AnyPgColumn => roles.id),
   isActive: boolean("is_active").default(true),
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
-  updatedById: uuid("updated_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references((): AnyPgColumn => users.id),
   deletedAt: timestamp("deleted_at", { mode: "string" }),
-  deletedById: uuid("deleted_by_id").references(() => users.id),
+  deletedById: uuid("deleted_by_id").references((): AnyPgColumn => users.id),
 });
 
 // ============ RELATIONS ============

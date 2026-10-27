@@ -142,14 +142,14 @@ export function AddSupplierDialog({
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove } = (useFieldArray as any)({
     control: form.control,
-    name: "baseIds",
+    name: "baseIds" as any,
   });
 
   useEffect(() => {
     if (fields.length === 0) {
-      append("");
+      append("" as never);
     }
   }, [fields.length, append]);
 
@@ -320,7 +320,7 @@ export function AddSupplierDialog({
         isIntermediary: editItem.isIntermediary || false,
         isForeign: editItem.isForeign || false,
         withVAT: editItem.withVAT || false,
-        isActive: editItem.isActive,
+        isActive: editItem.isActive ?? false,
       });
       const pricesMap: Record<string, BasisPriceEntry> = {};
       if (editItem.basisPrices && Array.isArray(editItem.basisPrices)) {
@@ -520,7 +520,7 @@ export function AddSupplierDialog({
                   </Button>
                 </div>
               </div>
-              {fields.map((field, index) => {
+              {fields.map((field: any, index: number) => {
                 const currentBasisId = form.watch(`baseIds.${index}`) || "";
                 const basisPrices = basisPricesMap[currentBasisId] || defaultBasisPriceEntry();
                 return (

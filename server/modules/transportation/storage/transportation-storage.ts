@@ -170,7 +170,21 @@ export class TransportationStorage {
   }
 
   async createTransportation(data: InsertTransportation): Promise<Transportation> {
-    const [created] = await db.insert(transportation).values(data).returning();
+    if (!data.buyerId || !data.dealDate || data.quantityKg == null) {
+      throw new Error("Buyer, deal date, and quantity are required");
+    }
+    const dbValues = Object.fromEntries(
+      Object.entries({
+        ...data,
+        buyerId: data.buyerId!,
+        dealDate: data.dealDate!,
+        quantityKg: String(data.quantityKg),
+      }).map(([key, value]) => [key, typeof value === "number" ? String(value) : value]),
+    );
+    const [created] = await db
+      .insert(transportation)
+      .values(dbValues as unknown as typeof transportation.$inferInsert)
+      .returning();
     return created;
   }
 
@@ -183,8 +197,9 @@ export class TransportationStorage {
       .set({
         ...data,
         updatedAt: sql`NOW()`,
-        updatedById: data.updatedById,
-      })
+        updatedById: data.updatedById ?? undefined,
+        buyerId: data.buyerId ?? undefined,
+      } as unknown as Partial<typeof transportation.$inferInsert>)
       .where(eq(transportation.id, id))
       .returning();
     return updated;

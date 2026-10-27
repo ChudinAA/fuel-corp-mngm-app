@@ -659,7 +659,7 @@ export default function UsersPage() {
                           <Badge variant="outline">{getRoleName(user.roleId)}</Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(user.lastLoginAt)}
+                          {formatDate(user.lastLoginAt?.toISOString() ?? null)}
                         </TableCell>
                         <TableCell>
                           {user.isActive ? (

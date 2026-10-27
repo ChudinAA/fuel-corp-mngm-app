@@ -97,6 +97,7 @@ export function VolumeInputSection({
                     data-testid="input-liters"
                     disabled={inputMode === "kg"}
                     {...field}
+                    value={field.value ?? ""}
                   />
                 </FormControl>
                 <FormMessage />
@@ -120,6 +121,7 @@ export function VolumeInputSection({
                     data-testid="input-density"
                     disabled={inputMode === "kg"}
                     {...field}
+                    value={field.value ?? ""}
                   />
                 </FormControl>
                 <FormMessage />
@@ -151,6 +153,7 @@ export function VolumeInputSection({
                       placeholder="0.00"
                       data-testid="input-kg"
                       {...field}
+                      value={field.value ?? ""}
                     />
                   </FormControl>
                   <FormMessage />
@@ -298,7 +301,7 @@ export function LogisticsSection({
                             )
                           };
                         })}
-                        value={field.value}
+                        value={field.value ?? ""}
                         onValueChange={field.onChange}
                         placeholder="Выберите место"
                         className="w-full"
@@ -341,7 +344,7 @@ export function LogisticsSection({
                           value: carrier.id,
                           label: carrier.name
                         })) || []}
-                        value={field.value}
+                        value={field.value ?? ""}
                         onValueChange={field.onChange}
                         placeholder="Выберите перевозчика"
                         className="w-full"

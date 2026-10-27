@@ -130,7 +130,7 @@ export class ExcelService {
       const header = allowedColumns[colIdx]?.label || "";
       let maxLen = header.length + 2;
 
-      column.eachCell({ includeEmpty: false }, (cell) => {
+      column.eachCell?.({ includeEmpty: false }, (cell) => {
         if (!cell.value) return;
         const strLen =
           cell.value instanceof Date

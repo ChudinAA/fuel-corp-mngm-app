@@ -156,8 +156,8 @@ export class ManagementReportStorage implements IManagementReportStorage {
     // Метрики складов
     const [warehouseMetrics] = await db
       .select({
-        totalBalance: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.balanceKg} AS NUMERIC)), 0)`,
-        totalValue: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.balanceKg} AS NUMERIC) * CAST(${warehouseTransactions.purchasePrice} AS NUMERIC)), 0)`,
+        totalBalance: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantity} AS NUMERIC)), 0)`,
+        totalValue: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantity} AS NUMERIC) * CAST(${warehouseTransactions.price} AS NUMERIC)), 0)`,
       })
       .from(warehouseTransactions)
       .where(isNull(warehouseTransactions.deletedAt));
@@ -197,8 +197,8 @@ export class ManagementReportStorage implements IManagementReportStorage {
       .from(cashflowTransactions)
       .where(
         and(
-          gte(cashflowTransactions.transactionDate, periodStart),
-          lte(cashflowTransactions.transactionDate, periodEnd),
+          sql`${cashflowTransactions.transactionDate} >= ${periodStart}`,
+          sql`${cashflowTransactions.transactionDate} <= ${periodEnd}`,
           isNull(cashflowTransactions.deletedAt)
         )
       );
@@ -215,8 +215,8 @@ export class ManagementReportStorage implements IManagementReportStorage {
       .from(cashflowTransactions)
       .where(
         and(
-          gte(cashflowTransactions.transactionDate, periodStart),
-          lte(cashflowTransactions.transactionDate, periodEnd),
+          sql`${cashflowTransactions.transactionDate} >= ${periodStart}`,
+          sql`${cashflowTransactions.transactionDate} <= ${periodEnd}`,
           isNull(cashflowTransactions.deletedAt)
         )
       );

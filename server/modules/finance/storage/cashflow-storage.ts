@@ -33,19 +33,22 @@ export class CashflowStorage implements ICashflowStorage {
     endDate?: Date;
     category?: string;
   }): Promise<CashflowTransaction[]> {
-    let query = db.select().from(cashflowTransactions).where(isNull(cashflowTransactions.deletedAt));
-
+    const conditions = [isNull(cashflowTransactions.deletedAt)];
     if (filters?.startDate) {
-      query = query.where(gte(cashflowTransactions.transactionDate, filters.startDate)) as typeof query;
+      conditions.push(gte(cashflowTransactions.transactionDate, filters.startDate));
     }
     if (filters?.endDate) {
-      query = query.where(lte(cashflowTransactions.transactionDate, filters.endDate)) as typeof query;
+      conditions.push(lte(cashflowTransactions.transactionDate, filters.endDate));
     }
     if (filters?.category) {
-      query = query.where(eq(cashflowTransactions.category, filters.category)) as typeof query;
+      conditions.push(eq(cashflowTransactions.category, filters.category));
     }
 
-    return await query.orderBy(desc(cashflowTransactions.transactionDate));
+    return db
+      .select()
+      .from(cashflowTransactions)
+      .where(and(...conditions))
+      .orderBy(desc(cashflowTransactions.transactionDate));
   }
 
   async getCashflowSummary(startDate: Date, endDate: Date): Promise<any[]> {

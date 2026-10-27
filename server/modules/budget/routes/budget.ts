@@ -4,6 +4,8 @@ import { storage } from "../../../storage/index";
 import { insertBudgetIncomeExpenseSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog } from "../../audit/middleware/audit-middleware";
+import { AUDIT_OPERATIONS, ENTITY_TYPES } from "../../audit/entities/audit";
 
 export function registerBudgetRoutes(app: Express) {
   // Get budget entries
@@ -60,7 +62,7 @@ export function registerBudgetRoutes(app: Express) {
 
 
   // Auto-fill budget from sales data
-  app.post("/api/budgets/:id/auto-fill", requireAuth, requirePermission("reports", "edit"), logAudit, async (req, res) => {
+  app.post("/api/budgets/:id/auto-fill", requireAuth, requirePermission("reports", "edit"), auditLog({ entityType: ENTITY_TYPES.BUDGET, operation: AUDIT_OPERATIONS.UPDATE }), async (req, res) => {
     try {
       const result = await storage.budget.autoFillFromSales(req.params.id);
       res.json(result);

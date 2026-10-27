@@ -129,7 +129,7 @@ export function AddBaseDialog({
         baseType: editItem.baseType as BaseType,
         location: editItem.location || "",
         iataCode: (editItem as any).iataCode || "",
-        isActive: editItem.isActive,
+        isActive: editItem.isActive ?? false,
       });
     }
   }, [editItem, form]);

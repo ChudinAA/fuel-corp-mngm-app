@@ -41,6 +41,22 @@ export default function MovementPage() {
     },
   });
 
+  const { data: vehicles } = useQuery<any[]>({
+    queryKey: ["/api/logistics/vehicles"],
+  });
+
+  const { data: trailers } = useQuery<any[]>({
+    queryKey: ["/api/logistics/trailers"],
+  });
+
+  const { data: drivers } = useQuery<any[]>({
+    queryKey: ["/api/logistics/drivers"],
+  });
+
+  const { data: prices } = useQuery<any[]>({
+    queryKey: ["/api/prices"],
+  });
+
   const { data: deliveryCosts } = useQuery({
     queryKey: ["/api/delivery-costs"],
     queryFn: async () => {
@@ -84,6 +100,10 @@ export default function MovementPage() {
         warehouses={warehouses || []}
         suppliers={suppliers || []}
         carriers={carriers || []}
+        vehicles={vehicles || []}
+        trailers={trailers || []}
+        drivers={drivers || []}
+        prices={prices || []}
         deliveryCosts={deliveryCosts || []}
         editMovement={editingMovement}
         isCopy={isCopy}

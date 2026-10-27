@@ -154,8 +154,26 @@ export class OptStorage {
   }
 
   async createOpt(data: InsertOpt): Promise<Opt> {
+    if (!data.supplierId || !data.buyerId || !data.dealDate || data.quantityKg == null) {
+      throw new Error("Supplier, buyer, deal date, and quantity are required");
+    }
     return await db.transaction(async (tx) => {
-      const [created] = await tx.insert(opt).values(data).returning();
+      const insertValues = Object.fromEntries(
+        Object.entries({
+          ...data,
+          supplierId: data.supplierId!,
+          buyerId: data.buyerId!,
+          dealDate: data.dealDate!,
+          quantityKg: String(data.quantityKg),
+        }).map(([key, value]) => [
+          key,
+          typeof value === "number" ? String(value) : value,
+        ]),
+      );
+      const [created] = await tx
+        .insert(opt)
+        .values(insertValues as unknown as typeof opt.$inferInsert)
+        .returning();
 
       // Обновляем остаток на складе только если это склад-поставщик и НЕ черновик
       if (
@@ -175,7 +193,7 @@ export class OptStorage {
             created.id,
             parseFloat(created.quantityKg),
             parseFloat(created.purchaseAmount || "0"),
-            data.createdById,
+            data.createdById ?? undefined,
             created.dealDate,
           );
 
@@ -195,6 +213,7 @@ export class OptStorage {
     data: Partial<InsertOpt>,
   ): Promise<Opt | undefined> {
     return await db.transaction(async (tx) => {
+      let createdTransactionId: string | undefined;
       // Получаем текущую сделку с relations
       const currentOpt = await tx.query.opt.findFirst({
         where: eq(opt.id, id),
@@ -226,11 +245,11 @@ export class OptStorage {
             currentOpt.id,
             data.quantityKg,
             data.purchaseAmount || 0,
-            data.updatedById,
-            data.dealDate,
+            data.updatedById ?? undefined,
+            data.dealDate ?? undefined,
           );
 
-        data.transactionId = transaction.id;
+        createdTransactionId = transaction.id;
       }
       // Проверяем изменилось ли количество КГ и/или дата сделки, и есть ли привязанная транзакция (для НЕ черновиков)
       else if (
@@ -281,8 +300,8 @@ export class OptStorage {
             newQuantityKg,
             newTotalCost,
             currentOpt.productType || PRODUCT_TYPE.KEROSENE,
-            data.updatedById,
-            data.dealDate,
+            data.updatedById ?? undefined,
+            data.dealDate ?? undefined,
           );
         } else if (dateChanged) {
           // Только дата изменилась — обновляем дату транзакции и запускаем пересчёт
@@ -293,7 +312,7 @@ export class OptStorage {
             currentOpt.productType || PRODUCT_TYPE.KEROSENE,
             currentOpt.dealDate!,
             data.dealDate!,
-            data.updatedById,
+            data.updatedById ?? undefined,
           );
         }
       }
@@ -303,9 +322,10 @@ export class OptStorage {
         .update(opt)
         .set({
           ...data,
+          transactionId: createdTransactionId,
           updatedAt: sql`NOW()`,
-          updatedById: data.updatedById,
-        })
+          updatedById: data.updatedById ?? undefined,
+        } as unknown as Partial<typeof opt.$inferInsert>)
         .where(eq(opt.id, id))
         .returning();
 

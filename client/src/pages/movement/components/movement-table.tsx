@@ -433,7 +433,7 @@ export function MovementTable({
                         {item.fromIsExport && (
                           <Globe
                             className="h-3 w-3 shrink-0 text-blue-500 dark:text-blue-400"
-                            title="Без НДС (экспорт)"
+                            aria-label="Без НДС (экспорт)"
                           />
                         )}
                       </div>
@@ -444,7 +444,7 @@ export function MovementTable({
                         {item.toIsExport && (
                           <Globe
                             className="h-3 w-3 shrink-0 text-blue-500 dark:text-blue-400"
-                            title="Без НДС (экспорт)"
+                            aria-label="Без НДС (экспорт)"
                           />
                         )}
                       </div>

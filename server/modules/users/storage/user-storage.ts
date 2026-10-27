@@ -64,12 +64,11 @@ export class UserStorage implements IUserStorage {
     if (data.password) {
       data.password = await hashPassword(data.password);
     }
-    data.updatedAt = sql`NOW()`;
     data.updatedById = updatedById;
 
     const [user] = await db
       .update(users)
-      .set(data)
+      .set({ ...data, updatedAt: sql`NOW()` })
       .where(eq(users.id, id))
       .returning();
     return user;

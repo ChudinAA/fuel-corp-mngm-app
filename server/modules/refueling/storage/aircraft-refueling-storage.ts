@@ -613,8 +613,8 @@ export class AircraftRefuelingStorage {
               currentRefueling.id,
               data.quantityKg,
               data.purchaseAmount || 0,
-              data.updatedById,
-              data.refuelingDate,
+              data.updatedById!,
+              data.refuelingDate ?? undefined,
             );
 
           data.equipmentTransactionId = transaction.id;
@@ -629,8 +629,8 @@ export class AircraftRefuelingStorage {
               currentRefueling.id,
               data.quantityKg,
               data.purchaseAmount || 0,
-              data.updatedById,
-              data.refuelingDate,
+              data.updatedById ?? undefined,
+              data.refuelingDate ?? undefined,
             );
 
           data.transactionId = transaction.id;
@@ -689,8 +689,8 @@ export class AircraftRefuelingStorage {
               oldTotalCost,
               newQuantityKg,
               newTotalCost,
-              data.updatedById,
-              data.refuelingDate,
+              data.updatedById!,
+              data.refuelingDate ?? undefined,
             );
           } else if (
             currentRefueling.warehouseId &&
@@ -705,8 +705,8 @@ export class AircraftRefuelingStorage {
               newQuantityKg,
               newTotalCost,
               currentRefueling.productType,
-              data.updatedById,
-              data.refuelingDate,
+              data.updatedById ?? undefined,
+              data.refuelingDate ?? undefined,
             );
           }
         } else if (dateChanged) {
@@ -724,7 +724,7 @@ export class AircraftRefuelingStorage {
               currentRefueling.productType,
               currentRefueling.refuelingDate!,
               data.refuelingDate!,
-              data.updatedById,
+              data.updatedById ?? undefined,
             );
           } else if (
             currentRefueling.equipmentId &&
@@ -737,7 +737,7 @@ export class AircraftRefuelingStorage {
               currentRefueling.productType,
               currentRefueling.refuelingDate!,
               data.refuelingDate!,
-              data.updatedById,
+              data.updatedById ?? undefined,
             );
           }
         }
@@ -748,7 +748,7 @@ export class AircraftRefuelingStorage {
         .set({
           ...data,
           updatedAt: sql`NOW()`,
-        })
+        } as any)
         .where(eq(aircraftRefueling.id, id))
         .returning();
 
@@ -944,7 +944,7 @@ export class AircraftRefuelingStorage {
       if (deals.length === 0) {
         throw new Error("Состав удалённого заказа не найден");
       }
-      if (deals.some((deal) => !deal.deletedAt)) {
+      if (deals.some((deal: typeof aircraftRefueling.$inferSelect) => !deal.deletedAt)) {
         throw new Error("Заказ уже восстановлен или восстановлен не полностью");
       }
 
@@ -1014,9 +1014,9 @@ export class AircraftRefuelingStorage {
       await tx
         .update(aircraftRefueling)
         .set({ deletedAt: null, deletedById: null })
-        .where(inArray(aircraftRefueling.id, deals.map((deal) => deal.id)));
+        .where(inArray(aircraftRefueling.id, deals.map((deal: typeof aircraftRefueling.$inferSelect) => deal.id)));
 
-      return deals.map((deal) => ({
+      return deals.map((deal: typeof aircraftRefueling.$inferSelect) => ({
         ...deal,
         deletedAt: null,
         deletedById: null,
@@ -1033,7 +1033,7 @@ export class AircraftRefuelingStorage {
         desc(aircraftRefueling.refuelingDate),
       ],
       with: {
-        base: {
+        basis: {
           columns: {
             id: true,
             name: true,

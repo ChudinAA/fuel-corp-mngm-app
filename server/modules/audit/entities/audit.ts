@@ -100,6 +100,8 @@ export const ENTITY_TYPES = {
   NOMENCLATURE: 'nomenclature',
   NOMENCLATURE_TYPE: 'nomenclature_types',
   UNIT_OF_MEASURE: 'units_of_measure',
+  BUDGET: 'budget',
+  GOVERNMENT_CONTRACT: 'government_contracts',
 } as const;
 
 export type EntityType = typeof ENTITY_TYPES[keyof typeof ENTITY_TYPES];

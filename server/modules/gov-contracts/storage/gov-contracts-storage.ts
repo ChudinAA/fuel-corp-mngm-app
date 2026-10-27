@@ -18,7 +18,6 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
             email: true,
           },
         },
-        customer: true,
       },
     });
   }
@@ -49,7 +48,6 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
             email: true,
           },
         },
-        customer: true,
       },
     });
   }
@@ -103,7 +101,7 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
       .from(opt)
       .where(
         and(
-          eq(opt.customerId, contract.customerId!),
+          eq(opt.buyerId, contract.customerId!),
           gte(opt.dealDate, contract.startDate),
           lte(opt.dealDate, contract.endDate || new Date().toISOString()),
           isNull(opt.deletedAt)
@@ -142,10 +140,8 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
     // Обновляем контракт
     await this.updateGovernmentContract(contractId, {
       actualVolume: totalActualVolume,
-      actualAmount: totalActualRevenue,
       currentAmount: totalActualRevenue,
       remainingAmount: remainingAmount,
-      updatedAt: sql`NOW()`,
     });
 
     return {
@@ -170,7 +166,7 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
     const plannedVolume = parseFloat(contract.plannedVolume || "0");
     const actualVolume = parseFloat(contract.actualVolume || "0");
     const plannedAmount = parseFloat(contract.totalAmount || "0");
-    const actualAmount = parseFloat(contract.actualAmount || "0");
+    const actualAmount = parseFloat(contract.currentAmount || "0");
 
     const volumeCompletion = plannedVolume > 0 ? (actualVolume / plannedVolume) * 100 : 0;
     const amountCompletion = plannedAmount > 0 ? (actualAmount / plannedAmount) * 100 : 0;
@@ -189,7 +185,7 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
     return {
       contractId,
       contractNumber: contract.contractNumber,
-      customer: contract.customer,
+      customerId: contract.customerId,
       planned: {
         volume: plannedVolume.toString(),
         amount: plannedAmount.toString(),

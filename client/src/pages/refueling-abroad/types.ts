@@ -2,7 +2,7 @@ import type { RefuelingAbroad } from "@shared/schema";
 
 export interface RefuelingAbroadFormProps {
   onSuccess?: () => void;
-  editData?: RefuelingAbroad | null;
+  editData?: (RefuelingAbroad & { originalId?: string }) | null;
 }
 
 export interface AddRefuelingAbroadDialogProps {

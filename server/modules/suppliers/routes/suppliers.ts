@@ -57,7 +57,7 @@ export function registerSuppliersRoutes(app: Express) {
 
         const data = insertSupplierSchema.parse({
           ...restData,
-          createdById: req.session.userId,
+          createdById: req.session.userId!,
         });
 
         const item = await storage.suppliers.createSupplier({
@@ -88,9 +88,12 @@ export function registerSuppliersRoutes(app: Express) {
             name: newWarehouseData.name || data.name,
             baseIds: newWarehouseData.baseIds || normalizedBaseIds,
             storageCost: newWarehouseData.storageCost || null,
+            equipmentType: "common",
+            isExport: false,
+            isPinned: false,
             supplierId: item.id,
             isActive: data.isActive ?? true,
-            createdById: req.session.userId,
+            createdById: req.session.userId!,
           });
           await storage.suppliers.updateSupplier(item.id, {
             warehouseId: warehouse.id,
@@ -104,8 +107,11 @@ export function registerSuppliersRoutes(app: Express) {
             baseIds: normalizedBaseIds,
             supplierId: item.id,
             storageCost: data.storageCost || null,
+            equipmentType: "common",
+            isExport: false,
+            isPinned: false,
             isActive: data.isActive ?? true,
-            createdById: req.session.userId,
+            createdById: req.session.userId!,
           });
           await storage.suppliers.updateSupplier(item.id, {
             warehouseId: warehouse.id,
@@ -176,7 +182,7 @@ export function registerSuppliersRoutes(app: Express) {
 
         const updateData: any = {
           ...restData,
-          updatedById: req.session.userId,
+          updatedById: req.session.userId!,
         };
 
         if (baseIds !== undefined) {
@@ -232,9 +238,12 @@ export function registerSuppliersRoutes(app: Express) {
             name: newWarehouseData.name,
             baseIds: newWarehouseData.baseIds || warehouseBaseIds,
             storageCost: newWarehouseData.storageCost || null,
+            equipmentType: "common",
+            isExport: false,
+            isPinned: false,
             supplierId: id,
             isActive: true,
-            createdById: req.session.userId,
+            createdById: req.session.userId!,
           });
           updateData.warehouseId = warehouse.id;
           updateData.isWarehouse = true;

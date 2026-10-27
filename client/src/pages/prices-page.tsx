@@ -15,7 +15,7 @@ export default function PricesPage() {
   const [buyerEnabled, setBuyerEnabled] = useState(false);
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
 
-  const getDealTypeFilter = (): "all" | "wholesale" | "refueling" | "refueling_abroad" => {
+  const getDealTypeFilter = (): "all" | "wholesale" | "refueling" | "abroad" => {
     const enabledCount = [wholesaleEnabled, refuelingEnabled, refuelingAbroadEnabled].filter(Boolean).length;
     if (enabledCount === 0 || enabledCount > 1) return "all";
     if (wholesaleEnabled) return COUNTERPARTY_TYPE.WHOLESALE;

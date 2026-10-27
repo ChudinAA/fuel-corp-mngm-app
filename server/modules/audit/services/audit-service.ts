@@ -442,7 +442,8 @@ export class AuditService {
           user: {
             columns: {
               id: true,
-              username: true,
+              firstName: true,
+              lastName: true,
               email: true,
             }
           }
@@ -475,7 +476,8 @@ export class AuditService {
           user: {
             columns: {
               id: true,
-              username: true,
+              firstName: true,
+              lastName: true,
               email: true,
             }
           }

@@ -332,9 +332,11 @@ export class RefuelingAbroadStorage {
         })
         .returning();
 
-      const storageCard = await tx.query.storageCards.findFirst({
-        where: eq(storageCards.supplierId, created.supplierId),
-      });
+      const storageCard = created.supplierId
+        ? await tx.query.storageCards.findFirst({
+            where: eq(storageCards.supplierId, created.supplierId),
+          })
+        : undefined;
 
       // Для услуги заправки или черновика не создаем транзакции на складе
       let needsTopUp = false;
@@ -800,9 +802,11 @@ export class RefuelingAbroadStorage {
 
       // Restore associated transaction if exists and not a service
       if (result.transactionId) {
-        const storageCard = await tx.query.storageCards.findFirst({
-          where: eq(storageCards.supplierId, result.supplierId),
-        });
+        const storageCard = result.supplierId
+          ? await tx.query.storageCards.findFirst({
+              where: eq(storageCards.supplierId, result.supplierId),
+            })
+          : undefined;
 
         if (!storageCard) {
           throw new Error(`Storage card ${result.supplierId} not found`);
@@ -839,6 +843,14 @@ export class RefuelingAbroadStorage {
       }
       return result;
     });
+  }
+
+  async getDrafts(): Promise<RefuelingAbroad[]> {
+    return db
+      .select()
+      .from(refuelingAbroad)
+      .where(and(eq(refuelingAbroad.isDraft, true), isNull(refuelingAbroad.deletedAt)))
+      .orderBy(desc(refuelingAbroad.createdAt));
   }
 
   async getDeleted(): Promise<RefuelingAbroad[]> {

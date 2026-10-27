@@ -35,22 +35,25 @@ export class PaymentCalendarStorage implements IPaymentCalendarStorage {
     status?: string;
     category?: string;
   }): Promise<PaymentCalendarItem[]> {
-    let query = db.select().from(paymentCalendar).where(isNull(paymentCalendar.deletedAt));
-
+    const conditions = [isNull(paymentCalendar.deletedAt)];
     if (filters?.startDate) {
-      query = query.where(gte(paymentCalendar.dueDate, filters.startDate)) as typeof query;
+      conditions.push(gte(paymentCalendar.dueDate, filters.startDate));
     }
     if (filters?.endDate) {
-      query = query.where(lte(paymentCalendar.dueDate, filters.endDate)) as typeof query;
+      conditions.push(lte(paymentCalendar.dueDate, filters.endDate));
     }
     if (filters?.status) {
-      query = query.where(eq(paymentCalendar.status, filters.status)) as typeof query;
+      conditions.push(eq(paymentCalendar.status, filters.status));
     }
     if (filters?.category) {
-      query = query.where(eq(paymentCalendar.category, filters.category)) as typeof query;
+      conditions.push(eq(paymentCalendar.category, filters.category));
     }
 
-    return await query.orderBy(paymentCalendar.dueDate);
+    return db
+      .select()
+      .from(paymentCalendar)
+      .where(and(...conditions))
+      .orderBy(paymentCalendar.dueDate);
   }
 
   async getUpcomingPayments(daysAhead: number = 7): Promise<PaymentCalendarItem[]> {
