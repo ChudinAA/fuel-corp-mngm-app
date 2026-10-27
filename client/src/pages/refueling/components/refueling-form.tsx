@@ -66,6 +66,7 @@ import {
   ProductVolumeSection,
   type RefuelingVolume,
 } from "./product-volume-section";
+import { createRefuelingOrderMutationOptions } from "./refueling-order-mutation";
 
 export interface RefuelingFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
@@ -853,35 +854,29 @@ export const RefuelingForm = forwardRef<
     },
   });
 
-  const updateOrderMutation = useMutation({
-    mutationFn: async (deals: object[]) => {
-      const response = await apiRequest("PUT", `/api/refueling/order/${editData?.id}`, {
-        deals,
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey[0] as string;
-          return key?.startsWith("/api/refueling") || key?.startsWith("/api/warehouses");
-        },
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/refueling/contract-used"] });
-      toast({
-        title: "Заказ обновлён",
-        description: "Состав и сделки заказа заправки сохранены",
-      });
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
-      showError(
-        error.message?.trim() ||
-          "Не удалось сохранить заказ заправки. Проверьте данные и попробуйте снова.",
-        "refueling",
-      );
-    },
-  });
+  const updateOrderMutation = useMutation(
+    createRefuelingOrderMutationOptions({
+      orderId: editData?.id || "",
+      request: apiRequest,
+      invalidateOrderQueries: () => {
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0] as string;
+            return key?.startsWith("/api/refueling") || key?.startsWith("/api/warehouses");
+          },
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/refueling/contract-used"] });
+      },
+      notifySuccess: () => {
+        toast({
+          title: "Заказ обновлён",
+          description: "Состав и сделки заказа заправки сохранены",
+        });
+      },
+      showError: (message, module) => showError(message, module),
+      onSuccess,
+    }),
+  );
 
   // Helper: builds the common (shared) payload fields from form data
   const buildCommonPayload = (data: RefuelingFormData, isDraft: boolean) => ({

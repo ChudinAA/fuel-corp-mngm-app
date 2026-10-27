@@ -8,6 +8,7 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "test:refueling-order": "node --import tsx --test client/src/pages/refueling/components/refueling-order-mutation.test.ts",
     "test:restore-stock": "node scripts/test-restore-stock.mjs",
     "db:push": "drizzle-kit push"
   },
