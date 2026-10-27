@@ -15,6 +15,7 @@ import { EquipmentDetailsDialog } from "./components/equipment-details-dialog";
 import { AddEquipmentDialog } from "./components/add-equipment-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { EQUIPMENT_TYPE } from "@shared/constants";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 export default function EquipmentsPage() {
   const [search, setSearch] = useState("");
@@ -152,26 +153,26 @@ export default function EquipmentsPage() {
                     Средства заправки
                   </h2>
                   {(() => {
-                    const totalKerosene = filteredEquipments.reduce((s, eq) => s + parseFloat(eq.currentBalance || "0"), 0);
-                    const totalPvkj = filteredEquipments.reduce((s, eq) => s + parseFloat(eq.pvkjBalance || "0"), 0);
+                    const totalKeroseneKg = filteredEquipments.reduce((s, eq) => s + parseFloat(eq.currentBalance || "0"), 0);
+                    const totalPvkjKg = filteredEquipments.reduce((s, eq) => s + parseFloat(eq.pvkjBalance || "0"), 0);
                     return (
                       <div className="flex items-center gap-2 flex-wrap">
-                        {totalKerosene > 0 && (
+                        {totalKeroseneKg > 0 && (
                           <span className="text-xs text-foreground normal-case tracking-normal">
                             Остаток керосина:{" "}
                             <span className="font-semibold">
-                              {totalKerosene.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} кг
+                              {formatTonnes(kilogramsToTonnes(totalKeroseneKg))} т
                             </span>
                           </span>
                         )}
-                        {totalKerosene > 0 && totalPvkj > 0 && (
+                        {totalKeroseneKg > 0 && totalPvkjKg > 0 && (
                           <span className="text-muted-foreground text-xs">·</span>
                         )}
-                        {totalPvkj > 0 && (
+                        {totalPvkjKg > 0 && (
                           <span className="text-xs text-foreground normal-case tracking-normal">
                             Остаток ПВКЖ:{" "}
                             <span className="font-semibold">
-                              {totalPvkj.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} кг
+                              {formatTonnes(kilogramsToTonnes(totalPvkjKg))} т
                             </span>
                           </span>
                         )}

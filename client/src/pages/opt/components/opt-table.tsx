@@ -60,6 +60,12 @@ import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 import { useFilterReferenceData } from "@/hooks/use-filter-reference-data";
+import {
+  formatPricePerTonne,
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
@@ -74,6 +80,33 @@ interface OptDealActionsProps {
   onCopy: () => void;
   onDelete: () => void;
   onShowNotes?: () => void;
+}
+
+function effectivePricePerTonne(
+  amount: string | number | null | undefined,
+  legacyPricePerKilogram: string | number | null | undefined,
+  quantityKg: string | number | null | undefined,
+): number | null {
+  const amountValue = amount === null || amount === undefined ? null : Number(amount);
+  const quantityValue =
+    quantityKg === null || quantityKg === undefined ? null : Number(quantityKg);
+  if (
+    amountValue !== null &&
+    Number.isFinite(amountValue) &&
+    quantityValue !== null &&
+    Number.isFinite(quantityValue) &&
+    quantityValue > 0
+  ) {
+    return amountValue / (quantityValue / 1000);
+  }
+
+  const legacyPrice =
+    legacyPricePerKilogram === null || legacyPricePerKilogram === undefined
+      ? null
+      : Number(legacyPricePerKilogram);
+  return legacyPrice !== null && Number.isFinite(legacyPrice)
+    ? pricePerKilogramToPerTonne(legacyPrice)
+    : null;
 }
 
 function OptDealActions({
@@ -415,17 +448,17 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-center text-xs font-semibold p-1 w-[55px]">
-                КГ
+              <TableHead className="text-center text-xs font-semibold p-1 w-[70px]">
+                Масса, т
               </TableHead>
-              <TableHead className="text-right text-xs font-semibold p-1 w-[70px]">
-                Цена пок.
+              <TableHead className="text-right text-xs font-semibold p-1 w-[90px]">
+                Цена пок. ₽/т
               </TableHead>
               <TableHead className="text-right text-xs font-semibold p-1 w-[75px]">
                 Покупка
               </TableHead>
-              <TableHead className="text-right text-xs font-semibold p-1 w-[70px]">
-                Цена пр.
+              <TableHead className="text-right text-xs font-semibold p-1 w-[90px]">
+                Цена пр. ₽/т
               </TableHead>
               <TableHead className="text-right text-xs font-semibold p-1 w-[75px]">
                 Продажа
@@ -475,8 +508,10 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                 <TableCell className="py-1 px-1" colSpan={4} />
                 <TableCell className="py-1 px-1">
                   <StatCell
-                    values={dealsToDisplay.map((d: any) => d.quantityKg)}
-                    formatFn={(v) => formatNumberForTable(v)}
+                    values={dealsToDisplay.map((d: any) =>
+                      kilogramsToTonnes(Number(d.quantityKg || 0)),
+                    )}
+                    formatFn={(v) => formatTonnes(Number(v) || 0)}
                   />
                 </TableCell>
                 <TableCell className="py-1 px-1" />
@@ -612,7 +647,9 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className={cn(deal.isApproxVolume && "approx-volume-animated cursor-help")}>
-                            {formatNumberForTable(deal.quantityKg)}
+                            {formatTonnes(
+                              kilogramsToTonnes(Number(deal.quantityKg || 0)),
+                            )}
                           </span>
                         </TooltipTrigger>
                         {deal.isApproxVolume && (
@@ -625,8 +662,18 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   </TableCell>
                   <TableCell className="text-right text-xs py-1.5 px-1">
                     <div className="flex items-center justify-end gap-1">
-                      {deal.purchasePrice
-                        ? formatNumberForTable(deal.purchasePrice)
+                      {effectivePricePerTonne(
+                        deal.purchaseAmount,
+                        deal.purchasePrice,
+                        deal.quantityKg,
+                      ) !== null
+                        ? formatPricePerTonne(
+                            effectivePricePerTonne(
+                              deal.purchaseAmount,
+                              deal.purchasePrice,
+                              deal.quantityKg,
+                            )!,
+                          )
                         : "-"}
                       {deal.purchasePriceModified && (
                         <Tooltip>
@@ -644,7 +691,19 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                     {formatCurrencyForTable(deal.purchaseAmount)}
                   </TableCell>
                   <TableCell className="text-right text-xs py-1.5 px-1">
-                    {formatNumberForTable(deal.salePrice)}
+                    {effectivePricePerTonne(
+                      deal.saleAmount,
+                      deal.salePrice,
+                      deal.quantityKg,
+                    ) !== null
+                      ? formatPricePerTonne(
+                          effectivePricePerTonne(
+                            deal.saleAmount,
+                            deal.salePrice,
+                            deal.quantityKg,
+                          )!,
+                        )
+                      : "-"}
                   </TableCell>
                   <TableCell className="text-right text-xs py-1.5 px-1">
                     {formatCurrencyForTable(deal.saleAmount)}

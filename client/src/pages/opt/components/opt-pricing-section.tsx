@@ -17,7 +17,12 @@ import type { Price, Warehouse } from "@shared/schema";
 import type { OptFormData } from "../schemas";
 import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
 import { CalculatedField } from "./calculated-field";
-import { formatNumber, formatPrice, formatCurrency } from "../utils";
+import { formatCurrency } from "../utils";
+import { formatPricePerTonne, formatTonnes } from "@shared/units";
+import {
+  contractPricePerTonne,
+  optLegacyKilogramsToTonnes,
+} from "../unit-calculations";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,14 +41,14 @@ interface OptPricingSectionProps {
   selectedSalePriceId: string;
   setSelectedPurchasePriceId: (id: string) => void;
   setSelectedSalePriceId: (id: string) => void;
-  purchasePrice: number | null;
-  salePrice: number | null;
+  purchasePricePerTonne: number | null;
   purchaseAmount: number | null;
   saleAmount: number | null;
   profit: number | null;
   otherServiceFee?: number;
   supplierWarehouse: Warehouse | undefined;
   finalKg: number;
+  purchasePriceRequiresDensity: boolean;
   isEditing: boolean;
   contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
   supplierContractVolumeStatus: {
@@ -64,14 +69,14 @@ export function OptPricingSection({
   selectedSalePriceId,
   setSelectedPurchasePriceId,
   setSelectedSalePriceId,
-  purchasePrice,
-  salePrice,
+  purchasePricePerTonne,
   purchaseAmount,
   saleAmount,
   profit,
   otherServiceFee = 0,
   supplierWarehouse,
   finalKg,
+  purchasePriceRequiresDensity,
   isEditing,
   contractVolumeStatus,
   supplierContractVolumeStatus,
@@ -88,6 +93,7 @@ export function OptPricingSection({
   const watchCustomerBasisId = form.watch("customerBasisId");
   const watchCustomerBasis = form.watch("customerBasis");
   const watchProductType = form.watch("productType");
+  const watchDensity = form.watch("density");
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
@@ -116,18 +122,24 @@ export function OptPricingSection({
 
     // Остаток на складе сейчас (без учета текущего ввода)
     if (finalKg <= 0) {
-      return { status: "ok", message: `${formatNumber(availableBalance)} кг` };
+      return {
+        status: "ok",
+        message: `${formatTonnes(optLegacyKilogramsToTonnes(availableBalance))} т`,
+      };
     }
 
     // Показываем сколько останется: (Доступно) - (Новый ввод)
     const remaining = availableBalance - finalKg;
 
     if (remaining >= 0) {
-      return { status: "ok", message: `ОК: ${formatNumber(remaining)} кг` };
+      return {
+        status: "ok",
+        message: `ОК: ${formatTonnes(optLegacyKilogramsToTonnes(remaining))} т`,
+      };
     } else {
       return {
         status: "error",
-        message: `Недостаточно! Доступно: ${formatNumber(availableBalance)} кг`,
+        message: `Недостаточно! Доступно: ${formatTonnes(optLegacyKilogramsToTonnes(availableBalance))} т`,
       };
     }
   };
@@ -190,7 +202,19 @@ export function OptPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatPrice(priceVal)} ₽/кг
+                                  {contractPricePerTonne(
+                                    priceVal,
+                                    price.priceUnit,
+                                    watchDensity,
+                                  ) === null
+                                    ? "Укажите плотность"
+                                    : `${formatPricePerTonne(
+                                        contractPricePerTonne(
+                                          priceVal,
+                                          price.priceUnit,
+                                          watchDensity,
+                                        )!,
+                                      )} ₽/т`}
                                 </SelectItem>
                               );
                             } catch {
@@ -237,15 +261,17 @@ export function OptPricingSection({
           <CalculatedField
             label="Покупка"
             value={
-              purchasePrice !== null
-                ? formatPrice(purchasePrice)
+              purchasePricePerTonne !== null
+                ? formatPricePerTonne(purchasePricePerTonne)
+                : purchasePriceRequiresDensity
+                  ? "Укажите плотность"
                 : isWarehouseSupplier && isWarehouseBalanceLoading
                   ? "Загрузка..."
                   : "Нет цены!"
             }
-            suffix={purchasePrice !== null ? " ₽/кг" : ""}
+            suffix={purchasePricePerTonne !== null ? " ₽/т" : ""}
             status={
-              purchasePrice !== null ||
+              purchasePricePerTonne !== null ||
               (isWarehouseSupplier && isWarehouseBalanceLoading)
                 ? "ok"
                 : "error"
@@ -312,7 +338,19 @@ export function OptPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatPrice(priceVal)} ₽/кг
+                                  {contractPricePerTonne(
+                                    priceVal,
+                                    price.priceUnit,
+                                    watchDensity,
+                                  ) === null
+                                    ? "Укажите плотность"
+                                    : `${formatPricePerTonne(
+                                        contractPricePerTonne(
+                                          priceVal,
+                                          price.priceUnit,
+                                          watchDensity,
+                                        )!,
+                                      )} ₽/т`}
                                 </SelectItem>
                               );
                             } catch {

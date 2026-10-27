@@ -42,7 +42,13 @@ import {
 } from "lucide-react";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
-import { formatNumber, formatCurrency, formatCost } from "../utils";
+import { formatCurrency } from "../utils";
+import {
+  formatPricePerTonne,
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 import {
   BASE_TYPE,
   PRODUCT_TYPE,
@@ -106,13 +112,13 @@ export function WarehouseDetailsDialog({
           string,
           {
             productType: string;
-            receiptKg: number;
+            receiptTonnes: number;
             receiptSum: number;
-            expenseKg: number;
+            expenseTonnes: number;
             expenseSum: number;
-            avgPrice: number;
-            avgCost: number;
-            balance: number;
+            avgPricePerTonne: number;
+            avgCostPerTonne: number;
+            balanceTonnes: number;
             transactions: WarehouseTransaction[];
           }
         >;
@@ -132,13 +138,13 @@ export function WarehouseDetailsDialog({
       if (!groups[date].products[product]) {
         groups[date].products[product] = {
           productType: product,
-          receiptKg: 0,
+          receiptTonnes: 0,
           receiptSum: 0,
-          expenseKg: 0,
+          expenseTonnes: 0,
           expenseSum: 0,
-          avgPrice: 0,
-          avgCost: 0,
-          balance: 0,
+          avgPricePerTonne: 0,
+          avgCostPerTonne: 0,
+          balanceTonnes: 0,
           transactions: [],
         };
       }
@@ -163,37 +169,43 @@ export function WarehouseDetailsDialog({
         return a.id.localeCompare(b.id);
       });
 
-      const qty = parseFloat(tx.quantityKg);
+      const qtyTonnes = kilogramsToTonnes(parseFloat(tx.quantityKg));
       const sum = parseFloat(tx.sum || "0");
-      const price = parseFloat(tx.price || "0");
+      const pricePerTonne = pricePerKilogramToPerTonne(
+        parseFloat(tx.price || "0"),
+      );
 
       if (
         tx.transactionType === TRANSACTION_TYPE.RECEIPT ||
         tx.transactionType === TRANSACTION_TYPE.TRANSFER_IN
       ) {
-        pData.receiptKg += qty;
+        pData.receiptTonnes += qtyTonnes;
         pData.receiptSum += sum;
-        if (price > 0) {
-          pData.avgPrice = price;
+        if (pricePerTonne > 0) {
+          pData.avgPricePerTonne = pricePerTonne;
         }
       } else if (tx.transactionType === TRANSACTION_TYPE.INVENTORY) {
         // Inventory transaction: can be positive or negative delta
-        if (qty >= 0) {
-          pData.receiptKg += qty;
+        if (qtyTonnes >= 0) {
+          pData.receiptTonnes += qtyTonnes;
           pData.receiptSum += Math.max(0, sum);
         } else {
-          pData.expenseKg += Math.abs(qty);
+          pData.expenseTonnes += Math.abs(qtyTonnes);
           pData.expenseSum += Math.abs(sum);
         }
       } else {
-        pData.expenseKg += Math.abs(qty);
+        pData.expenseTonnes += Math.abs(qtyTonnes);
         pData.expenseSum += sum;
       }
 
       // Всегда берем balanceAfter и averageCostAfter из транзакции, которая является последней по времени создания
       const lastTx = pData.transactions[pData.transactions.length - 1];
-      pData.avgCost = parseFloat(lastTx.averageCostAfter || "0");
-      pData.balance = parseFloat(lastTx.balanceAfter || "0");
+      pData.avgCostPerTonne = pricePerKilogramToPerTonne(
+        parseFloat(lastTx.averageCostAfter || "0"),
+      );
+      pData.balanceTonnes = kilogramsToTonnes(
+        parseFloat(lastTx.balanceAfter || "0"),
+      );
     });
 
     return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
@@ -264,7 +276,7 @@ export function WarehouseDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatNumber(warehouse.currentBalance || "0")} кг
+                {formatTonnes(kilogramsToTonnes(Number(warehouse.currentBalance || 0)))} т
               </p>
             </CardContent>
           </Card>
@@ -276,7 +288,7 @@ export function WarehouseDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatCost(warehouse.averageCost || "0")}/кг
+                {formatPricePerTonne(pricePerKilogramToPerTonne(Number(warehouse.averageCost || 0)))} ₽/т
               </p>
             </CardContent>
           </Card>
@@ -288,7 +300,7 @@ export function WarehouseDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatNumber(warehouse.pvkjBalance || "0")} кг
+                {formatTonnes(kilogramsToTonnes(Number(warehouse.pvkjBalance || 0)))} т
               </p>
             </CardContent>
           </Card>
@@ -300,7 +312,7 @@ export function WarehouseDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatCost(warehouse.pvkjAverageCost || "0")}/кг
+                {formatPricePerTonne(pricePerKilogramToPerTonne(Number(warehouse.pvkjAverageCost || 0)))} ₽/т
               </p>
             </CardContent>
           </Card>
@@ -368,13 +380,13 @@ export function WarehouseDetailsDialog({
                       Продукт
                     </TableHead>
                     <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
-                      Поступление, кг
+                      Поступление, т
                     </TableHead>
                     <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">
                       Сумма прихода
                     </TableHead>
                     <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
-                      Расход, кг
+                      Расход, т
                     </TableHead>
                     <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">
                       Сумма расхода
@@ -383,10 +395,10 @@ export function WarehouseDetailsDialog({
                       Остаток
                     </TableHead>
                     <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
-                      Вход. цена
+                      Вход. цена ₽/т
                     </TableHead>
                     <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
-                      Себест.
+                      Себест. ₽/т
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -480,25 +492,25 @@ function DailyRowGroup({
                   <ProductTypeBadge type={p.productType} />
                 </div>
                 <div className="w-[12%] min-w-[100px] shrink-0 text-center px-4 font-medium text-green-600 truncate">
-                  {p.receiptKg > 0 ? `+${formatNumber(p.receiptKg)}` : "0"} кг
+                  {p.receiptTonnes > 0 ? `+${formatTonnes(p.receiptTonnes)}` : formatTonnes(0)} т
                 </div>
                 <div className="w-[13.5%] min-w-[110px] shrink-0 text-center px-4 truncate">
                   {p.receiptSum > 0 ? formatCurrency(p.receiptSum) : "0"}
                 </div>
                 <div className="w-[12%] min-w-[100px] shrink-0 text-right px-4 font-medium text-red-600 truncate">
-                  {p.expenseKg > 0 ? `-${formatNumber(p.expenseKg)}` : "0"} кг
+                  {p.expenseTonnes > 0 ? `-${formatTonnes(p.expenseTonnes)}` : formatTonnes(0)} т
                 </div>
                 <div className="w-[13.5%] min-w-[110px] shrink-0 text-right px-4 truncate">
                   {p.expenseSum > 0 ? formatCurrency(p.expenseSum) : "0"}
                 </div>
                 <div className="w-[12.5%] min-w-[100px] shrink-0 text-right px-4 font-bold truncate">
-                  {formatNumber(p.balance)} кг
+                  {formatTonnes(p.balanceTonnes)} т
                 </div>
                 <div className="w-[12.5%] min-w-[100px] shrink-0 text-right px-4 truncate">
-                  {p.avgPrice > 0 ? formatCost(p.avgPrice) : "0"}
+                  {p.avgPricePerTonne > 0 ? formatPricePerTonne(p.avgPricePerTonne) : formatPricePerTonne(0)}
                 </div>
                 <div className="w-[12.5%] min-w-[100px] shrink-0 text-right px-4 font-semibold truncate">
-                  {formatCost(p.avgCost)}
+                  {formatPricePerTonne(p.avgCostPerTonne)}
                 </div>
               </div>
             ))}
@@ -519,13 +531,13 @@ function DailyRowGroup({
                       Продукт
                     </TableHead>
                     <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
-                      Кол-во
+                      Кол-во, т
                     </TableHead>
                     <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
                       Сумма
                     </TableHead>
                     <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
-                      Цена за кг
+                      Цена, ₽/т
                     </TableHead>
                     <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
                       Остаток до
@@ -569,25 +581,25 @@ function DailyRowGroup({
                           className={`text-right py-1 font-medium text-xs ${parseFloat(tx.quantityKg) > 0 ? "text-green-600" : "text-red-600"}`}
                         >
                           {parseFloat(tx.quantityKg) > 0 ? "+" : ""}
-                          {formatNumber(tx.quantityKg)} кг
+                          {formatTonnes(kilogramsToTonnes(Number(tx.quantityKg)))} т
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
                           {tx.sum ? formatCurrency(tx.sum) : "—"}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {tx.price ? formatCost(tx.price) : "—"}
+                          {tx.price ? formatPricePerTonne(pricePerKilogramToPerTonne(Number(tx.price))) : "—"}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatNumber(tx.balanceBefore)} кг
+                          {formatTonnes(kilogramsToTonnes(Number(tx.balanceBefore)))} т
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatNumber(tx.balanceAfter)} кг
+                          {formatTonnes(kilogramsToTonnes(Number(tx.balanceAfter)))} т
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatCost(tx.averageCostBefore)}
+                          {formatPricePerTonne(pricePerKilogramToPerTonne(Number(tx.averageCostBefore)))}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatCost(tx.averageCostAfter)}
+                          {formatPricePerTonne(pricePerKilogramToPerTonne(Number(tx.averageCostAfter)))}
                         </TableCell>
                       </TableRow>
                     ))}

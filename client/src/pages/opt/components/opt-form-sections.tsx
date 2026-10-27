@@ -31,22 +31,32 @@ import type {
   Price,
 } from "@shared/schema";
 import { CalculatedField } from "./calculated-field";
-import { formatCurrency, formatNumber } from "../utils";
+import { formatCurrency } from "../utils";
 import type { OptFormData } from "../schemas";
 import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  formatPricePerTonne,
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
+import {
+  contractPricePerTonne,
+  type OptInputMode,
+} from "../unit-calculations";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<OptFormData>;
-  setInputMode: (mode: "liters" | "kg") => void;
-  calculatedKg: string;
+  setInputMode: (mode: OptInputMode) => void;
+  calculatedTonnes: string;
 }
 
 export function VolumeInputSection({
   form,
   setInputMode,
-  calculatedKg,
+  calculatedTonnes,
 }: VolumeInputSectionProps) {
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
@@ -66,15 +76,15 @@ export function VolumeInputSection({
                   Литры/Плотность
                 </Label>
                 <Switch
-                  checked={field.value === "kg"}
+                  checked={field.value === "tonnes"}
                   onCheckedChange={(checked) => {
-                    const mode = checked ? "kg" : "liters";
+                    const mode = checked ? "tonnes" : "liters";
                     field.onChange(mode);
                     setInputMode(mode);
                   }}
                   data-testid="switch-input-mode"
                 />
-                <Label className="text-sm text-muted-foreground">КГ</Label>
+                <Label className="text-sm text-muted-foreground">Тонны</Label>
               </div>
             )}
           />
@@ -95,7 +105,7 @@ export function VolumeInputSection({
                     step="0.01"
                     placeholder="0.00"
                     data-testid="input-liters"
-                    disabled={inputMode === "kg"}
+                    disabled={inputMode === "tonnes"}
                     {...field}
                     value={field.value ?? ""}
                   />
@@ -119,7 +129,6 @@ export function VolumeInputSection({
                     step="0.0001"
                     placeholder="0.8000"
                     data-testid="input-density"
-                    disabled={inputMode === "kg"}
                     {...field}
                     value={field.value ?? ""}
                   />
@@ -130,28 +139,30 @@ export function VolumeInputSection({
           />
           {inputMode === "liters" ? (
             <CalculatedField
-              label="КГ (расчет)"
+              label="Масса (расчёт)"
               value={
-                watchLiters && watchDensity ? formatNumber(calculatedKg) : "—"
+                watchLiters && watchDensity && calculatedTonnes
+                  ? formatTonnes(parseFloat(calculatedTonnes))
+                  : "—"
               }
-              suffix={watchLiters && watchDensity ? " кг" : ""}
+              suffix={watchLiters && watchDensity && calculatedTonnes ? " т" : ""}
             />
           ) : (
             <FormField
               control={form.control}
-              name="quantityKg"
+              name="quantityTonnes"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
-                    Количество (КГ)
+                    Масса (т)
                   </FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      data-testid="input-kg"
+                      step="0.00001"
+                      placeholder="0.00000"
+                      data-testid="input-tonnes"
                       {...field}
                       value={field.value ?? ""}
                     />
@@ -440,6 +451,7 @@ export function PricingSection({
   selectedSalePriceId,
   onPurchasePriceSelect,
   onSalePriceSelect,
+  density,
 }: {
   purchasePrice: number | null;
   salePrice: number | null;
@@ -454,11 +466,19 @@ export function PricingSection({
   selectedSalePriceId: string;
   onPurchasePriceSelect: (id: string) => void;
   onSalePriceSelect: (id: string) => void;
+  density?: string | number | null;
 }) {
   const getPriceLabel = (price: Price) => {
     if (!price.priceValues || price.priceValues.length === 0) return "Нет цены";
     const priceObj = JSON.parse(price.priceValues[0]);
-    return `${priceObj.price} ₽/кг (${price.dateFrom} - ${price.dateTo})`;
+    const pricePerTonne = contractPricePerTonne(
+      priceObj.price,
+      price.priceUnit,
+      density,
+    );
+    return pricePerTonne === null
+      ? `Укажите плотность (${price.dateFrom} - ${price.dateTo})`
+      : `${formatPricePerTonne(pricePerTonne)} ₽/т (${price.dateFrom} - ${price.dateTo})`;
   };
 
   return (
@@ -494,10 +514,12 @@ export function PricingSection({
               label="Цена закупки"
               value={
                 purchasePrice !== null
-                  ? formatNumber(purchasePrice)
+                  ? formatPricePerTonne(
+                      pricePerKilogramToPerTonne(purchasePrice),
+                    )
                   : "нет цены!"
               }
-              suffix={purchasePrice !== null ? " ₽/кг" : ""}
+              suffix={purchasePrice !== null ? " ₽/т" : ""}
             />
           )}
           {matchingSalePrices.length > 1 ? (
@@ -522,24 +544,30 @@ export function PricingSection({
           ) : (
             <CalculatedField
               label="Цена продажи"
-              value={salePrice !== null ? formatNumber(salePrice) : "нет цены!"}
-              suffix={salePrice !== null ? " ₽/кг" : ""}
+              value={
+                salePrice !== null
+                  ? formatPricePerTonne(pricePerKilogramToPerTonne(salePrice))
+                  : "нет цены!"
+              }
+              suffix={salePrice !== null ? " ₽/т" : ""}
             />
           )}
           <CalculatedField
             label="Количество закупки"
-            value={formatNumber(purchaseAmount)}
-            suffix=" кг"
+            value={formatTonnes(kilogramsToTonnes(purchaseAmount))}
+            suffix=" т"
           />
           <CalculatedField
             label="Количество продажи"
-            value={formatNumber(saleAmount)}
-            suffix=" кг"
+            value={formatTonnes(kilogramsToTonnes(saleAmount))}
+            suffix=" т"
           />
           <CalculatedField
             label="Тариф доставки"
-            value={formatCurrency(deliveryTariff)}
-            suffix=" ₽"
+            value={formatPricePerTonne(
+              pricePerKilogramToPerTonne(deliveryTariff),
+            )}
+            suffix=" ₽/т"
           />
           <CalculatedField
             label="Стоимость доставки"

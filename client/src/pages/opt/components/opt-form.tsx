@@ -45,10 +45,16 @@ import type { OptFormProps } from "../types";
 import { useOptCalculations } from "../hooks/use-opt-calculations";
 import { useOptFilters } from "../hooks/use-opt-filters";
 import { BASE_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import { formatTonnes } from "@shared/units";
 import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
+import {
+  optLegacyKilogramsToTonnes,
+  optTonnesToLegacyKilograms,
+  type OptInputMode,
+} from "../unit-calculations";
 
 export interface OptFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
@@ -60,7 +66,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
   ({ onSuccess, editData }, ref) => {
     const { toast } = useToast();
     const { showError, ErrorModalComponent } = useErrorModal();
-    const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
+    const [inputMode, setInputMode] = useState<OptInputMode>("tonnes");
     const [noDeliveryRequired, setNoDeliveryRequired] = useState<boolean>(false);
     const [selectedBasis, setSelectedBasis] = useState<string>("");
     const [customerBasis, setCustomerBasis] = useState<string>("");
@@ -81,7 +87,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         warehouseId: "",
         quantityLiters: "",
         density: "",
-        quantityKg: "",
+        quantityTonnes: "",
         carrierId: "",
         deliveryLocationId: "",
         notes: "",
@@ -96,7 +102,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         customerBasis: "",
         basisId: "",
         customerBasisId: "",
-        inputMode: "kg",
+        inputMode: "tonnes",
       },
     });
 
@@ -161,7 +167,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
     const watchDealDate = form.watch("dealDate");
     const watchLiters = form.watch("quantityLiters");
     const watchDensity = form.watch("density");
-    const watchKg = form.watch("quantityKg");
+    const watchTonnes = form.watch("quantityTonnes");
     const watchCarrierId = form.watch("carrierId");
     const watchDeliveryLocationId = form.watch("deliveryLocationId");
     const watchProductType = form.watch("productType");
@@ -205,17 +211,23 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
 
     // Use calculations hook
     const {
-      calculatedKg,
+      calculatedTonnes,
+      finalTonnes,
       finalKg,
-      purchasePrice,
-      salePrice,
+      purchasePricePerTonne,
+      salePricePerTonne,
+      purchasePricePerKilogram,
+      salePricePerKilogram,
+      purchasePriceRequiresDensity,
+      priceRequiresDensity,
       deliveryCost,
       matchedDeliveryCost,
       purchaseAmount,
       saleAmount,
       profit,
       otherServiceFee,
-      deliveryTariff,
+      deliveryTariffPerKilogram,
+      deliveryTariffPerTonne,
       contractVolumeStatus,
       supplierContractVolumeStatus,
       warehouseBalanceAtDate,
@@ -225,7 +237,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       inputMode,
       quantityLiters: watchLiters || "",
       density: watchDensity || "",
-      quantityKg: watchKg || "",
+      quantityTonnes: watchTonnes || "",
       isWarehouseSupplier,
       supplierWarehouse,
       basisId: watchBasisId || "",
@@ -262,7 +274,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         basisId: watchBasisId,
         customerBasisId: watchCustomerBasisId,
         deliveryLocationId: watchDeliveryLocationId,
-        quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
+        quantityKg: finalKg,
       }),
     });
 
@@ -396,7 +408,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           // Логика перенесена в хук useOptWarehouseBalance
         }
 
-        const resetValues = {
+        const resetValues: OptFormData = {
           dealDate: new Date(editData.dealDate),
           supplierId: supplier?.id || "",
           buyerId: buyer?.id || "",
@@ -405,13 +417,15 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           nomenclatureId: (editData as any).nomenclatureId || "",
           quantityLiters: editData.quantityLiters?.toString() || "",
           density: editData.density?.toString() || "",
-          quantityKg: editData.quantityKg?.toString() || "",
+          quantityTonnes: optLegacyKilogramsToTonnes(
+            parseFloat(editData.quantityKg || "0"),
+          ).toFixed(5),
           carrierId: editData.carrierId || "",
           deliveryLocationId: editData.deliveryLocationId || "",
           notes: editData.notes || "",
           isApproxVolume: editData.isApproxVolume || false,
           isPlannedDeal: editData.isPlannedDeal || false,
-          inputMode: (editData.inputMode as "liters" | "kg") || "kg",
+          inputMode: editData.inputMode === "liters" ? "liters" : "tonnes",
           basis: editData.basis || "",
           basisId: editData.basisId || "",
           customerBasis: editData.customerBasis || "",
@@ -436,10 +450,10 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
 
         if (editData.quantityLiters && !editData.inputMode) {
           setInputMode("liters");
-        } else if (editData.inputMode) {
-          setInputMode(editData.inputMode as "liters" | "kg");
+        } else if (editData.inputMode === "liters") {
+          setInputMode("liters");
         } else {
-          setInputMode("kg");
+          setInputMode("tonnes");
         }
       }
     }, [editData, suppliers, customers, allBases, warehouses, form]);
@@ -458,9 +472,10 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           salePrices,
           isWarehouseSupplier,
         );
+        const { quantityTonnes: _quantityTonnes, ...formData } = data;
 
         const payload = {
-          ...data,
+          ...formData,
           supplierId: data.supplierId || null,
           buyerId: data.buyerId || null,
           isDraft: data.isDraft || false,
@@ -481,25 +496,25 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           dealDate: data.dealDate
             ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
             : null,
-          quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+          quantityKg: finalKg,
           quantityLiters: data.quantityLiters
             ? parseFloat(data.quantityLiters)
             : null,
           density: data.density ? parseFloat(data.density) : null,
-          purchasePrice: purchasePrice !== null ? purchasePrice : null,
+          purchasePrice: purchasePricePerKilogram,
           purchasePriceId: purchasePriceId || null,
           contractNumber:
             purchasePrices.find((price) => price.id === purchasePriceId)?.contractNumber ||
             salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
           purchasePriceIndex:
             purchasePriceIndex !== undefined ? purchasePriceIndex : null,
-          salePrice: salePrice !== null ? salePrice : null,
+          salePrice: salePricePerKilogram,
           salePriceId: salePriceId || null,
           salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
           purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
           saleAmount: saleAmount !== null ? saleAmount : null,
           deliveryCost: noDeliveryRequired ? 0 : (deliveryCost !== null ? deliveryCost : null),
-          deliveryTariff: noDeliveryRequired ? 0 : (deliveryTariff !== null ? deliveryTariff : null),
+          deliveryTariff: noDeliveryRequired ? 0 : deliveryTariffPerKilogram,
           profit: profit !== null ? profit : null,
         };
         const res = await apiRequest("POST", "/api/opt", payload);
@@ -528,6 +543,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         setSelectedBasis("");
         setCustomerBasis("");
         setNoDeliveryRequired(false);
+        setInputMode("tonnes");
         form.reset({
           dealDate: new Date(),
           supplierId: "",
@@ -536,7 +552,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           productType: PRODUCT_TYPE.KEROSENE,
           quantityLiters: "",
           density: "",
-          quantityKg: "",
+          quantityTonnes: "",
           carrierId: "",
           deliveryLocationId: "",
           notes: "",
@@ -549,6 +565,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           basisId: "",
           customerBasis: "",
           customerBasisId: "",
+          inputMode: "tonnes",
         });
         onSuccess?.();
       },
@@ -571,9 +588,71 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           salePrices,
           isWarehouseSupplier,
         );
+        const existingDeal =
+          editData?.id === data.id && !editData.isDraft && !data.isDraft
+            ? editData
+            : null;
+        const existingMode =
+          existingDeal?.inputMode === "liters" ||
+          (!existingDeal?.inputMode && !!existingDeal?.quantityLiters)
+            ? "liters"
+            : "tonnes";
+        const sameNumber = (
+          left: string | number | null | undefined,
+          right: string | number | null | undefined,
+        ) => {
+          const leftValue =
+            left === null || left === undefined || left === ""
+              ? null
+              : Number(left);
+          const rightValue =
+            right === null || right === undefined || right === ""
+              ? null
+              : Number(right);
+          return leftValue === null || rightValue === null
+            ? leftValue === rightValue
+            : Math.abs(leftValue - rightValue) < 0.0000001;
+        };
+        const sameQuantityInput =
+          !!existingDeal &&
+          data.inputMode === existingMode &&
+          (data.inputMode === "liters"
+            ? sameNumber(data.quantityLiters, existingDeal.quantityLiters) &&
+              sameNumber(data.density, existingDeal.density)
+            : sameNumber(
+                data.quantityTonnes,
+                optLegacyKilogramsToTonnes(
+                  parseFloat(existingDeal.quantityKg || "0"),
+                ).toFixed(5),
+              ));
+        const existingWarehouseId =
+          isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null;
+        const preserveHistoricalAmounts =
+          !!existingDeal &&
+          sameQuantityInput &&
+          sameNumber(data.dealDate.getTime(), new Date(existingDeal.dealDate).getTime()) &&
+          data.supplierId === existingDeal.supplierId &&
+          data.buyerId === existingDeal.buyerId &&
+          data.productType === existingDeal.productType &&
+          data.basisId === existingDeal.basisId &&
+          data.customerBasisId === existingDeal.customerBasisId &&
+          existingWarehouseId === existingDeal.warehouseId &&
+          (purchasePriceId || null) === (existingDeal.purchasePriceId || null) &&
+          (purchasePriceIndex ?? 0) === (existingDeal.purchasePriceIndex ?? 0) &&
+          (salePriceId || null) === (existingDeal.salePriceId || null) &&
+          (salePriceIndex ?? 0) === (existingDeal.salePriceIndex ?? 0) &&
+          (data.carrierId || null) === (existingDeal.carrierId || null) &&
+          (data.deliveryLocationId || null) ===
+            (existingDeal.deliveryLocationId || null) &&
+          noDeliveryRequired === !!existingDeal.isNoDeliveryRequired;
+        const preservedValue = (
+          value: string | number | null | undefined,
+        ): number | null =>
+          value === null || value === undefined ? null : Number(value);
+        const { quantityTonnes: _quantityTonnes, ...formData } = data;
 
         const payload = {
-          ...data,
+          ...formData,
           supplierId: data.supplierId || null,
           buyerId: data.buyerId || null,
           isDraft: data.isDraft || false,
@@ -594,26 +673,46 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           dealDate: data.dealDate
             ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
             : null,
-          quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+          quantityKg: preserveHistoricalAmounts
+            ? Number(existingDeal!.quantityKg)
+            : finalKg,
           quantityLiters: data.quantityLiters
             ? parseFloat(data.quantityLiters)
             : null,
           density: data.density ? parseFloat(data.density) : null,
-          purchasePrice: purchasePrice !== null ? purchasePrice : null,
+          purchasePrice: preserveHistoricalAmounts
+            ? preservedValue(existingDeal!.purchasePrice)
+            : purchasePricePerKilogram,
           purchasePriceId: purchasePriceId || null,
           contractNumber:
             purchasePrices.find((price) => price.id === purchasePriceId)?.contractNumber ||
             salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
           purchasePriceIndex:
             purchasePriceIndex !== undefined ? purchasePriceIndex : null,
-          salePrice: salePrice !== null ? salePrice : null,
+          salePrice: preserveHistoricalAmounts
+            ? preservedValue(existingDeal!.salePrice)
+            : salePricePerKilogram,
           salePriceId: salePriceId || null,
           salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
-          purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
-          saleAmount: saleAmount !== null ? saleAmount : null,
-          deliveryCost: noDeliveryRequired ? 0 : (deliveryCost !== null ? deliveryCost : null),
-          deliveryTariff: noDeliveryRequired ? 0 : (deliveryTariff !== null ? deliveryTariff : null),
-          profit: profit !== null ? profit : null,
+          purchaseAmount: preserveHistoricalAmounts
+            ? preservedValue(existingDeal!.purchaseAmount)
+            : purchaseAmount,
+          saleAmount: preserveHistoricalAmounts
+            ? preservedValue(existingDeal!.saleAmount)
+            : saleAmount,
+          deliveryCost: preserveHistoricalAmounts
+            ? preservedValue(existingDeal!.deliveryCost)
+            : noDeliveryRequired
+              ? 0
+              : deliveryCost,
+          deliveryTariff: preserveHistoricalAmounts
+            ? preservedValue(existingDeal!.deliveryTariff)
+            : noDeliveryRequired
+              ? 0
+              : deliveryTariffPerKilogram,
+          profit: preserveHistoricalAmounts
+            ? preservedValue(existingDeal!.profit)
+            : profit,
         };
         const res = await apiRequest("PATCH", `/api/opt/${data.id}`, payload);
         return res.json();
@@ -637,6 +736,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         setSelectedBasis("");
         setCustomerBasis("");
         setNoDeliveryRequired(false);
+        setInputMode("tonnes");
         form.reset({
           dealDate: new Date(),
           supplierId: "",
@@ -645,7 +745,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           productType: PRODUCT_TYPE.KEROSENE,
           quantityLiters: "",
           density: "",
-          quantityKg: "",
+          quantityTonnes: "",
           carrierId: "",
           deliveryLocationId: "",
           notes: "",
@@ -658,6 +758,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           basisId: "",
           customerBasis: "",
           customerBasisId: "",
+          inputMode: "tonnes",
         });
         onSuccess?.();
       },
@@ -672,19 +773,23 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       // Если это не черновик, выполняем полную валидацию
       if (!isDraft) {
         // Проверяем наличие количества
-        const calculatedKgValue = calculatedKg ? parseFloat(calculatedKg) : 0;
-        if (calculatedKgValue <= 0) {
-          showError("Укажите корректное количество топлива в килограммах или литрах.");
+        if (finalTonnes <= 0) {
+          showError("Укажите корректную массу в тоннах или объём в литрах с плотностью.");
+          return;
+        }
+
+        if (priceRequiresDensity) {
+          showError("Для пересчёта цены за литр укажите плотность сделки.");
           return;
         }
 
         // Проверяем налич �е ошибок в ценах
-        if (!isWarehouseSupplier && purchasePrice === null) {
+        if (!isWarehouseSupplier && purchasePricePerTonne === null) {
           showError("Не указана цена покупки. Выберите цену из списка или проверьте настройки поставщика и базиса.");
           return;
         }
 
-        if (salePrice === null) {
+        if (salePricePerTonne === null) {
           showError("Не указана цена продажи. Выберите цену из списка или проверьте настройки покупателя.");
           return;
         }
@@ -701,7 +806,9 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
             : availableBalance;
 
           if (baseBalance < 0) {
-            showError(`На складе "${supplierWarehouse.name}" на выбранную дату недостаточно топлива. Доступно: ${baseBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`);
+            showError(
+              `На складе "${supplierWarehouse.name}" на выбранную дату недостаточно топлива. Доступно: ${formatTonnes(optLegacyKilogramsToTonnes(baseBalance))} т, требуется: ${formatTonnes(optLegacyKilogramsToTonnes(finalKg))} т`,
+            );
             return;
           }
         }
@@ -785,7 +892,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
             <VolumeInputSection
               form={form}
               setInputMode={setInputMode}
-              calculatedKg={calculatedKg}
+              calculatedTonnes={calculatedTonnes}
             />
 
             <LogisticsSection
@@ -821,14 +928,14 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               selectedSalePriceId={selectedSalePriceId}
               setSelectedPurchasePriceId={setSelectedPurchasePriceId}
               setSelectedSalePriceId={setSelectedSalePriceId}
-              purchasePrice={purchasePrice}
-              salePrice={salePrice}
+              purchasePricePerTonne={purchasePricePerTonne}
               purchaseAmount={purchaseAmount}
               saleAmount={saleAmount}
               profit={profit}
               otherServiceFee={otherServiceFee}
               supplierWarehouse={supplierWarehouse}
               finalKg={finalKg}
+              purchasePriceRequiresDensity={purchasePriceRequiresDensity}
               isEditing={isEditing}
               contractVolumeStatus={contractVolumeStatus}
               supplierContractVolumeStatus={supplierContractVolumeStatus}

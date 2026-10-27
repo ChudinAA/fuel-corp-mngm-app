@@ -49,7 +49,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
-import { formatNumber, formatCurrency, formatCost } from "../utils";
+import { formatNumber, formatCurrency } from "../utils";
+import {
+  formatPricePerTonne,
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 import { BASE_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { ProductTypeBadge } from "@/components/product-type-badge";
@@ -106,6 +112,10 @@ export function WarehouseCard({
   const cost = parseFloat(warehouse.averageCost || "0");
   const pvkjBalance = parseFloat(warehouse.pvkjBalance || "0");
   const pvkjCost = parseFloat(warehouse.pvkjAverageCost || "0");
+  const balanceTonnes = kilogramsToTonnes(balance);
+  const costPerTonne = pricePerKilogramToPerTonne(cost);
+  const pvkjBalanceTonnes = kilogramsToTonnes(pvkjBalance);
+  const pvkjCostPerTonne = pricePerKilogramToPerTonne(pvkjCost);
   const isInactive = !warehouse.isActive;
   const { hasPermission } = useAuth();
 
@@ -118,6 +128,7 @@ export function WarehouseCard({
 
   const limitActive = isLimitActive(warehouse);
   const limitVolume = parseFloat(warehouse.limitVolume || "0");
+  const limitVolumeTonnes = kilogramsToTonnes(limitVolume);
   const limitProductType = warehouse.limitProductType || PRODUCT_TYPE.KEROSENE;
 
   const { data: allBases } = useQuery<Base[]>({
@@ -141,8 +152,9 @@ export function WarehouseCard({
       ? monthStats.pvkjIncome
       : monthStats.income
     : 0;
-  const limitRemaining = limitVolume - limitUsed;
-  const limitExceeded = limitRemaining < 0;
+  const limitUsedTonnes = kilogramsToTonnes(limitUsed);
+  const limitRemainingTonnes = limitVolumeTonnes - limitUsedTonnes;
+  const limitExceeded = limitRemainingTonnes < 0;
 
   const getBaseIcon = (baseType: string) => {
     if (baseType === BASE_TYPE.REFUELING) {
@@ -245,15 +257,15 @@ export function WarehouseCard({
                         >
                           <Gauge className="h-3 w-3" />
                           {limitExceeded ? (
-                            <span>Превышен на {formatNumber(Math.abs(limitRemaining))} кг</span>
+                            <span>Превышен на {formatTonnes(Math.abs(limitRemainingTonnes))} т</span>
                           ) : (
-                            <span>Лимит: {formatNumber(limitVolume)} / ост. {formatNumber(limitRemaining)} кг</span>
+                            <span>Лимит: {formatTonnes(limitVolumeTonnes)} / ост. {formatTonnes(limitRemainingTonnes)} т</span>
                           )}
                         </Badge>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>
-                          {limitProductType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}: лимит {formatNumber(limitVolume)} кг · использовано {formatNumber(limitUsed)} кг
+                          {limitProductType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}: лимит {formatTonnes(limitVolumeTonnes)} т · использовано {formatTonnes(limitUsedTonnes)} т
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -379,31 +391,27 @@ export function WarehouseCard({
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
               <span className="text-2xl font-semibold">
-                {formatNumber(balance)} кг
+                {formatTonnes(balanceTonnes)} т
               </span>
               <ProductTypeBadge type={PRODUCT_TYPE.KEROSENE} />
             </div>
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
                 Себестоимость:{" "}
-                <span className="font-medium">{formatCost(cost)}/кг</span>
+                <span className="font-medium">{formatPricePerTonne(costPerTonne)} ₽/т</span>
               </span>
               <div className="flex flex-col items-end text-xs gap-0.5">
                 <span className="text-muted-foreground text-[12px]">
-                  В этом месяце (кг):
+                  В этом месяце (т):
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-green-600">
                     +
-                    {monthStats.income > 1000
-                      ? `${formatNumber(monthStats.income / 1000)}к`
-                      : `${formatNumber(monthStats.income)}`}
+                    {formatTonnes(kilogramsToTonnes(monthStats.income))}
                   </span>
                   <span className="text-red-600">
                     -
-                    {monthStats.expense > 1000
-                      ? `${formatNumber(monthStats.expense / 1000)}к`
-                      : `${formatNumber(monthStats.expense)}`}
+                    {formatTonnes(kilogramsToTonnes(monthStats.expense))}
                   </span>
                 </div>
               </div>
@@ -414,7 +422,7 @@ export function WarehouseCard({
             <div className="space-y-2 pt-2 border-t">
               <div className="flex items-baseline justify-between">
                 <span className="text-lg font-semibold text-muted-foreground">
-                  {formatNumber(pvkjBalance)} кг
+                  {formatTonnes(pvkjBalanceTonnes)} т
                 </span>
                 <ProductTypeBadge type={PRODUCT_TYPE.PVKJ} />
               </div>
@@ -422,25 +430,21 @@ export function WarehouseCard({
                 <span>
                   Себестоимость:{" "}
                   <span className="font-medium">
-                    {formatCost(pvkjCost)}/кг
+                    {formatPricePerTonne(pvkjCostPerTonne)} ₽/т
                   </span>
                 </span>
                 <div className="flex flex-col items-end text-xs gap-0.5">
                   <span className="text-muted-foreground text-[12px]">
-                    В этом месяце (кг):
+                    В этом месяце (т):
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-green-600">
                       +
-                      {monthStats.pvkjIncome > 1000
-                        ? `${formatNumber(monthStats.pvkjIncome / 1000)}к`
-                        : `${formatNumber(monthStats.pvkjIncome)}`}
+                      {formatTonnes(kilogramsToTonnes(monthStats.pvkjIncome))}
                     </span>
                     <span className="text-red-600">
                       -
-                      {monthStats.pvkjExpense > 1000
-                        ? `${formatNumber(monthStats.pvkjExpense / 1000)}к`
-                        : `${formatNumber(monthStats.pvkjExpense)}`}
+                      {formatTonnes(kilogramsToTonnes(monthStats.pvkjExpense))}
                     </span>
                   </div>
                 </div>

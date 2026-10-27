@@ -36,7 +36,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import type { Warehouse } from "@shared/schema";
 import { PRODUCT_TYPE } from "@shared/constants";
-import { formatNumber, formatCost } from "../utils";
+import {
+  formatPricePerTonne,
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
+import { inventoryInputToLegacyWarehousePayload } from "../unit-calculations";
 
 const inventorySchema = z.object({
   productType: z.string().min(1, "Выберите тип продукта"),
@@ -95,19 +101,22 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
     enabled: open && !!watchDate && !!watchProductType,
   });
 
-  const currentBalance = parseFloat(balanceAtDate?.balance || "0");
-  const currentCost = parseFloat(balanceAtDate?.averageCost || "0");
+  const currentBalanceKg = parseFloat(balanceAtDate?.balance || "0");
+  const currentCostPerKilogram = parseFloat(balanceAtDate?.averageCost || "0");
+  const currentBalanceTonnes = kilogramsToTonnes(currentBalanceKg);
+  const currentCostPerTonne =
+    pricePerKilogramToPerTonne(currentCostPerKilogram);
 
   const watchTargetBalance = form.watch("targetBalance");
   const watchTargetCost = form.watch("targetAverageCost");
 
-  const targetBalance = parseFloat(watchTargetBalance || "0");
-  const targetCost = parseFloat(watchTargetCost || "0");
-  const delta = targetBalance - currentBalance;
+  const targetBalanceTonnes = parseFloat(watchTargetBalance || "0");
+  const deltaTonnes = targetBalanceTonnes - currentBalanceTonnes;
 
   const mutation = useMutation({
     mutationFn: async (data: InventoryFormValues) => {
-      const res = await apiRequest("POST", `/api/warehouses/${warehouse.id}/inventory`, data);
+      const payload = inventoryInputToLegacyWarehousePayload(data);
+      const res = await apiRequest("POST", `/api/warehouses/${warehouse.id}/inventory`, payload);
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || "Ошибка инвентаризации");
@@ -219,11 +228,11 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <span className="text-muted-foreground text-xs">Остаток:</span>
-                        <p className="font-semibold">{formatNumber(currentBalance)} кг</p>
+                        <p className="font-semibold">{formatTonnes(currentBalanceTonnes)} т</p>
                       </div>
                       <div>
                         <span className="text-muted-foreground text-xs">Себестоимость:</span>
-                        <p className="font-semibold">{formatCost(currentCost)}/кг</p>
+                        <p className="font-semibold">{formatPricePerTonne(currentCostPerTonne)} ₽/т</p>
                       </div>
                     </div>
                   )}
@@ -235,12 +244,12 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
                 name="targetBalance"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Целевой остаток (кг)</FormLabel>
+                    <FormLabel>Целевой остаток (т)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min="0"
-                        step="0.01"
+                        step="0.00001"
                         placeholder="Желаемый остаток на дату"
                         data-testid="input-inventory-target-balance"
                         {...field}
@@ -256,12 +265,12 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
                 name="targetAverageCost"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Целевая себестоимость (₽/кг)</FormLabel>
+                    <FormLabel>Целевая себестоимость (₽/т)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min="0"
-                        step="0.000001"
+                        step="0.01"
                         placeholder="Желаемая себестоимость на дату"
                         data-testid="input-inventory-target-cost"
                         {...field}
@@ -281,16 +290,16 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground text-xs">Изменение остатка:</span>
                     <span
-                      className={`font-semibold text-sm ${delta > 0 ? "text-green-600" : delta < 0 ? "text-red-600" : "text-muted-foreground"}`}
+                      className={`font-semibold text-sm ${deltaTonnes > 0 ? "text-green-600" : deltaTonnes < 0 ? "text-red-600" : "text-muted-foreground"}`}
                     >
-                      {delta > 0 ? "+" : ""}
-                      {formatNumber(delta)} кг
+                      {deltaTonnes > 0 ? "+" : ""}
+                      {formatTonnes(deltaTonnes)} т
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground text-xs">Тип транзакции:</span>
                     <span className="font-medium text-xs">
-                      {delta === 0 ? "Коррекция себестоимости" : delta > 0 ? "Приход (инв.)" : "Расход (инв.)"}
+                      {deltaTonnes === 0 ? "Коррекция себестоимости" : deltaTonnes > 0 ? "Приход (инв.)" : "Расход (инв.)"}
                     </span>
                   </div>
                 </div>

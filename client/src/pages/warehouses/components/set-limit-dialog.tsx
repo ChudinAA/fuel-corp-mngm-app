@@ -37,6 +37,8 @@ import type { Warehouse } from "@shared/schema";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { format, addMonths, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
+import { kilogramsToTonnes } from "@shared/units";
+import { tonnesToLegacyWarehouseKilograms } from "../unit-calculations";
 
 const limitSchema = z.object({
   limitVolume: z
@@ -67,14 +69,20 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
   const form = useForm<LimitFormValues>({
     resolver: zodResolver(limitSchema),
     defaultValues: {
-      limitVolume: warehouse.limitVolume ? String(warehouse.limitVolume) : "",
+      limitVolume: warehouse.limitVolume
+        ? kilogramsToTonnes(Number(warehouse.limitVolume)).toFixed(5)
+        : "",
       limitProductType: warehouse.limitProductType || PRODUCT_TYPE.KEROSENE,
     },
   });
 
   const mutation = useMutation({
     mutationFn: async (data: LimitFormValues) => {
-      const res = await apiRequest("POST", `/api/warehouses/${warehouse.id}/set-limit`, data);
+      const payload = {
+        ...data,
+        limitVolume: tonnesToLegacyWarehouseKilograms(data.limitVolume),
+      };
+      const res = await apiRequest("POST", `/api/warehouses/${warehouse.id}/set-limit`, payload);
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || "Ошибка установки лимита");
@@ -170,13 +178,13 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
                 name="limitVolume"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Объём лимита (кг)</FormLabel>
+                    <FormLabel>Объём лимита (т)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min="0"
-                        step="0.01"
-                        placeholder="Максимальный объём в кг"
+                        step="0.00001"
+                        placeholder="Максимальный объём в тоннах"
                         data-testid="input-limit-volume"
                         {...field}
                       />

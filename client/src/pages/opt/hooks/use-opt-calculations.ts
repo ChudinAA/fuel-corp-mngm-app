@@ -1,17 +1,26 @@
 import { useMemo } from "react";
 import type { Price, Warehouse, DeliveryCost, Base, Supplier } from "@shared/schema";
-import { DELIVERY_ENTITY_TYPE } from "@shared/constants";
-import { useQuantityCalculation } from "../../shared/hooks/use-quantity-calculation";
+import { DELIVERY_ENTITY_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { useOptWarehouseBalance } from "./use-opt-warehouse-balance";
+import {
+  pricePerKilogramToPerTonne,
+  pricePerTonneToPerKilogram,
+} from "@shared/units";
+import {
+  calculateOptTonnes,
+  contractPricePerTonne,
+  optTonnesToLegacyKilograms,
+  type OptInputMode,
+} from "../unit-calculations";
 
 interface UseOptCalculationsProps {
-  inputMode: "liters" | "kg";
+  inputMode: OptInputMode;
   quantityLiters: string;
   density: string;
-  quantityKg: string;
+  quantityTonnes: string;
   isWarehouseSupplier: boolean;
   supplierWarehouse: Warehouse | undefined;
   basisId: string;
@@ -35,7 +44,7 @@ export function useOptCalculations({
   inputMode,
   quantityLiters,
   density,
-  quantityKg,
+  quantityTonnes,
   isWarehouseSupplier,
   supplierWarehouse,
   basisId,
@@ -54,12 +63,14 @@ export function useOptCalculations({
   selectedSupplier,
   noDeliveryRequired = false,
 }: UseOptCalculationsProps) {
-  const { calculatedKg, finalKg } = useQuantityCalculation({
+  const finalTonnes = calculateOptTonnes({
     inputMode,
+    quantityTonnes,
     quantityLiters,
     density,
-    quantityKg,
   });
+  const calculatedTonnes = finalTonnes > 0 ? finalTonnes.toFixed(5) : "";
+  const finalKg = optTonnesToLegacyKilograms(finalTonnes);
 
   const { 
     availableBalance: warehouseBalanceAtDate, 
@@ -84,14 +95,54 @@ export function useOptCalculations({
     productType,
   });
 
-  const purchasePrice = useMemo(() => {
-    if (isWarehouseSupplier) {
-      return warehousePriceAtDate !== null ? warehousePriceAtDate : extractedPurchasePrice;
-    }
-    return extractedPurchasePrice;
-  }, [isWarehouseSupplier, warehousePriceAtDate, extractedPurchasePrice]);
+  const getSelectedPriceUnit = (prices: Price[], selectedId: string): string => {
+    if (!prices.length) return "kg";
+    if (!selectedId) return prices[0]?.priceUnit || "kg";
+    const { priceId } = parsePriceCompositeId(selectedId);
+    return prices.find((price) => price.id === priceId)?.priceUnit || "kg";
+  };
 
-  const salePrice = extractedSalePrice;
+  const basisPrice = selectedSupplier?.basisPrices?.find(
+    (price) => price.basisId === basisId,
+  );
+  const purchaseUsesKilograms =
+    isWarehouseSupplier ||
+    (productType === PRODUCT_TYPE.SERVICE && !!basisPrice?.servicePrice) ||
+    (productType === PRODUCT_TYPE.PVKJ && !!basisPrice?.pvkjPrice);
+  const purchasePriceUnit = purchaseUsesKilograms
+    ? "kg"
+    : getSelectedPriceUnit(purchasePrices, selectedPurchasePriceId);
+  const salePriceUnit = getSelectedPriceUnit(salePrices, selectedSalePriceId);
+
+  const rawPurchasePrice =
+    isWarehouseSupplier && warehousePriceAtDate !== null
+      ? warehousePriceAtDate
+      : extractedPurchasePrice;
+  const purchasePricePerTonne = purchaseUsesKilograms
+    ? rawPurchasePrice === null
+      ? null
+      : pricePerKilogramToPerTonne(rawPurchasePrice)
+    : contractPricePerTonne(rawPurchasePrice, purchasePriceUnit, density);
+  const salePricePerTonne = contractPricePerTonne(
+    extractedSalePrice,
+    salePriceUnit,
+    density,
+  );
+  const purchasePricePerKilogram =
+    purchasePricePerTonne === null
+      ? null
+      : pricePerTonneToPerKilogram(purchasePricePerTonne);
+  const salePricePerKilogram =
+    salePricePerTonne === null
+      ? null
+      : pricePerTonneToPerKilogram(salePricePerTonne);
+  const densityValue = parseFloat(density);
+  const validDensity = Number.isFinite(densityValue) && densityValue > 0;
+  const purchasePriceRequiresDensity =
+    purchasePriceUnit === "liter" && !validDensity;
+  const salePriceRequiresDensity = salePriceUnit === "liter" && !validDensity;
+  const priceRequiresDensity =
+    purchasePriceRequiresDensity || salePriceRequiresDensity;
 
   // Получение стоимости доставки с гибким поиском тарифа по приоритету:
   // 1. Самовывоз (noDeliveryRequired) → 0
@@ -182,26 +233,36 @@ export function useOptCalculations({
     customerBasisId,
     supplierWarehouse,
   ]);
-  const deliveryCost = noDeliveryRequired ? 0 :
-    matchedDeliveryCost && finalKg > 0 ? parseFloat(matchedDeliveryCost.costPerKg) * finalKg : null;
+  const deliveryCost =
+    noDeliveryRequired
+      ? 0
+      : matchedDeliveryCost && finalTonnes > 0
+        ? pricePerKilogramToPerTonne(
+            parseFloat(matchedDeliveryCost.costPerKg),
+          ) * finalTonnes
+        : null;
 
   const purchaseAmount =
-    purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
+    purchasePricePerTonne !== null && finalTonnes > 0
+      ? purchasePricePerTonne * finalTonnes
+      : null;
   const saleAmount =
-    salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
+    salePricePerTonne !== null && finalTonnes > 0
+      ? salePricePerTonne * finalTonnes
+      : null;
 
   const otherServiceFee = useMemo(() => {
-    if (basisId && selectedSupplier?.basisPrices && finalKg > 0) {
+    if (basisId && selectedSupplier?.basisPrices && finalTonnes > 0) {
       const bp = selectedSupplier.basisPrices.find((b) => b.basisId === basisId);
       if (!bp?.otherServiceType || !bp?.otherServiceValue) return 0;
       const val = parseFloat(bp.otherServiceValue);
       if (isNaN(val) || val <= 0) return 0;
-      if (bp.otherServiceType === "royalty_per_ton") return val * (finalKg / 1000);
+      if (bp.otherServiceType === "royalty_per_ton") return val * finalTonnes;
       if (bp.otherServiceType === "percent_of_amount" && saleAmount !== null) return saleAmount * val / 100;
       if (bp.otherServiceType === "fixed") return val;
     }
     return 0;
-  }, [selectedSupplier, basisId, finalKg, saleAmount]);
+  }, [selectedSupplier, basisId, finalTonnes, saleAmount]);
 
   const profit = useMemo(() => {
     if (
@@ -217,8 +278,14 @@ export function useOptCalculations({
     return null;
   }, [purchaseAmount, saleAmount, deliveryCost, otherServiceFee]);
 
-  const deliveryTariff =
-    deliveryCost && finalKg > 0 ? deliveryCost / finalKg : null;
+  const deliveryTariffPerTonne =
+    deliveryCost !== null && finalTonnes > 0
+      ? deliveryCost / finalTonnes
+      : null;
+  const deliveryTariffPerKilogram =
+    deliveryTariffPerTonne === null
+      ? null
+      : pricePerTonneToPerKilogram(deliveryTariffPerTonne);
 
   // Логика проверки объема по договору
   const contractVolumeStatus = useContractVolume({
@@ -227,7 +294,8 @@ export function useOptCalculations({
     initialQuantityKg: initialQuantityKg,
     mode: "opt",
     currentDealAmount: saleAmount ?? 0,
-    initialDealAmount: (salePrice ?? 0) * initialQuantityKg,
+    initialDealAmount:
+      (salePricePerTonne ?? 0) * (initialQuantityKg / 1000),
   });
 
   // Логика проверки объема по договору поставщика
@@ -237,21 +305,31 @@ export function useOptCalculations({
     initialQuantityKg: initialQuantityKg,
     mode: "opt",
     currentDealAmount: purchaseAmount ?? 0,
-    initialDealAmount: (purchasePrice ?? 0) * initialQuantityKg,
+    initialDealAmount:
+      (purchasePricePerTonne ?? 0) * (initialQuantityKg / 1000),
   });
 
   return {
-    calculatedKg,
+    calculatedTonnes,
+    finalTonnes,
     finalKg,
-    purchasePrice,
-    salePrice,
+    purchasePricePerTonne,
+    salePricePerTonne,
+    purchasePricePerKilogram,
+    salePricePerKilogram,
+    purchasePriceUnit,
+    salePriceUnit,
+    purchasePriceRequiresDensity,
+    salePriceRequiresDensity,
+    priceRequiresDensity,
     deliveryCost,
     matchedDeliveryCost,
     purchaseAmount,
     saleAmount,
     profit,
     otherServiceFee,
-    deliveryTariff,
+    deliveryTariffPerTonne,
+    deliveryTariffPerKilogram,
     contractVolumeStatus,
     supplierContractVolumeStatus,
     warehouseBalanceAtDate: (typeof warehouseBalanceAtDate === 'number' ? warehouseBalanceAtDate : (typeof warehouseBalanceAtDate === 'string' ? parseFloat(warehouseBalanceAtDate) : 0)) as number,

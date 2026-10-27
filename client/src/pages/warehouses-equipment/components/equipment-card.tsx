@@ -10,7 +10,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import type { Equipment } from "@shared/schema";
-import { formatNumber, formatCurrency } from "../../warehouses/utils";
+import {
+  formatPricePerTonne,
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 import { useAuth } from "@/hooks/use-auth";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 import { PRODUCT_TYPE } from "@shared/constants";
@@ -37,6 +42,10 @@ export function EquipmentCard({
   const cost = parseFloat(equipment.averageCost || "0");
   const pvkjBalance = parseFloat(equipment.pvkjBalance || "0");
   const pvkjCost = parseFloat(equipment.pvkjAverageCost || "0");
+  const balanceTonnes = kilogramsToTonnes(balance);
+  const costPerTonne = pricePerKilogramToPerTonne(cost);
+  const pvkjBalanceTonnes = kilogramsToTonnes(pvkjBalance);
+  const pvkjCostPerTonne = pricePerKilogramToPerTonne(pvkjCost);
   const isInactive = equipment.isActive === "false";
   const { hasPermission } = useAuth();
 
@@ -124,14 +133,14 @@ export function EquipmentCard({
         <div className="space-y-2">
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-semibold">
-              {formatNumber(balance)} кг
+              {formatTonnes(balanceTonnes)} т
             </span>
             <ProductTypeBadge type={PRODUCT_TYPE.KEROSENE} />
           </div>
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>
               Себестоимость:{" "}
-              <span className="font-medium">{formatCurrency(cost)}/кг</span>
+              <span className="font-medium">{formatPricePerTonne(costPerTonne)} ₽/т</span>
             </span>
           </div>
         </div>
@@ -142,7 +151,7 @@ export function EquipmentCard({
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
                 <span className="text-lg font-semibold text-muted-foreground">
-                  {formatNumber(pvkjBalance)} кг
+                  {formatTonnes(pvkjBalanceTonnes)} т
                 </span>
                 <ProductTypeBadge type={PRODUCT_TYPE.PVKJ} />
               </div>
@@ -150,7 +159,7 @@ export function EquipmentCard({
                 <span>
                   Себестоимость:{" "}
                   <span className="font-medium">
-                    {formatCurrency(pvkjCost)}/кг
+                    {formatPricePerTonne(pvkjCostPerTonne)} ₽/т
                   </span>
                 </span>
               </div>
