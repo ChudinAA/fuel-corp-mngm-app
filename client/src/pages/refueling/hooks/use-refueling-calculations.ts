@@ -6,7 +6,11 @@ import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 import { useEquipmentBalance } from "@/hooks/use-equipment-balance";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import {
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 import { normalizeCurrencyForDisplay } from "../utils";
 import {
   calculateRefuelingAmount,
@@ -160,8 +164,12 @@ export function useRefuelingCalculations({
   // Equipment (СЗ) average cost at the refueling date
   const equipmentPriceAtDate = useMemo(() => {
     if (!isLikMode || isEquipmentLoading) return null;
-    return equipmentData && typeof equipmentData === "object" && "averageCost" in equipmentData
-      ? (equipmentData.averageCost ? parseFloat(equipmentData.averageCost as string) : null)
+    if (!equipmentData || typeof equipmentData !== "object") return null;
+    if ("averageCostPerTonne" in equipmentData && equipmentData.averageCostPerTonne != null) {
+      return Number(equipmentData.averageCostPerTonne);
+    }
+    return "averageCost" in equipmentData && equipmentData.averageCost
+      ? pricePerKilogramToPerTonne(Number(equipmentData.averageCost))
       : null;
   }, [isLikMode, equipmentData, isEquipmentLoading]);
 
@@ -202,11 +210,19 @@ export function useRefuelingCalculations({
     return extractedSalePrice;
   }, [setSalePriceZero, isPriceRecharge, isPvkjRecharge, productType, purchasePrice, extractedSalePrice]);
 
-  const purchasePriceUnit: RefuelingPriceUnit =
-    (isLikMode && productType !== PRODUCT_TYPE.SERVICE && !hasBasisPvkjPrice) ||
-    (isWarehouseSupplier &&
-      productType !== PRODUCT_TYPE.SERVICE &&
-      !hasBasisPvkjPrice)
+  const equipmentCostSelected =
+    isLikMode &&
+    productType !== PRODUCT_TYPE.SERVICE &&
+    !hasBasisPvkjPrice &&
+    equipmentPriceAtDate !== null;
+  const warehouseCostSelected =
+    isWarehouseSupplier &&
+    productType !== PRODUCT_TYPE.SERVICE &&
+    !hasBasisPvkjPrice &&
+    warehousePriceAtDate !== null;
+  const purchasePriceUnit: RefuelingPriceUnit = equipmentCostSelected
+    ? "tonne"
+    : warehouseCostSelected
       ? "kg"
       : extractedPurchasePriceUnit;
   const salePriceUnit: RefuelingPriceUnit = isRechargeActive

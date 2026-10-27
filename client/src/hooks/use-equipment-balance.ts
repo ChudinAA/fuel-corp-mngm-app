@@ -1,6 +1,10 @@
 import { PRODUCT_TYPE } from "@shared/constants";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
+import {
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 
 export function useEquipmentBalance(
   equipmentId: string | undefined,
@@ -16,8 +20,22 @@ export function useEquipmentBalance(
       productType,
     ],
     queryFn: async () => {
-      if (productType === PRODUCT_TYPE.SERVICE) return { balance: "0", averageCost: "0" };
-      if (!equipmentId || !date) return { balance: "0", averageCost: "0" };
+       if (productType === PRODUCT_TYPE.SERVICE) {
+         return {
+           balance: "0",
+           balanceTonnes: "0.00000",
+           averageCost: "0",
+           averageCostPerTonne: "0.000",
+         };
+       }
+       if (!equipmentId || !date) {
+         return {
+           balance: "0",
+           balanceTonnes: "0.00000",
+           averageCost: "0",
+           averageCostPerTonne: "0.000",
+         };
+       }
       const params = new URLSearchParams({
         date: format(date, "yyyy-MM-dd"),
       });
@@ -27,9 +45,22 @@ export function useEquipmentBalance(
       );
       if (!res.ok) throw new Error("Failed to fetch equipment balance");
       const data = await res.json();
+       const balance = String(data.balance ?? "0");
+       const averageCost =
+         data.averageCost == null ? null : String(data.averageCost);
       return {
-        balance: data.balance as string,
-        averageCost: data.averageCost as string | null,
+         balance,
+         balanceTonnes:
+           data.balanceTonnes == null
+             ? kilogramsToTonnes(Number(balance)).toFixed(5)
+             : String(data.balanceTonnes),
+         averageCost,
+         averageCostPerTonne:
+           data.averageCostPerTonne == null
+             ? averageCost == null
+               ? null
+               : pricePerKilogramToPerTonne(Number(averageCost)).toFixed(3)
+             : String(data.averageCostPerTonne),
       };
     },
     enabled: !!equipmentId && !!date,

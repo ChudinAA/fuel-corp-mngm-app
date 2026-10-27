@@ -5,7 +5,11 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
-import { equipmentToApi } from "../equipment-api-adapters";
+import {
+  equipmentBalanceToApi,
+  equipmentToApi,
+  equipmentTransactionToApi,
+} from "../equipment-api-adapters";
 
 export function registerEquipmentRoutes(app: Router) {
   const router = Router();
@@ -118,7 +122,7 @@ export function registerEquipmentRoutes(app: Router) {
         }
         const date = new Date(dateStr);
         const balanceData = await equipmentStorage.getEquipmentBalanceAtDate(id, date, productType);
-        res.json(balanceData);
+        res.json(equipmentBalanceToApi(balanceData));
       } catch (error) {
         res.status(500).json({ message: "Ошибка получения баланса СЗ" });
       }
@@ -133,7 +137,10 @@ export function registerEquipmentRoutes(app: Router) {
       const limit = parseInt(req.query.limit as string) || 25;
       const offset = parseInt(req.query.offset as string) || 0;
       const data = await equipmentStorage.getTransactions(req.params.id, limit, offset);
-      res.json(data);
+      res.json({
+        ...data,
+        transactions: data.transactions.map(equipmentTransactionToApi),
+      });
     },
   );
 

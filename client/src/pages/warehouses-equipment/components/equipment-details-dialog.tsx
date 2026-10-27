@@ -33,8 +33,7 @@ import {
   Package,
   Loader2,
 } from "lucide-react";
-import type { EquipmentTransaction } from "@shared/schema";
-import type { EquipmentApi } from "../types";
+import type { EquipmentApi, EquipmentTransactionApi } from "../types";
 import {
   formatPricePerTonne,
   formatTonnes,
@@ -66,7 +65,7 @@ export function EquipmentDetailsDialog({
         );
         if (!res.ok) throw new Error("Failed to fetch transactions");
         return res.json() as Promise<{
-          transactions: EquipmentTransaction[];
+          transactions: EquipmentTransactionApi[];
           hasMore: boolean;
         }>;
       },
@@ -147,7 +146,11 @@ export function EquipmentDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Себест: {formatPricePerTonne(pricePerKilogramToPerTonne(Number(equipment.averageCost || 0)))} ₽/т
+                Себест: {formatPricePerTonne(
+                  equipment.averageCostPerTonne != null
+                    ? Number(equipment.averageCostPerTonne)
+                    : pricePerKilogramToPerTonne(Number(equipment.averageCost || 0)),
+                )} ₽/т
               </p>
             </CardContent>
           </Card>
@@ -163,7 +166,11 @@ export function EquipmentDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Себест: {formatPricePerTonne(pricePerKilogramToPerTonne(Number(equipment.pvkjAverageCost || 0)))} ₽/т
+                Себест: {formatPricePerTonne(
+                  equipment.pvkjAverageCostPerTonne != null
+                    ? Number(equipment.pvkjAverageCostPerTonne)
+                    : pricePerKilogramToPerTonne(Number(equipment.pvkjAverageCost || 0)),
+                )} ₽/т
               </p>
             </CardContent>
           </Card>
@@ -227,19 +234,34 @@ export function EquipmentDetailsDialog({
                       className={`text-right font-medium text-sm ${isReceipt(tx.transactionType) ? "text-green-600" : "text-red-600"}`}
                     >
                       {isReceipt(tx.transactionType) ? "+" : ""}
-                      {formatTonnes(kilogramsToTonnes(Number(tx.quantity)))}
+                      {formatTonnes(
+                        tx.quantityTonnes ??
+                          kilogramsToTonnes(Number(tx.quantity)),
+                      )}
                     </TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground">
-                      {formatTonnes(kilogramsToTonnes(Number(tx.balanceBefore || 0)))} т
+                      {formatTonnes(
+                        tx.balanceBeforeTonnes ??
+                          kilogramsToTonnes(Number(tx.balanceBefore || 0)),
+                      )} т
                     </TableCell>
                     <TableCell className="text-right text-xs font-medium">
-                      {formatTonnes(kilogramsToTonnes(Number(tx.balanceAfter || 0)))} т
+                      {formatTonnes(
+                        tx.balanceAfterTonnes ??
+                          kilogramsToTonnes(Number(tx.balanceAfter || 0)),
+                      )} т
                     </TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground">
-                      {formatPricePerTonne(pricePerKilogramToPerTonne(Number(tx.averageCostBefore || 0)))}
+                      {formatPricePerTonne(
+                        tx.averageCostBeforePerTonne ??
+                          pricePerKilogramToPerTonne(Number(tx.averageCostBefore || 0)),
+                      )}
                     </TableCell>
                     <TableCell className={`text-right text-xs font-medium ${costChanged ? "text-primary" : ""}`}>
-                      {formatPricePerTonne(pricePerKilogramToPerTonne(Number(tx.averageCostAfter || 0)))}
+                      {formatPricePerTonne(
+                        tx.averageCostAfterPerTonne ??
+                          pricePerKilogramToPerTonne(Number(tx.averageCostAfter || 0)),
+                      )}
                     </TableCell>
                   </TableRow>
                   );

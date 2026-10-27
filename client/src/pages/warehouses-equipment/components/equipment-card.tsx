@@ -46,12 +46,18 @@ export function EquipmentCard({
     equipment.currentBalanceTonnes !== undefined
       ? Number(equipment.currentBalanceTonnes)
       : kilogramsToTonnes(balance);
-  const costPerTonne = pricePerKilogramToPerTonne(cost);
+  const costPerTonne =
+    equipment.averageCostPerTonne != null
+      ? Number(equipment.averageCostPerTonne)
+      : pricePerKilogramToPerTonne(cost);
   const pvkjBalanceTonnes =
     equipment.pvkjBalanceTonnes !== undefined
       ? Number(equipment.pvkjBalanceTonnes)
       : kilogramsToTonnes(pvkjBalance);
-  const pvkjCostPerTonne = pricePerKilogramToPerTonne(pvkjCost);
+  const pvkjCostPerTonne =
+    equipment.pvkjAverageCostPerTonne != null
+      ? Number(equipment.pvkjAverageCostPerTonne)
+      : pricePerKilogramToPerTonne(pvkjCost);
   const isInactive = equipment.isActive === "false";
   const { hasPermission } = useAuth();
 
