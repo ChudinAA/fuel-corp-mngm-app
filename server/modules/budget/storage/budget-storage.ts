@@ -1,7 +1,8 @@
 
-import { eq, desc, sql, and, isNull, gte, lte } from "drizzle-orm";
+import { eq, desc, sql, and, isNull, gte, lt, lte } from "drizzle-orm";
 import { db } from "server/db";
 import { budgetIncomeExpense, type BudgetIncomeExpense, type InsertBudgetIncomeExpense } from "@shared/schema";
+import { getBudgetMonthRange } from "./budget-month-range";
 import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { IBudgetStorage } from "./types";
@@ -80,55 +81,26 @@ export class BudgetStorage implements IBudgetStorage {
     if (!budget) {
       throw new Error("Budget not found");
     }
+    const salesTotals = await this.getMonthlySalesTotals(budget.budgetMonth);
+    const totalRevenue = Number(salesTotals.totalRevenue);
+    const totalProfit = Number(salesTotals.totalProfit);
+    const marginality = totalRevenue > 0
+      ? ((totalProfit / totalRevenue) * 100).toFixed(2)
+      : "0";
 
-    const periodStart = budget.budgetMonth;
-    const periodEnd = new Date(
-      new Date(budget.budgetMonth).setMonth(new Date(budget.budgetMonth).getMonth() + 1),
-    ).toISOString();
-
-    // Получаем продажи за период
-    const [salesData] = await db
-      .select({
-        optRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${opt.dealDate} >= ${periodStart} AND ${opt.dealDate} < ${periodEnd} THEN CAST(${opt.saleAmount} AS NUMERIC) ELSE 0 END), 0)`,
-        optProfit: sql<string>`COALESCE(SUM(CASE WHEN ${opt.dealDate} >= ${periodStart} AND ${opt.dealDate} < ${periodEnd} THEN CAST(${opt.profit} AS NUMERIC) ELSE 0 END), 0)`,
-        refuelingRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${aircraftRefueling.refuelingDate} >= ${periodStart} AND ${aircraftRefueling.refuelingDate} < ${periodEnd} THEN CAST(${aircraftRefueling.saleAmount} AS NUMERIC) ELSE 0 END), 0)`,
-        refuelingProfit: sql<string>`COALESCE(SUM(CASE WHEN ${aircraftRefueling.refuelingDate} >= ${periodStart} AND ${aircraftRefueling.refuelingDate} < ${periodEnd} THEN CAST(${aircraftRefueling.profit} AS NUMERIC) ELSE 0 END), 0)`,
-      })
-      .from(opt)
-      .leftJoin(aircraftRefueling, sql`1=1`)
-      .where(
-        and(
-          isNull(opt.deletedAt),
-          isNull(aircraftRefueling.deletedAt)
-        )
-      );
-
-    const totalRevenue = (
-      parseFloat(salesData?.optRevenue || "0") + 
-      parseFloat(salesData?.refuelingRevenue || "0")
-    ).toString();
-
-    const totalProfit = (
-      parseFloat(salesData?.optProfit || "0") + 
-      parseFloat(salesData?.refuelingProfit || "0")
-    ).toString();
-
-    // Обновляем бюджет
     await this.updateBudgetEntry(budgetId, {
-      salesVolume: totalRevenue,
-      marginality: parseFloat(totalRevenue) > 0 
-        ? ((parseFloat(totalProfit) / parseFloat(totalRevenue)) * 100).toFixed(2)
-        : "0",
+      salesVolume: salesTotals.totalVolumeKg,
+      salesRevenue: salesTotals.totalRevenue,
+      marginality,
     });
 
     return {
       budgetId,
       period: budget.budgetMonth,
-      revenue: totalRevenue,
-      profit: totalProfit,
-      marginality: parseFloat(totalRevenue) > 0 
-        ? ((parseFloat(totalProfit) / parseFloat(totalRevenue)) * 100).toFixed(2)
-        : "0",
+      salesVolumeTonnes: salesTotals.totalVolumeTonnes,
+      revenue: salesTotals.totalRevenue,
+      profit: salesTotals.totalProfit,
+      marginality,
     };
   }
 
@@ -139,7 +111,7 @@ export class BudgetStorage implements IBudgetStorage {
       throw new Error("Budget not found");
     }
 
-    const revenue = parseFloat(budget.salesVolume || "0");
+    const revenue = parseFloat(budget.salesRevenue || "0");
     const operatingExpenses = parseFloat(budget.operatingExpenses || "0");
     const otherExpenses = parseFloat(budget.otherExpenses || "0");
     const totalExpenses = operatingExpenses + otherExpenses;
@@ -177,60 +149,12 @@ export class BudgetStorage implements IBudgetStorage {
   }
 
   async updateBudgetFromSales(budgetMonth: string): Promise<BudgetIncomeExpense | undefined> {
-    // Определяем начало и конец месяца
-    const monthDate = new Date(budgetMonth);
-    const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).toISOString();
-    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59).toISOString();
-
-    // Агрегация данных из ОПТа
-    const [optData] = await db
-      .select({
-        totalVolume: sql<string>`COALESCE(SUM(CAST(${opt.quantityKg} AS NUMERIC)), 0)`,
-        totalRevenue: sql<string>`COALESCE(SUM(CAST(${opt.saleAmount} AS NUMERIC)), 0)`,
-        totalProfit: sql<string>`COALESCE(SUM(CAST(${opt.profit} AS NUMERIC)), 0)`,
-      })
-      .from(opt)
-      .where(
-        and(
-          gte(opt.dealDate, monthStart),
-          lte(opt.dealDate, monthEnd),
-          isNull(opt.deletedAt)
-        )
-      );
-
-    // Агрегация данных из ЗВС
-    const [refuelingData] = await db
-      .select({
-        totalVolume: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.quantityKg} AS NUMERIC)), 0)`,
-        totalRevenue: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
-        totalProfit: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.profit} AS NUMERIC)), 0)`,
-      })
-      .from(aircraftRefueling)
-      .where(
-        and(
-          gte(aircraftRefueling.refuelingDate, monthStart),
-          lte(aircraftRefueling.refuelingDate, monthEnd),
-          isNull(aircraftRefueling.deletedAt)
-        )
-      );
-
-    const totalVolume = (
-      parseFloat(optData?.totalVolume || "0") + 
-      parseFloat(refuelingData?.totalVolume || "0")
-    ).toString();
-
-    const totalRevenue = (
-      parseFloat(optData?.totalRevenue || "0") + 
-      parseFloat(refuelingData?.totalRevenue || "0")
-    ).toString();
-
-    const totalProfit = (
-      parseFloat(optData?.totalProfit || "0") + 
-      parseFloat(refuelingData?.totalProfit || "0")
-    ).toString();
-
-    const marginality = parseFloat(totalRevenue) > 0 
-      ? ((parseFloat(totalProfit) / parseFloat(totalRevenue)) * 100).toFixed(2)
+    const { start, end } = getBudgetMonthRange(budgetMonth);
+    const salesTotals = await this.getMonthlySalesTotals(budgetMonth);
+    const totalRevenue = Number(salesTotals.totalRevenue);
+    const totalProfit = Number(salesTotals.totalProfit);
+    const marginality = totalRevenue > 0
+      ? ((totalProfit / totalRevenue) * 100).toFixed(2)
       : "0";
 
     // Проверяем, существует ли запись для этого месяца
@@ -239,7 +163,8 @@ export class BudgetStorage implements IBudgetStorage {
       .from(budgetIncomeExpense)
       .where(
         and(
-          eq(budgetIncomeExpense.budgetMonth, monthStart),
+          gte(budgetIncomeExpense.budgetMonth, start),
+          lt(budgetIncomeExpense.budgetMonth, end),
           isNull(budgetIncomeExpense.deletedAt)
         )
       )
@@ -247,12 +172,64 @@ export class BudgetStorage implements IBudgetStorage {
 
     if (existing) {
       return this.updateBudgetEntry(existing.id, {
-        salesVolume: totalVolume,
-        salesRevenue: totalRevenue,
+        salesVolume: salesTotals.totalVolumeKg,
+        salesRevenue: salesTotals.totalRevenue,
         marginality: marginality,
       });
     }
 
     return undefined;
+  }
+
+  private async getMonthlySalesTotals(budgetMonth: string): Promise<{
+    totalVolumeKg: string;
+    totalVolumeTonnes: string;
+    totalRevenue: string;
+    totalProfit: string;
+  }> {
+    const { start, end } = getBudgetMonthRange(budgetMonth);
+    const result = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(monthly_sales.volume_kg), 0)::text AS total_volume_kg,
+        COALESCE(SUM(monthly_sales.volume_kg) / 1000, 0)::text AS total_volume_tonnes,
+        COALESCE(SUM(monthly_sales.revenue), 0)::text AS total_revenue,
+        COALESCE(SUM(monthly_sales.profit), 0)::text AS total_profit
+      FROM (
+        SELECT
+          CAST(${opt.quantityKg} AS NUMERIC) AS volume_kg,
+          CAST(${opt.saleAmount} AS NUMERIC) AS revenue,
+          CAST(${opt.profit} AS NUMERIC) AS profit
+        FROM ${opt}
+        WHERE ${opt.dealDate} >= ${start}::timestamp
+          AND ${opt.dealDate} < ${end}::timestamp
+          AND ${opt.deletedAt} IS NULL
+        UNION ALL
+        SELECT
+          CAST(${aircraftRefueling.quantityKg} AS NUMERIC) AS volume_kg,
+          CAST(${aircraftRefueling.saleAmount} AS NUMERIC) AS revenue,
+          CAST(${aircraftRefueling.profit} AS NUMERIC) AS profit
+        FROM ${aircraftRefueling}
+        WHERE ${aircraftRefueling.refuelingDate} >= ${start}::timestamp
+          AND ${aircraftRefueling.refuelingDate} < ${end}::timestamp
+          AND ${aircraftRefueling.deletedAt} IS NULL
+      ) AS monthly_sales
+    `);
+    const totals = result.rows?.[0] as {
+      total_volume_kg?: string;
+      total_volume_tonnes?: string;
+      total_revenue?: string;
+      total_profit?: string;
+    } | undefined;
+
+    if (!totals) {
+      throw new Error("Could not calculate monthly sales totals");
+    }
+
+    return {
+      totalVolumeKg: totals.total_volume_kg ?? "0",
+      totalVolumeTonnes: totals.total_volume_tonnes ?? "0",
+      totalRevenue: totals.total_revenue ?? "0",
+      totalProfit: totals.total_profit ?? "0",
+    };
   }
 }

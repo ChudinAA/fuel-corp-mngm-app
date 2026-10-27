@@ -13,6 +13,7 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { Pencil, Trash2, Plus, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { formatTonnes, kilogramsToTonnes, tonnesToKilograms } from "@shared/units";
 
 interface BudgetEntry {
   id: string;
@@ -180,9 +181,17 @@ export default function BudgetPage() {
     const totalExp = operating + personnel + logistics + other;
     const revenue = parseFloat(formData.salesRevenue || "0");
     const netProf = revenue - totalExp;
+    const salesVolumeTonnes = formData.salesVolume.trim() === ""
+      ? null
+      : Number(formData.salesVolume);
+    if (salesVolumeTonnes !== null && (!Number.isFinite(salesVolumeTonnes) || salesVolumeTonnes < 0)) {
+      showError("Объем продаж должен быть задан в тоннах и не может быть отрицательным");
+      return;
+    }
 
     const dataToSubmit = {
       ...formData,
+      salesVolume: salesVolumeTonnes === null ? "" : String(tonnesToKilograms(salesVolumeTonnes)),
       totalExpenses: totalExp.toString(),
       netProfit: netProf.toString(),
     };
@@ -198,7 +207,9 @@ export default function BudgetPage() {
     setEditingEntry(entry);
     setFormData({
       budgetMonth: entry.budgetMonth.substring(0, 7),
-      salesVolume: entry.salesVolume || "",
+      salesVolume: entry.salesVolume
+        ? kilogramsToTonnes(Number(entry.salesVolume)).toFixed(5)
+        : "",
       salesRevenue: entry.salesRevenue || "",
       marginality: entry.marginality || "",
       operatingExpenses: entry.operatingExpenses || "",
@@ -252,10 +263,10 @@ export default function BudgetPage() {
                 <h3 className="font-semibold mb-3">Доходы (автоматически из продаж)</h3>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label>Объем продаж (кг)</Label>
+                    <Label>Объем продаж (т)</Label>
                     <Input
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       value={formData.salesVolume}
                       onChange={(e) => setFormData({ ...formData, salesVolume: e.target.value })}
                       readOnly
@@ -401,7 +412,7 @@ export default function BudgetPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Месяц</TableHead>
-                    <TableHead className="text-right">Объем продаж (кг)</TableHead>
+                    <TableHead className="text-right">Объем продаж (т)</TableHead>
                     <TableHead className="text-right">Выручка (₽)</TableHead>
                     <TableHead className="text-right">Маржа (%)</TableHead>
                     <TableHead className="text-right">Операц. расходы</TableHead>
@@ -420,7 +431,9 @@ export default function BudgetPage() {
                         {format(new Date(entry.budgetMonth), "LLLL yyyy", { locale: ru })}
                       </TableCell>
                       <TableCell className="text-right">
-                        {entry.salesVolume ? parseFloat(entry.salesVolume).toLocaleString() : "-"}
+                        {entry.salesVolume
+                          ? `${formatTonnes(kilogramsToTonnes(Number(entry.salesVolume)))} т`
+                          : "-"}
                       </TableCell>
                       <TableCell className="text-right">
                         {entry.salesRevenue ? `${parseFloat(entry.salesRevenue).toLocaleString()} ₽` : "-"}
