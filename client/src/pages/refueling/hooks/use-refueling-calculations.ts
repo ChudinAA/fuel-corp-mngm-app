@@ -125,10 +125,23 @@ export function useRefuelingCalculations({
       ? parseFloat(currentWarehouseData.balance)
       : parseFloat(productType === PRODUCT_TYPE.PVKJ ? supplierWarehouse?.pvkjBalance || "0" : supplierWarehouse?.currentBalance || "0");
 
-    const safeHistKg = Number.isFinite(histKg) ? Math.max(0, histKg) : 0;
-    const safeCurrKg = Number.isFinite(currKg) ? Math.max(0, currKg) : 0;
-    const baseBalanceTonnes = kilogramsToTonnes(
-      Math.min(safeHistKg, safeCurrKg),
+    const histTonnes =
+      warehouseData &&
+      typeof warehouseData === "object" &&
+      "balanceTonnes" in warehouseData &&
+      warehouseData.balanceTonnes != null
+        ? Number(warehouseData.balanceTonnes)
+        : kilogramsToTonnes(Number.isFinite(histKg) ? histKg : 0);
+    const currTonnes =
+      currentWarehouseData &&
+      typeof currentWarehouseData === "object" &&
+      "balanceTonnes" in currentWarehouseData &&
+      currentWarehouseData.balanceTonnes != null
+        ? Number(currentWarehouseData.balanceTonnes)
+        : kilogramsToTonnes(Number.isFinite(currKg) ? currKg : 0);
+    const baseBalanceTonnes = Math.min(
+      Math.max(0, histTonnes),
+      Math.max(0, currTonnes),
     );
     return isEditing
       ? baseBalanceTonnes + initialQuantityTonnes
@@ -137,8 +150,15 @@ export function useRefuelingCalculations({
 
   const warehousePriceAtDate = useMemo(() => {
     if (isHistoricalLoading) return null;
-    return warehouseData && typeof warehouseData === 'object' && 'averageCost' in warehouseData 
-      ? (warehouseData.averageCost ? parseFloat(warehouseData.averageCost) : null) 
+    if (!warehouseData || typeof warehouseData !== "object") return null;
+    if (
+      "averageCostPerTonne" in warehouseData &&
+      warehouseData.averageCostPerTonne != null
+    ) {
+      return Number(warehouseData.averageCostPerTonne);
+    }
+    return "averageCost" in warehouseData && warehouseData.averageCost
+      ? pricePerKilogramToPerTonne(Number(warehouseData.averageCost))
       : null;
   }, [warehouseData, isHistoricalLoading]);
 
@@ -223,7 +243,7 @@ export function useRefuelingCalculations({
   const purchasePriceUnit: RefuelingPriceUnit = equipmentCostSelected
     ? "tonne"
     : warehouseCostSelected
-      ? "kg"
+      ? "tonne"
       : extractedPurchasePriceUnit;
   const salePriceUnit: RefuelingPriceUnit = isRechargeActive
     ? purchasePriceUnit

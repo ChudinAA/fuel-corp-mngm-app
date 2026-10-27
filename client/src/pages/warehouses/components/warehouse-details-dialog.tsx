@@ -169,11 +169,15 @@ export function WarehouseDetailsDialog({
         return a.id.localeCompare(b.id);
       });
 
-      const qtyTonnes = kilogramsToTonnes(parseFloat(tx.quantityKg));
+      const qtyTonnes =
+        tx.quantityTonnes != null
+          ? Number(tx.quantityTonnes)
+          : kilogramsToTonnes(parseFloat(tx.quantityKg));
       const sum = parseFloat(tx.sum || "0");
-      const pricePerTonne = pricePerKilogramToPerTonne(
-        parseFloat(tx.price || "0"),
-      );
+      const pricePerTonne =
+        tx.pricePerTonne != null
+          ? Number(tx.pricePerTonne)
+          : pricePerKilogramToPerTonne(parseFloat(tx.price || "0"));
 
       if (
         tx.transactionType === TRANSACTION_TYPE.RECEIPT ||
@@ -200,12 +204,16 @@ export function WarehouseDetailsDialog({
 
       // Всегда берем balanceAfter и averageCostAfter из транзакции, которая является последней по времени создания
       const lastTx = pData.transactions[pData.transactions.length - 1];
-      pData.avgCostPerTonne = pricePerKilogramToPerTonne(
-        parseFloat(lastTx.averageCostAfter || "0"),
-      );
-      pData.balanceTonnes = kilogramsToTonnes(
-        parseFloat(lastTx.balanceAfter || "0"),
-      );
+      pData.avgCostPerTonne =
+        lastTx.averageCostAfterPerTonne != null
+          ? Number(lastTx.averageCostAfterPerTonne)
+          : pricePerKilogramToPerTonne(
+              parseFloat(lastTx.averageCostAfter || "0"),
+            );
+      pData.balanceTonnes =
+        lastTx.balanceAfterTonnes != null
+          ? Number(lastTx.balanceAfterTonnes)
+          : kilogramsToTonnes(parseFloat(lastTx.balanceAfter || "0"));
     });
 
     return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
@@ -578,28 +586,32 @@ function DailyRowGroup({
                           <ProductTypeBadge type={tx.productType} />
                         </TableCell>
                         <TableCell
-                          className={`text-right py-1 font-medium text-xs ${parseFloat(tx.quantityKg) > 0 ? "text-green-600" : "text-red-600"}`}
+                          className={`text-right py-1 font-medium text-xs ${(tx.quantityTonnes != null ? Number(tx.quantityTonnes) : kilogramsToTonnes(Number(tx.quantityKg))) > 0 ? "text-green-600" : "text-red-600"}`}
                         >
-                          {parseFloat(tx.quantityKg) > 0 ? "+" : ""}
-                          {formatTonnes(kilogramsToTonnes(Number(tx.quantityKg)))} т
+                          {(tx.quantityTonnes != null ? Number(tx.quantityTonnes) : kilogramsToTonnes(Number(tx.quantityKg))) > 0 ? "+" : ""}
+                          {formatTonnes(tx.quantityTonnes != null ? Number(tx.quantityTonnes) : kilogramsToTonnes(Number(tx.quantityKg)))} т
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
                           {tx.sum ? formatCurrency(tx.sum) : "—"}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {tx.price ? formatPricePerTonne(pricePerKilogramToPerTonne(Number(tx.price))) : "—"}
+                          {tx.pricePerTonne != null
+                            ? formatPricePerTonne(Number(tx.pricePerTonne))
+                            : tx.price
+                              ? formatPricePerTonne(pricePerKilogramToPerTonne(Number(tx.price)))
+                              : "—"}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatTonnes(kilogramsToTonnes(Number(tx.balanceBefore)))} т
+                          {formatTonnes(tx.balanceBeforeTonnes != null ? Number(tx.balanceBeforeTonnes) : kilogramsToTonnes(Number(tx.balanceBefore)))} т
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatTonnes(kilogramsToTonnes(Number(tx.balanceAfter)))} т
+                          {formatTonnes(tx.balanceAfterTonnes != null ? Number(tx.balanceAfterTonnes) : kilogramsToTonnes(Number(tx.balanceAfter)))} т
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatPricePerTonne(pricePerKilogramToPerTonne(Number(tx.averageCostBefore)))}
+                          {formatPricePerTonne(tx.averageCostBeforePerTonne != null ? Number(tx.averageCostBeforePerTonne) : pricePerKilogramToPerTonne(Number(tx.averageCostBefore)))}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatPricePerTonne(pricePerKilogramToPerTonne(Number(tx.averageCostAfter)))}
+                          {formatPricePerTonne(tx.averageCostAfterPerTonne != null ? Number(tx.averageCostAfterPerTonne) : pricePerKilogramToPerTonne(Number(tx.averageCostAfter)))}
                         </TableCell>
                       </TableRow>
                     ))}

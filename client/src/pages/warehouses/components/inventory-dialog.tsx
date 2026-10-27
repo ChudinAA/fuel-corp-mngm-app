@@ -85,6 +85,8 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
   const { data: balanceAtDate, isFetching: isLoadingBalance } = useQuery<{
     balance: string;
     averageCost: string;
+    balanceTonnes?: string;
+    averageCostPerTonne?: string | null;
   }>({
     queryKey: [
       `/api/warehouses/${warehouse.id}/balance`,
@@ -103,9 +105,14 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
 
   const currentBalanceKg = parseFloat(balanceAtDate?.balance || "0");
   const currentCostPerKilogram = parseFloat(balanceAtDate?.averageCost || "0");
-  const currentBalanceTonnes = kilogramsToTonnes(currentBalanceKg);
+  const currentBalanceTonnes =
+    balanceAtDate?.balanceTonnes != null
+      ? Number(balanceAtDate.balanceTonnes)
+      : kilogramsToTonnes(currentBalanceKg);
   const currentCostPerTonne =
-    pricePerKilogramToPerTonne(currentCostPerKilogram);
+    balanceAtDate?.averageCostPerTonne != null
+      ? Number(balanceAtDate.averageCostPerTonne)
+      : pricePerKilogramToPerTonne(currentCostPerKilogram);
 
   const watchTargetBalance = form.watch("targetBalance");
   const watchTargetCost = form.watch("targetAverageCost");

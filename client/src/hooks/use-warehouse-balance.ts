@@ -1,4 +1,5 @@
 import { PRODUCT_TYPE } from "@shared/constants";
+import { kilogramsToTonnes, pricePerKilogramToPerTonne } from "@shared/units";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 
@@ -15,9 +16,19 @@ export function useWarehouseBalance(warehouseId: string | undefined, date: Date 
       const res = await fetch(`/api/warehouses/${warehouseId}/balance?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch balance");
       const data = await res.json();
+      const balance = data.balance as string;
+      const averageCost = data.averageCost as string | null;
       return {
-        balance: data.balance as string,
-        averageCost: data.averageCost as string | null
+        balance,
+        averageCost,
+        balanceTonnes:
+          data.balanceTonnes ??
+          kilogramsToTonnes(Number(balance)).toFixed(5),
+        averageCostPerTonne:
+          data.averageCostPerTonne ??
+          (averageCost == null
+            ? null
+            : pricePerKilogramToPerTonne(Number(averageCost)).toFixed(3)),
       };
     },
     enabled: !!warehouseId && !!date,

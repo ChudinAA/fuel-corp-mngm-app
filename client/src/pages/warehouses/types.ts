@@ -5,12 +5,18 @@ export interface WarehouseTransaction {
   sourceType?: string;
   productType?: string;
   quantityKg: string;
+  quantityTonnes?: string;
   balanceBefore: string;
   balanceAfter: string;
+  balanceBeforeTonnes?: string;
+  balanceAfterTonnes?: string;
   averageCostBefore: string;
   averageCostAfter: string;
+  averageCostBeforePerTonne?: string;
+  averageCostAfterPerTonne?: string;
   sum?: string;
   price?: string;
+  pricePerTonne?: string;
   transactionDate?: string;
   createdAt: string;
 }

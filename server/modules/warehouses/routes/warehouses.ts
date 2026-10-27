@@ -13,6 +13,10 @@ import { eq, sql } from "drizzle-orm";
 import { RecalculationQueueService } from "../services/recalculation-queue-service";
 import { format } from "date-fns";
 import { equipmentToApi } from "../../warehouses-equipment/equipment-api-adapters";
+import {
+  warehouseBalanceToApi,
+  warehouseTransactionToApi,
+} from "../warehouse-api-adapters";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get(
@@ -537,7 +541,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           limit,
           offset,
         );
-        res.json(result);
+        res.json({
+          ...result,
+          transactions: result.transactions.map(warehouseTransactionToApi),
+        });
       } catch (error) {
         console.error("Error fetching transactions:", error);
         res.status(500).json({ message: "Ошибка получения транзакций склада" });
@@ -586,7 +593,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           date,
           productType,
         );
-        res.json(balanceData);
+        res.json(warehouseBalanceToApi(balanceData));
       } catch (error) {
         res.status(500).json({ message: "Ошибка получения остатка склада" });
       }
