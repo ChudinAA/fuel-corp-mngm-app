@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { eq, sql } from "drizzle-orm";
 import { db, pool } from "../server/db";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "../shared/constants";
@@ -7,6 +7,7 @@ import { aircraftRefueling } from "../server/modules/refueling/entities/refuelin
 import { suppliers } from "../server/modules/suppliers/entities/suppliers";
 import { customers } from "../server/modules/customers/entities/customers";
 import { movement } from "../server/modules/movement/entities/movement";
+import { MovementStorage } from "../server/modules/movement/storage/movement-storage";
 import {
   equipmentMovement,
 } from "../server/modules/equipment-movement/entities/equipment-movement";
@@ -1403,7 +1404,6 @@ test("restoring an older sale preserves delivery and storage costs in shared war
   } catch (error) {
     if (error !== rollbackMarker) throw error;
   } finally {
-    await pool.end();
   }
 });
 
@@ -1596,7 +1596,142 @@ test(
     } catch (error) {
       if (error !== rollbackMarker) throw error;
     } finally {
-      await pool.end();
     }
   },
 );
+
+test(
+  "editing movement delivery and storage charges updates the receiving warehouse cost",
+  { timeout: 30_000 },
+  async (t) => {
+    const schemaResult = await db.execute(sql`
+      SELECT
+        to_regclass('movement') IS NOT NULL
+          AND to_regclass('warehouses') IS NOT NULL
+          AND to_regclass('warehouse_transactions') IS NOT NULL AS has_movement_schema
+    `);
+    if (!schemaResult.rows[0]?.has_movement_schema) {
+      t.skip("The configured database does not have the warehouse movement schema.");
+      return;
+    }
+
+    const fixtureId = crypto.randomUUID();
+    let warehouseId: string | undefined;
+    let movementId: string | undefined;
+
+    try {
+      await db.transaction(async (tx) => {
+        const [warehouse] = await tx
+          .insert(warehouses)
+          .values({
+            name: `movement-charge-edit-${fixtureId}`,
+            currentBalance: "0",
+            averageCost: "0",
+            pvkjBalance: "0",
+            pvkjAverageCost: "0",
+          })
+          .returning();
+        warehouseId = warehouse.id;
+
+        const movementDate = "2026-05-01T10:00:00.000Z";
+        const [createdMovement] = await tx
+          .insert(movement)
+          .values({
+            movementDate,
+            movementType: "supply",
+            productType: PRODUCT_TYPE.KEROSENE,
+            toWarehouseId: warehouse.id,
+            quantityKg: "10",
+            purchasePrice: "10",
+            deliveryCost: "10",
+            storageCost: "5",
+            totalCost: "115",
+            costPerKg: "11.5",
+          })
+          .returning();
+        movementId = createdMovement.id;
+
+        const { transaction } =
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            warehouse.id,
+            TRANSACTION_TYPE.RECEIPT,
+            PRODUCT_TYPE.KEROSENE,
+            SOURCE_TYPE.MOVEMENT,
+            createdMovement.id,
+            10,
+            115,
+            undefined,
+            movementDate,
+          );
+        await tx
+          .update(movement)
+          .set({ transactionId: transaction.id })
+          .where(eq(movement.id, createdMovement.id));
+      });
+
+      const storage = new MovementStorage();
+      const deliveryUpdated = await storage.updateMovement(movementId!, {
+        deliveryCost: "30",
+        totalCost: "115",
+      } as any);
+      assert.equal(Number(deliveryUpdated?.totalCost), 135);
+
+      let warehouseAfterEdit = await db.query.warehouses.findFirst({
+        where: eq(warehouses.id, warehouseId!),
+      });
+      assert.ok(
+        Math.abs(Number(warehouseAfterEdit?.averageCost) - 13.5) < 0.000001,
+        `average cost after delivery charge edit: ${warehouseAfterEdit?.averageCost}`,
+      );
+      let receivingTransaction = await db.query.warehouseTransactions.findFirst({
+        where: eq(warehouseTransactions.sourceId, movementId!),
+      });
+      assert.equal(Number(receivingTransaction?.sum), 135);
+      assert.ok(
+        Math.abs(Number(receivingTransaction?.averageCostAfter) - 13.5) <
+          0.000001,
+        `transaction average cost after delivery charge edit: ${receivingTransaction?.averageCostAfter}`,
+      );
+
+      const storageUpdated = await storage.updateMovement(movementId!, {
+        storageCost: "25",
+        totalCost: "135",
+      } as any);
+      assert.equal(Number(storageUpdated?.totalCost), 155);
+
+      warehouseAfterEdit = await db.query.warehouses.findFirst({
+        where: eq(warehouses.id, warehouseId!),
+      });
+      assert.ok(
+        Math.abs(Number(warehouseAfterEdit?.averageCost) - 15.5) < 0.000001,
+        `average cost after storage charge edit: ${warehouseAfterEdit?.averageCost}`,
+      );
+      receivingTransaction = await db.query.warehouseTransactions.findFirst({
+        where: eq(warehouseTransactions.sourceId, movementId!),
+      });
+      assert.equal(Number(receivingTransaction?.sum), 155);
+      assert.ok(
+        Math.abs(Number(receivingTransaction?.averageCostAfter) - 15.5) <
+          0.000001,
+        `transaction average cost after storage charge edit: ${receivingTransaction?.averageCostAfter}`,
+      );
+    } finally {
+      if (movementId && warehouseId) {
+        await db.transaction(async (tx) => {
+          await tx.delete(movement).where(eq(movement.id, movementId!));
+          await tx
+            .delete(warehouseTransactions)
+            .where(eq(warehouseTransactions.sourceId, movementId!));
+          await tx.delete(warehouses).where(eq(warehouses.id, warehouseId!));
+        });
+      } else if (warehouseId) {
+        await db.delete(warehouses).where(eq(warehouses.id, warehouseId!));
+      }
+    }
+  },
+);
+
+after(async () => {
+  await pool.end();
+});

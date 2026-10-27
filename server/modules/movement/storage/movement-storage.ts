@@ -291,12 +291,47 @@ export class MovementStorage implements IMovementStorage {
       const newQuantityKg = data.quantityKg
         ? parseFloat(data.quantityKg.toString())
         : oldQuantityKg;
-      const newTotalCost = data.totalCost
-        ? parseFloat(data.totalCost.toString())
-        : oldTotalCost;
+      const oldDeliveryCost = parseFloat(currentMovement.deliveryCost || "0");
+      const oldStorageCost = parseFloat(currentMovement.storageCost || "0");
+      const newDeliveryCost =
+        data.deliveryCost !== undefined
+          ? parseFloat(data.deliveryCost || "0")
+          : oldDeliveryCost;
+      const newStorageCost =
+        data.storageCost !== undefined
+          ? parseFloat(data.storageCost || "0")
+          : oldStorageCost;
+      const hasDeliveryCostChanged = oldDeliveryCost !== newDeliveryCost;
+      const hasStorageCostChanged = oldStorageCost !== newStorageCost;
+      const hasChargeChanged =
+        hasDeliveryCostChanged || hasStorageCostChanged;
+      const requestedTotalCost =
+        data.totalCost !== undefined && data.totalCost !== null
+          ? parseFloat(data.totalCost.toString())
+          : undefined;
+      const chargeAdjustedTotalCost =
+        oldTotalCost +
+        (newDeliveryCost - oldDeliveryCost) +
+        (newStorageCost - oldStorageCost);
+      const newTotalCost =
+        hasChargeChanged &&
+        (requestedTotalCost === undefined ||
+          requestedTotalCost === oldTotalCost)
+          ? chargeAdjustedTotalCost
+          : requestedTotalCost ?? oldTotalCost;
 
       const hasQuantityChanged = oldQuantityKg !== newQuantityKg;
       const hasCostChanged = oldTotalCost !== newTotalCost;
+
+      // A fee edit must update the movement's stored total even when the client
+      // omits totalCost or sends its unchanged previous value.
+      if (hasChargeChanged) {
+        data.totalCost = newTotalCost.toFixed(2);
+        data.costPerKg =
+          newQuantityKg > 0
+            ? (newTotalCost / newQuantityKg).toFixed(6)
+            : "0";
+      }
       
       // Создаем транзакции при переходе из черновика
       if (transitioningFromDraft) {
@@ -346,7 +381,10 @@ export class MovementStorage implements IMovementStorage {
       } 
       // Иначе обычная логика обновления существующих транзакций
       else {
-        const needsRecalculation = (hasQuantityChanged || hasCostChanged) && !data.isDraft && !currentMovement.isDraft;
+        const needsRecalculation =
+          (hasQuantityChanged || hasCostChanged || hasChargeChanged) &&
+          !data.isDraft &&
+          !currentMovement.isDraft;
 
         // Обновляем склад назначения, если изменились показатели
         if (
