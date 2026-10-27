@@ -60,3 +60,30 @@ test("restoring an older fuel sale preserves the latest balance and average cost
     }
   }
 });
+
+test("tonne stock replay preserves five-decimal mass and monetary totals", () => {
+  const opening: StockBalance = {
+    balance: 1.23456,
+    averageCost: 125_000,
+  };
+  const receipt = {
+    transactionType: TRANSACTION_TYPE.RECEIPT,
+    quantity: "0.00001",
+  };
+
+  const afterReceipt = calculateStockMovement(opening, receipt, 1.25);
+  assert.equal(afterReceipt.balance.toFixed(5), "1.23457");
+  assert.equal(afterReceipt.sum, 1.25);
+  assert.ok(Math.abs(afterReceipt.averageCost - 125_000) < 1e-8);
+
+  const afterIssue = calculateStockMovement(
+    afterReceipt,
+    {
+      transactionType: TRANSACTION_TYPE.SALE,
+      quantity: "-0.00001",
+    },
+    0,
+  );
+  assert.equal(afterIssue.balance.toFixed(5), "1.23456");
+  assert.equal(afterIssue.sum, 1.25);
+});

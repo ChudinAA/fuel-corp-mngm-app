@@ -11,6 +11,12 @@ import {
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentRecalculationService } from "server/modules/warehouses-equipment/services/equipment-recalculation-service";
 import { calculateStockMovement } from "./stock-transaction-calculations";
+import {
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+  pricePerTonneToPerKilogram,
+  tonnesToKilograms,
+} from "@shared/units";
 
 type WarehouseCascade = {
   warehouseId: string;
@@ -254,7 +260,8 @@ export class WarehouseRecalculationService {
       console.log("      TransactionDate:", transaction.transactionDate);
       console.log("      CreatedAt:", transaction.createdAt);
 
-      const quantity = Math.abs(parseFloat(transaction.quantity));
+      const quantityKg = Math.abs(parseFloat(transaction.quantity));
+      const quantity = kilogramsToTonnes(quantityKg);
       const isReceipt =
         transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
         transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
@@ -280,8 +287,12 @@ export class WarehouseRecalculationService {
         // Inventory is a checkpoint: its balanceAfter/averageCostAfter are the
         // user-specified target values and must NOT be recalculated from running state.
         // We only update balanceBefore/averageCostBefore to the current running values.
-        newBalance = parseFloat(transaction.balanceAfter || "0");
-        newAverageCost = parseFloat(transaction.averageCostAfter || "0");
+        newBalance = kilogramsToTonnes(
+          parseFloat(transaction.balanceAfter || "0"),
+        );
+        newAverageCost = pricePerKilogramToPerTonne(
+          parseFloat(transaction.averageCostAfter || "0"),
+        );
         const delta = newBalance - currentBalance;
         newSum = delta * newAverageCost;
         newPrice = newAverageCost;
@@ -294,11 +305,13 @@ export class WarehouseRecalculationService {
         await tx
           .update(warehouseTransactions)
           .set({
-            balanceBefore: currentBalance.toFixed(2),
-            averageCostBefore: currentAverageCost.toFixed(6),
+            balanceBefore: tonnesToKilograms(currentBalance).toFixed(2),
+            averageCostBefore: pricePerTonneToPerKilogram(
+              currentAverageCost,
+            ).toFixed(6),
             // balanceAfter and averageCostAfter are preserved as user-set values
             sum: newSum.toFixed(2),
-            price: newPrice.toFixed(4),
+            price: pricePerTonneToPerKilogram(newPrice).toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById,
           })
@@ -310,15 +323,20 @@ export class WarehouseRecalculationService {
             tx,
             transaction.sourceType,
             transaction.sourceId,
-            quantity,
-            currentAverageCost,
+            quantityKg,
+            pricePerTonneToPerKilogram(currentAverageCost),
           );
           console.log("      Incoming cost:", incomingCost);
         }
 
         const result = calculateStockMovement(
           { balance: currentBalance, averageCost: currentAverageCost },
-          transaction,
+          {
+            ...transaction,
+            quantity: kilogramsToTonnes(
+              Number.parseFloat(transaction.quantity),
+            ),
+          },
           incomingCost,
         );
         newBalance = result.balance;
@@ -336,12 +354,16 @@ export class WarehouseRecalculationService {
         await tx
           .update(warehouseTransactions)
           .set({
-            balanceBefore: currentBalance.toString(),
-            balanceAfter: newBalance.toString(),
-            averageCostBefore: currentAverageCost.toFixed(6),
-            averageCostAfter: newAverageCost.toFixed(6),
+            balanceBefore: tonnesToKilograms(currentBalance).toFixed(2),
+            balanceAfter: tonnesToKilograms(newBalance).toFixed(2),
+            averageCostBefore: pricePerTonneToPerKilogram(
+              currentAverageCost,
+            ).toFixed(6),
+            averageCostAfter: pricePerTonneToPerKilogram(
+              newAverageCost,
+            ).toFixed(6),
             sum: newSum.toFixed(2),
-            price: newPrice.toFixed(4),
+            price: pricePerTonneToPerKilogram(newPrice).toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById,
           })
@@ -356,7 +378,7 @@ export class WarehouseRecalculationService {
           tx,
           transaction.sourceType,
           transaction.sourceId,
-          currentAverageCost,
+          pricePerTonneToPerKilogram(currentAverageCost),
           updatedById,
         );
       }
@@ -369,8 +391,8 @@ export class WarehouseRecalculationService {
         const warehouseCascade = await this.getMovementCascadeInfo(
           tx,
           transaction.sourceId,
-          newAverageCost,
-          quantity,
+          pricePerTonneToPerKilogram(newAverageCost),
+          quantityKg,
           visited,
         );
 
@@ -382,8 +404,8 @@ export class WarehouseRecalculationService {
         const equipmentCascade = await this.getEquipmentMovementCascadeInfo(
           tx,
           transaction.sourceId,
-          newAverageCost,
-          quantity,
+          pricePerTonneToPerKilogram(newAverageCost),
+          quantityKg,
           visitedEq,
           updatedById,
         );
@@ -408,11 +430,15 @@ export class WarehouseRecalculationService {
     };
 
     if (isPvkj) {
-      updateData.pvkjBalance = currentBalance.toFixed(2);
-      updateData.pvkjAverageCost = currentAverageCost.toFixed(6);
+      updateData.pvkjBalance = tonnesToKilograms(currentBalance).toFixed(2);
+      updateData.pvkjAverageCost = pricePerTonneToPerKilogram(
+        currentAverageCost,
+      ).toFixed(6);
     } else {
-      updateData.currentBalance = currentBalance.toFixed(2);
-      updateData.averageCost = currentAverageCost.toFixed(6);
+      updateData.currentBalance = tonnesToKilograms(currentBalance).toFixed(2);
+      updateData.averageCost = pricePerTonneToPerKilogram(
+        currentAverageCost,
+      ).toFixed(6);
     }
 
     await tx
@@ -498,8 +524,12 @@ export class WarehouseRecalculationService {
 
     if (lastTransaction.length > 0) {
       return {
-        balance: parseFloat(lastTransaction[0].balanceAfter || "0"),
-        averageCost: parseFloat(lastTransaction[0].averageCostAfter || "0"),
+        balance: kilogramsToTonnes(
+          parseFloat(lastTransaction[0].balanceAfter || "0"),
+        ),
+        averageCost: pricePerKilogramToPerTonne(
+          parseFloat(lastTransaction[0].averageCostAfter || "0"),
+        ),
       };
     }
 

@@ -4,6 +4,58 @@ import { TRANSACTION_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { EquipmentRecalculationQueueService } from "./equipment-recalculation-queue-service";
 import { format } from "date-fns";
 import { restoreStockMovement } from "server/modules/warehouses/services/stock-transaction-calculations";
+import {
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+  pricePerTonneToPerKilogram,
+  tonnesToKilograms,
+} from "@shared/units";
+
+type TonneEquipmentState = {
+  balanceTonnes: number;
+  averageCostPerTonne: number;
+};
+
+// Equipment tables and their existing callers still use kg until the database
+// cutover; calculations in this service use tonnes and ₽/t.
+function readTonneEquipmentState(
+  equipment: typeof equipments.$inferSelect,
+  isPvkj: boolean,
+): TonneEquipmentState {
+  const balanceKg = Number.parseFloat(
+    (isPvkj ? equipment.pvkjBalance : equipment.currentBalance) || "0",
+  );
+  const averageCostPerKg = Number.parseFloat(
+    (isPvkj ? equipment.pvkjAverageCost : equipment.averageCost) || "0",
+  );
+  return {
+    balanceTonnes: kilogramsToTonnes(balanceKg),
+    averageCostPerTonne: pricePerKilogramToPerTonne(averageCostPerKg),
+  };
+}
+
+function legacyKg(valueTonnes: number): string {
+  return tonnesToKilograms(valueTonnes).toFixed(2);
+}
+
+function legacyPricePerKg(valuePerTonne: number): string {
+  return pricePerTonneToPerKilogram(valuePerTonne).toFixed(4);
+}
+
+function legacyEquipmentStockFields(
+  isPvkj: boolean,
+  state: TonneEquipmentState,
+) {
+  return isPvkj
+    ? {
+        pvkjBalance: legacyKg(state.balanceTonnes),
+        pvkjAverageCost: legacyPricePerKg(state.averageCostPerTonne),
+      }
+    : {
+        currentBalance: legacyKg(state.balanceTonnes),
+        averageCost: legacyPricePerKg(state.averageCostPerTonne),
+      };
+}
 
 export class EquipmentTransactionService {
   private static async getLatestTransactionDate(
@@ -72,12 +124,10 @@ export class EquipmentTransactionService {
     if (!equipment) throw new Error("Оборудование не найдено");
 
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
-    const oldBalance = parseFloat(
-      (isPvkj ? equipment.pvkjBalance : equipment.currentBalance) || "0",
-    );
-    const oldAvgCost = parseFloat(
-      (isPvkj ? equipment.pvkjAverageCost : equipment.averageCost) || "0",
-    );
+    const quantityTonnes = kilogramsToTonnes(quantity);
+    const oldState = readTonneEquipmentState(equipment, isPvkj);
+    const oldBalance = oldState.balanceTonnes;
+    const oldAvgCost = oldState.averageCostPerTonne;
 
     let newBalance = oldBalance;
     let newAvgCost = oldAvgCost;
@@ -89,16 +139,16 @@ export class EquipmentTransactionService {
       transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
     if (isReceipt) {
-      newBalance = oldBalance + quantity;
+      newBalance = oldBalance + quantityTonnes;
       if (newBalance > 0) {
         newAvgCost = (oldBalance * oldAvgCost + totalCost) / newBalance;
       }
       sum = totalCost;
-      price = quantity > 0 ? totalCost / quantity : 0;
+      price = quantityTonnes > 0 ? totalCost / quantityTonnes : 0;
     } else {
-      newBalance = Math.max(0, oldBalance - quantity);
+      newBalance = Math.max(0, oldBalance - quantityTonnes);
       // При расходе средняя цена не меняется
-      sum = quantity * oldAvgCost;
+      sum = quantityTonnes * oldAvgCost;
       price = oldAvgCost;
     }
 
@@ -124,13 +174,15 @@ export class EquipmentTransactionService {
         productType,
         sourceType,
         sourceId,
-        quantity: isReceipt ? quantity.toString() : (-quantity).toString(),
+        quantity: isReceipt
+          ? legacyKg(quantityTonnes)
+          : legacyKg(-quantityTonnes),
         sum: sum.toFixed(2),
-        price: price.toFixed(4),
-        balanceBefore: oldBalance.toString(),
-        balanceAfter: newBalance.toString(),
-        averageCostBefore: oldAvgCost.toString(),
-        averageCostAfter: newAvgCost.toString(),
+        price: legacyPricePerKg(price),
+        balanceBefore: legacyKg(oldBalance),
+        balanceAfter: legacyKg(newBalance),
+        averageCostBefore: legacyPricePerKg(oldAvgCost),
+        averageCostAfter: legacyPricePerKg(newAvgCost),
         transactionDate: txDate,
         createdById,
       })
@@ -140,13 +192,13 @@ export class EquipmentTransactionService {
       updatedAt: sql`NOW()`,
       updatedById: createdById,
     };
-    if (isPvkj) {
-      updateData.pvkjBalance = newBalance.toFixed(2);
-      updateData.pvkjAverageCost = newAvgCost.toFixed(4);
-    } else {
-      updateData.currentBalance = newBalance.toFixed(2);
-      updateData.averageCost = newAvgCost.toFixed(4);
-    }
+    Object.assign(
+      updateData,
+      legacyEquipmentStockFields(isPvkj, {
+        balanceTonnes: newBalance,
+        averageCostPerTonne: newAvgCost,
+      }),
+    );
     await tx
       .update(equipments)
       .set(updateData)
@@ -201,12 +253,11 @@ export class EquipmentTransactionService {
       transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
       transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
-    const currentBalance = parseFloat(
-      (isPvkj ? equipment.pvkjBalance : equipment.currentBalance) || "0",
-    );
-    const currentCost = parseFloat(
-      (isPvkj ? equipment.pvkjAverageCost : equipment.averageCost) || "0",
-    );
+    const oldQtyTonnes = kilogramsToTonnes(oldQty);
+    const newQtyTonnes = kilogramsToTonnes(newQty);
+    const currentState = readTonneEquipmentState(equipment, isPvkj);
+    const currentBalance = currentState.balanceTonnes;
+    const currentCost = currentState.averageCostPerTonne;
 
     let newBalance: number;
     let newAverageCost: number;
@@ -214,18 +265,18 @@ export class EquipmentTransactionService {
     let price: number;
 
     if (isReceipt) {
-      const balanceBeforeOld = currentBalance - oldQty;
+      const balanceBeforeOld = currentBalance - oldQtyTonnes;
       const totalCostBeforeOld = currentBalance * currentCost - oldTotalCost;
-      newBalance = balanceBeforeOld + newQty;
+      newBalance = balanceBeforeOld + newQtyTonnes;
       const newTotalCostInEq = totalCostBeforeOld + newTotalCost;
       newAverageCost = newBalance > 0 ? newTotalCostInEq / newBalance : 0;
       sum = newTotalCost;
-      price = newQty > 0 ? newTotalCost / newQty : 0;
+      price = newQtyTonnes > 0 ? newTotalCost / newQtyTonnes : 0;
     } else {
-      const balanceBeforeOld = currentBalance + oldQty;
-      newBalance = Math.max(0, balanceBeforeOld - newQty);
+      const balanceBeforeOld = currentBalance + oldQtyTonnes;
+      newBalance = Math.max(0, balanceBeforeOld - newQtyTonnes);
       newAverageCost = currentCost;
-      sum = newQty * currentCost;
+      sum = newQtyTonnes * currentCost;
       price = currentCost;
     }
 
@@ -243,11 +294,13 @@ export class EquipmentTransactionService {
     await tx
       .update(equipmentTransactions)
       .set({
-        quantity: isReceipt ? newQty.toString() : (-newQty).toString(),
+        quantity: isReceipt
+          ? legacyKg(newQtyTonnes)
+          : legacyKg(-newQtyTonnes),
         sum: sum.toFixed(2),
-        price: price.toFixed(4),
-        balanceAfter: newBalance.toString(),
-        averageCostAfter: newAverageCost.toFixed(4),
+        price: legacyPricePerKg(price),
+        balanceAfter: legacyKg(newBalance),
+        averageCostAfter: legacyPricePerKg(newAverageCost),
         updatedAt: sql`NOW()`,
         updatedById: userId,
         transactionDate: newEffectiveDate,
@@ -258,13 +311,13 @@ export class EquipmentTransactionService {
       updatedAt: sql`NOW()`,
       updatedById: userId,
     };
-    if (isPvkj) {
-      updateData.pvkjBalance = newBalance.toFixed(2);
-      updateData.pvkjAverageCost = newAverageCost.toFixed(4);
-    } else {
-      updateData.currentBalance = newBalance.toFixed(2);
-      updateData.averageCost = newAverageCost.toFixed(4);
-    }
+    Object.assign(
+      updateData,
+      legacyEquipmentStockFields(isPvkj, {
+        balanceTonnes: newBalance,
+        averageCostPerTonne: newAverageCost,
+      }),
+    );
     await tx
       .update(equipments)
       .set(updateData)
@@ -290,7 +343,7 @@ export class EquipmentTransactionService {
       );
     }
 
-    return newBalance;
+    return tonnesToKilograms(newBalance);
   }
 
   /**
@@ -367,38 +420,39 @@ export class EquipmentTransactionService {
     if (!equipment) throw new Error("Оборудование не найдено");
 
     const isPvkj = transaction.productType === PRODUCT_TYPE.PVKJ;
-    const qty = Math.abs(parseFloat(transaction.quantity));
+    const qtyTonnes = kilogramsToTonnes(
+      Math.abs(parseFloat(transaction.quantity)),
+    );
     const isReceipt =
       transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
       transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
-    let newBalance = parseFloat(
-      (isPvkj ? equipment.pvkjBalance : equipment.currentBalance) || "0",
-    );
-    let newAvgCost = parseFloat(
-      (isPvkj ? equipment.pvkjAverageCost : equipment.averageCost) || "0",
-    );
+    const currentState = readTonneEquipmentState(equipment, isPvkj);
+    let newBalance = currentState.balanceTonnes;
+    let newAvgCost = currentState.averageCostPerTonne;
 
     if (isReceipt) {
-      newBalance = Math.max(0, newBalance - qty);
+      newBalance = Math.max(0, newBalance - qtyTonnes);
       if (newBalance > 0) {
-        newAvgCost = parseFloat(transaction.averageCostBefore || "0");
+        newAvgCost = pricePerKilogramToPerTonne(
+          parseFloat(transaction.averageCostBefore || "0"),
+        );
       }
     } else {
-      newBalance += qty;
+      newBalance += qtyTonnes;
     }
 
     const updateData: any = {
       updatedAt: sql`NOW()`,
       updatedById: userId,
     };
-    if (isPvkj) {
-      updateData.pvkjBalance = newBalance.toFixed(2);
-      updateData.pvkjAverageCost = newAvgCost.toFixed(4);
-    } else {
-      updateData.currentBalance = newBalance.toFixed(2);
-      updateData.averageCost = newAvgCost.toFixed(4);
-    }
+    Object.assign(
+      updateData,
+      legacyEquipmentStockFields(isPvkj, {
+        balanceTonnes: newBalance,
+        averageCostPerTonne: newAvgCost,
+      }),
+    );
     await tx
       .update(equipments)
       .set(updateData)
@@ -455,17 +509,19 @@ export class EquipmentTransactionService {
     if (!equipment) throw new Error("Оборудование не найдено");
 
     const isPvkj = transaction.productType === PRODUCT_TYPE.PVKJ;
-    const currentBalance = parseFloat(
-      (isPvkj ? equipment.pvkjBalance : equipment.currentBalance) || "0",
-    );
-    const currentCost = parseFloat(
-      (isPvkj ? equipment.pvkjAverageCost : equipment.averageCost) || "0",
-    );
+    const currentState = readTonneEquipmentState(equipment, isPvkj);
+    const currentBalance = currentState.balanceTonnes;
+    const currentCost = currentState.averageCostPerTonne;
 
     const { balance: newBalance, averageCost: newAvgCost } =
       restoreStockMovement(
         { balance: currentBalance, averageCost: currentCost },
-        transaction,
+        {
+          ...transaction,
+          quantity: kilogramsToTonnes(
+            Number.parseFloat(transaction.quantity),
+          ),
+        },
         transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
           transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN,
       );
@@ -474,13 +530,13 @@ export class EquipmentTransactionService {
       updatedAt: sql`NOW()`,
       updatedById: userId,
     };
-    if (isPvkj) {
-      updateData.pvkjBalance = newBalance.toFixed(2);
-      updateData.pvkjAverageCost = newAvgCost.toFixed(4);
-    } else {
-      updateData.currentBalance = newBalance.toFixed(2);
-      updateData.averageCost = newAvgCost.toFixed(4);
-    }
+    Object.assign(
+      updateData,
+      legacyEquipmentStockFields(isPvkj, {
+        balanceTonnes: newBalance,
+        averageCostPerTonne: newAvgCost,
+      }),
+    );
     await tx
       .update(equipments)
       .set(updateData)

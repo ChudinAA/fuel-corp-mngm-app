@@ -4,6 +4,72 @@ import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { RecalculationQueueService } from "./recalculation-queue-service";
 import { format } from "date-fns";
 import { restoreStockMovement } from "./stock-transaction-calculations";
+import {
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+  pricePerTonneToPerKilogram,
+  tonnesToKilograms,
+} from "@shared/units";
+
+type TonneStockState = {
+  balanceTonnes: number;
+  averageCostPerTonne: number;
+};
+
+// The database and older callers still use kg for this transition stage.
+// Convert at the boundary so stock calculations themselves use tonnes and ₽/t.
+function readTonneStockState(
+  warehouse: typeof warehouses.$inferSelect,
+  isPvkj: boolean,
+): TonneStockState {
+  const balanceKg = Number.parseFloat(
+    (isPvkj ? warehouse.pvkjBalance : warehouse.currentBalance) || "0",
+  );
+  const averageCostPerKg = Number.parseFloat(
+    (isPvkj ? warehouse.pvkjAverageCost : warehouse.averageCost) || "0",
+  );
+  return {
+    balanceTonnes: kilogramsToTonnes(balanceKg),
+    averageCostPerTonne: pricePerKilogramToPerTonne(averageCostPerKg),
+  };
+}
+
+function legacyKg(valueTonnes: number): string {
+  return tonnesToKilograms(valueTonnes).toFixed(2);
+}
+
+function legacyPricePerKg(valuePerTonne: number): string {
+  return pricePerTonneToPerKilogram(valuePerTonne).toFixed(6);
+}
+
+async function writeLegacyStockState(
+  tx: any,
+  warehouseId: string,
+  isPvkj: boolean,
+  state: TonneStockState,
+  updatedById?: string,
+) {
+  const balance = legacyKg(state.balanceTonnes);
+  const averageCost = legacyPricePerKg(state.averageCostPerTonne);
+  await tx
+    .update(warehouses)
+    .set(
+      isPvkj
+        ? {
+            pvkjBalance: balance,
+            pvkjAverageCost: averageCost,
+            updatedAt: sql`NOW()`,
+            updatedById,
+          }
+        : {
+            currentBalance: balance,
+            averageCost,
+            updatedAt: sql`NOW()`,
+            updatedById,
+          },
+    )
+    .where(eq(warehouses.id, warehouseId));
+}
 
 export class WarehouseTransactionService {
   private static async getLatestTransactionDate(
@@ -69,63 +135,43 @@ export class WarehouseTransactionService {
       throw new Error(`Warehouse ${warehouseId} not found`);
     }
 
-    let currentBalance: number;
-    let currentCost: number;
+    const quantityTonnes = kilogramsToTonnes(quantity);
+    const currentStock = readTonneStockState(warehouse, isPvkj);
+    const currentBalance = currentStock.balanceTonnes;
+    const currentCost = currentStock.averageCostPerTonne;
     let newBalance: number;
     let newAverageCost: number;
     let sum: number;
     let price: number;
-
-    if (isPvkj) {
-      currentBalance = parseFloat(warehouse.pvkjBalance || "0");
-      currentCost = parseFloat(warehouse.pvkjAverageCost || "0");
-    } else {
-      currentBalance = parseFloat(warehouse.currentBalance || "0");
-      currentCost = parseFloat(warehouse.averageCost || "0");
-    }
 
     const isReceipt =
       transactionType === TRANSACTION_TYPE.RECEIPT ||
       transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
     if (isReceipt) {
-      newBalance = currentBalance + quantity;
+      newBalance = currentBalance + quantityTonnes;
       const totalCurrentCost = currentBalance * currentCost;
       newAverageCost =
         newBalance > 0 ? (totalCurrentCost + totalCost) / newBalance : 0;
     } else {
-      newBalance = Math.max(0, currentBalance - quantity);
+      newBalance = Math.max(0, currentBalance - quantityTonnes);
       newAverageCost = currentCost;
     }
 
-    if (isPvkj) {
-      await tx
-        .update(warehouses)
-        .set({
-          pvkjBalance: newBalance.toFixed(2),
-          pvkjAverageCost: newAverageCost.toFixed(6),
-          updatedAt: sql`NOW()`,
-          updatedById: createdById,
-        })
-        .where(eq(warehouses.id, warehouseId));
-    } else {
-      await tx
-        .update(warehouses)
-        .set({
-          currentBalance: newBalance.toFixed(2),
-          averageCost: newAverageCost.toFixed(6),
-          updatedAt: sql`NOW()`,
-          updatedById: createdById,
-        })
-        .where(eq(warehouses.id, warehouseId));
-    }
+    await writeLegacyStockState(
+      tx,
+      warehouseId,
+      isPvkj,
+      { balanceTonnes: newBalance, averageCostPerTonne: newAverageCost },
+      createdById,
+    );
 
     if (totalCost === 0) {
-      sum = quantity * currentCost;
+      sum = quantityTonnes * currentCost;
       price = currentCost;
     } else {
       sum = totalCost;
-      price = quantity > 0 ? totalCost / quantity : 0;
+      price = quantityTonnes > 0 ? totalCost / quantityTonnes : 0;
     }
 
     const needsRecalc = await this.needsRecalculation(tx, warehouseId, productType, dealDate);
@@ -141,13 +187,15 @@ export class WarehouseTransactionService {
         productType,
         sourceType,
         sourceId,
-        quantity: isReceipt ? quantity.toString() : (-quantity).toString(),
+        quantity: isReceipt
+          ? legacyKg(quantityTonnes)
+          : legacyKg(-quantityTonnes),
         sum: sum.toString(),
-        price: price.toString(),
-        balanceBefore: currentBalance.toString(),
-        balanceAfter: newBalance.toString(),
-        averageCostBefore: currentCost.toString(),
-        averageCostAfter: newAverageCost.toString(),
+        price: legacyPricePerKg(price),
+        balanceBefore: legacyKg(currentBalance),
+        balanceAfter: legacyKg(newBalance),
+        averageCostBefore: legacyPricePerKg(currentCost),
+        averageCostAfter: legacyPricePerKg(newAverageCost),
         createdById,
         transactionDate: txDate,
       })
@@ -165,7 +213,11 @@ export class WarehouseTransactionService {
       );
     }
 
-    return { transaction, newAverageCost, newBalance };
+    return {
+      transaction,
+      newAverageCost: pricePerTonneToPerKilogram(newAverageCost),
+      newBalance: tonnesToKilograms(newBalance),
+    };
   }
 
   static async updateTransactionAndRecalculateWarehouse(
@@ -202,16 +254,11 @@ export class WarehouseTransactionService {
       throw new Error(`Warehouse ${warehouseId} not found`);
     }
 
-    let currentBalance: number;
-    let currentCost: number;
-
-    if (isPvkj) {
-      currentBalance = parseFloat(warehouse.pvkjBalance || "0");
-      currentCost = parseFloat(warehouse.pvkjAverageCost || "0");
-    } else {
-      currentBalance = parseFloat(warehouse.currentBalance || "0");
-      currentCost = parseFloat(warehouse.averageCost || "0");
-    }
+    const oldQuantityTonnes = kilogramsToTonnes(oldQuantity);
+    const newQuantityTonnes = kilogramsToTonnes(newQuantity);
+    const currentStock = readTonneStockState(warehouse, isPvkj);
+    const currentBalance = currentStock.balanceTonnes;
+    const currentCost = currentStock.averageCostPerTonne;
 
     let balanceBeforeOldOperation: number;
     let totalCostBeforeOldOperation: number;
@@ -222,51 +269,37 @@ export class WarehouseTransactionService {
     let price: number;
 
     if (isReceipt) {
-      balanceBeforeOldOperation = currentBalance - oldQuantity;
+      balanceBeforeOldOperation = currentBalance - oldQuantityTonnes;
       totalCostBeforeOldOperation = currentBalance * currentCost - oldTotalCost;
 
-      newBalance = balanceBeforeOldOperation + newQuantity;
+      newBalance = balanceBeforeOldOperation + newQuantityTonnes;
       newTotalCostInWarehouse = totalCostBeforeOldOperation + newTotalCost;
       newAverageCost =
         newBalance > 0 ? newTotalCostInWarehouse / newBalance : 0;
     } else {
-      balanceBeforeOldOperation = currentBalance + oldQuantity;
+      balanceBeforeOldOperation = currentBalance + oldQuantityTonnes;
       totalCostBeforeOldOperation = balanceBeforeOldOperation * currentCost;
 
-      newBalance = Math.max(0, balanceBeforeOldOperation - newQuantity);
+      newBalance = Math.max(0, balanceBeforeOldOperation - newQuantityTonnes);
       newTotalCostInWarehouse = totalCostBeforeOldOperation;
       newAverageCost = currentCost;
     }
 
     if (newTotalCost === 0) {
-      sum = newQuantity * currentCost;
+      sum = newQuantityTonnes * currentCost;
       price = currentCost;
     } else {
       sum = newTotalCost;
-      price = newQuantity > 0 ? newTotalCost / newQuantity : 0;
+      price = newQuantityTonnes > 0 ? newTotalCost / newQuantityTonnes : 0;
     }
 
-    if (isPvkj) {
-      await tx
-        .update(warehouses)
-        .set({
-          pvkjBalance: newBalance.toFixed(2),
-          pvkjAverageCost: newAverageCost.toFixed(6),
-          updatedAt: sql`NOW()`,
-          updatedById,
-        })
-        .where(eq(warehouses.id, warehouseId));
-    } else {
-      await tx
-        .update(warehouses)
-        .set({
-          currentBalance: newBalance.toFixed(2),
-          averageCost: newAverageCost.toFixed(6),
-          updatedAt: sql`NOW()`,
-          updatedById,
-        })
-        .where(eq(warehouses.id, warehouseId));
-    }
+    await writeLegacyStockState(
+      tx,
+      warehouseId,
+      isPvkj,
+      { balanceTonnes: newBalance, averageCostPerTonne: newAverageCost },
+      updatedById,
+    );
 
     const oldTxDate = transaction.transactionDate || transaction.createdAt;
 
@@ -288,12 +321,12 @@ export class WarehouseTransactionService {
       .update(warehouseTransactions)
       .set({
         quantity: isReceipt
-          ? newQuantity.toString()
-          : (-newQuantity).toString(),
+          ? legacyKg(newQuantityTonnes)
+          : legacyKg(-newQuantityTonnes),
         sum: sum.toString(),
-        price: price.toString(),
-        balanceAfter: newBalance.toString(),
-        averageCostAfter: newAverageCost.toFixed(6),
+        price: legacyPricePerKg(price),
+        balanceAfter: legacyKg(newBalance),
+        averageCostAfter: legacyPricePerKg(newAverageCost),
         updatedAt: sql`NOW()`,
         updatedById,
         transactionDate: newEffectiveDate,
@@ -312,7 +345,10 @@ export class WarehouseTransactionService {
       );
     }
 
-    return { newAverageCost, newBalance };
+    return {
+      newAverageCost: pricePerTonneToPerKilogram(newAverageCost),
+      newBalance: tonnesToKilograms(newBalance),
+    };
   }
 
   /**
@@ -392,21 +428,14 @@ export class WarehouseTransactionService {
       throw new Error(`Warehouse ${transaction.warehouseId} not found`);
     }
 
-    const quantity = parseFloat(transaction.quantity);
+    const quantityTonnes = kilogramsToTonnes(
+      Number.parseFloat(transaction.quantity),
+    );
     const totalCost = parseFloat(transaction.sum || "0");
-
-    let currentBalance: number;
-    let currentCost: number;
-
-    if (isPvkj) {
-      currentBalance = parseFloat(warehouse.pvkjBalance || "0");
-      currentCost = parseFloat(warehouse.pvkjAverageCost || "0");
-    } else {
-      currentBalance = parseFloat(warehouse.currentBalance || "0");
-      currentCost = parseFloat(warehouse.averageCost || "0");
-    }
-
-    const newBalance = Math.max(0, currentBalance - quantity);
+    const currentStock = readTonneStockState(warehouse, isPvkj);
+    const currentBalance = currentStock.balanceTonnes;
+    const currentCost = currentStock.averageCostPerTonne;
+    const newBalance = Math.max(0, currentBalance - quantityTonnes);
     let newAverageCost = currentCost;
 
     if (transaction.averageCostBefore !== transaction.averageCostAfter) {
@@ -415,27 +444,13 @@ export class WarehouseTransactionService {
       newAverageCost = newBalance > 0 ? newTotalCost / newBalance : 0;
     }
 
-    if (isPvkj) {
-      await tx
-        .update(warehouses)
-        .set({
-          pvkjBalance: newBalance.toFixed(2),
-          pvkjAverageCost: newAverageCost.toFixed(6),
-          updatedAt: sql`NOW()`,
-          updatedById: updatedById,
-        })
-        .where(eq(warehouses.id, transaction.warehouseId));
-    } else {
-      await tx
-        .update(warehouses)
-        .set({
-          currentBalance: newBalance.toFixed(2),
-          averageCost: newAverageCost.toFixed(6),
-          updatedAt: sql`NOW()`,
-          updatedById: updatedById,
-        })
-        .where(eq(warehouses.id, transaction.warehouseId));
-    }
+    await writeLegacyStockState(
+      tx,
+      transaction.warehouseId,
+      isPvkj,
+      { balanceTonnes: newBalance, averageCostPerTonne: newAverageCost },
+      updatedById,
+    );
 
     await tx
       .update(warehouseTransactions)
@@ -465,7 +480,10 @@ export class WarehouseTransactionService {
       );
     }
 
-    return { newAverageCost, newBalance };
+    return {
+      newAverageCost: pricePerTonneToPerKilogram(newAverageCost),
+      newBalance: tonnesToKilograms(newBalance),
+    };
   }
 
   static async restoreTransactionAndRecalculateWarehouse(
@@ -491,47 +509,30 @@ export class WarehouseTransactionService {
       throw new Error(`Warehouse ${transaction.warehouseId} not found`);
     }
 
-    const quantity = parseFloat(transaction.quantity);
+    const quantityTonnes = kilogramsToTonnes(
+      Number.parseFloat(transaction.quantity),
+    );
     const totalCost = parseFloat(transaction.sum || "0");
-
-    let currentBalance: number;
-    let currentCost: number;
-
-    if (isPvkj) {
-      currentBalance = parseFloat(warehouse.pvkjBalance || "0");
-      currentCost = parseFloat(warehouse.pvkjAverageCost || "0");
-    } else {
-      currentBalance = parseFloat(warehouse.currentBalance || "0");
-      currentCost = parseFloat(warehouse.averageCost || "0");
-    }
+    const currentStock = readTonneStockState(warehouse, isPvkj);
+    const currentBalance = currentStock.balanceTonnes;
+    const currentCost = currentStock.averageCostPerTonne;
 
     const { balance: newBalance, averageCost: newAverageCost } =
       restoreStockMovement(
         { balance: currentBalance, averageCost: currentCost },
-        transaction,
+        {
+          ...transaction,
+          quantity: quantityTonnes,
+        },
       );
 
-    if (isPvkj) {
-      await tx
-        .update(warehouses)
-        .set({
-          pvkjBalance: newBalance.toFixed(2),
-          pvkjAverageCost: newAverageCost.toFixed(6),
-          updatedAt: sql`NOW()`,
-          updatedById: updatedById,
-        })
-        .where(eq(warehouses.id, transaction.warehouseId));
-    } else {
-      await tx
-        .update(warehouses)
-        .set({
-          currentBalance: newBalance.toFixed(2),
-          averageCost: newAverageCost.toFixed(6),
-          updatedAt: sql`NOW()`,
-          updatedById: updatedById,
-        })
-        .where(eq(warehouses.id, transaction.warehouseId));
-    }
+    await writeLegacyStockState(
+      tx,
+      transaction.warehouseId,
+      isPvkj,
+      { balanceTonnes: newBalance, averageCostPerTonne: newAverageCost },
+      updatedById,
+    );
 
     await tx
       .update(warehouseTransactions)
@@ -561,6 +562,9 @@ export class WarehouseTransactionService {
       );
     }
 
-    return { newAverageCost, newBalance };
+    return {
+      newAverageCost: pricePerTonneToPerKilogram(newAverageCost),
+      newBalance: tonnesToKilograms(newBalance),
+    };
   }
 }
