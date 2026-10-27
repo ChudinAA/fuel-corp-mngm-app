@@ -611,11 +611,21 @@ test("rolling back a legacy deleted single refueling restores only its original 
     assert.ok(deletedLegacyMovement?.deletedAt);
     assert.equal(activeUnrelatedMovement?.deletedAt, null);
 
-    const rollback = await RollbackService.rollback({
-      auditLogId: auditEntry.id,
-      context: { userName: "legacy-single-refueling-restore-test" },
-    });
-    assert.equal(rollback.success, true, rollback.message);
+    const context = { userName: "legacy-single-refueling-restore-test" };
+    const rollbackResults = await Promise.all([
+      RollbackService.rollback({ auditLogId: auditEntry.id, context }),
+      RollbackService.rollback({ auditLogId: auditEntry.id, context }),
+    ]);
+    assert.equal(
+      rollbackResults.filter((result) => result.success).length,
+      1,
+      "only one concurrent rollback request should restore the legacy refueling",
+    );
+    assert.equal(
+      rollbackResults.filter((result) => !result.success).length,
+      1,
+      "the competing rollback request should be rejected",
+    );
 
     const restoredRows = await db
       .select()
@@ -656,6 +666,11 @@ test("rolling back a legacy deleted single refueling restores only its original 
       where: eq(warehouses.id, warehouseId),
     });
     assert.equal(Number(finalWarehouse?.currentBalance), 83);
+
+    const finalAuditEntry = await db.query.auditLog.findFirst({
+      where: eq(auditLog.id, auditEntry.id),
+    });
+    assert.ok(finalAuditEntry?.rolledBackAt, "the source audit should be marked rolled back");
   } finally {
     if (auditEntryId) {
       await db.delete(auditLog).where(eq(auditLog.id, auditEntryId));
