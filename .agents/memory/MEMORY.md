@@ -18,3 +18,4 @@
 - [Local PostgreSQL test cluster](local-postgres-test-cluster.md) — temporary PostgreSQL clusters in Replit need a writable socket directory passed to `pg_ctl`.
 - [Заказы заправки: восстановление и E2E](refueling-order-restoration-e2e.md) — восстанавливать только строки, удалённые одной операцией; пересчёты тестировать с приходными движениями.
 - [Critical-flow recalculation waits](critical-flow-recalculation-waits.md) — stock-flow tests must wait for queued backdated recalculations before asserting final balances and cost.
+- [Mass units and precision](mass-unit-migration-policy.md) — use tonnes with five displayed decimals; tonne prices use two, and litre rates convert using deal density.

@@ -4,6 +4,7 @@ import {
   formatPricePerTonne,
   formatTonnes,
   kilogramsToTonnes,
+  pricePerLitreToPerTonne,
   pricePerKilogramToPerTonne,
   pricePerTonneToPerKilogram,
   tonnesToKilograms,
@@ -23,6 +24,17 @@ test("per-kilogram and per-tonne prices preserve transaction totals", () => {
 
   assert.equal(tonnes * pricePerTonne, kg * pricePerKg);
   assert.equal(pricePerTonneToPerKilogram(pricePerTonne), pricePerKg);
+});
+
+test("per-litre prices convert using the density of the specific deal", () => {
+  const litres = 8_000;
+  const density = 0.8;
+  const pricePerLitre = 75;
+  const massTonnes = kilogramsToTonnes(litres * density);
+  const pricePerTonne = pricePerLitreToPerTonne(pricePerLitre, density);
+
+  assert.equal(massTonnes * pricePerTonne, litres * pricePerLitre);
+  assert.throws(() => pricePerLitreToPerTonne(75, 0), RangeError);
 });
 
 test("unit formatters use five decimals for mass and two for tonne prices", () => {

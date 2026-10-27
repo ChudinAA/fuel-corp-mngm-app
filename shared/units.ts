@@ -27,6 +27,22 @@ export function pricePerTonneToPerKilogram(pricePerTonne: number): number {
   return assertFinite(pricePerTonne, "pricePerTonne") / KILOGRAMS_PER_TON;
 }
 
+/**
+ * Converts a price per litre to its equivalent price per tonne at the deal's
+ * density (kg/litre). The source amount remains litres × price/litre.
+ */
+export function pricePerLitreToPerTonne(
+  pricePerLitre: number,
+  densityKilogramsPerLitre: number,
+): number {
+  assertFinite(pricePerLitre, "pricePerLitre");
+  assertFinite(densityKilogramsPerLitre, "densityKilogramsPerLitre");
+  if (densityKilogramsPerLitre <= 0) {
+    throw new RangeError("densityKilogramsPerLitre must be greater than zero");
+  }
+  return (pricePerLitre * KILOGRAMS_PER_TON) / densityKilogramsPerLitre;
+}
+
 /** Displays tonnes to five decimal places; this is formatting, not calculation rounding. */
 export function formatTonnes(value: number | string): string {
   const tonnes = typeof value === "number" ? value : Number(value);
