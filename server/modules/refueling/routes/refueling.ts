@@ -402,16 +402,50 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         ]);
         SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(savedDeals);
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }
-        console.error("Error updating refueling order:", error?.message || error);
-        const message =
-          typeof error?.message === "string" && error.message.trim()
-            ? error.message
-            : "Не удалось сохранить заказ заправки. Проверьте данные и попробуйте снова.";
-        res.status(500).json({ message });
+
+        const expectedErrors = new Map<string, { status: number; message: string }>([
+          ["Заказ должен содержать от одного до трёх продуктов", {
+            status: 400,
+            message: "Заказ должен содержать от одного до трёх продуктов",
+          }],
+          ["В заказе не должно быть повторяющихся или неизвестных продуктов", {
+            status: 400,
+            message: "В заказе не должно быть повторяющихся или неизвестных продуктов",
+          }],
+          ["Заказ заправки не найден", {
+            status: 404,
+            message: "Заказ заправки не найден",
+          }],
+          ["Заказ изменён другим пользователем. Обновите список и попробуйте снова", {
+            status: 409,
+            message: "Заказ изменён другим пользователем. Обновите список и попробуйте снова",
+          }],
+          ["Оборудование не найдено", {
+            status: 409,
+            message: "Оборудование заправки не найдено. Обновите данные и попробуйте снова.",
+          }],
+        ]);
+        const errorMessage = error instanceof Error ? error.message : "";
+        const expectedFailure =
+          expectedErrors.get(errorMessage) ||
+          (/^Warehouse .+ not found$/.test(errorMessage)
+            ? {
+                status: 409,
+                message: "Склад заправки не найден. Обновите данные и попробуйте снова.",
+              }
+            : undefined);
+        if (expectedFailure) {
+          return res.status(expectedFailure.status).json({ message: expectedFailure.message });
+        }
+
+        console.error("Error updating refueling order:", error);
+        return res.status(500).json({
+          message: "Не удалось сохранить заказ заправки. Попробуйте снова.",
+        });
       }
     },
   );
