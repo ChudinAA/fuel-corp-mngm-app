@@ -89,8 +89,8 @@ export class CashflowStorage implements ICashflowStorage {
     return true;
   }
 
-  async restoreCashflowTransaction(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restoreCashflowTransaction(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(cashflowTransactions)
       .set({ deletedAt: null, deletedById: null })
       .where(eq(cashflowTransactions.id, id));

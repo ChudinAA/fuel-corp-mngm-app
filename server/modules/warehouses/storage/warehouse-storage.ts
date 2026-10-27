@@ -222,8 +222,8 @@ export class WarehouseStorage {
     return true;
   }
 
-  async restoreWarehouse(id: string, userId?: string): Promise<boolean> {
-    await db.transaction(async (tx) => {
+  async restoreWarehouse(id: string, userId?: string, transaction?: any): Promise<boolean> {
+    const restore = async (tx: any) => {
       await tx
         .update(warehouses)
         .set({
@@ -231,7 +231,9 @@ export class WarehouseStorage {
           deletedById: null,
         })
         .where(eq(warehouses.id, id));
-    });
+    };
+    if (transaction) await restore(transaction);
+    else await db.transaction(restore);
     return true;
   }
 

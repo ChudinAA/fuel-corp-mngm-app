@@ -60,4 +60,5 @@ run("npx", [
   "tests/refueling-restore-recalculation.test.ts",
   "tests/refueling-order-restore.test.ts",
   "tests/refueling-order-atomicity.test.ts",
+  "tests/rollback-restore-atomicity.test.ts",
 ]);

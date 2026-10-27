@@ -440,8 +440,9 @@ export class OptStorage {
     id: string,
     oldData: any,
     userId?: string,
+    transaction?: any,
   ): Promise<boolean> {
-    await db.transaction(async (tx) => {
+    const restore = async (tx: any) => {
       // Restore the opt record
       await tx
         .update(opt)
@@ -459,7 +460,9 @@ export class OptStorage {
           userId,
         );
       }
-    });
+    };
+    if (transaction) await restore(transaction);
+    else await db.transaction(restore);
 
     return true;
   }

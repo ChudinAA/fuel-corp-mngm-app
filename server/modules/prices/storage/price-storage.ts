@@ -184,8 +184,8 @@ export class PriceStorage {
     return true;
   }
 
-  async restorePrice(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restorePrice(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(prices)
       .set({
         deletedAt: null,

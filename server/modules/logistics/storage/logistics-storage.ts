@@ -436,8 +436,8 @@ export class LogisticsStorage implements ILogisticsStorage {
     return true;
   }
 
-  async restoreLogisticsCarrier(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restoreLogisticsCarrier(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(logisticsCarriers)
       .set({
         deletedAt: null,
@@ -450,8 +450,9 @@ export class LogisticsStorage implements ILogisticsStorage {
   async restoreLogisticsDeliveryLocation(
     id: string,
     userId?: string,
+    transaction: any = db,
   ): Promise<boolean> {
-    await db
+    await transaction
       .update(logisticsDeliveryLocations)
       .set({
         deletedAt: null,
@@ -461,8 +462,8 @@ export class LogisticsStorage implements ILogisticsStorage {
     return true;
   }
 
-  async restoreLogisticsVehicle(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restoreLogisticsVehicle(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(logisticsVehicles)
       .set({
         deletedAt: null,
@@ -472,8 +473,8 @@ export class LogisticsStorage implements ILogisticsStorage {
     return true;
   }
 
-  async restoreLogisticsTrailer(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restoreLogisticsTrailer(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(logisticsTrailers)
       .set({
         deletedAt: null,
@@ -483,8 +484,8 @@ export class LogisticsStorage implements ILogisticsStorage {
     return true;
   }
 
-  async restoreLogisticsDriver(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restoreLogisticsDriver(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(logisticsDrivers)
       .set({
         deletedAt: null,

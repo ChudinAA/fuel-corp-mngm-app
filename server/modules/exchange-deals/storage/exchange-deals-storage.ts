@@ -492,13 +492,13 @@ export class ExchangeDealsStorage {
 
   // ——— Авансы продавца ———
 
-  private async _createAdvanceExpense(deal: ExchangeDeal, createdById?: string): Promise<void> {
+  private async _createAdvanceExpense(deal: ExchangeDeal, createdById?: string, transaction: any = db): Promise<void> {
     if (!deal.sellerId) return;
 
     const purchaseAmount = this._computePurchaseAmount(deal);
     if (purchaseAmount <= 0) return;
 
-    const card = await db.query.exchangeAdvanceCards.findFirst({
+    const card = await transaction.query.exchangeAdvanceCards.findFirst({
       where: and(
         eq(exchangeAdvanceCards.sellerId, deal.sellerId),
         isNull(exchangeAdvanceCards.deletedAt),
@@ -509,7 +509,7 @@ export class ExchangeDealsStorage {
     const currentBalance = parseFloat(card.currentBalance ?? "0");
     const newBalance = currentBalance - purchaseAmount;
 
-    await db.insert(exchangeAdvanceTransactions).values({
+    await transaction.insert(exchangeAdvanceTransactions).values({
       cardId: card.id,
       transactionType: "expense",
       amount: String(purchaseAmount),
@@ -521,7 +521,7 @@ export class ExchangeDealsStorage {
       createdById: (createdById || deal.createdById) ?? null,
     });
 
-    await db
+    await transaction
       .update(exchangeAdvanceCards)
       .set({ currentBalance: String(newBalance), updatedAt: sql`NOW()` })
       .where(eq(exchangeAdvanceCards.id, card.id));
@@ -590,7 +590,7 @@ export class ExchangeDealsStorage {
     return true;
   }
 
-  async restoreDeal(id: string, data: any): Promise<ExchangeDeal | undefined> {
+  async restoreDeal(id: string, data: any, _userId?: string, transaction?: any): Promise<ExchangeDeal | undefined> {
     // Очищаем UUID-поля от пустых строк, чтобы не было "invalid input syntax for type uuid"
     const cleanData = {
       ...data,
@@ -607,17 +607,17 @@ export class ExchangeDealsStorage {
       deletedAt: null,
     };
 
-    const [deal] = await db
-      .insert(exchangeDeals)
-      .values({ ...cleanData, id })
-      .onConflictDoUpdate({
-        target: exchangeDeals.id,
-        set: { ...cleanData, updatedAt: sql`NOW()` },
-      })
-      .returning();
+    const restore = async (tx: any) => {
+      const [deal] = await tx
+        .insert(exchangeDeals)
+        .values({ ...cleanData, id })
+        .onConflictDoUpdate({
+          target: exchangeDeals.id,
+          set: { ...cleanData, updatedAt: sql`NOW()` },
+        })
+        .returning();
 
-    if (deal.movementId) {
-      await db.transaction(async (tx) => {
+      if (deal.movementId) {
         const relatedMovement = await tx.query.movement.findFirst({
           where: eq(movement.id, deal.movementId!),
         });
@@ -636,14 +636,15 @@ export class ExchangeDealsStorage {
             );
           }
         }
-      });
-    }
+      }
 
-    if (!deal.isDraft && deal.sellerId) {
-      await this._createAdvanceExpense(deal, cleanData.updatedById);
-    }
+      if (!deal.isDraft && deal.sellerId) {
+        await this._createAdvanceExpense(deal, cleanData.updatedById, tx);
+      }
 
-    return deal;
+      return deal;
+    };
+    return transaction ? restore(transaction) : db.transaction(restore);
   }
 
   /** Поиск уникальных значений для серверного фильтра */

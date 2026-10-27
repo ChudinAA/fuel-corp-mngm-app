@@ -58,8 +58,8 @@ export class RailwayStorage {
     return !!result;
   }
 
-  async restoreStation(id: string, data: any): Promise<RailwayStation | undefined> {
-    const [station] = await db
+  async restoreStation(id: string, data: any, transaction: any = db): Promise<RailwayStation | undefined> {
+    const [station] = await transaction
       .insert(railwayStations)
       .values({ ...data, id, deletedAt: null })
       .onConflictDoUpdate({
@@ -121,8 +121,8 @@ export class RailwayStorage {
     return !!result;
   }
 
-  async restoreTariff(id: string, data: any): Promise<RailwayTariff | undefined> {
-    const [tariff] = await db
+  async restoreTariff(id: string, data: any, transaction: any = db): Promise<RailwayTariff | undefined> {
+    const [tariff] = await transaction
       .insert(railwayTariffs)
       .values({ ...data, id, deletedAt: null })
       .onConflictDoUpdate({

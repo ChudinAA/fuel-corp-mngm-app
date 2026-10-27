@@ -143,8 +143,8 @@ export class CustomerStorage implements ICustomerStorage {
     return true;
   }
 
-  async restoreCustomer(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restoreCustomer(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(customers)
       .set({
         deletedAt: null,

@@ -14,7 +14,7 @@ export interface ITransportationStorage {
     data: Partial<InsertTransportation>,
   ): Promise<Transportation | undefined>;
   deleteTransportation(id: string, userId?: string): Promise<boolean>;
-  restoreTransportation(id: string, oldData: any, userId?: string): Promise<boolean>;
+  restoreTransportation(id: string, oldData: any, userId?: string, transaction?: any): Promise<boolean>;
   checkDuplicate(data: {
     dealDate: string;
     supplierId?: string | null;

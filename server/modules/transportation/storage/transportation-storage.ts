@@ -205,8 +205,9 @@ export class TransportationStorage {
     id: string,
     _oldData: any,
     _userId?: string,
+    transaction: any = db,
   ): Promise<boolean> {
-    await db
+    await transaction
       .update(transportation)
       .set({
         deletedAt: null,

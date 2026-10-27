@@ -120,8 +120,8 @@ export class DeliveryStorage implements IDeliveryStorage {
     return true;
   }
 
-  async restoreDeliveryCost(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restoreDeliveryCost(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(deliveryCost)
       .set({
         deletedAt: null,

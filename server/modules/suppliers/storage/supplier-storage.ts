@@ -313,15 +313,15 @@ export class SupplierStorage implements ISupplierStorage {
     return true;
   }
 
-  async restoreSupplier(id: string, userId?: string): Promise<boolean> {
-    const currentSupplier = await db.query.suppliers.findFirst({
+  async restoreSupplier(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    const currentSupplier = await transaction.query.suppliers.findFirst({
       where: eq(suppliers.id, id),
     });
 
     if (!currentSupplier) {
       throw new Error("Такая запись не найдена");
     }
-    await db
+    await transaction
       .update(suppliers)
       .set({
         deletedAt: null,
@@ -330,7 +330,7 @@ export class SupplierStorage implements ISupplierStorage {
       .where(eq(suppliers.id, id));
 
     if (currentSupplier.storageCardId) {
-      await db
+      await transaction
         .update(storageCards)
         .set({
           deletedAt: null,

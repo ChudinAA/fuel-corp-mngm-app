@@ -58,8 +58,8 @@ export class PriceCalculationStorage implements IPriceCalculationStorage {
     return true;
   }
 
-  async restorePriceCalculation(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restorePriceCalculation(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(priceCalculations)
       .set({ deletedAt: null, deletedById: null })
       .where(eq(priceCalculations.id, id));

@@ -63,11 +63,20 @@ export class ExchangeAdvancesStorage {
     return card;
   }
 
-  async updateCard(id: string, data: Partial<InsertExchangeAdvanceCard>, updatedById?: string): Promise<ExchangeAdvanceCard | undefined> {
-    const [card] = await db
+  async updateCard(id: string, data: Partial<InsertExchangeAdvanceCard>, updatedById?: string, transaction: any = db): Promise<ExchangeAdvanceCard | undefined> {
+    const [card] = await transaction
       .update(exchangeAdvanceCards)
       .set({ ...data, updatedAt: new Date().toISOString(), updatedById })
       .where(and(eq(exchangeAdvanceCards.id, id), isNull(exchangeAdvanceCards.deletedAt)))
+      .returning();
+    return card;
+  }
+
+  async restoreCard(id: string, data: Partial<InsertExchangeAdvanceCard>, updatedById?: string, transaction: any = db): Promise<ExchangeAdvanceCard | undefined> {
+    const [card] = await transaction
+      .update(exchangeAdvanceCards)
+      .set({ ...data, deletedAt: null, deletedById: null, updatedAt: new Date().toISOString(), updatedById })
+      .where(eq(exchangeAdvanceCards.id, id))
       .returning();
     return card;
   }

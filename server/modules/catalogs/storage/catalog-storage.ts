@@ -75,8 +75,8 @@ export class CatalogStorage {
     return row;
   }
 
-  async restoreContract(id: string, _oldData?: any, userId?: string) {
-    const [row] = await db
+  async restoreContract(id: string, _oldData?: any, userId?: string, transaction: any = db) {
+    const [row] = await transaction
       .update(counterpartyContracts)
       .set({ deletedAt: null, deletedById: null, updatedAt: new Date().toISOString(), updatedById: userId })
       .where(eq(counterpartyContracts.id, id))
@@ -173,14 +173,14 @@ export class CatalogStorage {
     return row;
   }
 
-  async restoreNomenclature(id: string, oldData?: any, userId?: string) {
-    const current = await this.getNomenclatureItemEvenDeleted(id);
+  async restoreNomenclature(id: string, oldData?: any, userId?: string, transaction: any = db) {
+    const [current] = await transaction.select().from(nomenclature).where(eq(nomenclature.id, id)).limit(1);
     if (!current) return undefined;
     if (oldData?.isDefault) {
-      await db.update(nomenclature).set({ isDefault: false })
+      await transaction.update(nomenclature).set({ isDefault: false })
         .where(and(eq(nomenclature.productType, current.productType!), isNull(nomenclature.deletedAt)));
     }
-    const [row] = await db.update(nomenclature)
+    const [row] = await transaction.update(nomenclature)
       .set({ deletedAt: null, deletedById: null, updatedAt: new Date().toISOString(), updatedById: userId, isDefault: !!oldData?.isDefault })
       .where(eq(nomenclature.id, id)).returning();
     return row;
@@ -208,8 +208,8 @@ export class CatalogStorage {
       .where(and(eq(nomenclatureTypes.id, id), isNull(nomenclatureTypes.deletedAt))).returning();
     return row;
   }
-  async restoreType(id: string, _oldData?: any, userId?: string) {
-    const [row] = await db.update(nomenclatureTypes).set({ deletedAt: null, deletedById: null, updatedAt: new Date().toISOString(), updatedById: userId })
+  async restoreType(id: string, _oldData?: any, userId?: string, transaction: any = db) {
+    const [row] = await transaction.update(nomenclatureTypes).set({ deletedAt: null, deletedById: null, updatedAt: new Date().toISOString(), updatedById: userId })
       .where(eq(nomenclatureTypes.id, id)).returning();
     return row;
   }
@@ -238,8 +238,8 @@ export class CatalogStorage {
       .where(and(eq(unitsOfMeasure.id, id), isNull(unitsOfMeasure.deletedAt))).returning();
     return row;
   }
-  async restoreUnit(id: string, _oldData?: any, userId?: string) {
-    const [row] = await db.update(unitsOfMeasure).set({ deletedAt: null, deletedById: null, updatedAt: new Date().toISOString(), updatedById: userId })
+  async restoreUnit(id: string, _oldData?: any, userId?: string, transaction: any = db) {
+    const [row] = await transaction.update(unitsOfMeasure).set({ deletedAt: null, deletedById: null, updatedAt: new Date().toISOString(), updatedById: userId })
       .where(eq(unitsOfMeasure.id, id)).returning();
     return row;
   }

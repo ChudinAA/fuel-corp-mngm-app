@@ -86,8 +86,8 @@ export class UserStorage implements IUserStorage {
     return true;
   }
 
-  async restoreUser(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restoreUser(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(users)
       .set({
         deletedAt: null,

@@ -49,8 +49,8 @@ export class RoleStorage implements IRoleStorage {
     return true;
   }
 
-  async restoreRole(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restoreRole(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(roles)
       .set({
         deletedAt: null,

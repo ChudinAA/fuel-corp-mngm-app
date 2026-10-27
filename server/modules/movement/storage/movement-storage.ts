@@ -502,8 +502,9 @@ export class MovementStorage implements IMovementStorage {
     id: string,
     oldData: any,
     userId?: string,
+    transaction?: any,
   ): Promise<boolean> {
-    await db.transaction(async (tx) => {
+    const restore = async (tx: any) => {
       // Restore the movement record
       await tx
         .update(movement)
@@ -529,7 +530,9 @@ export class MovementStorage implements IMovementStorage {
           userId,
         );
       }
-    });
+    };
+    if (transaction) await restore(transaction);
+    else await db.transaction(restore);
 
     return true;
   }

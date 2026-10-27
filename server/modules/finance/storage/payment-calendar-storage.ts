@@ -94,8 +94,8 @@ export class PaymentCalendarStorage implements IPaymentCalendarStorage {
     return true;
   }
 
-  async restorePaymentCalendarItem(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restorePaymentCalendarItem(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(paymentCalendar)
       .set({ deletedAt: null, deletedById: null })
       .where(eq(paymentCalendar.id, id));

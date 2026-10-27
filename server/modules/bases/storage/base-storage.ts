@@ -77,8 +77,8 @@ export class BaseStorage implements IBaseStorage {
     return true;
   }
 
-  async restoreBase(id: string, userId?: string): Promise<boolean> {
-    await db
+  async restoreBase(id: string, userId?: string, transaction: any = db): Promise<boolean> {
+    await transaction
       .update(bases)
       .set({
         deletedAt: null,

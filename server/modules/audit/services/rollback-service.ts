@@ -58,11 +58,7 @@ export class RollbackService {
       const result = await this.performRollback(auditEntry, context);
 
       // If rollback was successful, mark the audit entry as rolled back
-      if (
-        result.success &&
-        !(auditEntry.entityType === "aircraft_refueling" &&
-          auditEntry.operation === AUDIT_OPERATIONS.DELETE)
-      ) {
+      if (result.success && auditEntry.operation !== AUDIT_OPERATIONS.DELETE) {
         await db.update(auditLog)
           .set({
             rolledBackAt: new Date().toISOString(),
@@ -113,7 +109,7 @@ export class RollbackService {
 
       case AUDIT_OPERATIONS.DELETE:
         // Rollback DELETE: restore the deleted entity
-        return this.rollbackDelete(entityType, entityId, oldData, context);
+        return this.rollbackDelete(auditEntry.id, entityType, entityId, oldData, context);
 
       default:
         return {
@@ -227,6 +223,7 @@ export class RollbackService {
    * Rollback a DELETE operation (restore entity)
    */
   private static async rollbackDelete(
+    auditLogId: string,
     entityType: EntityType,
     entityId: string,
     oldData: any,
@@ -312,20 +309,34 @@ export class RollbackService {
         };
       }
 
-      // Restore entity using storage methods (set deletedAt = NULL)
-      await this.restoreEntity(entityType, entityId, oldData, context.userId);
+      await db.transaction(async (tx) => {
+        // Restore the entity, its related records, and both audit changes as one unit.
+        await this.restoreEntity(entityType, entityId, oldData, context.userId, tx);
 
-      // Log the rollback as a RESTORE operation
-      await AuditService.log({
-        entityType,
-        entityId,
-        operation: AUDIT_OPERATIONS.RESTORE,
-        oldData: null,
-        newData: oldData,
-        context: {
-          ...context,
-          userName: `${context.userName} (откат удаления)`,
-        },
+        const restoredAt = new Date().toISOString();
+        await tx
+          .update(auditLog)
+          .set({
+            rolledBackAt: restoredAt,
+            rolledBackById: context.userId,
+          })
+          .where(eq(auditLog.id, auditLogId));
+
+        await AuditService.log(
+          {
+            entityType,
+            entityId,
+            operation: AUDIT_OPERATIONS.RESTORE,
+            oldData: null,
+            newData: oldData,
+            context: {
+              ...context,
+              userName: `${context.userName} (откат удаления)`,
+            },
+          },
+          tx,
+          true,
+        );
       });
 
       return {
@@ -591,41 +602,42 @@ export class RollbackService {
     entityType: EntityType,
     entityId: string,
     oldData: any,
-    userId?: string
+    userId?: string,
+    transaction?: any,
   ): Promise<void> {
-    const storageMap: Record<string, (id: string, oldData: any, userId?: string) => Promise<any>> = {
-      opt: (id, oldData, userId) => storage.opt.restoreOpt(id, oldData, userId),
-      aircraft_refueling: (id, oldData, userId) => storage.aircraftRefueling.restoreRefueling(id, oldData, userId),
-      aircraft_refueling_abroad: (id, oldData, userId) => storage.aircraftRefueling.restoreRefueling(id, oldData, userId),
-      movement: (id, oldData, userId) => storage.movement.restoreMovement(id, oldData, userId),
-      exchange: (id, oldData, userId) => storage.exchange.restoreExchange(id, userId),
-      warehouses: (id, oldData, userId) => storage.warehouses.restoreWarehouse(id, userId),
-      prices: (id, oldData, userId) => storage.prices.restorePrice(id, userId),
-      suppliers: (id, oldData, userId) => storage.suppliers.restoreSupplier(id, userId),
-      customers: (id, oldData, userId) => storage.customers.restoreCustomer(id, userId),
-      bases: (id, oldData, userId) => storage.bases.restoreBase(id, userId),
-      logistics_carriers: (id, oldData, userId) => storage.logistics.restoreLogisticsCarrier(id, userId),
-      logistics_delivery_locations: (id, oldData, userId) => storage.logistics.restoreLogisticsDeliveryLocation(id, userId),
-      logistics_vehicles: (id, oldData, userId) => storage.logistics.restoreLogisticsVehicle(id, userId),
-      logistics_trailers: (id, oldData, userId) => storage.logistics.restoreLogisticsTrailer(id, userId),
-      logistics_drivers: (id, oldData, userId) => storage.logistics.restoreLogisticsDriver(id, userId),
-      delivery_cost: (id, oldData, userId) => storage.delivery.restoreDeliveryCost(id, userId),
-      cashflow_transactions: (id, oldData, userId) => storage.cashflow.restoreCashflowTransaction(id, userId),
-      payment_calendar: (id, oldData, userId) => storage.payments.restorePaymentCalendarItem(id, userId),
-      price_calculations: (id, oldData, userId) => storage.priceCalculations.restorePriceCalculation(id, userId),
-      users: (id, oldData, userId) => storage.users.restoreUser(id, userId),
-      roles: (id, oldData, userId) => storage.roles.restoreRole(id, userId),
-      equipment: (id, oldData, userId) => storage.equipment.restoreEquipment(id, userId!),
-      equipment_movement: (id, oldData, userId) => (storage as any).equipmentMovement.restoreMovement(id, oldData, userId),
-      transportation: (id, oldData, userId) => (storage as any).transportation.restoreTransportation(id, oldData, userId),
-      railway_stations: (id, oldData, userId) => (storage as any).railway.restoreStation(id, oldData),
-      railway_tariffs: (id, oldData, userId) => (storage as any).railway.restoreTariff(id, oldData),
-      exchange_deals: (id, oldData, userId) => (storage as any).exchangeDeals.restoreDeal(id, oldData),
-      exchange_advance_cards: (id, oldData, userId) => (storage as any).exchangeAdvances.updateCard(id, { ...oldData, deletedAt: null }, userId),
-      counterparty_contracts: (id, oldData, userId) => storage.catalogs.restoreContract(id, oldData, userId),
-      nomenclature: (id, oldData, userId) => storage.catalogs.restoreNomenclature(id, oldData, userId),
-      nomenclature_types: (id, oldData, userId) => storage.catalogs.restoreType(id, oldData, userId),
-      units_of_measure: (id, oldData, userId) => storage.catalogs.restoreUnit(id, oldData, userId),
+    const storageMap: Record<string, (id: string, oldData: any, userId?: string, transaction?: any) => Promise<any>> = {
+      opt: (id, oldData, userId, tx) => storage.opt.restoreOpt(id, oldData, userId, tx),
+      aircraft_refueling: (id, oldData, userId, tx) => storage.aircraftRefueling.restoreRefueling(id, oldData, userId, tx),
+      aircraft_refueling_abroad: (id, oldData, userId, tx) => storage.aircraftRefueling.restoreRefueling(id, oldData, userId, tx),
+      movement: (id, oldData, userId, tx) => storage.movement.restoreMovement(id, oldData, userId, tx),
+      exchange: (id, oldData, userId, tx) => storage.exchange.restoreExchange(id, userId, tx),
+      warehouses: (id, oldData, userId, tx) => storage.warehouses.restoreWarehouse(id, userId, tx),
+      prices: (id, oldData, userId, tx) => storage.prices.restorePrice(id, userId, tx),
+      suppliers: (id, oldData, userId, tx) => storage.suppliers.restoreSupplier(id, userId, tx),
+      customers: (id, oldData, userId, tx) => storage.customers.restoreCustomer(id, userId, tx),
+      bases: (id, oldData, userId, tx) => storage.bases.restoreBase(id, userId, tx),
+      logistics_carriers: (id, oldData, userId, tx) => storage.logistics.restoreLogisticsCarrier(id, userId, tx),
+      logistics_delivery_locations: (id, oldData, userId, tx) => storage.logistics.restoreLogisticsDeliveryLocation(id, userId, tx),
+      logistics_vehicles: (id, oldData, userId, tx) => storage.logistics.restoreLogisticsVehicle(id, userId, tx),
+      logistics_trailers: (id, oldData, userId, tx) => storage.logistics.restoreLogisticsTrailer(id, userId, tx),
+      logistics_drivers: (id, oldData, userId, tx) => storage.logistics.restoreLogisticsDriver(id, userId, tx),
+      delivery_cost: (id, oldData, userId, tx) => storage.delivery.restoreDeliveryCost(id, userId, tx),
+      cashflow_transactions: (id, oldData, userId, tx) => storage.cashflow.restoreCashflowTransaction(id, userId, tx),
+      payment_calendar: (id, oldData, userId, tx) => storage.payments.restorePaymentCalendarItem(id, userId, tx),
+      price_calculations: (id, oldData, userId, tx) => storage.priceCalculations.restorePriceCalculation(id, userId, tx),
+      users: (id, oldData, userId, tx) => storage.users.restoreUser(id, userId, tx),
+      roles: (id, oldData, userId, tx) => storage.roles.restoreRole(id, userId, tx),
+      equipment: (id, oldData, userId, tx) => storage.equipment.restoreEquipment(id, userId!, tx),
+      equipment_movement: (id, oldData, userId, tx) => (storage as any).equipmentMovement.restoreMovement(id, oldData, userId, tx),
+      transportation: (id, oldData, userId, tx) => (storage as any).transportation.restoreTransportation(id, oldData, userId, tx),
+      railway_stations: (id, oldData, userId, tx) => (storage as any).railway.restoreStation(id, oldData, tx),
+      railway_tariffs: (id, oldData, userId, tx) => (storage as any).railway.restoreTariff(id, oldData, tx),
+      exchange_deals: (id, oldData, userId, tx) => (storage as any).exchangeDeals.restoreDeal(id, oldData, userId, tx),
+      exchange_advance_cards: (id, oldData, userId, tx) => (storage as any).exchangeAdvances.restoreCard(id, oldData, userId, tx),
+      counterparty_contracts: (id, oldData, userId, tx) => storage.catalogs.restoreContract(id, oldData, userId, tx),
+      nomenclature: (id, oldData, userId, tx) => storage.catalogs.restoreNomenclature(id, oldData, userId, tx),
+      nomenclature_types: (id, oldData, userId, tx) => storage.catalogs.restoreType(id, oldData, userId, tx),
+      units_of_measure: (id, oldData, userId, tx) => storage.catalogs.restoreUnit(id, oldData, userId, tx),
     };
 
     const restorer = storageMap[entityType];
@@ -633,6 +645,6 @@ export class RollbackService {
       throw new Error(`Unknown entity type: ${entityType}`);
     }
 
-    await restorer(entityId, oldData, userId);
+    await restorer(entityId, oldData, userId, transaction);
   }
 }

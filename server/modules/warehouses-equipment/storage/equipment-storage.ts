@@ -56,8 +56,8 @@ export class EquipmentStorage {
     });
   }
 
-  async restoreEquipment(id: string, restoredById: string): Promise<boolean> {
-    return await db.transaction(async (tx) => {
+  async restoreEquipment(id: string, restoredById: string, transaction?: any): Promise<boolean> {
+    const restore = async (tx: any) => {
       // Restore equipment
       await tx.update(equipments)
         .set({
@@ -77,7 +77,8 @@ export class EquipmentStorage {
         .where(eq(warehousesEquipment.equipmentId, id));
 
       return true;
-    });
+    };
+    return transaction ? restore(transaction) : db.transaction(restore);
   }
 
   async createTransaction(data: InsertEquipmentTransaction): Promise<EquipmentTransaction> {

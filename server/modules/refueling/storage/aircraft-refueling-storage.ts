@@ -884,8 +884,9 @@ export class AircraftRefuelingStorage {
     id: string,
     oldData: any,
     userId?: string,
+    transaction?: any,
   ): Promise<boolean> {
-    await db.transaction(async (tx) => {
+    const restore = async (tx: any) => {
       // Restore the aircraft refueling record
       await tx
         .update(aircraftRefueling)
@@ -908,7 +909,9 @@ export class AircraftRefuelingStorage {
           userId,
         );
       }
-    });
+    };
+    if (transaction) await restore(transaction);
+    else await db.transaction(restore);
 
     return true;
   }

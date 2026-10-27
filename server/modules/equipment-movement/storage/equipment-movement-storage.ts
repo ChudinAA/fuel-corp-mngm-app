@@ -456,8 +456,9 @@ export class EquipmentMovementStorage {
     id: string,
     oldData: any,
     userId: string,
+    transaction?: any,
   ): Promise<void> {
-    await db.transaction(async (tx) => {
+    const restore = async (tx: any) => {
       await tx
         .update(equipmentMovement)
         .set({ deletedAt: null, deletedById: null })
@@ -491,6 +492,8 @@ export class EquipmentMovementStorage {
           userId,
         );
       }
-    });
+    };
+    if (transaction) await restore(transaction);
+    else await db.transaction(restore);
   }
 }
