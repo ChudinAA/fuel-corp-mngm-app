@@ -136,23 +136,36 @@ export function WarehouseCard({
   });
 
   const {
-    data: monthStats = { income: 0, expense: 0, pvkjIncome: 0, pvkjExpense: 0 },
+    data: monthStats = {
+      income: 0,
+      expense: 0,
+      pvkjIncome: 0,
+      pvkjExpense: 0,
+      incomeTonnes: 0,
+      expenseTonnes: 0,
+      pvkjIncomeTonnes: 0,
+      pvkjExpenseTonnes: 0,
+    },
   } = useQuery<{
     income: number;
     expense: number;
     pvkjIncome: number;
     pvkjExpense: number;
+    incomeTonnes?: number;
+    expenseTonnes?: number;
+    pvkjIncomeTonnes?: number;
+    pvkjExpenseTonnes?: number;
   }>({
     queryKey: [`/api/warehouses/${warehouse.id}/monthly-stats`],
   });
 
   // Compute limit used from monthly stats
-  const limitUsed = limitActive
-    ? limitProductType === PRODUCT_TYPE.PVKJ
-      ? monthStats.pvkjIncome
-      : monthStats.income
-    : 0;
-  const limitUsedTonnes = kilogramsToTonnes(limitUsed);
+  const limitUsedTonnes = !limitActive
+    ? 0
+    : limitProductType === PRODUCT_TYPE.PVKJ
+      ? monthStats.pvkjIncomeTonnes ??
+        kilogramsToTonnes(monthStats.pvkjIncome)
+      : monthStats.incomeTonnes ?? kilogramsToTonnes(monthStats.income);
   const limitRemainingTonnes = limitVolumeTonnes - limitUsedTonnes;
   const limitExceeded = limitRemainingTonnes < 0;
 
@@ -407,11 +420,17 @@ export function WarehouseCard({
                 <div className="flex items-center gap-2">
                   <span className="text-green-600">
                     +
-                    {formatTonnes(kilogramsToTonnes(monthStats.income))}
+                    {formatTonnes(
+                      monthStats.incomeTonnes ??
+                        kilogramsToTonnes(monthStats.income),
+                    )}
                   </span>
                   <span className="text-red-600">
                     -
-                    {formatTonnes(kilogramsToTonnes(monthStats.expense))}
+                    {formatTonnes(
+                      monthStats.expenseTonnes ??
+                        kilogramsToTonnes(monthStats.expense),
+                    )}
                   </span>
                 </div>
               </div>
@@ -440,11 +459,17 @@ export function WarehouseCard({
                   <div className="flex items-center gap-2">
                     <span className="text-green-600">
                       +
-                      {formatTonnes(kilogramsToTonnes(monthStats.pvkjIncome))}
+                      {formatTonnes(
+                        monthStats.pvkjIncomeTonnes ??
+                          kilogramsToTonnes(monthStats.pvkjIncome),
+                      )}
                     </span>
                     <span className="text-red-600">
                       -
-                      {formatTonnes(kilogramsToTonnes(monthStats.pvkjExpense))}
+                      {formatTonnes(
+                        monthStats.pvkjExpenseTonnes ??
+                          kilogramsToTonnes(monthStats.pvkjExpense),
+                      )}
                     </span>
                   </div>
                 </div>

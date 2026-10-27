@@ -21,6 +21,14 @@ export interface WarehouseTransactionSnapshot {
   [key: string]: unknown;
 }
 
+export interface WarehouseMonthlyStatsSnapshot {
+  income: number;
+  expense: number;
+  pvkjIncome: number;
+  pvkjExpense: number;
+  [key: string]: unknown;
+}
+
 function kilogramsAsTonnes(value: NumericValue): NumericValue {
   if (value === null || value === undefined || value === "") return value;
   const kilograms = Number(value);
@@ -64,5 +72,17 @@ export function warehouseTransactionToApi<
     averageCostAfterPerTonne: perKilogramAsPerTonne(
       transaction.averageCostAfter,
     ),
+  };
+}
+
+export function warehouseMonthlyStatsToApi<
+  T extends WarehouseMonthlyStatsSnapshot,
+>(stats: T) {
+  return {
+    ...stats,
+    incomeTonnes: Number(kilogramsToTonnes(stats.income).toFixed(5)),
+    expenseTonnes: Number(kilogramsToTonnes(stats.expense).toFixed(5)),
+    pvkjIncomeTonnes: Number(kilogramsToTonnes(stats.pvkjIncome).toFixed(5)),
+    pvkjExpenseTonnes: Number(kilogramsToTonnes(stats.pvkjExpense).toFixed(5)),
   };
 }

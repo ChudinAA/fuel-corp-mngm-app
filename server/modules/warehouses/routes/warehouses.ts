@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { equipmentToApi } from "../../warehouses-equipment/equipment-api-adapters";
 import {
   warehouseBalanceToApi,
+  warehouseMonthlyStatsToApi,
   warehouseTransactionToApi,
 } from "../warehouse-api-adapters";
 
@@ -566,7 +567,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           id,
           startOfMonth,
         );
-        res.json(stats);
+        res.json(warehouseMonthlyStatsToApi(stats));
       } catch (error) {
         console.error("Error calculating monthly stats:", error);
         res.status(500).json({ message: "Ошибка получения статистики склада" });

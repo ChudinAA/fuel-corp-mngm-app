@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   warehouseBalanceToApi,
+  warehouseMonthlyStatsToApi,
   warehouseTransactionToApi,
 } from "./warehouse-api-adapters";
 
@@ -45,4 +46,22 @@ test("warehouse API adapters reject malformed numeric values", () => {
       }),
     /Invalid legacy kilogram value/,
   );
+});
+
+test("warehouse monthly stats add tonne totals while preserving kilogram totals", () => {
+  const result = warehouseMonthlyStatsToApi({
+    income: 1234.56,
+    expense: 45.67,
+    pvkjIncome: 800,
+    pvkjExpense: 25.5,
+  });
+
+  assert.equal(result.income, 1234.56);
+  assert.equal(result.expense, 45.67);
+  assert.equal(result.pvkjIncome, 800);
+  assert.equal(result.pvkjExpense, 25.5);
+  assert.equal(result.incomeTonnes, 1.23456);
+  assert.equal(result.expenseTonnes, 0.04567);
+  assert.equal(result.pvkjIncomeTonnes, 0.8);
+  assert.equal(result.pvkjExpenseTonnes, 0.0255);
 });
