@@ -1406,3 +1406,197 @@ test("restoring an older sale preserves delivery and storage costs in shared war
     await pool.end();
   }
 });
+
+test(
+  "warehouse recalculation terminates and updates costs across reverse transfers",
+  { timeout: 30_000 },
+  async (t) => {
+    const rollbackMarker = new Error("Rollback integration-test fixtures");
+    try {
+      const schemaResult = await db.execute(sql`
+        SELECT
+          to_regclass('movement') IS NOT NULL
+            AND to_regclass('warehouse_transactions') IS NOT NULL AS has_warehouse_movement_schema
+      `);
+      if (!schemaResult.rows[0]?.has_warehouse_movement_schema) {
+        t.skip("The configured database does not have the warehouse movement schema.");
+        return;
+      }
+
+      await db.transaction(async (tx) => {
+        const fixtureId = crypto.randomUUID();
+        const productType = PRODUCT_TYPE.KEROSENE;
+        const openingDate = "2026-04-01T10:00:00.000Z";
+        const forwardTransferDate = "2026-04-02T10:00:00.000Z";
+        const reverseTransferDate = "2026-04-03T10:00:00.000Z";
+
+        const [warehouseA] = await tx
+          .insert(warehouses)
+          .values({
+            name: `cycle-warehouse-a-${fixtureId}`,
+            currentBalance: "100",
+            averageCost: "12",
+            pvkjBalance: "0",
+            pvkjAverageCost: "0",
+          })
+          .returning();
+        const [warehouseB] = await tx
+          .insert(warehouses)
+          .values({
+            name: `cycle-warehouse-b-${fixtureId}`,
+            currentBalance: "100",
+            averageCost: "20",
+            pvkjBalance: "0",
+            pvkjAverageCost: "0",
+          })
+          .returning();
+
+        await tx.insert(warehouseTransactions).values([
+          {
+            warehouseId: warehouseA.id,
+            transactionType: TRANSACTION_TYPE.INVENTORY,
+            productType,
+            quantity: "100",
+            balanceBefore: "0",
+            balanceAfter: "100",
+            averageCostBefore: "0",
+            averageCostAfter: "12",
+            sum: "1200",
+            transactionDate: openingDate,
+          },
+          {
+            warehouseId: warehouseB.id,
+            transactionType: TRANSACTION_TYPE.INVENTORY,
+            productType,
+            quantity: "100",
+            balanceBefore: "0",
+            balanceAfter: "100",
+            averageCostBefore: "0",
+            averageCostAfter: "20",
+            sum: "2000",
+            transactionDate: openingDate,
+          },
+        ]);
+
+        const [forwardTransfer] = await tx
+          .insert(movement)
+          .values({
+            movementDate: forwardTransferDate,
+            movementType: "transfer",
+            productType,
+            fromWarehouseId: warehouseA.id,
+            toWarehouseId: warehouseB.id,
+            quantityKg: "10",
+            totalCost: "60",
+            purchasePrice: "6",
+            costPerKg: "6",
+          })
+          .returning();
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          warehouseA.id,
+          TRANSACTION_TYPE.TRANSFER_OUT,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          forwardTransfer.id,
+          10,
+          0,
+          undefined,
+          forwardTransferDate,
+        );
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          warehouseB.id,
+          TRANSACTION_TYPE.TRANSFER_IN,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          forwardTransfer.id,
+          10,
+          60,
+          undefined,
+          forwardTransferDate,
+        );
+
+        const [reverseTransfer] = await tx
+          .insert(movement)
+          .values({
+            movementDate: reverseTransferDate,
+            movementType: "transfer",
+            productType,
+            fromWarehouseId: warehouseB.id,
+            toWarehouseId: warehouseA.id,
+            quantityKg: "10",
+            totalCost: "200",
+            purchasePrice: "20",
+            costPerKg: "20",
+          })
+          .returning();
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          warehouseB.id,
+          TRANSACTION_TYPE.TRANSFER_OUT,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          reverseTransfer.id,
+          10,
+          0,
+          undefined,
+          reverseTransferDate,
+        );
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          warehouseA.id,
+          TRANSACTION_TYPE.TRANSFER_IN,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          reverseTransfer.id,
+          10,
+          200,
+          undefined,
+          reverseTransferDate,
+        );
+
+        await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+          tx,
+          [{
+            warehouseId: warehouseA.id,
+            afterDate: forwardTransferDate,
+            productType,
+          }],
+        );
+
+        const recalculatedTransfers = await tx
+          .select({
+            id: movement.id,
+            totalCost: movement.totalCost,
+            purchasePrice: movement.purchasePrice,
+          })
+          .from(movement)
+          .where(eq(movement.id, forwardTransfer.id));
+        const recalculatedReverseTransfer = await tx.query.movement.findFirst({
+          where: eq(movement.id, reverseTransfer.id),
+        });
+
+        assert.equal(Number(recalculatedTransfers[0]?.totalCost), 120);
+        assert.equal(Number(recalculatedTransfers[0]?.purchasePrice), 12);
+        assert.equal(
+          Number(recalculatedReverseTransfer?.totalCost),
+          192.73,
+          "the returning movement should use the recalculated blended cost from warehouse B",
+        );
+        assert.ok(
+          Math.abs(Number(recalculatedReverseTransfer?.purchasePrice) - 19.272727) <
+            0.000001,
+          `reverse transfer purchase price: ${recalculatedReverseTransfer?.purchasePrice}`,
+        );
+
+        throw rollbackMarker;
+      });
+      assert.fail("The fixture transaction should have been rolled back.");
+    } catch (error) {
+      if (error !== rollbackMarker) throw error;
+    } finally {
+      await pool.end();
+    }
+  },
+);
