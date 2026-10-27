@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import type { Price } from "@shared/schema";
+import type { PriceWithApiRate } from "../utils/price-rate";
 
 interface PriceLookupParams {
   counterpartyId: string;
@@ -29,7 +29,7 @@ export function usePriceLookup({
 }: PriceLookupParams) {
   const dateStr = date ? format(date, "yyyy-MM-dd") : "";
 
-  return useQuery<Price[]>({
+  return useQuery<PriceWithApiRate[]>({
     queryKey: [
       "/api/prices/find-active",
       counterpartyId,

@@ -19,6 +19,7 @@ interface DashboardStats {
   totalProfitMonth: number;
   pendingDeliveries: number;
   totalVolumeSold: number;
+  totalVolumeSoldTonnes?: number;
 }
 
 function StatCard({ 
@@ -118,12 +119,14 @@ interface RecentOperation {
 interface WarehouseStat {
   name: string;
   current: number;
+  currentTonnes?: number;
 }
 
 interface WeekStats {
   optDealsWeek: number;
   refuelingsWeek: number;
   volumeSoldWeek: number;
+  volumeSoldWeekTonnes?: number;
   profitWeek: number;
 }
 
@@ -285,7 +288,11 @@ export default function DashboardPage() {
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">{warehouse.name}</span>
                         <span className="text-muted-foreground">
-                          {formatTonnes(kilogramsToTonnes(warehouse.current))} т
+                          {formatTonnes(
+                            typeof warehouse.currentTonnes === "number"
+                              ? warehouse.currentTonnes
+                              : kilogramsToTonnes(warehouse.current),
+                          )} т
                         </span>
                       </div>
                     </div>
@@ -317,7 +324,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Заправок ВС</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-2xl font-semibold">{isLoadingWeek ? <Skeleton className="h-8 w-20 mx-auto" /> : formatTonnes(kilogramsToTonnes(weekStats?.volumeSoldWeek ?? 0))}</p>
+                <p className="text-2xl font-semibold">{isLoadingWeek ? <Skeleton className="h-8 w-20 mx-auto" /> : formatTonnes(weekStats?.volumeSoldWeekTonnes ?? kilogramsToTonnes(weekStats?.volumeSoldWeek ?? 0))}</p>
                 <p className="text-xs text-muted-foreground">тонн продано</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">

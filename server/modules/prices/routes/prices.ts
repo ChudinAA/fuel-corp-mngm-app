@@ -8,6 +8,7 @@ import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
 import {
+  priceSelectionVolumeToApi,
   priceResponseToApi,
   priceUnitFilterToStorage,
   priceWriteFromApi,
@@ -50,7 +51,12 @@ export function registerPricesRoutes(app: Express) {
           priceId as string | undefined,
         );
 
-        res.json({ totalVolume: totalVolume.toFixed(2), totalAmount: totalAmount.toFixed(2) });
+        res.json({
+          totalVolume: totalVolume.toFixed(2),
+          totalVolumeUnit: "kg",
+          volume: priceSelectionVolumeToApi(totalVolume),
+          totalAmount: totalAmount.toFixed(2),
+        });
       } catch (error) {
         console.error("Selection calculation error:", error);
         res.status(500).json({ message: "Ошибка расчета выборки" });

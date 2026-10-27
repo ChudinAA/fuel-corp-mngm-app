@@ -15,6 +15,7 @@ import type { MovementFormData } from "../schemas";
 import { usePriceExtraction } from "@/pages/shared/hooks/use-price-extraction";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { usePriceLookup } from "@/pages/shared/hooks/use-price-lookup";
+import { getPriceRateOptions } from "@/pages/shared/utils/price-rate";
 import {
   pricePerKilogramToPerTonne,
 } from "@shared/units";
@@ -113,7 +114,10 @@ export function useMovementCalculations({
   }, [purchaseLookup.data]);
 
   // Extract actual price value using shared hook
-  const { purchasePrice: rawPurchasePrice } =
+  const {
+    purchasePrice: rawPurchasePrice,
+    purchasePriceUnit,
+  } =
     usePriceExtraction({
       purchasePrices: availablePurchasePrices,
       salePrices: [],
@@ -125,14 +129,6 @@ export function useMovementCalculations({
   const { priceId, priceIndex } = parsePriceCompositeId(
     watchSelectedPurchasePriceId,
   );
-  const selectedPriceRecord = availablePurchasePrices.find(
-    (price) => price.id === priceId,
-  );
-  const purchasePriceUnit: MovementPriceUnit =
-    selectedPriceRecord?.priceUnit === "liter" ||
-    selectedPriceRecord?.priceUnit === "tonne"
-      ? selectedPriceRecord.priceUnit
-      : "kg";
   const selectedPurchasePricePerTonne = calculateMovementPricePerTonne(
     rawPurchasePrice,
     purchasePriceUnit,
@@ -148,8 +144,7 @@ export function useMovementCalculations({
       availablePurchasePrices.length > 0
     ) {
       const firstPrice = availablePurchasePrices[0];
-      const priceValues = firstPrice.priceValues || [];
-      if (priceValues.length > 0) {
+      if (getPriceRateOptions(firstPrice).length > 0) {
         const compositeId = `${firstPrice.id}-0`;
         setSelectedPurchasePriceId(compositeId);
         form.setValue("selectedPurchasePriceId", compositeId);
@@ -426,18 +421,18 @@ export function useMovementCalculations({
 
   const availablePrices = useMemo(() => {
     return availablePurchasePrices.flatMap((p) => {
-      try {
-        const values = p.priceValues?.map((v: string) => JSON.parse(v)) || [];
-        return values.map((v: any, idx: number) => ({
-          ...v,
-          priceUnit: v.priceUnit || p.priceUnit || "kg",
+      return getPriceRateOptions(p).flatMap(({ value, unit }, idx) =>
+        value === null
+          ? []
+          : [{
+          ...p,
+          price: value,
+          rateUnit: unit,
           priceId: p.id,
           contractNumber: p.contractNumber,
           index: idx,
-        }));
-      } catch {
-        return [];
-      }
+        }],
+      );
     });
   }, [availablePurchasePrices]);
 

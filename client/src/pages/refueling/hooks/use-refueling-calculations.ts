@@ -140,7 +140,12 @@ export function useRefuelingCalculations({
 
   const isBalanceLoading = isHistoricalLoading || isCurrentLoading;
 
-  const { purchasePrice: extractedPurchasePrice, salePrice: extractedSalePrice } = usePriceExtraction({
+  const {
+    purchasePrice: extractedPurchasePrice,
+    purchasePriceUnit: extractedPurchasePriceUnit,
+    salePrice: extractedSalePrice,
+    salePriceUnit: extractedSalePriceUnit,
+  } = usePriceExtraction({
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -201,18 +206,12 @@ export function useRefuelingCalculations({
     (isLikMode && productType !== PRODUCT_TYPE.SERVICE && !hasBasisPvkjPrice) ||
     (isWarehouseSupplier &&
       productType !== PRODUCT_TYPE.SERVICE &&
-      !hasBasisPvkjPrice) ||
-    productType === PRODUCT_TYPE.SERVICE ||
-    hasBasisPvkjPrice
+      !hasBasisPvkjPrice)
       ? "kg"
-      : inputMode === "liters"
-        ? "liter"
-        : "kg";
+      : extractedPurchasePriceUnit;
   const salePriceUnit: RefuelingPriceUnit = isRechargeActive
     ? purchasePriceUnit
-    : inputMode === "liters"
-      ? "liter"
-      : "kg";
+    : extractedSalePriceUnit;
 
   const purchasePricePerTonne = calculateRefuelingPricePerTonne(
     purchasePrice,

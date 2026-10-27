@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ContractHint, getSelectedPriceContract } from "@/pages/shared/components/contract-hint";
+import { getPriceRateOptions } from "@/pages/shared/utils/price-rate";
 
 const OTHER_SERVICE_TYPE_LABELS: Record<string, string> = {
   royalty_per_ton: "Роялти",
@@ -332,33 +333,24 @@ export function RefuelingPricingSection({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {purchasePrices.map((price) => {
-                          const priceValues = price.priceValues || [];
-                          if (priceValues.length === 0) return null;
-
-                          return priceValues.map((priceValueStr, idx) => {
-                            try {
-                              const parsed = JSON.parse(priceValueStr);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem
-                                  key={`${price.id}-${idx}`}
-                                  value={`${price.id}-${idx}`}
-                                >
-                                  {formatRefuelingPriceOption(
-                                    priceVal,
-                                    inputMode,
-                                    density,
-                                    "₽",
-                                    purchasePriceUnit,
-                                  )}
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          });
-                        })}
+                        {purchasePrices.map((price) =>
+                          getPriceRateOptions(price).map(({ value, unit }, idx) =>
+                            value === null ? null : (
+                              <SelectItem
+                                key={`${price.id}-${idx}`}
+                                value={`${price.id}-${idx}`}
+                              >
+                                {formatRefuelingPriceOption(
+                                  value,
+                                  inputMode,
+                                  density,
+                                  "₽",
+                                  unit,
+                                )}
+                              </SelectItem>
+                            ),
+                          ),
+                        )}
                       </SelectContent>
                     </Select>
                     {hasPermission("prices", "create") && (
@@ -483,33 +475,24 @@ export function RefuelingPricingSection({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {salePrices.map((price) => {
-                          const priceValues = price.priceValues || [];
-                          if (priceValues.length === 0) return null;
-
-                          return priceValues.map((priceValueStr, idx) => {
-                            try {
-                              const parsed = JSON.parse(priceValueStr);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem
-                                  key={`${price.id}-${idx}`}
-                                  value={`${price.id}-${idx}`}
-                                >
-                                  {formatRefuelingPriceOption(
-                                    priceVal,
-                                    inputMode,
-                                    density,
-                                    "₽",
-                                    salePriceUnit,
-                                  )}
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          });
-                        })}
+                        {salePrices.map((price) =>
+                          getPriceRateOptions(price).map(({ value, unit }, idx) =>
+                            value === null ? null : (
+                              <SelectItem
+                                key={`${price.id}-${idx}`}
+                                value={`${price.id}-${idx}`}
+                              >
+                                {formatRefuelingPriceOption(
+                                  value,
+                                  inputMode,
+                                  density,
+                                  "₽",
+                                  unit,
+                                )}
+                              </SelectItem>
+                            ),
+                          ),
+                        )}
                       </SelectContent>
                     </Select>
                     {hasPermission("prices", "create") && (

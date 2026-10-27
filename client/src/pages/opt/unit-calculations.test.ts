@@ -48,6 +48,10 @@ test("OPT rates convert from kg or liters to rubles per tonne", () => {
   assert.equal(contractPricePerTonne("8", "liter", ""), null);
 });
 
+test("OPT rates already expressed per tonne remain unchanged", () => {
+  assert.equal(contractPricePerTonne("1234.56", "tonne", null), 1234.56);
+});
+
 test("OPT preserves the legacy kilogram adapter used by contract checks", () => {
   assert.equal(optTonnesToLegacyKilograms(1.23456), 1234.56);
 });

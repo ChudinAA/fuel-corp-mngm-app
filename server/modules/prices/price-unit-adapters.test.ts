@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   priceResponseToApi,
+  priceSelectionVolumeToApi,
   priceToApi,
   priceUnitFilterToStorage,
   priceWriteFromApi,
@@ -27,7 +28,7 @@ test("price API exposes tonne rates and contract volumes from legacy kilogram va
   });
 });
 
-test("liter-denominated source prices and volumes remain in liters", () => {
+test("liter-denominated rates remain per liter while used mass is exposed in tonnes", () => {
   const result = priceToApi({
     priceUnit: "liter",
     priceValues: ['{"price":"12.345678"}'],
@@ -42,8 +43,8 @@ test("liter-denominated source prices and volumes remain in liters", () => {
   assert.deepEqual(result.contractVolume, {
     limitUnit: "tonne",
     limit: 4,
-    usedUnit: "liter",
-    used: 125.5,
+    usedUnit: "tonne",
+    used: 0.1255,
   });
 });
 
@@ -115,4 +116,15 @@ test("price lookup accepts tonnes and maps them to the legacy mass-unit filter",
   assert.equal(priceUnitFilterToStorage("liter"), "liter");
   assert.equal(priceUnitFilterToStorage(undefined), undefined);
   assert.throws(() => priceUnitFilterToStorage("gallon"), /Неизвестная единица/);
+});
+
+test("price selection results use five-decimal tonnes and reject invalid mass", () => {
+  assert.deepEqual(priceSelectionVolumeToApi(1234.56), {
+    value: "1.23456",
+    unit: "tonne",
+  });
+  assert.throws(
+    () => priceSelectionVolumeToApi(Number.NaN),
+    /Некорректный тоннаж/,
+  );
 });

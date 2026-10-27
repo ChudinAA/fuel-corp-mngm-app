@@ -68,8 +68,7 @@ export function calculateRefuelingPricePerTonne(
   const price = parseFinite(sourcePrice);
   if (price === null || price < 0) return null;
 
-  const unit =
-    sourceUnit ?? (inputMode === "liters" ? "liter" : "kg");
+  const unit = sourceUnit ?? (inputMode === "liters" ? "liter" : "kg");
   if (unit === "tonne") return price;
   if (unit === "kg") return pricePerKilogramToPerTonne(price);
 

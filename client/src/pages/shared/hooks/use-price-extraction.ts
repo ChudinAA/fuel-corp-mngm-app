@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import type { Price, Supplier, Warehouse } from "@shared/schema";
 import { PRODUCT_TYPE } from "@shared/constants";
+import { extractPriceRate, type PriceRateUnit } from "../utils/price-rate";
 
 interface UsePriceExtractionProps {
   purchasePrices: Price[];
@@ -26,7 +27,7 @@ export function usePriceExtraction({
   productType,
   basisId,
 }: UsePriceExtractionProps) {
-  const purchasePrice = useMemo((): number | null => {
+  const purchaseRate = useMemo(() => {
     // Для услуги заправки - сначала проверяем basis-specific service_price у поставщика
     if (productType === PRODUCT_TYPE.SERVICE) {
       if (basisId && selectedSupplier?.basisPrices) {
@@ -34,7 +35,7 @@ export function usePriceExtraction({
           (bp) => bp.basisId === basisId
         );
         if (basisPrice?.servicePrice) {
-          return parseFloat(basisPrice.servicePrice);
+          return { value: parseFloat(basisPrice.servicePrice), unit: "kg" as const };
         }
       }
     }
@@ -46,77 +47,32 @@ export function usePriceExtraction({
           (bp) => bp.basisId === basisId
         );
         if (basisPrice?.pvkjPrice) {
-          return parseFloat(basisPrice.pvkjPrice);
+          return { value: parseFloat(basisPrice.pvkjPrice), unit: "kg" as const };
         }
       }
       // Если basis price не задана — берём со склада
       if (isWarehouseSupplier && supplierWarehouse) {
-        return parseFloat(supplierWarehouse.pvkjAverageCost || "0");
+        return { value: parseFloat(supplierWarehouse.pvkjAverageCost || "0"), unit: "kg" as const };
       }
       // Если нет basis-price и поставщик не склад — используем цену из таблицы цен (fall-through ниже)
     }
 
     // Для керосина со склада
     if (isWarehouseSupplier && supplierWarehouse && productType !== PRODUCT_TYPE.SERVICE) {
-      return parseFloat(supplierWarehouse.averageCost || "0");
+      return { value: parseFloat(supplierWarehouse.averageCost || "0"), unit: "kg" as const };
     }
 
-    if (purchasePrices.length === 0) return null;
-
-    let selectedPrice = purchasePrices[0];
-    let selectedIndex = 0;
-
-    if (selectedPurchasePriceId) {
-      const parts = selectedPurchasePriceId.split('-');
-      if (parts.length >= 5) {
-        const priceId = parts.slice(0, -1).join('-');
-        selectedIndex = parseInt(parts[parts.length - 1]);
-        const found = purchasePrices.find(p => p.id === priceId);
-        if (found) selectedPrice = found;
-      }
-    }
-
-    if (selectedPrice?.priceValues && selectedPrice.priceValues.length > selectedIndex) {
-      try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
-        return parseFloat(priceObj.price || "0");
-      } catch {
-        return null;
-      }
-    }
-
-    return null;
+    return extractPriceRate(purchasePrices, selectedPurchasePriceId);
   }, [purchasePrices, selectedPurchasePriceId, isWarehouseSupplier, supplierWarehouse, selectedSupplier, productType, basisId]);
 
-  const salePrice = useMemo((): number | null => {
-    if (salePrices.length === 0) return null;
-
-    let selectedPrice = salePrices[0];
-    let selectedIndex = 0;
-
-    if (selectedSalePriceId) {
-      const parts = selectedSalePriceId.split('-');
-      if (parts.length >= 5) {
-        const priceId = parts.slice(0, -1).join('-');
-        selectedIndex = parseInt(parts[parts.length - 1]);
-        const found = salePrices.find(p => p.id === priceId);
-        if (found) selectedPrice = found;
-      }
-    }
-
-    if (selectedPrice?.priceValues && selectedPrice.priceValues.length > selectedIndex) {
-      try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
-        return parseFloat(priceObj.price || "0");
-      } catch {
-        return null;
-      }
-    }
-    return null;
+  const saleRate = useMemo(() => {
+    return extractPriceRate(salePrices, selectedSalePriceId);
   }, [salePrices, selectedSalePriceId]);
 
   return {
-    purchasePrice,
-    salePrice,
+    purchasePrice: purchaseRate.value,
+    purchasePriceUnit: purchaseRate.unit as PriceRateUnit,
+    salePrice: saleRate.value,
+    salePriceUnit: saleRate.unit,
   };
 }

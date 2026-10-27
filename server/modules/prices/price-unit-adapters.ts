@@ -61,11 +61,8 @@ export function priceToApi<T extends LegacyPriceShape>(price: T) {
     contractVolume: {
       limitUnit: "tonne",
       limit: volumeLimit === null ? null : kilogramsToTonnes(volumeLimit),
-      usedUnit: massBased ? "tonne" : "liter",
-      used:
-        volumeUsed === null || !massBased
-          ? volumeUsed
-          : kilogramsToTonnes(volumeUsed),
+      usedUnit: "tonne",
+      used: volumeUsed === null ? null : kilogramsToTonnes(volumeUsed),
     },
   };
 }
@@ -95,6 +92,20 @@ export function priceUnitFilterToStorage(value: unknown): string | undefined {
   if (value === "tonne" || value === "kg") return "kg";
   if (value === "liter") return "liter";
   throw new TypeError("Неизвестная единица цены");
+}
+
+export function priceSelectionVolumeToApi(totalVolumeKilograms: number): {
+  value: string;
+  unit: "tonne";
+} {
+  if (!Number.isFinite(totalVolumeKilograms) || totalVolumeKilograms < 0) {
+    throw new TypeError("Некорректный тоннаж выборки");
+  }
+
+  return {
+    value: kilogramsToTonnes(totalVolumeKilograms).toFixed(5),
+    unit: "tonne",
+  };
 }
 
 export function priceWriteFromApi<T extends Record<string, unknown>>(

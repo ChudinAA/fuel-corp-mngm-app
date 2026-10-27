@@ -27,9 +27,20 @@ export function usePriceSelection() {
     onSuccess: (data, price) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prices/list"] });
       const isAmountLimit = (price as any).limitType === "amount";
+      const calculatedVolume = data.volume as
+        | { value: string | number; unit: "tonne" | "liter" }
+        | undefined;
+      const volumeDescription = calculatedVolume
+        ? calculatedVolume.unit === "tonne"
+          ? `${formatTonnes(Number(calculatedVolume.value))} т`
+          : `${new Intl.NumberFormat("ru-RU", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(Number(calculatedVolume.value))} л`
+        : `${formatTonnes(kilogramsToTonnes(Number(data.totalVolume || 0)))} т`;
       const description = isAmountLimit
         ? `Общая сумма: ${data.totalAmount} ₽`
-        : `Общий объём: ${formatTonnes(kilogramsToTonnes(Number(data.totalVolume || 0)))} т`;
+        : `Общий объём: ${volumeDescription}`;
       toast({ title: "Выборка рассчитана", description });
       setCalculatingPriceId(null);
     },

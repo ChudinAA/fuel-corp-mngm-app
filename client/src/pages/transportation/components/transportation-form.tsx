@@ -78,6 +78,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { NomenclatureField } from "@/pages/shared/components/nomenclature-field";
+import { getPriceRateOptions } from "@/pages/shared/utils/price-rate";
 
 export interface TransportationFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
@@ -503,25 +504,18 @@ export const TransportationForm = forwardRef<
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   const formatPriceOption = (p: any) => {
-    const priceValues = Array.isArray(p.priceValues) ? p.priceValues : [];
-    return priceValues
-      .map((pv: any, idx: number) => {
-        const parsed = typeof pv === "string" ? JSON.parse(pv) : pv;
-        const val = parseFloat(parsed?.price || "0");
-        const priceUnit: TransportationPriceUnit =
-          p.priceUnit === "liter" || p.priceUnit === "tonne"
-            ? p.priceUnit
-            : "kg";
+    return getPriceRateOptions(p).flatMap(({ value, unit }, idx) => {
+      if (value === null) return [];
+      const priceUnit: TransportationPriceUnit = unit;
         return {
           value: `${p.id}-${idx}`,
           label: formatTransportationPriceOption(
-            val,
+            value,
             priceUnit,
             watchDensity?.toString(),
           ),
         };
-      })
-      .flat();
+    });
   };
 
   return (

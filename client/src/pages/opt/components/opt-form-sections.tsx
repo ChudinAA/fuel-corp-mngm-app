@@ -46,6 +46,7 @@ import {
   contractPricePerTonne,
   type OptInputMode,
 } from "../unit-calculations";
+import { getPriceRateOptions } from "@/pages/shared/utils/price-rate";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -469,11 +470,11 @@ export function PricingSection({
   density?: string | number | null;
 }) {
   const getPriceLabel = (price: Price) => {
-    if (!price.priceValues || price.priceValues.length === 0) return "Нет цены";
-    const priceObj = JSON.parse(price.priceValues[0]);
+    const firstRate = getPriceRateOptions(price)[0];
+    if (!firstRate || firstRate.value === null) return "Нет цены";
     const pricePerTonne = contractPricePerTonne(
-      priceObj.price,
-      price.priceUnit,
+      firstRate.value,
+      firstRate.unit,
       density,
     );
     return pricePerTonne === null

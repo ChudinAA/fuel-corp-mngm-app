@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { IWarehouseStorage } from "./types";
 import { PRODUCT_TYPE } from "@shared/constants";
+import { kilogramsToTonnes } from "@shared/units";
 
 export class WarehouseStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
@@ -435,7 +436,9 @@ export class WarehouseStorage {
     return { message: "Инвентаризация выполнена успешно" };
   }
 
-  async getWarehouseStatsForDashboard(): Promise<any[]> {
+  async getWarehouseStatsForDashboard(): Promise<
+    Array<{ name: string; current: number; currentTonnes: number }>
+  > {
     const warehousesList = await db.query.warehouses.findMany({
       where: and(eq(warehouses.isActive, true), isNull(warehouses.deletedAt)),
     });
@@ -443,6 +446,9 @@ export class WarehouseStorage {
     const stats = warehousesList.map((wh) => ({
       name: wh.name,
       current: parseFloat(wh.currentBalance || "0"),
+      currentTonnes: kilogramsToTonnes(
+        parseFloat(wh.currentBalance || "0"),
+      ),
     }));
 
     return stats;

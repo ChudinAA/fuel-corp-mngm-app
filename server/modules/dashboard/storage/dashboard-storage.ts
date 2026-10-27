@@ -21,6 +21,7 @@ export class DashboardStorage implements IDashboardStorage {
     totalProfitMonth: number;
     pendingDeliveries: number;
     totalVolumeSold: number;
+    totalVolumeSoldTonnes: number;
   }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -85,6 +86,7 @@ export class DashboardStorage implements IDashboardStorage {
       .from(opt)
       .where(and(sql`${opt.createdAt} >= ${monthStartStr}`, isNull(opt.deletedAt)));
     const totalVolumeSold = Number(volumeResult?.total || 0);
+    const totalVolumeSoldTonnes = kilogramsToTonnes(totalVolumeSold);
 
     return {
       optDealsToday,
@@ -93,6 +95,7 @@ export class DashboardStorage implements IDashboardStorage {
       totalProfitMonth,
       pendingDeliveries,
       totalVolumeSold,
+      totalVolumeSoldTonnes,
     };
   }
 
@@ -221,6 +224,7 @@ export class DashboardStorage implements IDashboardStorage {
     optDealsWeek: number;
     refuelingsWeek: number;
     volumeSoldWeek: number;
+    volumeSoldWeekTonnes: number;
     profitWeek: number;
   }> {
     const today = new Date();
@@ -258,6 +262,7 @@ export class DashboardStorage implements IDashboardStorage {
         isNull(opt.deletedAt)
       ));
     const volumeSoldWeek = Number(volumeWeekResult?.total || 0);
+    const volumeSoldWeekTonnes = kilogramsToTonnes(volumeSoldWeek);
 
     // Прибыль за неделю
     const [optProfitWeek] = await db
@@ -286,6 +291,7 @@ export class DashboardStorage implements IDashboardStorage {
       optDealsWeek,
       refuelingsWeek,
       volumeSoldWeek,
+      volumeSoldWeekTonnes,
       profitWeek,
     };
   }

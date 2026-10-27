@@ -140,8 +140,10 @@ export function MovementCostSummary({
                           >
                             {formatMovementPriceOption(
                               p.price,
-                              p.priceUnit === "liter" || p.priceUnit === "tonne"
-                                ? p.priceUnit
+                              p.rateUnit === "liter" ||
+                              p.rateUnit === "tonne" ||
+                              p.rateUnit === "kg"
+                                ? p.rateUnit
                                 : inputMode === "liters"
                                   ? "liter"
                                   : "kg",

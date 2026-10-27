@@ -56,25 +56,32 @@ import {
 import { computeBankCommission } from "./deal-chain/types";
 import { formatCurrency, formatNumber, formatPrice } from "../utils";
 import { formatPricePerTonne, formatTonnes } from "@shared/units";
-import { calculateRefuelingPricePerTonne } from "../unit-calculations";
+import {
+  calculateRefuelingPricePerTonne,
+  type RefuelingPriceUnit,
+} from "../unit-calculations";
+import { getPriceRateOptions } from "@/pages/shared/utils/price-rate";
 
 function formatRefuelingPriceOption(
   sourcePrice: string | number,
   inputMode: "liters" | "tonnes",
   density: string,
+  sourceUnit?: RefuelingPriceUnit,
 ): string {
   const price = Number.parseFloat(String(sourcePrice));
+  const unit = sourceUnit ?? (inputMode === "liters" ? "liter" : "kg");
   const pricePerTonne = calculateRefuelingPricePerTonne(
     price,
     inputMode,
     density,
+    unit,
   );
   if (pricePerTonne === null) {
     return "Цена за тонну недоступна — проверьте плотность";
   }
 
   const perTonne = `${formatPricePerTonne(pricePerTonne)} $/т`;
-  return inputMode === "liters"
+  return unit === "liter"
     ? `${perTonne} (${formatPrice(price)} $/л)`
     : perTonne;
 }
@@ -1315,31 +1322,23 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {purchasePrices.map((price) => {
-                                const priceValues = price.priceValues || [];
-                                if (priceValues.length === 0) return null;
-
-                                return priceValues.map((priceValueStr, idx) => {
-                                  try {
-                                    const parsed = JSON.parse(priceValueStr);
-                                    const priceVal = parsed.price || "0";
-                                    return (
-                                      <SelectItem
-                                        key={`${price.id}-${idx}`}
-                                        value={`${price.id}-${idx}`}
-                                      >
-                                        {formatRefuelingPriceOption(
-                                          priceVal,
-                                          watchedValues.inputMode,
-                                          watchedValues.density || "0.8",
-                                        )}
-                                      </SelectItem>
-                                    );
-                                  } catch {
-                                    return null;
-                                  }
-                                });
-                              })}
+                              {purchasePrices.map((price) =>
+                                getPriceRateOptions(price).map(({ value, unit }, idx) =>
+                                  value === null ? null : (
+                                    <SelectItem
+                                      key={`${price.id}-${idx}`}
+                                      value={`${price.id}-${idx}`}
+                                    >
+                                      {formatRefuelingPriceOption(
+                                        value,
+                                        watchedValues.inputMode,
+                                        watchedValues.density || "0.8",
+                                        unit,
+                                      )}
+                                    </SelectItem>
+                                  ),
+                                ),
+                              )}
                             </SelectContent>
                           </Select>
                           {hasPermission("prices", "create") && (
@@ -1423,31 +1422,23 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {salePrices.map((price) => {
-                                const priceValues = price.priceValues || [];
-                                if (priceValues.length === 0) return null;
-
-                                return priceValues.map((priceValueStr, idx) => {
-                                  try {
-                                    const parsed = JSON.parse(priceValueStr);
-                                    const priceVal = parsed.price || "0";
-                                    return (
-                                      <SelectItem
-                                        key={`${price.id}-${idx}`}
-                                        value={`${price.id}-${idx}`}
-                                      >
-                                        {formatRefuelingPriceOption(
-                                          priceVal,
-                                          watchedValues.inputMode,
-                                          watchedValues.density || "0.8",
-                                        )}
-                                      </SelectItem>
-                                    );
-                                  } catch {
-                                    return null;
-                                  }
-                                });
-                              })}
+                              {salePrices.map((price) =>
+                                getPriceRateOptions(price).map(({ value, unit }, idx) =>
+                                  value === null ? null : (
+                                    <SelectItem
+                                      key={`${price.id}-${idx}`}
+                                      value={`${price.id}-${idx}`}
+                                    >
+                                      {formatRefuelingPriceOption(
+                                        value,
+                                        watchedValues.inputMode,
+                                        watchedValues.density || "0.8",
+                                        unit,
+                                      )}
+                                    </SelectItem>
+                                  ),
+                                ),
+                              )}
                             </SelectContent>
                           </Select>
                           {hasPermission("prices", "create") && (

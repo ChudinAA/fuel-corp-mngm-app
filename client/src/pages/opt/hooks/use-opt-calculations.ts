@@ -86,7 +86,12 @@ export function useOptCalculations({
     initialCurrentBalance: productType === "pvkj" ? (supplierWarehouse as any)?.pvkjBalance : supplierWarehouse?.currentBalance,
   });
 
-  const { purchasePrice: extractedPurchasePrice, salePrice: extractedSalePrice } = usePriceExtraction({
+  const {
+    purchasePrice: extractedPurchasePrice,
+    purchasePriceUnit: extractedPurchasePriceUnit,
+    salePrice: extractedSalePrice,
+    salePriceUnit: extractedSalePriceUnit,
+  } = usePriceExtraction({
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -95,13 +100,6 @@ export function useOptCalculations({
     supplierWarehouse,
     productType,
   });
-
-  const getSelectedPriceUnit = (prices: Price[], selectedId: string): string => {
-    if (!prices.length) return "kg";
-    if (!selectedId) return prices[0]?.priceUnit || "kg";
-    const { priceId } = parsePriceCompositeId(selectedId);
-    return prices.find((price) => price.id === priceId)?.priceUnit || "kg";
-  };
 
   const basisPrice = selectedSupplier?.basisPrices?.find(
     (price) => price.basisId === basisId,
@@ -112,8 +110,8 @@ export function useOptCalculations({
     (productType === PRODUCT_TYPE.PVKJ && !!basisPrice?.pvkjPrice);
   const purchasePriceUnit = purchaseUsesKilograms
     ? "kg"
-    : getSelectedPriceUnit(purchasePrices, selectedPurchasePriceId);
-  const salePriceUnit = getSelectedPriceUnit(salePrices, selectedSalePriceId);
+    : extractedPurchasePriceUnit;
+  const salePriceUnit = extractedSalePriceUnit;
 
   const rawPurchasePrice =
     isWarehouseSupplier && warehousePriceAtDate !== null

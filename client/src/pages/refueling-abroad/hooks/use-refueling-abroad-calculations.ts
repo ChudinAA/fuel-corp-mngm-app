@@ -61,7 +61,9 @@ export function useRefuelingAbroadCalculations({
   const finalKg = tonnesToKilograms(finalTonnes);
   const {
     purchasePrice: extractedPurchasePrice,
+    purchasePriceUnit,
     salePrice: extractedSalePrice,
+    salePriceUnit,
   } = usePriceExtraction({
     purchasePrices,
     salePrices,
@@ -89,16 +91,22 @@ export function useRefuelingAbroadCalculations({
             purchasePrice,
             inputMode,
             density,
+            purchasePriceUnit,
           ),
-    [purchasePrice, inputMode, density],
+    [purchasePrice, inputMode, density, purchasePriceUnit],
   );
 
   const salePricePerTonne = useMemo(
     () =>
       salePrice === null
         ? null
-        : calculateRefuelingPricePerTonne(salePrice, inputMode, density),
-    [salePrice, inputMode, density],
+        : calculateRefuelingPricePerTonne(
+            salePrice,
+            inputMode,
+            density,
+            salePriceUnit,
+          ),
+    [salePrice, inputMode, density, salePriceUnit],
   );
 
   const purchaseAmountUsd = useMemo(() => {

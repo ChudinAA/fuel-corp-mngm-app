@@ -53,12 +53,14 @@ export interface IDashboardStorage {
     totalProfitMonth: number;
     pendingDeliveries: number;
     totalVolumeSold: number;
+    totalVolumeSoldTonnes: number;
   }>;
   getRecentOperations(): Promise<any[]>;
   getWeekStats(): Promise<{
     optDealsWeek: number;
     refuelingsWeek: number;
     volumeSoldWeek: number;
+    volumeSoldWeekTonnes: number;
     profitWeek: number;
   }>;
   

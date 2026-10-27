@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Price } from "@shared/schema";
 import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import type { PriceWithApiRate } from "../utils/price-rate";
 
 interface UseContractVolumeProps {
   priceId: string | null;
@@ -12,22 +12,36 @@ interface UseContractVolumeProps {
 }
 
 export function calculateRemainingContractTonnes({
-  totalVolumeKilograms,
+  totalVolumeTonnes,
   usedVolumeTonnes,
   initialQuantityTonnes,
   currentQuantityTonnes,
 }: {
-  totalVolumeKilograms: number;
+  totalVolumeTonnes: number;
   usedVolumeTonnes: number;
   initialQuantityTonnes: number;
   currentQuantityTonnes: number;
 }): number {
   return (
-    kilogramsToTonnes(totalVolumeKilograms) -
+    totalVolumeTonnes -
     usedVolumeTonnes +
     initialQuantityTonnes -
     currentQuantityTonnes
   );
+}
+
+export function getContractLimitTonnes(price: PriceWithApiRate): number {
+  if (price.contractVolume?.limitUnit === "tonne") {
+    const limit = price.contractVolume.limit;
+    return typeof limit === "number" && Number.isFinite(limit)
+      ? Math.max(0, limit)
+      : 0;
+  }
+
+  const legacyLimitKilograms = Number.parseFloat(price.volume || "0");
+  return Number.isFinite(legacyLimitKilograms) && legacyLimitKilograms > 0
+    ? kilogramsToTonnes(legacyLimitKilograms)
+    : 0;
 }
 
 export function useContractVolume({
@@ -38,7 +52,7 @@ export function useContractVolume({
   currentDealAmount = 0,
   initialDealAmount = 0,
 }: UseContractVolumeProps) {
-  const { data: price, isLoading: isLoadingPrice } = useQuery<Price>({
+  const { data: price, isLoading: isLoadingPrice } = useQuery<PriceWithApiRate>({
     queryKey: ["/api/prices", priceId],
     enabled: !!priceId,
   });
@@ -68,7 +82,7 @@ export function useContractVolume({
     return { remaining: 0, status: "ok" as const, message: "Загрузка..." };
   }
 
-  if (!price || !price.priceValues) {
+  if (!price) {
     return {
       remaining: 0,
       status: "error" as const,
@@ -109,10 +123,7 @@ export function useContractVolume({
       }
     }
 
-    // The UI and API express contract mass in tonnes; the stored price volume
-    // remains kg until the database cutover.
-    const totalVolumeKilograms = Number.parseFloat(price.volume || "0");
-    const totalVolumeTonnes = kilogramsToTonnes(totalVolumeKilograms);
+    const totalVolumeTonnes = getContractLimitTonnes(price);
 
     if (totalVolumeTonnes <= 0) {
       return { remaining: 0, status: "ok" as const, message: "Безлимит" };
@@ -125,6 +136,12 @@ export function useContractVolume({
       Number.isFinite(apiUsedVolumeTonnes)
     ) {
       usedVolumeTonnes = apiUsedVolumeTonnes;
+    } else if (
+      price.contractVolume?.usedUnit === "tonne" &&
+      typeof price.contractVolume.used === "number" &&
+      Number.isFinite(price.contractVolume.used)
+    ) {
+      usedVolumeTonnes = price.contractVolume.used;
     } else if (
       typeof usedData?.usedVolume === "number" &&
       Number.isFinite(usedData.usedVolume) &&
@@ -144,7 +161,7 @@ export function useContractVolume({
     const availableBeforeCurrent =
       totalVolumeTonnes - usedVolumeTonnes + initialQuantityTonnes;
     const remaining = calculateRemainingContractTonnes({
-      totalVolumeKilograms,
+      totalVolumeTonnes,
       usedVolumeTonnes,
       initialQuantityTonnes,
       currentQuantityTonnes,

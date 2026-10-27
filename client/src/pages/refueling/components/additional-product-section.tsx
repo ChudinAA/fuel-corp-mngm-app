@@ -32,6 +32,7 @@ import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { PRODUCT_TYPES } from "../constants";
 import { ContractHint, getSelectedPriceContract } from "@/pages/shared/components/contract-hint";
+import { getPriceRateOptions } from "@/pages/shared/utils/price-rate";
 import {
   ProductVolumeSection,
   type RefuelingVolume,
@@ -527,27 +528,22 @@ export const AdditionalProductSection = forwardRef<
                     </SelectTrigger>
                     <SelectContent>
                       {purchasePrices.map((price) =>
-                        (price.priceValues || []).map((pvStr, idx) => {
-                          try {
-                            const parsed = JSON.parse(pvStr);
-                            return (
-                              <SelectItem
-                                key={`${price.id}-${idx}`}
-                                value={`${price.id}-${idx}`}
-                              >
-                                {formatRefuelingPriceOption(
-                                  parsed.price || "0",
-                                  volume.inputMode,
-                                  volume.density,
-                                  "₽",
-                                  purchasePriceUnit,
-                                )}
-                              </SelectItem>
-                            );
-                          } catch {
-                            return null;
-                          }
-                        }),
+                        getPriceRateOptions(price).map(({ value, unit }, idx) =>
+                          value === null ? null : (
+                            <SelectItem
+                              key={`${price.id}-${idx}`}
+                              value={`${price.id}-${idx}`}
+                            >
+                              {formatRefuelingPriceOption(
+                                value,
+                                volume.inputMode,
+                                volume.density,
+                                "₽",
+                                unit,
+                              )}
+                            </SelectItem>
+                          ),
+                        ),
                       )}
                     </SelectContent>
                   </Select>
@@ -643,27 +639,22 @@ export const AdditionalProductSection = forwardRef<
                     </SelectTrigger>
                     <SelectContent>
                       {salePrices.map((price) =>
-                        (price.priceValues || []).map((pvStr, idx) => {
-                          try {
-                            const parsed = JSON.parse(pvStr);
-                            return (
-                              <SelectItem
-                                key={`${price.id}-${idx}`}
-                                value={`${price.id}-${idx}`}
-                              >
-                                {formatRefuelingPriceOption(
-                                  parsed.price || "0",
-                                  volume.inputMode,
-                                  volume.density,
-                                  "₽",
-                                  salePriceUnit,
-                                )}
-                              </SelectItem>
-                            );
-                          } catch {
-                            return null;
-                          }
-                        }),
+                        getPriceRateOptions(price).map(({ value, unit }, idx) =>
+                          value === null ? null : (
+                            <SelectItem
+                              key={`${price.id}-${idx}`}
+                              value={`${price.id}-${idx}`}
+                            >
+                              {formatRefuelingPriceOption(
+                                value,
+                                volume.inputMode,
+                                volume.density,
+                                "₽",
+                                unit,
+                              )}
+                            </SelectItem>
+                          ),
+                        ),
                       )}
                     </SelectContent>
                   </Select>

@@ -5,6 +5,7 @@ import {
 } from "@shared/units";
 
 export type RefuelingInputMode = "liters" | "tonnes";
+export type RefuelingPriceUnit = "kg" | "tonne" | "liter";
 
 function parseUnitValue(value: number | string | null | undefined): number | null {
   const parsed = typeof value === "number" ? value : Number.parseFloat(value ?? "");
@@ -30,12 +31,13 @@ export function calculateRefuelingPricePerTonne(
   sourcePrice: number | string | null | undefined,
   inputMode: RefuelingInputMode,
   densityKilogramsPerLitre?: number | string | null,
+  sourceUnit?: RefuelingPriceUnit,
 ): number | null {
   const price = parseUnitValue(sourcePrice);
   if (price === null || price < 0) return null;
-  if (inputMode === "tonnes") {
-    return pricePerKilogramToPerTonne(price);
-  }
+  const unit = sourceUnit ?? (inputMode === "tonnes" ? "kg" : "liter");
+  if (unit === "tonne") return price;
+  if (unit === "kg") return pricePerKilogramToPerTonne(price);
 
   const density = parseUnitValue(densityKilogramsPerLitre);
   if (density === null || density <= 0) return null;

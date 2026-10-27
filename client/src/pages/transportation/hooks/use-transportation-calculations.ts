@@ -55,7 +55,10 @@ export function useTransportationCalculations({
   const calculatedKg =
     finalTonnes !== null && finalTonnes > 0 ? String(finalKg) : "";
 
-  const { salePrice: extractedSalePrice } =
+  const {
+    salePrice: extractedSalePrice,
+    salePriceUnit,
+  } =
     usePriceExtraction({
       purchasePrices,
       salePrices,
@@ -67,16 +70,6 @@ export function useTransportationCalculations({
     });
 
   const salePrice = extractedSalePrice;
-  const selectedSalePrice = salePrices.find(
-    (price) =>
-      selectedSalePriceId === price.id ||
-      selectedSalePriceId.startsWith(`${price.id}-`),
-  );
-  const salePriceUnitValue = selectedSalePrice?.priceUnit;
-  const salePriceUnit: TransportationPriceUnit =
-    salePriceUnitValue === "liter" || salePriceUnitValue === "tonne"
-      ? salePriceUnitValue
-      : "kg";
   const salePricePerTonne = calculateTransportationPricePerTonne(
     salePrice,
     salePriceUnit,

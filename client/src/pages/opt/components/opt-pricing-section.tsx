@@ -31,6 +31,7 @@ import { useState } from "react";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { ContractHint, getSelectedPriceContract } from "@/pages/shared/components/contract-hint";
+import { getPriceRateOptions } from "@/pages/shared/utils/price-rate";
 
 interface OptPricingSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -189,39 +190,26 @@ export function OptPricingSection({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {purchasePrices.map((price) => {
-                          const priceValues = price.priceValues || [];
-                          if (priceValues.length === 0) return null;
-
-                          return priceValues.map((priceValueStr, idx) => {
-                            try {
-                              const parsed = JSON.parse(priceValueStr);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem
-                                  key={`${price.id}-${idx}`}
-                                  value={`${price.id}-${idx}`}
-                                >
-                                  {contractPricePerTonne(
-                                    priceVal,
-                                    price.priceUnit,
-                                    watchDensity,
-                                  ) === null
-                                    ? "Укажите плотность"
-                                    : `${formatPricePerTonne(
-                                        contractPricePerTonne(
-                                          priceVal,
-                                          price.priceUnit,
-                                          watchDensity,
-                                        )!,
-                                      )} ₽/т`}
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          });
-                        })}
+                        {purchasePrices.map((price) =>
+                          getPriceRateOptions(price).map(({ value, unit }, idx) => {
+                            if (value === null) return null;
+                            const pricePerTonne = contractPricePerTonne(
+                              value,
+                              unit,
+                              watchDensity,
+                            );
+                            return (
+                              <SelectItem
+                                key={`${price.id}-${idx}`}
+                                value={`${price.id}-${idx}`}
+                              >
+                                {pricePerTonne === null
+                                  ? "Укажите плотность"
+                                  : `${formatPricePerTonne(pricePerTonne)} ₽/т`}
+                              </SelectItem>
+                            );
+                          }),
+                        )}
                       </SelectContent>
                     </Select>
                     {hasPermission("prices", "create") && (
@@ -325,39 +313,26 @@ export function OptPricingSection({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {salePrices.map((price) => {
-                          const priceValues = price.priceValues || [];
-                          if (priceValues.length === 0) return null;
-
-                          return priceValues.map((priceValueStr, idx) => {
-                            try {
-                              const parsed = JSON.parse(priceValueStr);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem
-                                  key={`${price.id}-${idx}`}
-                                  value={`${price.id}-${idx}`}
-                                >
-                                  {contractPricePerTonne(
-                                    priceVal,
-                                    price.priceUnit,
-                                    watchDensity,
-                                  ) === null
-                                    ? "Укажите плотность"
-                                    : `${formatPricePerTonne(
-                                        contractPricePerTonne(
-                                          priceVal,
-                                          price.priceUnit,
-                                          watchDensity,
-                                        )!,
-                                      )} ₽/т`}
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          });
-                        })}
+                        {salePrices.map((price) =>
+                          getPriceRateOptions(price).map(({ value, unit }, idx) => {
+                            if (value === null) return null;
+                            const pricePerTonne = contractPricePerTonne(
+                              value,
+                              unit,
+                              watchDensity,
+                            );
+                            return (
+                              <SelectItem
+                                key={`${price.id}-${idx}`}
+                                value={`${price.id}-${idx}`}
+                              >
+                                {pricePerTonne === null
+                                  ? "Укажите плотность"
+                                  : `${formatPricePerTonne(pricePerTonne)} ₽/т`}
+                              </SelectItem>
+                            );
+                          }),
+                        )}
                       </SelectContent>
                     </Select>
                     {hasPermission("prices", "create") && (

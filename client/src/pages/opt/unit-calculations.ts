@@ -51,6 +51,7 @@ export function contractPricePerTonne(
 ): number | null {
   const rate = finiteNumber(price);
   if (rate === null) return null;
+  if (priceUnit === "tonne") return rate;
   if (priceUnit === "liter") {
     const dealDensity = finiteNumber(density);
     if (dealDensity === null || dealDensity <= 0) return null;
