@@ -690,6 +690,176 @@ test("rolling back a legacy deleted single refueling restores only its original 
   }
 });
 
+test("rolling back a legacy deleted equipment refueling restores its original movement and balance", async (t) => {
+  const schemaResult = await db.execute(sql`
+    SELECT
+      to_regclass('aircraft_refueling') IS NOT NULL
+        AND to_regclass('equipment_transactions') IS NOT NULL
+        AND to_regclass('audit_log') IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name = 'aircraft_refueling'
+            AND column_name = 'refueling_order_id'
+        ) AS has_refueling_order_schema
+  `);
+  if (!schemaResult.rows[0]?.has_refueling_order_schema) {
+    t.skip("The configured database has not been migrated to the refueling-order schema.");
+    return;
+  }
+
+  const storage = new AircraftRefuelingStorage();
+  let supplierId: string | undefined;
+  let customerId: string | undefined;
+  let equipmentId: string | undefined;
+  let dealId: string | undefined;
+  let movementId: string | undefined;
+  let auditEntryId: string | undefined;
+
+  try {
+    const [supplier] = await db
+      .insert(suppliers)
+      .values({ name: `legacy-equipment-restore-supplier-${crypto.randomUUID()}` })
+      .returning();
+    supplierId = supplier.id;
+
+    const [customer] = await db
+      .insert(customers)
+      .values({
+        name: `legacy-equipment-restore-customer-${crypto.randomUUID()}`,
+        module: "refueling",
+      })
+      .returning();
+    customerId = customer.id;
+
+    const [equipment] = await db
+      .insert(equipments)
+      .values({
+        name: `legacy-equipment-restore-equipment-${crypto.randomUUID()}`,
+        pvkjBalance: "60",
+        pvkjAverageCost: "12",
+      })
+      .returning();
+    equipmentId = equipment.id;
+
+    const createdDeal = await storage.createRefueling({
+      refuelingDate: new Date().toISOString(),
+      productType: PRODUCT_TYPE.PVKJ,
+      supplierId,
+      buyerId: customerId,
+      equipmentId,
+      quantityKg: 7,
+      purchasePrice: 12,
+      purchaseAmount: 84,
+      salePrice: 18,
+      saleAmount: 126,
+      isDraft: false,
+    } as any);
+    dealId = createdDeal.id;
+    assert.ok(createdDeal.equipmentTransactionId);
+    movementId = createdDeal.equipmentTransactionId;
+
+    // Model old standalone records without an order identifier in either row or audit data.
+    await db
+      .update(aircraftRefueling)
+      .set({ refuelingOrderId: null })
+      .where(eq(aircraftRefueling.id, dealId));
+    const legacyDeal = await db.query.aircraftRefueling.findFirst({
+      where: eq(aircraftRefueling.id, dealId),
+    });
+    assert.ok(legacyDeal);
+    assert.equal(legacyDeal.refuelingOrderId, null);
+    const { refuelingOrderId: _legacyGroupId, ...legacyAuditData } = legacyDeal;
+
+    await storage.deleteRefuelingOrder(dealId);
+    const [auditEntry] = await db
+      .insert(auditLog)
+      .values({
+        entityType: "aircraft_refueling",
+        entityId: dealId,
+        operation: AUDIT_OPERATIONS.DELETE,
+        oldData: legacyAuditData,
+      })
+      .returning();
+    auditEntryId = auditEntry.id;
+    assert.equal(
+      Object.hasOwn(auditEntry.oldData as object, "refuelingOrderId"),
+      false,
+      "the legacy audit snapshot must not contain an order identifier",
+    );
+
+    const deletedMovement = await db.query.equipmentTransactions.findFirst({
+      where: eq(equipmentTransactions.id, movementId),
+    });
+    assert.ok(deletedMovement?.deletedAt);
+    const deletedEquipment = await db.query.equipments.findFirst({
+      where: eq(equipments.id, equipmentId),
+    });
+    assert.equal(Number(deletedEquipment?.pvkjBalance), 60);
+
+    const rollback = await RollbackService.rollback({
+      auditLogId: auditEntry.id,
+      context: { userName: "legacy-equipment-refueling-restore-test" },
+    });
+    assert.equal(rollback.success, true, rollback.message);
+
+    const restoredDeal = await db.query.aircraftRefueling.findFirst({
+      where: eq(aircraftRefueling.id, dealId),
+    });
+    assert.ok(restoredDeal);
+    assert.equal(restoredDeal.deletedAt, null);
+    assert.equal(restoredDeal.equipmentTransactionId, movementId);
+
+    const equipmentMovements = await db
+      .select()
+      .from(equipmentTransactions)
+      .where(
+        and(
+          eq(equipmentTransactions.sourceId, dealId),
+          eq(equipmentTransactions.sourceType, SOURCE_TYPE.REFUELING),
+        ),
+      );
+    assert.equal(equipmentMovements.length, 1, "rollback must not create a replacement movement");
+    assert.equal(equipmentMovements[0].id, movementId);
+    assert.equal(equipmentMovements[0].deletedAt, null);
+
+    const restoredEquipment = await db.query.equipments.findFirst({
+      where: eq(equipments.id, equipmentId),
+    });
+    assert.equal(Number(restoredEquipment?.pvkjBalance), 53);
+  } finally {
+    if (auditEntryId) {
+      await db.delete(auditLog).where(eq(auditLog.id, auditEntryId));
+    }
+    if (dealId) {
+      await db
+        .delete(auditLog)
+        .where(
+          and(
+            eq(auditLog.entityType, "aircraft_refueling"),
+            eq(auditLog.entityId, dealId),
+          ),
+        );
+      await db.delete(aircraftRefueling).where(eq(aircraftRefueling.id, dealId));
+    }
+    if (movementId) {
+      await db
+        .delete(equipmentTransactions)
+        .where(eq(equipmentTransactions.id, movementId));
+    }
+    if (equipmentId) {
+      await db.delete(equipments).where(eq(equipments.id, equipmentId));
+    }
+    if (supplierId) {
+      await db.delete(suppliers).where(eq(suppliers.id, supplierId));
+    }
+    if (customerId) {
+      await db.delete(customers).where(eq(customers.id, customerId));
+    }
+  }
+});
+
 test("rolling back a deleted order fails without restoring any item when a movement is missing", async (t) => {
   const schemaResult = await db.execute(sql`
     SELECT
