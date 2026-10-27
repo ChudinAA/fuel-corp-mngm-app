@@ -32,6 +32,7 @@ const testDates = {
   warehouseTransfer: "2026-01-05T10:00:00.000Z",
   equipmentTransfer: "2026-01-06T10:00:00.000Z",
   downstreamSale: "2026-01-06T10:00:00.000Z",
+  sameTimeReceipt: "2026-01-06T10:00:00.000Z",
 };
 
 const refuelingFeeScenarios = [
@@ -458,7 +459,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
         const [warehouseTransfer] = await tx
           .insert(movement)
           .values({
-            movementDate: testDates.warehouseTransfer,
+            movementDate: testDates.sameTimeReceipt,
             movementType: "transfer",
             productType,
             fromWarehouseId: warehouse.id,
@@ -479,7 +480,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
           20,
           200,
           undefined,
-          testDates.warehouseTransfer,
+          testDates.sameTimeReceipt,
         );
         await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
           tx,
@@ -491,7 +492,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
           20,
           200,
           undefined,
-          testDates.warehouseTransfer,
+          testDates.sameTimeReceipt,
         );
 
         const [equipmentTransfer] = await tx
@@ -572,6 +573,70 @@ test("restoring an older refueling movement recalculates both fuel products in s
           .update(aircraftRefueling)
           .set({ transactionId: downstreamWarehouseRefuelingTransaction.id })
           .where(eq(aircraftRefueling.id, downstreamWarehouseRefueling.id));
+        const [warehouseRefuelingTx] = await tx
+          .select({
+            createdAt: warehouseTransactions.createdAt,
+            transactionDate: warehouseTransactions.transactionDate,
+          })
+          .from(warehouseTransactions)
+          .where(
+            eq(
+              warehouseTransactions.id,
+              downstreamWarehouseRefuelingTransaction.id,
+            ),
+          );
+        assert.ok(
+          warehouseRefuelingTx,
+          "downstream warehouse refueling transaction must exist",
+        );
+        assert.ok(
+          warehouseRefuelingTx.transactionDate,
+          "warehouse refueling must have a business timestamp",
+        );
+        assert.equal(
+          new Date(warehouseRefuelingTx.transactionDate).getTime(),
+          new Date(testDates.sameTimeReceipt).getTime(),
+          "warehouse refueling must use the transfer receipt's business timestamp",
+        );
+        const [sameTimeWarehouseTransferIn] = await tx
+          .update(warehouseTransactions)
+          .set({
+            createdAt: new Date(
+              new Date(warehouseRefuelingTx.createdAt).getTime() + 1_000,
+            ).toISOString(),
+          })
+          .where(
+            and(
+              eq(warehouseTransactions.sourceId, warehouseTransfer.id),
+              eq(warehouseTransactions.warehouseId, receivingWarehouse.id),
+              eq(
+                warehouseTransactions.transactionType,
+                TRANSACTION_TYPE.TRANSFER_IN,
+              ),
+            ),
+          )
+          .returning({
+            createdAt: warehouseTransactions.createdAt,
+            transactionDate: warehouseTransactions.transactionDate,
+          });
+        assert.ok(
+          sameTimeWarehouseTransferIn,
+          "same-time warehouse transfer receipt must exist",
+        );
+        assert.ok(
+          sameTimeWarehouseTransferIn.transactionDate,
+          "warehouse transfer receipt must have a business timestamp",
+        );
+        assert.equal(
+          new Date(sameTimeWarehouseTransferIn.transactionDate).getTime(),
+          new Date(testDates.sameTimeReceipt).getTime(),
+          "warehouse transfer receipt and refueling must share the business timestamp",
+        );
+        assert.ok(
+          new Date(sameTimeWarehouseTransferIn.createdAt).getTime() >
+            new Date(warehouseRefuelingTx.createdAt).getTime(),
+          "the warehouse receipt must have a later creation timestamp than the sale",
+        );
 
         const [downstreamEquipmentRefueling] = await tx
           .insert(aircraftRefueling)
