@@ -90,7 +90,6 @@ export class BudgetStorage implements IBudgetStorage {
 
     await this.updateBudgetEntry(budgetId, {
       salesVolume: salesTotals.totalVolumeKg,
-      salesRevenue: salesTotals.totalRevenue,
       marginality,
     });
 
