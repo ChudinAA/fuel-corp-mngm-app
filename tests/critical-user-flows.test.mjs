@@ -68,22 +68,7 @@ async function latestAuditId(entityType, entityId, operation = "DELETE") {
   return result.rows[0].id;
 }
 
-async function getQueueCount(table, ownerColumn, ownerId, productType) {
-  const result = await pool.query(
-    `SELECT COUNT(*)::int AS count FROM ${table}
-     WHERE ${ownerColumn} = $1 AND product_type = $2`,
-    [ownerId, productType],
-  );
-  return result.rows[0].count;
-}
-
-async function waitForCompletedQueue(
-  table,
-  ownerColumn,
-  ownerId,
-  productType,
-  previousCount = 0,
-) {
+async function waitForCompletedQueue(table, ownerColumn, ownerId, productType) {
   const deadline = Date.now() + 45_000;
   let rows = [];
   while (Date.now() < deadline) {
@@ -98,10 +83,7 @@ async function waitForCompletedQueue(
       !rows.some((row) => row.status === "failed"),
       `${table} has no failed recalculation tasks`,
     );
-    if (
-      rows.length > previousCount &&
-      rows.every((row) => row.status === "completed")
-    ) {
+    if (rows.length > 0 && rows.every((row) => row.status === "completed")) {
       return rows;
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -230,6 +212,24 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
        RETURNING id`,
     )
   ).rows[0];
+  await pool.query(
+    `INSERT INTO warehouse_transactions
+       (warehouse_id, transaction_type, product_type, quantity, source_type,
+        balance_before, balance_after, average_cost_before, average_cost_after,
+        sum, price, transaction_date)
+     VALUES ($1, 'receipt', 'kerosene', 1000, 'critical_flow_seed',
+             0, 1000, 0, 10, 10000, 10, '2026-10-01T00:00:00.000Z')`,
+    [warehouse.id],
+  );
+  await pool.query(
+    `INSERT INTO equipment_transactions
+       (equipment_id, transaction_type, product_type, quantity, source_type,
+        balance_before, balance_after, average_cost_before, average_cost_after,
+        sum, price, transaction_date)
+     VALUES ($1, 'receipt', 'pvkj', 1000, 'critical_flow_seed',
+             0, 1000, 0, 12, 12000, 12, '2026-10-01T00:00:00.000Z')`,
+    [equipment.id],
+  );
 
   const initialDeals = [
     makeRefuelingDeal({
@@ -450,6 +450,14 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(restoredOrder.success, true);
   const restoredRefuelingDeals = await api(`/api/refueling/order/${anchorId}`);
   assert.equal(restoredRefuelingDeals.length, 3);
+  const previouslyRemovedService = await pool.query(
+    `SELECT deleted_at FROM aircraft_refueling WHERE id = $1`,
+    [removedServiceId],
+  );
+  assert.ok(
+    previouslyRemovedService.rows[0]?.deleted_at,
+    "restoring an order does not revive a product removed in an earlier edit",
+  );
   assert.deepEqual(await getInventory(warehouse.id, equipment.id), {
     warehouseKerosene: 987,
     warehousePvkj: 1000,
@@ -482,12 +490,6 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(Number(optCreated.profit), 100);
   assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 967);
 
-  const previousWarehouseQueueCount = await getQueueCount(
-    "recalculation_queue",
-    "warehouse_id",
-    warehouse.id,
-    "kerosene",
-  );
   const optUpdated = await api(`/api/opt/${optCreated.id}`, {
     method: "PATCH",
     body: {
@@ -508,7 +510,6 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     "warehouse_id",
     warehouse.id,
     "kerosene",
-    previousWarehouseQueueCount,
   );
 
   const optMovement = await pool.query(

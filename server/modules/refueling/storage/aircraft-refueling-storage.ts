@@ -922,8 +922,9 @@ export class AircraftRefuelingStorage {
   }
 
   /**
-   * Restore every deal and stock movement belonging to a deleted order in one
-   * transaction. The order ID and deal IDs are retained across soft deletion.
+   * Restore every deal and stock movement deleted together with an order in one
+   * transaction. Matching the deletion timestamp excludes products removed in
+   * earlier edits of the same order.
    */
   async restoreRefuelingOrder(
     anchorId: string,
@@ -936,6 +937,9 @@ export class AircraftRefuelingStorage {
         .from(aircraftRefueling)
         .where(eq(aircraftRefueling.id, anchorId));
       if (!anchor) throw new Error("Удалённый заказ заправки не найден");
+      if (!anchor.deletedAt) {
+        throw new Error("Заказ уже восстановлен или восстановлен не полностью");
+      }
 
       const orderCondition = anchor.refuelingOrderId
         ? eq(aircraftRefueling.refuelingOrderId, anchor.refuelingOrderId)
@@ -943,7 +947,12 @@ export class AircraftRefuelingStorage {
       const deals = await tx
         .select()
         .from(aircraftRefueling)
-        .where(orderCondition)
+        .where(
+          and(
+            orderCondition,
+            eq(aircraftRefueling.deletedAt, anchor.deletedAt),
+          ),
+        )
         .orderBy(asc(aircraftRefueling.id))
         .for("update");
       if (deals.length === 0) {
