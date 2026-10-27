@@ -874,7 +874,13 @@ export const RefuelingForm = forwardRef<
       });
       onSuccess?.();
     },
-    onError: (error: Error) => showError(error, "refueling"),
+    onError: (error: Error) => {
+      showError(
+        error.message?.trim() ||
+          "Не удалось сохранить заказ заправки. Проверьте данные и попробуйте снова.",
+        "refueling",
+      );
+    },
   });
 
   // Helper: builds the common (shared) payload fields from form data

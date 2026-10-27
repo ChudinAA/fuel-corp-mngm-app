@@ -407,7 +407,11 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           return res.status(400).json({ message: error.errors[0].message });
         }
         console.error("Error updating refueling order:", error?.message || error);
-        res.status(500).json({ message: error?.message || "Ошибка обновления заказа заправки" });
+        const message =
+          typeof error?.message === "string" && error.message.trim()
+            ? error.message
+            : "Не удалось сохранить заказ заправки. Проверьте данные и попробуйте снова.";
+        res.status(500).json({ message });
       }
     },
   );
