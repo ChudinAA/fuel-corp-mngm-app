@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useWarehouseBalance as useBaseWarehouseBalance } from "@/hooks/use-warehouse-balance";
+import { formatTonnes } from "@shared/units";
 import {
-  formatTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
-} from "@shared/units";
+  resolveWarehouseAverageCostPerTonne,
+  resolveWarehouseBalanceTonnes,
+} from "../warehouse-balance-utils";
 
 interface UseWarehouseBalanceProps {
   watchMovementType: string;
@@ -76,49 +76,36 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
 
     const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
     
-    const histKg =
-      historicalBalanceStr &&
-      typeof historicalBalanceStr === "object" &&
-      "balance" in historicalBalanceStr
-        ? Number.parseFloat(historicalBalanceStr.balance)
-        : Number.parseFloat(
-            isPvkj
-              ? fromWarehouse.pvkjBalance || "0"
-              : fromWarehouse.currentBalance || "0",
-          );
-      
-    const currKg =
-      currentBalanceStr &&
-      typeof currentBalanceStr === "object" &&
-      "balance" in currentBalanceStr
-        ? Number.parseFloat(currentBalanceStr.balance)
-        : Number.parseFloat(
-            isPvkj
-              ? fromWarehouse.pvkjBalance || "0"
-              : fromWarehouse.currentBalance || "0",
-          );
-    
+    const fallbackBalanceTonnes = isPvkj
+      ? fromWarehouse.pvkjBalanceTonnes
+      : fromWarehouse.currentBalanceTonnes;
+    const fallbackBalanceKilograms = isPvkj
+      ? fromWarehouse.pvkjBalance
+      : fromWarehouse.currentBalance;
     const baseBalanceTonnes = Math.min(
-      kilogramsToTonnes(histKg),
-      kilogramsToTonnes(currKg),
+      resolveWarehouseBalanceTonnes(
+        historicalBalanceStr,
+        fallbackBalanceTonnes,
+        fallbackBalanceKilograms,
+      ),
+      resolveWarehouseBalanceTonnes(
+        currentBalanceStr,
+        fallbackBalanceTonnes,
+        fallbackBalanceKilograms,
+      ),
     );
     
     const balanceTonnes = isEditing
       ? baseBalanceTonnes + initialQuantityTonnes
       : baseBalanceTonnes;
 
-    const averageCostPerKg =
-      historicalBalanceStr &&
-      typeof historicalBalanceStr === "object" &&
-      "averageCost" in historicalBalanceStr &&
-      historicalBalanceStr.averageCost
-        ? Number.parseFloat(historicalBalanceStr.averageCost)
-        : Number.parseFloat(
-            isPvkj
-              ? fromWarehouse.pvkjAverageCost || "0"
-              : fromWarehouse.averageCost || "0",
-          );
-    const costPerTonne = pricePerKilogramToPerTonne(averageCostPerKg);
+    const costPerTonne = resolveWarehouseAverageCostPerTonne(
+      historicalBalanceStr,
+      isPvkj
+        ? fromWarehouse.pvkjAverageCostPerTonne
+        : fromWarehouse.averageCostPerTonne,
+      isPvkj ? fromWarehouse.pvkjAverageCost : fromWarehouse.averageCost,
+    );
 
     if (balanceTonnes <= 0) {
       return { balance: balanceTonnes, cost: costPerTonne, status: "error", message: "Склад пуст" };

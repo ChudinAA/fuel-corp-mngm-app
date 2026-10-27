@@ -1,5 +1,9 @@
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
-import { formatTonnes, kilogramsToTonnes, pricePerKilogramToPerTonne } from "@shared/units";
+import { formatTonnes } from "@shared/units";
+import {
+  resolveWarehouseAverageCostPerTonne,
+  resolveWarehouseBalanceTonnes,
+} from "../warehouse-balance-utils";
 
 interface UseMovementValidationProps {
   watchMovementType: string;
@@ -47,16 +51,19 @@ export function useMovementValidation({
       }
 
       const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-      const currentBalanceKg = parseFloat(
+      const currentBalanceTonnes = resolveWarehouseBalanceTonnes(
+        null,
         isPvkj
-          ? fromWarehouse.pvkjBalance || "0"
-          : fromWarehouse.currentBalance || "0",
+          ? fromWarehouse.pvkjBalanceTonnes
+          : fromWarehouse.currentBalanceTonnes,
+        isPvkj ? fromWarehouse.pvkjBalance : fromWarehouse.currentBalance,
       );
-      const currentBalanceTonnes = kilogramsToTonnes(currentBalanceKg);
-      const currentCost = parseFloat(
+      const currentCostPerTonne = resolveWarehouseAverageCostPerTonne(
+        null,
         isPvkj
-          ? fromWarehouse.pvkjAverageCost || "0"
-          : fromWarehouse.averageCost || "0",
+          ? fromWarehouse.pvkjAverageCostPerTonne
+          : fromWarehouse.averageCostPerTonne,
+        isPvkj ? fromWarehouse.pvkjAverageCost : fromWarehouse.averageCost,
       );
 
       if (currentBalanceTonnes < tonnesNum) {
@@ -65,7 +72,7 @@ export function useMovementValidation({
         );
       }
 
-      if (pricePerKilogramToPerTonne(currentCost) <= 0) {
+      if (currentCostPerTonne <= 0) {
         throw new Error(
           `На складе "${fromWarehouse.name}" отсутствует себестоимость ${isPvkj ? "ПВКЖ" : "керосина"}. Невозможно выполнить перемещение.`,
         );
