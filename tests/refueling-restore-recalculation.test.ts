@@ -1860,6 +1860,195 @@ test(
 );
 
 test(
+  "warehouse and fuel-equipment recalculation terminates across reverse transfers",
+  { timeout: 30_000 },
+  async () => {
+    const rollbackMarker = new Error("Rollback integration-test fixtures");
+    try {
+      const schemaResult = await db.execute(sql`
+        SELECT
+          to_regclass('equipment_movement') IS NOT NULL
+            AND to_regclass('equipment_transactions') IS NOT NULL
+            AND to_regclass('warehouse_transactions') IS NOT NULL
+            AND EXISTS (
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_schema = current_schema()
+                AND table_name = 'equipment_movement'
+                AND column_name = 'from_equipment_id'
+            ) AS has_cross_stock_transfer_schema
+      `);
+      assert.equal(
+        schemaResult.rows[0]?.has_cross_stock_transfer_schema,
+        true,
+        "The test database must have the current fuel-equipment schema. Run `npm run test:restore-stock` to prepare it.",
+      );
+
+      await db.transaction(async (tx) => {
+        const fixtureId = crypto.randomUUID();
+        const productType = PRODUCT_TYPE.KEROSENE;
+        const openingDate = "2026-05-01T10:00:00.000Z";
+        const forwardTransferDate = "2026-05-02T10:00:00.000Z";
+        const reverseTransferDate = "2026-05-03T10:00:00.000Z";
+
+        const [warehouse] = await tx
+          .insert(warehouses)
+          .values({
+            name: `cross-cycle-warehouse-${fixtureId}`,
+            currentBalance: "100",
+            averageCost: "12",
+            pvkjBalance: "0",
+            pvkjAverageCost: "0",
+          })
+          .returning();
+        const [equipment] = await tx
+          .insert(equipments)
+          .values({
+            name: `cross-cycle-equipment-${fixtureId}`,
+            currentBalance: "100",
+            averageCost: "20",
+            pvkjBalance: "0",
+            pvkjAverageCost: "0",
+          })
+          .returning();
+
+        await tx.insert(warehouseTransactions).values({
+          warehouseId: warehouse.id,
+          transactionType: TRANSACTION_TYPE.INVENTORY,
+          productType,
+          quantity: "100",
+          balanceBefore: "0",
+          balanceAfter: "100",
+          averageCostBefore: "0",
+          averageCostAfter: "12",
+          sum: "1200",
+          transactionDate: openingDate,
+        });
+        await tx.insert(equipmentTransactions).values({
+          equipmentId: equipment.id,
+          transactionType: TRANSACTION_TYPE.INVENTORY,
+          productType,
+          quantity: "100",
+          balanceBefore: "0",
+          balanceAfter: "100",
+          averageCostBefore: "0",
+          averageCostAfter: "20",
+          sum: "2000",
+          transactionDate: openingDate,
+        });
+
+        const [forwardTransfer] = await tx
+          .insert(equipmentMovement)
+          .values({
+            movementDate: forwardTransferDate,
+            movementType: "storage_to_tzk",
+            productType,
+            fromWarehouseId: warehouse.id,
+            toEquipmentId: equipment.id,
+            quantityKg: "10",
+            totalCost: "60",
+            costPerKg: "6",
+          })
+          .returning();
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          warehouse.id,
+          TRANSACTION_TYPE.TRANSFER_OUT,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          forwardTransfer.id,
+          10,
+          0,
+          undefined,
+          forwardTransferDate,
+        );
+        await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+          tx,
+          equipment.id,
+          TRANSACTION_TYPE.TRANSFER_IN,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          forwardTransfer.id,
+          10,
+          60,
+          undefined,
+          forwardTransferDate,
+        );
+
+        const [reverseTransfer] = await tx
+          .insert(equipmentMovement)
+          .values({
+            movementDate: reverseTransferDate,
+            movementType: "tzk_to_storage",
+            productType,
+            fromEquipmentId: equipment.id,
+            toWarehouseId: warehouse.id,
+            quantityKg: "10",
+            totalCost: "200",
+            costPerKg: "20",
+          })
+          .returning();
+        await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+          tx,
+          equipment.id,
+          TRANSACTION_TYPE.TRANSFER_OUT,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          reverseTransfer.id,
+          10,
+          0,
+          undefined,
+          reverseTransferDate,
+        );
+        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          warehouse.id,
+          TRANSACTION_TYPE.TRANSFER_IN,
+          productType,
+          SOURCE_TYPE.MOVEMENT,
+          reverseTransfer.id,
+          10,
+          200,
+          undefined,
+          reverseTransferDate,
+        );
+
+        await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+          tx,
+          [{
+            warehouseId: warehouse.id,
+            afterDate: forwardTransferDate,
+            productType,
+          }],
+        );
+
+        const [recalculatedForward, recalculatedReverse] = await Promise.all([
+          tx.query.equipmentMovement.findFirst({
+            where: eq(equipmentMovement.id, forwardTransfer.id),
+          }),
+          tx.query.equipmentMovement.findFirst({
+            where: eq(equipmentMovement.id, reverseTransfer.id),
+          }),
+        ]);
+        assert.ok(
+          Math.abs(Number(recalculatedForward?.totalCost) - 120) < 0.01,
+          `warehouse-to-equipment movement cost: ${recalculatedForward?.totalCost}`,
+        );
+        assert.ok(
+          Math.abs(Number(recalculatedReverse?.totalCost) - 192.73) < 0.01,
+          `equipment-to-warehouse movement cost: ${recalculatedReverse?.totalCost}`,
+        );
+
+        throw rollbackMarker;
+      });
+      assert.fail("The fixture transaction should have been rolled back.");
+    } catch (error) {
+      if (error !== rollbackMarker) throw error;
+    }
+  },
+);
+
+test(
   "editing movement delivery and storage charges updates the receiving warehouse cost",
   { timeout: 30_000 },
   async (t) => {
