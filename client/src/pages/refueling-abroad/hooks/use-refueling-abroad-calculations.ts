@@ -202,28 +202,32 @@ export function useRefuelingAbroadCalculations({
   // Логика проверки объема по договору
   const contractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
-    currentQuantityKg: finalKg,
-    initialQuantityKg: initialQuantityKg,
+    currentQuantityKg: contractQuantity,
+    initialQuantityKg: initialQuantityForContract,
     mode: "refueling-abroad",
     currentDealAmount: saleAmountUsd ?? 0,
-    initialDealAmount: (salePrice ?? 0) * initialQuantityKg,
+    initialDealAmount: initialSaleAmountUsd,
+    displayUnit: inputMode === "liters" ? "liters" : "tonnes",
   });
 
   // Логика проверки объема по договору поставщика
   const supplierContractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
-    currentQuantityKg: finalKg,
-    initialQuantityKg: initialQuantityKg,
+    currentQuantityKg: contractQuantity,
+    initialQuantityKg: initialQuantityForContract,
     mode: "refueling-abroad",
     currentDealAmount: purchaseAmountUsd ?? 0,
-    initialDealAmount: (purchasePrice ?? 0) * initialQuantityKg,
+    initialDealAmount: initialPurchaseAmountUsd,
+    displayUnit: inputMode === "liters" ? "liters" : "tonnes",
   });
 
   return {
-    calculatedKg,
+    finalTonnes,
     finalKg,
     purchasePrice,
     salePrice,
+    purchasePricePerTonne,
+    salePricePerTonne,
     purchaseAmountUsd,
     saleAmountUsd,
     purchaseAmountRub,

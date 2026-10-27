@@ -52,7 +52,7 @@ export function calculateRefuelingAmount(
     !Number.isFinite(pricePerTonne) ||
     !Number.isFinite(quantityTonnes) ||
     pricePerTonne < 0 ||
-    quantityTonnes < 0
+    quantityTonnes <= 0
   ) {
     return null;
   }

@@ -17,6 +17,20 @@ export function tonnesToKilograms(tonnes: number): number {
   return assertFinite(tonnes, "tonnes") * KILOGRAMS_PER_TON;
 }
 
+/** Converts liquid volume and its deal density to metric tonnes. */
+export function litresAndDensityToTonnes(
+  litres: number,
+  densityKilogramsPerLitre: number,
+): number {
+  assertFinite(litres, "litres");
+  assertFinite(densityKilogramsPerLitre, "densityKilogramsPerLitre");
+  if (litres < 0) throw new RangeError("litres must not be negative");
+  if (densityKilogramsPerLitre <= 0) {
+    throw new RangeError("densityKilogramsPerLitre must be greater than zero");
+  }
+  return (litres * densityKilogramsPerLitre) / KILOGRAMS_PER_TON;
+}
+
 /** Converts a unit price in currency/kg to currency/tonne. */
 export function pricePerKilogramToPerTonne(pricePerKilogram: number): number {
   return assertFinite(pricePerKilogram, "pricePerKilogram") * KILOGRAMS_PER_TON;

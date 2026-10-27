@@ -32,7 +32,7 @@ interface IntermediaryDialogProps {
   editItem?: ChainIntermediaryItem;
   saleAmountUsd: number;
   purchaseAmountUsd: number;
-  quantityKg: number;
+  quantityTonnes: number;
   exchangeRate: number;
 }
 
@@ -49,7 +49,7 @@ export function IntermediaryDialog({
   editItem,
   saleAmountUsd,
   purchaseAmountUsd,
-  quantityKg,
+  quantityTonnes,
   exchangeRate,
 }: IntermediaryDialogProps) {
   const { data: suppliers = [] } = useQuery<Supplier[]>({
@@ -74,7 +74,7 @@ export function IntermediaryDialog({
     form.incomeType,
     form.rateValue,
     saleAmountUsd,
-    quantityKg,
+    quantityTonnes,
   );
   const computedCommissionRub = computedCommissionUsd * exchangeRate;
 

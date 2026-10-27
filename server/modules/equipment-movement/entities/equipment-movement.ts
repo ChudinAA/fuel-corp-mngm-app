@@ -134,6 +134,36 @@ export const insertEquipmentMovementSchema = createInsertSchema(
   updatedAt: true,
   deletedAt: true,
   deletedById: true,
+}).superRefine((data, ctx) => {
+  if (data.isDraft) return;
+
+  const quantityKg = Number(data.quantityKg);
+  if (!Number.isFinite(quantityKg) || quantityKg <= 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Масса должна быть больше нуля",
+      path: ["quantityKg"],
+    });
+  }
+
+  if (data.inputMode === "liters") {
+    const quantityLiters = Number(data.quantityLiters);
+    const density = Number(data.density);
+    if (!Number.isFinite(quantityLiters) || quantityLiters <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Укажите положительное количество в литрах",
+        path: ["quantityLiters"],
+      });
+    }
+    if (!Number.isFinite(density) || density <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Укажите положительную плотность",
+        path: ["density"],
+      });
+    }
+  }
 });
 
 export type EquipmentMovement = typeof equipmentMovement.$inferSelect;

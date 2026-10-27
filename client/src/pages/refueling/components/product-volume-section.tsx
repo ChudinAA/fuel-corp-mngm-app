@@ -4,13 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { CalculatedField } from "../calculated-field";
-import { formatNumber } from "../utils";
+import { formatTonnes } from "@shared/units";
 
 export interface RefuelingVolume {
-  inputMode: "liters" | "kg";
+  inputMode: "liters" | "tonnes";
   quantityLiters: string;
   density: string;
-  quantityKg: string;
+  quantityTonnes: string;
 }
 
 interface ProductVolumeSectionProps {
@@ -20,15 +20,15 @@ interface ProductVolumeSectionProps {
   kgOnly?: boolean;
 }
 
-function getKg(volume: RefuelingVolume): number {
-  if (volume.inputMode === "kg") {
-    const kg = Number.parseFloat(volume.quantityKg);
-    return Number.isFinite(kg) ? kg : 0;
+function getTonnes(volume: RefuelingVolume): number {
+  if (volume.inputMode === "tonnes") {
+    const tonnes = Number.parseFloat(volume.quantityTonnes);
+    return Number.isFinite(tonnes) ? tonnes : 0;
   }
   const liters = Number.parseFloat(volume.quantityLiters);
   const density = Number.parseFloat(volume.density);
   return Number.isFinite(liters) && Number.isFinite(density)
-    ? liters * density
+    ? (liters * density) / 1_000
     : 0;
 }
 
@@ -38,16 +38,19 @@ export function ProductVolumeSection({
   onChange,
   kgOnly = false,
 }: ProductVolumeSectionProps) {
-  const calculatedKg = useMemo(() => getKg(value), [value]);
-  const mode = kgOnly ? "kg" : value.inputMode;
+  const calculatedTonnes = useMemo(() => getTonnes(value), [value]);
+  const mode = kgOnly ? "tonnes" : value.inputMode;
 
-  const setMode = (nextMode: "liters" | "kg") => {
+  const setMode = (nextMode: "liters" | "tonnes") => {
     if (nextMode === mode) return;
-    if (nextMode === "kg") {
+    if (nextMode === "tonnes") {
       onChange({
         ...value,
-        inputMode: "kg",
-        quantityKg: calculatedKg > 0 ? String(calculatedKg) : value.quantityKg,
+        inputMode: "tonnes",
+        quantityTonnes:
+          calculatedTonnes > 0
+            ? String(calculatedTonnes)
+            : value.quantityTonnes,
       });
       return;
     }
@@ -57,7 +60,9 @@ export function ProductVolumeSection({
       inputMode: "liters",
       density: String(density),
       quantityLiters:
-        calculatedKg > 0 ? String(calculatedKg / density) : value.quantityLiters,
+        calculatedTonnes > 0
+          ? String((calculatedTonnes * 1_000) / density)
+          : value.quantityLiters,
     });
   };
 
@@ -70,10 +75,12 @@ export function ProductVolumeSection({
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground">Литры/Плотность</Label>
               <Switch
-                checked={mode === "kg"}
-                onCheckedChange={(checked) => setMode(checked ? "kg" : "liters")}
+                checked={mode === "tonnes"}
+                onCheckedChange={(checked) =>
+                  setMode(checked ? "tonnes" : "liters")
+                }
               />
-              <Label className="text-sm text-muted-foreground">КГ</Label>
+              <Label className="text-sm text-muted-foreground">Тонны</Label>
             </div>
           )}
         </div>
@@ -89,7 +96,7 @@ export function ProductVolumeSection({
                   min="0"
                   step="0.01"
                   value={value.quantityLiters}
-                  disabled={mode === "kg"}
+                  disabled={mode === "tonnes"}
                   onChange={(event) =>
                     onChange({ ...value, quantityLiters: event.target.value })
                   }
@@ -102,7 +109,7 @@ export function ProductVolumeSection({
                   min="0"
                   step="0.0001"
                   value={value.density}
-                  disabled={mode === "kg"}
+                  disabled={mode === "tonnes"}
                   onChange={(event) =>
                     onChange({ ...value, density: event.target.value })
                   }
@@ -112,21 +119,23 @@ export function ProductVolumeSection({
           )}
           {mode === "liters" ? (
             <CalculatedField
-              label="КГ (расчет)"
-              value={calculatedKg > 0 ? formatNumber(calculatedKg) : "—"}
-              suffix={calculatedKg > 0 ? " кг" : ""}
+              label="Масса (т)"
+              value={
+                calculatedTonnes > 0 ? formatTonnes(calculatedTonnes) : "—"
+              }
+              suffix={calculatedTonnes > 0 ? " т" : ""}
               alignWithInputs
             />
           ) : (
             <div className="space-y-2">
-              <Label>Количество (КГ)</Label>
+              <Label>Масса (т)</Label>
               <Input
                 type="number"
                 min="0"
-                step="0.01"
-                value={value.quantityKg}
+                step="0.00001"
+                value={value.quantityTonnes}
                 onChange={(event) =>
-                  onChange({ ...value, quantityKg: event.target.value })
+                  onChange({ ...value, quantityTonnes: event.target.value })
                 }
               />
             </div>

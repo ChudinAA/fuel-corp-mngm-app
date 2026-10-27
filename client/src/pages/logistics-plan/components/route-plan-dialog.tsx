@@ -35,6 +35,10 @@ import { ru } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
+  formatPricePerTonne,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
+import {
   AlertTriangle,
   Clock,
   ArrowRight,
@@ -276,7 +280,9 @@ function TariffMatchPanel({
                   )}
                   {dc.costPerKg && (
                     <span className="tabular-nums">
-                      {parseFloat(dc.costPerKg).toFixed(4)} ₽/кг
+                      {formatPricePerTonne(
+                        pricePerKilogramToPerTonne(Number(dc.costPerKg)),
+                      )} ₽/т
                     </span>
                   )}
                 </div>

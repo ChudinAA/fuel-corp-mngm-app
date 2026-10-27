@@ -1,9 +1,11 @@
+import { formatTonnes, kilogramsToTonnes, tonnesToKilograms } from "@shared/units";
+
 // Convert kg to tonnes for display
 export function kgToTons(kg: string | number | null | undefined): string {
-  if (kg === null || kg === undefined || kg === "") return "0";
+  if (kg === null || kg === undefined || kg === "") return "0.00000";
   const val = parseFloat(String(kg));
-  if (isNaN(val)) return "0";
-  return (val / 1000).toFixed(3).replace(/\.?0+$/, "") || "0";
+  if (!Number.isFinite(val)) return "0.00000";
+  return kilogramsToTonnes(val).toFixed(5);
 }
 
 // Convert tonnes to kg for storage (DB stores kg)
@@ -11,7 +13,7 @@ export function tonsToKg(tons: string | number | null | undefined): string {
   if (tons === null || tons === undefined || tons === "") return "0";
   const val = parseFloat(String(tons));
   if (isNaN(val)) return "0";
-  return (val * 1000).toFixed(2);
+  return tonnesToKilograms(val).toFixed(2);
 }
 
 // Format tonnes for display with unit
@@ -19,9 +21,7 @@ export function fmtTons(kg: string | number | null | undefined): string {
   if (kg === null || kg === undefined || kg === "") return "—";
   const val = parseFloat(String(kg));
   if (isNaN(val)) return "—";
-  const t = val / 1000;
-  if (t === 0) return "0 т";
-  return `${t.toFixed(3).replace(/\.?0+$/, "")} т`;
+  return `${formatTonnes(kilogramsToTonnes(val))} т`;
 }
 
 // Sum allocated volumes for months overlapping with a period

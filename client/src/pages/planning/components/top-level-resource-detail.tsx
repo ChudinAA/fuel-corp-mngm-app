@@ -41,7 +41,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { fmtTons } from "../utils/planning-utils";
+import { fmtTons, kgToTons, tonsToKg } from "../utils/planning-utils";
 import { FieldCommentPopover } from "./field-comment-popover";
 import type { PlanningPeriod } from "../planning-page";
 import { cn } from "@/lib/utils";
@@ -145,7 +145,7 @@ export function TopLevelResourceDetail({
     setForm({
       warehouseId: v.warehouseId,
       type: v.type as "income" | "expense",
-      volume: (parseFloat(v.volume) / 1000).toString(),
+      volume: kgToTons(v.volume),
       counterpartyId: v.counterpartyId || NONE_VALUE,
       notes: v.notes || "",
     });
@@ -155,7 +155,7 @@ export function TopLevelResourceDetail({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const volumeKg = (parseFloat(form.volume) * 1000).toString();
+      const volumeKg = tonsToKg(form.volume);
       const body = {
         supplierId,
         warehouseId: form.warehouseId,
@@ -459,10 +459,10 @@ export function TopLevelResourceDetail({
               <Input
                 type="number"
                 min="0"
-                step="0.001"
+                step="0.00001"
                 value={form.volume}
                 onChange={(e) => setForm((f) => ({ ...f, volume: e.target.value }))}
-                placeholder="0.000"
+                placeholder="0.00000"
                 data-testid="input-top-level-volume"
               />
             </div>

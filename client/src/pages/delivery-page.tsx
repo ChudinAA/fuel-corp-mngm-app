@@ -84,7 +84,7 @@ export default function DeliveryPage() {
     setSearch("");
   };
 
-  const { averageCostPerKg, activeCarriersCount } = useDeliveryStats(deliveryCosts);
+  const { averageCostPerTonne, activeCarriersCount } = useDeliveryStats(deliveryCosts);
 
   return (
     <div className="space-y-6">
@@ -99,7 +99,7 @@ export default function DeliveryPage() {
 
       <DeliveryStatsCards
         totalRoutes={filteredCosts.length}
-        averageCostPerKg={averageCostPerKg}
+        averageCostPerTonne={averageCostPerTonne}
         activeCarriersCount={activeCarriersCount}
       />
 

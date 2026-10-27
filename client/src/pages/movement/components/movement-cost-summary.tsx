@@ -6,7 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { Plus, AlertTriangle } from "lucide-react";
 import { MOVEMENT_TYPE } from "@shared/constants";
+import { formatPricePerTonne } from "@shared/units";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
+import {
+  formatMovementPriceOption,
+  type MovementInputMode,
+} from "../unit-calculations";
 import {
   Select,
   SelectContent,
@@ -40,7 +45,9 @@ interface MovementCostSummaryProps {
   warehouseServicesCost?: number;
   destinationWarehouseServices?: WarehouseService[];
   deliveryCost: number;
-  costPerKg: number;
+  costPerTonne: number;
+  inputMode: MovementInputMode;
+  density: string;
   watchMovementType: string;
   selectedPurchasePriceId: string;
   setSelectedPurchasePriceId: (id: string) => void;
@@ -73,7 +80,9 @@ export function MovementCostSummary({
   warehouseServicesCost = 0,
   destinationWarehouseServices = [],
   deliveryCost,
-  costPerKg,
+  costPerTonne,
+  inputMode,
+  density,
   watchMovementType,
   selectedPurchasePriceId,
   setSelectedPurchasePriceId,
@@ -129,7 +138,15 @@ export function MovementCostSummary({
                             key={`${p.priceId}-${p.index}`}
                             value={`${p.priceId}-${p.index}`}
                           >
-                            {formatNumber(p.price)} ₽/кг
+                            {formatMovementPriceOption(
+                              p.price,
+                              p.priceUnit === "liter" || p.priceUnit === "tonne"
+                                ? p.priceUnit
+                                : inputMode === "liters"
+                                  ? "liter"
+                                  : "kg",
+                              density,
+                            )}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -155,9 +172,11 @@ export function MovementCostSummary({
               <CalculatedField
                 label="Цена закупки"
                 value={
-                  purchasePrice !== null ? formatNumber(purchasePrice) : "нет цены!"
+                  purchasePrice !== null
+                    ? formatPricePerTonne(purchasePrice)
+                    : "нет цены!"
                 }
-                suffix={purchasePrice !== null ? " ₽/кг" : ""}
+                suffix={purchasePrice !== null ? " ₽/т" : ""}
               />
               {hasPermission("prices", "create") &&
                 watchMovementType === MOVEMENT_TYPE.SUPPLY && (
@@ -205,8 +224,8 @@ export function MovementCostSummary({
         <CalculatedField label="Доставка" value={formatCurrency(deliveryCost)} />
         <CalculatedField
           label={costLabel}
-          value={formatNumber(costPerKg)}
-          suffix=" ₽/кг"
+          value={formatPricePerTonne(costPerTonne)}
+          suffix=" ₽/т"
         />
       </div>
 

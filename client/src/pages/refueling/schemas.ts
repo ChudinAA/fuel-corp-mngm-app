@@ -14,10 +14,10 @@ export const refuelingFormSchema = z.object({
   basisId: z.string().uuid().optional().nullable(),
   customerBasis: z.string().optional().nullable().describe("Базис покупателя"),
   customerBasisId: z.string().uuid().optional().nullable(),
-  inputMode: z.enum(["liters", "kg"]).describe("Единица ввода"),
+  inputMode: z.enum(["liters", "tonnes"]).describe("Единица ввода"),
   quantityLiters: z.string().optional().nullable().describe("Количество (л)"),
   density: z.string().optional().nullable().describe("Плотность"),
-  quantityKg: z.string().optional().nullable().describe("Количество (кг)"),
+  quantityTonnes: z.string().optional().nullable().describe("Количество (т)"),
   notes: z.string().optional().nullable().describe("Примечания"),
   isApproxVolume: z.boolean().default(false).describe("Примерный объём"),
   isPlannedDeal: z.boolean().default(false).describe("Плановая сделка"),
@@ -29,6 +29,21 @@ export const refuelingFormSchema = z.object({
   isPriceRecharge: z.boolean().default(false).describe("Переоформление цены"),
   isPvkjRecharge: z.boolean().default(false).describe("Дозаправка ПВКЖ"),
   setSalePriceZero: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  if (
+    !data.isDraft &&
+    data.inputMode === "liters" &&
+    Number.parseFloat(data.quantityLiters || "0") > 0
+  ) {
+    const density = Number.parseFloat(data.density || "0");
+    if (!Number.isFinite(density) || density <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Укажите положительную плотность для пересчёта массы",
+        path: ["density"],
+      });
+    }
+  }
 });
 
 export type RefuelingFormData = z.infer<typeof refuelingFormSchema>;

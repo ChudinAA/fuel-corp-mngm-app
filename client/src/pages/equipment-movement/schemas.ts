@@ -11,36 +11,35 @@ export const equipmentMovementFormSchema = z
     toWarehouseId: z.string().optional().nullable().describe("Склад-получатель"),
     fromEquipmentId: z.string().optional().nullable().describe("Оборудование-источник"),
     toEquipmentId: z.string().optional().nullable().describe("Оборудование-получатель"),
-    inputMode: z.enum(["liters", "kg"]).default("kg").describe("Единица ввода"),
+    inputMode: z.enum(["liters", "tonnes"]).default("tonnes").describe("Единица ввода"),
     quantityLiters: z.string().optional().describe("Количество (л)"),
     density: z.string().optional().describe("Плотность"),
-    quantityKg: z.string().optional().describe("Количество (кг)"),
-    costPerKg: z.string().optional().describe("Цена за кг"),
+    quantityTonnes: z.string().optional().describe("Масса (т)"),
     totalCost: z.string().optional().describe("Итоговая стоимость"),
     notes: z.string().optional().describe("Примечания"),
     isDraft: z.boolean().default(false).describe("Черновик"),
   })
   .superRefine((data, ctx) => {
-    if (data.inputMode === "kg") {
-      if (!data.quantityKg || data.quantityKg.trim() === "") {
+    if (data.inputMode === "tonnes") {
+      if (!data.quantityTonnes || Number(data.quantityTonnes) <= 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Укажите количество (кг)",
-          path: ["quantityKg"],
+          message: "Укажите массу в тоннах",
+          path: ["quantityTonnes"],
         });
       }
     } else {
-      if (!data.quantityLiters || data.quantityLiters.trim() === "") {
+      if (!data.quantityLiters || Number(data.quantityLiters) <= 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Укажите объем в литрах",
+          message: "Укажите положительный объём в литрах",
           path: ["quantityLiters"],
         });
       }
-      if (!data.density || data.density.trim() === "") {
+      if (!data.density || Number(data.density) <= 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Укажите плотность",
+          message: "Укажите положительную плотность",
           path: ["density"],
         });
       }

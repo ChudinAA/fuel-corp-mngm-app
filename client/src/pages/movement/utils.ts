@@ -2,6 +2,13 @@
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { CalculatedValues } from "./types";
+import {
+  calculateMovementMassTonnes,
+  movementTonnesRateToLegacyKgRate,
+  movementTonnesToLegacyKg,
+  type MovementInputMode,
+} from "./unit-calculations";
+import { formatTonnes } from "@shared/units";
 
 export const formatNumber = (value: string | number | null) => {
   if (value === null) return "—";
@@ -15,42 +22,45 @@ export const formatCurrency = (value: string | number | null) => {
   return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(num);
 };
 
+export const formatMovementMass = (tonnes: number | null | undefined) =>
+  tonnes === null || tonnes === undefined ? "—" : `${formatTonnes(tonnes)} т`;
+
 export const formatDate = (dateStr: string) => 
   format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
-
-export const calculateKgFromLiters = (liters: string | number | null, density: string | number | null): number | null => {
-  const litersValue = Number(liters);
-  const densityValue = Number(density);
-  if (!litersValue || !densityValue) return null;
-  return parseFloat((litersValue * densityValue).toFixed(0));
-};
 
 export const calculateValues = (
   liters: string,
   density: string,
-  kg: string,
-  inputMode: "liters" | "kg",
-  purchasePriceValue: number | null = null,
-  storageCostPerKg: number | null = null,
-  deliveryTariffPerKg: number | null = null
+  tonnes: string,
+  inputMode: MovementInputMode,
+  purchasePricePerTonneValue: number | null = null,
+  storageCostPerTonne: number | null = null,
+  deliveryTariffPerTonne: number | null = null
 ): CalculatedValues => {
-  const calculatedKg = inputMode === "liters" && liters && density
-    ? calculateKgFromLiters(liters, density)
-    : kg;
-
-  const kgNum = calculatedKg ? parseFloat(String(calculatedKg)) : 0;
-  const purchasePrice = purchasePriceValue || 0;
-  const purchaseAmount = kgNum * purchasePrice;
-  const storageCost = storageCostPerKg ? kgNum * storageCostPerKg : 0;
-  const deliveryCost = deliveryTariffPerKg ? kgNum * deliveryTariffPerKg : 0;
+  const calculatedTonnes = calculateMovementMassTonnes(
+    inputMode,
+    tonnes,
+    liters,
+    density,
+  );
+  const tonnesNum = calculatedTonnes ?? 0;
+  const purchasePricePerTonne = purchasePricePerTonneValue || 0;
+  const purchaseAmount = tonnesNum * purchasePricePerTonne;
+  const storageCost = tonnesNum * (storageCostPerTonne || 0);
+  const deliveryCost = tonnesNum * (deliveryTariffPerTonne || 0);
   const totalCost = purchaseAmount + storageCost + deliveryCost;
-  const costPerKg = kgNum > 0 ? totalCost / kgNum : 0;
+  const costPerTonne = tonnesNum > 0 ? totalCost / tonnesNum : 0;
 
   return {
-    calculatedKg: calculatedKg === null ? null : String(calculatedKg),
-    purchasePrice,
+    calculatedKg:
+      calculatedTonnes === null
+        ? null
+        : String(movementTonnesToLegacyKg(calculatedTonnes)),
+    calculatedTonnes,
+    purchasePricePerTonne,
     deliveryCost,
     totalCost,
-    costPerKg,
+    costPerTonne,
+    costPerKg: movementTonnesRateToLegacyKgRate(costPerTonne),
   };
 };

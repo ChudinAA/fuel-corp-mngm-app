@@ -1,14 +1,21 @@
 import { useMemo } from "react";
 import type { DeliveryCost, Price } from "@shared/schema";
 import { DELIVERY_ENTITY_TYPE } from "@shared/constants";
-import { useQuantityCalculation } from "@/pages/shared/hooks/use-quantity-calculation";
 import { usePriceExtraction } from "@/pages/shared/hooks/use-price-extraction";
+import {
+  calculateTransportationAmount,
+  calculateTransportationMassTonnes,
+  calculateTransportationPricePerTonne,
+  transportationTonnesToLegacyKg,
+  type TransportationInputMode,
+  type TransportationPriceUnit,
+} from "../unit-calculations";
 
 interface UseTransportationCalculationsProps {
-  inputMode: "liters" | "kg";
+  inputMode: TransportationInputMode;
   quantityLiters: string;
   density: string;
-  quantityKg: string;
+  quantityTonnes: string;
   basisId: string;
   purchasePrices: Price[];
   salePrices: Price[];
@@ -25,7 +32,7 @@ export function useTransportationCalculations({
   inputMode,
   quantityLiters,
   density,
-  quantityKg,
+  quantityTonnes,
   basisId,
   purchasePrices,
   salePrices,
@@ -37,12 +44,15 @@ export function useTransportationCalculations({
   isAviaService,
   productType,
 }: UseTransportationCalculationsProps) {
-  const { calculatedKg, finalKg } = useQuantityCalculation({
+  const finalTonnes = calculateTransportationMassTonnes(
     inputMode,
-    quantityLiters,
+    inputMode === "liters" ? quantityLiters : quantityTonnes,
     density,
-    quantityKg,
-  });
+  );
+  const safeTonnes = finalTonnes ?? 0;
+  const finalKg = transportationTonnesToLegacyKg(safeTonnes);
+  const calculatedKg =
+    finalTonnes !== null && finalTonnes > 0 ? String(finalKg) : "";
 
   const { salePrice: extractedSalePrice } =
     usePriceExtraction({
@@ -56,6 +66,21 @@ export function useTransportationCalculations({
     });
 
   const salePrice = extractedSalePrice;
+  const selectedSalePrice = salePrices.find(
+    (price) =>
+      selectedSalePriceId === price.id ||
+      selectedSalePriceId.startsWith(`${price.id}-`),
+  );
+  const salePriceUnitValue = selectedSalePrice?.priceUnit;
+  const salePriceUnit: TransportationPriceUnit =
+    salePriceUnitValue === "liter" || salePriceUnitValue === "tonne"
+      ? salePriceUnitValue
+      : "kg";
+  const salePricePerTonne = calculateTransportationPricePerTonne(
+    salePrice,
+    salePriceUnit,
+    density,
+  );
 
   const matchedDeliveryCost = useMemo(() => {
     if (isAviaService) return null;
@@ -81,22 +106,32 @@ export function useTransportationCalculations({
     return null;
   }, [isAviaService, deliveryLocationId, carrierId, deliveryCosts, basisId]);
 
-  const deliveryCost = matchedDeliveryCost && finalKg > 0
-    ? parseFloat(matchedDeliveryCost.costPerKg) * finalKg : null;
+  const deliveryTariffPerTonne = matchedDeliveryCost
+    ? calculateTransportationPricePerTonne(
+        matchedDeliveryCost.costPerKg,
+        "kg",
+      )
+    : null;
+  const deliveryCost =
+    deliveryTariffPerTonne !== null && finalTonnes !== null && finalTonnes > 0
+      ? calculateTransportationAmount(deliveryTariffPerTonne, finalTonnes)
+      : null;
 
   const deliveryTariff = useMemo(() => {
-    if (!deliveryCost || finalKg <= 0) return null;
+    if (deliveryCost === null || finalKg <= 0) return null;
     return deliveryCost / finalKg;
   }, [deliveryCost, finalKg]);
 
   const saleAmount = useMemo(() => {
-    if (salePrice !== null && finalKg > 0) return salePrice * finalKg;
+    if (salePricePerTonne !== null && finalTonnes !== null && finalTonnes > 0) {
+      return calculateTransportationAmount(salePricePerTonne, finalTonnes);
+    }
     return null;
-  }, [salePrice, finalKg]);
+  }, [salePricePerTonne, finalTonnes]);
 
   const profit = useMemo(() => {
     if (isAviaService) {
-      // Для АвиаСервис прибыль = цена услуги × кг (чисто стоимость доставки)
+      // АвиаСервис keeps the service amount as profit without external delivery cost.
       return saleAmount;
     } else {
       if (saleAmount !== null && deliveryCost !== null) {
@@ -109,10 +144,14 @@ export function useTransportationCalculations({
   return {
     calculatedKg,
     finalKg,
+    finalTonnes,
     salePrice,
+    salePriceUnit,
+    salePricePerTonne,
     deliveryCost,
     matchedDeliveryCost,
     deliveryTariff,
+    deliveryTariffPerTonne,
     saleAmount,
     profit,
   };

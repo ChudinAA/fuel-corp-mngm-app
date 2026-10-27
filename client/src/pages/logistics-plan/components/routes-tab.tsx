@@ -44,6 +44,10 @@ import { useToast } from "@/hooks/use-toast";
 import { AuditPanel } from "@/components/audit-panel";
 import { RouteEditDialog } from "./route-edit-dialog";
 import { cn } from "@/lib/utils";
+import {
+  formatPricePerTonne,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 
 interface RoutesTabProps {
   periodFrom: string;
@@ -229,7 +233,9 @@ function CarrierRatesCell({
   carrierById: Map<string, any>;
 }) {
   const formatRate = (rate: string | null | undefined) =>
-    rate != null ? parseFloat(rate).toFixed(2) : "0";
+    rate != null
+      ? formatPricePerTonne(pricePerKilogramToPerTonne(Number(rate)))
+      : "0,00";
 
   const items: React.ReactNode[] = [];
 
@@ -239,7 +245,7 @@ function CarrierRatesCell({
         <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded px-1 py-0.5">
           АС
         </span>
-        <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(route.aviaserviceRate)} ₽</span>
+        <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(route.aviaserviceRate)} ₽/т</span>
       </div>
     );
   }
@@ -250,7 +256,7 @@ function CarrierRatesCell({
         <span className="text-[10px] font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded px-1 py-0.5">
           СТ
         </span>
-        <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(route.starovoitovRate)} ₽</span>
+        <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(route.starovoitovRate)} ₽/т</span>
       </div>
     );
   }
@@ -265,7 +271,7 @@ function CarrierRatesCell({
             <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5">
               {abbr}
             </span>
-            <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(r.costPerKg)} ₽</span>
+            <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(r.costPerKg)} ₽/т</span>
           </div>
         </TooltipTrigger>
         <TooltipContent>

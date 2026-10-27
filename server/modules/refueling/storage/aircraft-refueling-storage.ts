@@ -5,6 +5,7 @@ import {
   aircraftRefueling,
   suppliers,
   customers,
+  prices,
   warehouses,
   warehouseTransactions,
   equipmentTransactions,
@@ -806,9 +807,18 @@ export class AircraftRefuelingStorage {
   }
 
   async getUsedVolumeByPrice(priceId: string): Promise<number> {
+    const price = await db.query.prices.findFirst({
+      where: eq(prices.id, priceId),
+      columns: { priceUnit: true },
+    });
+    const quantityColumn =
+      price?.priceUnit === "liter"
+        ? aircraftRefueling.quantityLiters
+        : aircraftRefueling.quantityKg;
+
     const [result] = await db
       .select({
-        total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`,
+        total: sql<string>`COALESCE(SUM(${quantityColumn}), 0)`,
       })
       .from(aircraftRefueling)
       .where(

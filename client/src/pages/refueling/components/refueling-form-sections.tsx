@@ -11,19 +11,19 @@ import {
 } from "@/components/ui/form";
 import type { UseFormReturn } from "react-hook-form";
 import { CalculatedField } from "../calculated-field";
-import { formatNumber } from "../utils";
+import { formatTonnes } from "@shared/units";
 import type { RefuelingFormData } from "../schemas";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<RefuelingFormData>;
-  setInputMode: (mode: "liters" | "kg") => void;
-  calculatedKg: string;
+  setInputMode: (mode: "liters" | "tonnes") => void;
+  calculatedTonnes: number;
 }
 
 export function VolumeInputSection({
   form,
   setInputMode,
-  calculatedKg,
+  calculatedTonnes,
 }: VolumeInputSectionProps) {
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
@@ -43,15 +43,15 @@ export function VolumeInputSection({
                   Литры/Плотность
                 </Label>
                 <Switch
-                  checked={field.value === "kg"}
+                  checked={field.value === "tonnes"}
                   onCheckedChange={(checked) => {
-                    const mode = checked ? "kg" : "liters";
+                    const mode = checked ? "tonnes" : "liters";
                     field.onChange(mode);
                     setInputMode(mode);
                   }}
                   data-testid="switch-input-mode"
                 />
-                <Label className="text-sm text-muted-foreground">КГ</Label>
+                <Label className="text-sm text-muted-foreground">Т</Label>
               </div>
             )}
           />
@@ -72,7 +72,7 @@ export function VolumeInputSection({
                     step="0.01"
                     placeholder="0.00"
                     data-testid="input-liters"
-                    disabled={inputMode === "kg"}
+                    disabled={inputMode === "tonnes"}
                     {...field}
                     value={field.value ?? ""}
                   />
@@ -96,7 +96,7 @@ export function VolumeInputSection({
                     step="0.0001"
                     placeholder="0.8000"
                     data-testid="input-density"
-                    disabled={inputMode === "kg"}
+                    disabled={inputMode === "tonnes"}
                     {...field}
                     value={field.value ?? ""}
                   />
@@ -107,29 +107,31 @@ export function VolumeInputSection({
           />
           {inputMode === "liters" ? (
             <CalculatedField
-              label="КГ (расчет)"
+              label="Масса"
               value={
-                watchLiters && parseFloat(calculatedKg) > 0 ? formatNumber(calculatedKg) : "—"
+                watchLiters && calculatedTonnes > 0
+                  ? formatTonnes(calculatedTonnes)
+                  : "—"
               }
-              suffix={watchLiters && parseFloat(calculatedKg) > 0 ? " кг" : ""}
+              suffix={watchLiters && calculatedTonnes > 0 ? " т" : ""}
               alignWithInputs
             />
           ) : (
             <FormField
               control={form.control}
-              name="quantityKg"
+              name="quantityTonnes"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
-                    Количество (КГ)
+                    Масса (т)
                   </FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      data-testid="input-kg"
+                      step="0.00001"
+                      placeholder="0.00000"
+                      data-testid="input-quantity-tonnes"
                       {...field}
                       value={field.value ?? ""}
                     />

@@ -27,10 +27,10 @@ export const refuelingAbroadFormSchema = z
 
     intermediaries: z.array(intermediaryItemSchema).default([]),
 
-    inputMode: z.enum(["liters", "kg"]).default("kg").describe("Единица ввода"),
+    inputMode: z.enum(["liters", "tonnes"]).default("tonnes").describe("Единица ввода"),
     quantityLiters: z.string().optional().nullable().describe("Количество (л)"),
     density: z.string().optional().nullable().describe("Плотность"),
-    quantityKg: z.string().optional().nullable().describe("Количество (кг)"),
+    quantityTonnes: z.string().optional().nullable().describe("Количество (т)"),
 
     selectedPurchasePriceId: z.string().optional().nullable(),
     selectedSalePriceId: z.string().optional().nullable(),
@@ -53,6 +53,21 @@ export const refuelingAbroadFormSchema = z
     rtNumber: z.string().optional().nullable(),
   })
   .superRefine((data, ctx) => {
+    if (
+      !data.isDraft &&
+      data.inputMode === "liters" &&
+      Number.parseFloat(data.quantityLiters || "0") > 0
+    ) {
+      const density = Number.parseFloat(data.density || "0");
+      if (!Number.isFinite(density) || density <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Укажите положительную плотность для пересчёта массы",
+          path: ["density"],
+        });
+      }
+    }
+
     if (!data.isDraft) {
       if (!data.refuelingDate) {
         ctx.addIssue({

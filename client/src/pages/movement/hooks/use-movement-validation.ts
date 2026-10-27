@@ -1,12 +1,13 @@
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import { formatTonnes, kilogramsToTonnes, pricePerKilogramToPerTonne } from "@shared/units";
 
 interface UseMovementValidationProps {
   watchMovementType: string;
   watchProductType: string;
   watchFromWarehouseId: string;
   watchCarrierId: string;
-  calculatedKg: number | null;
-  kgNum: number;
+  calculatedTonnes: number | null;
+  tonnesNum: number;
   purchasePrice: number | null;
   warehouses: any[];
   supplierContractVolumeStatus: {
@@ -22,8 +23,8 @@ export function useMovementValidation({
   watchProductType,
   watchFromWarehouseId,
   watchCarrierId,
-  calculatedKg,
-  kgNum,
+  calculatedTonnes,
+  tonnesNum,
   purchasePrice,
   warehouses,
   supplierContractVolumeStatus,
@@ -32,7 +33,7 @@ export function useMovementValidation({
 }: UseMovementValidationProps) {
   const validateForm = (): boolean => {
     // Check quantity
-    if (!calculatedKg || kgNum <= 0) {
+    if (!calculatedTonnes || tonnesNum <= 0) {
       throw new Error("Укажите корректное количество топлива");
     }
 
@@ -46,24 +47,25 @@ export function useMovementValidation({
       }
 
       const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-      const currentBalance = parseFloat(
+      const currentBalanceKg = parseFloat(
         isPvkj
           ? fromWarehouse.pvkjBalance || "0"
           : fromWarehouse.currentBalance || "0",
       );
+      const currentBalanceTonnes = kilogramsToTonnes(currentBalanceKg);
       const currentCost = parseFloat(
         isPvkj
           ? fromWarehouse.pvkjAverageCost || "0"
           : fromWarehouse.averageCost || "0",
       );
 
-      if (currentBalance < kgNum) {
+      if (currentBalanceTonnes < tonnesNum) {
         throw new Error(
-          `На складе "${fromWarehouse.name}" недостаточно ${isPvkj ? "ПВКЖ" : "керосина"}. Доступно: ${currentBalance.toLocaleString()} кг, требуется: ${kgNum.toLocaleString()} кг.`,
+          `На складе "${fromWarehouse.name}" недостаточно ${isPvkj ? "ПВКЖ" : "керосина"}. Доступно: ${formatTonnes(currentBalanceTonnes)} т, требуется: ${formatTonnes(tonnesNum)} т.`,
         );
       }
 
-      if (currentCost <= 0) {
+      if (pricePerKilogramToPerTonne(currentCost) <= 0) {
         throw new Error(
           `На складе "${fromWarehouse.name}" отсутствует себестоимость ${isPvkj ? "ПВКЖ" : "керосина"}. Невозможно выполнить перемещение.`,
         );

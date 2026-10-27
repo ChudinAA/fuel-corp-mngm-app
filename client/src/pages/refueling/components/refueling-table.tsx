@@ -45,6 +45,11 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { formatPricePerTonne, formatTonnes } from "@shared/units";
+import {
+  calculateRefuelingPricePerTonne,
+  calculateStoredRefuelingMassTonnes,
+} from "../unit-calculations";
 import {
   formatNumber,
   formatNumberForTable,
@@ -62,6 +67,45 @@ import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 import { StatCell } from "@/components/ui/stat-cell";
 import { useFilterReferenceData } from "@/hooks/use-filter-reference-data";
+
+function getDealPricePerTonne(
+  deal: any,
+  side: "purchase" | "sale",
+): number | null {
+  const tonnes = calculateStoredRefuelingMassTonnes(
+    deal.quantityKg,
+    deal.quantityLiters,
+    deal.density,
+  );
+  const amountValue =
+    side === "purchase" ? deal.purchaseAmount : deal.saleAmount;
+  const amount = Number.parseFloat(String(amountValue ?? ""));
+  if (tonnes !== null && tonnes > 0 && Number.isFinite(amount)) {
+    const isRecharge = Boolean(deal.isPriceRecharge || deal.isPvkjRecharge);
+    if (side === "purchase" || !isRecharge) return amount / tonnes;
+
+    const agentFee =
+      deal.isAgentFeeEnabled === false
+        ? 0
+        : Number.parseFloat(String(deal.agentFee ?? "0")) || 0;
+    const otherServiceFee =
+      deal.isOtherServiceEnabled === false
+        ? 0
+        : Number.parseFloat(String(deal.otherServiceFee ?? "0")) || 0;
+    return (amount - agentFee - otherServiceFee) / tonnes;
+  }
+
+  const inputMode =
+    deal.inputMode === "liters" ||
+    Number.parseFloat(String(deal.quantityLiters ?? "0")) > 0
+      ? "liters"
+      : "tonnes";
+  return calculateRefuelingPricePerTonne(
+    side === "purchase" ? deal.purchasePrice : deal.salePrice,
+    inputMode,
+    deal.density,
+  );
+}
 
 interface RefuelingDealActionsProps {
   deal: any;
@@ -528,16 +572,16 @@ export function RefuelingTable({
                 Пл.
               </TableHead>
               <TableHead className="text-right text-xs font-semibold p-1 w-[55px]">
-                КГ
+                Т
               </TableHead>
               <TableHead className="text-right text-xs font-semibold p-1 w-[68px]">
-                Цена пок.
+                <span className="leading-tight">Цена пок.<br />₽/т</span>
               </TableHead>
               <TableHead className="text-right text-xs font-semibold p-1 w-[72px]">
                 Покупка
               </TableHead>
               <TableHead className="text-right text-xs font-semibold p-1 w-[68px]">
-                Цена пр.
+                <span className="leading-tight">Цена пр.<br />₽/т</span>
               </TableHead>
               <TableHead className="text-right text-xs font-semibold p-1 w-[72px]">
                 Продажа
@@ -572,11 +616,18 @@ export function RefuelingTable({
                 </TableCell>
                 {/* Пл. (плотность) — пропуск */}
                 <TableCell className="py-1 px-1" />
-                {/* КГ */}
+                {/* Т */}
                 <TableCell className="py-1 px-1">
                   <StatCell
-                    values={deals.map((d: any) => d.quantityKg)}
-                    formatFn={(v) => formatNumberForTable(v)}
+                    values={deals.map(
+                      (d: any) =>
+                        calculateStoredRefuelingMassTonnes(
+                          d.quantityKg,
+                          d.quantityLiters,
+                          d.density,
+                        ) ?? 0,
+                    )}
+                    formatFn={(v) => formatTonnes(v)}
                   />
                 </TableCell>
                 {/* Цена пок. — пропуск */}
@@ -775,7 +826,13 @@ export function RefuelingTable({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className={cn(deal.isApproxVolume && "approx-volume-animated cursor-help")}>
-                            {formatNumberForTable(deal.quantityKg)}
+                            {formatTonnes(
+                              calculateStoredRefuelingMassTonnes(
+                                deal.quantityKg,
+                                deal.quantityLiters,
+                                deal.density,
+                              ) ?? 0,
+                            )}
                           </span>
                         </TooltipTrigger>
                         {deal.isApproxVolume && (
@@ -788,9 +845,11 @@ export function RefuelingTable({
                   </TableCell>
                   <TableCell className="text-right text-xs py-1.5 px-1">
                     <div className="flex items-center justify-end gap-1">
-                      {deal.purchasePrice
-                        ? formatNumber(deal.purchasePrice)
-                        : "-"}
+                      {getDealPricePerTonne(deal, "purchase") === null
+                        ? "-"
+                        : formatPricePerTonne(
+                            getDealPricePerTonne(deal, "purchase")!,
+                          )}
                       {deal.purchasePriceModified && (
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -807,7 +866,11 @@ export function RefuelingTable({
                     {formatCurrencyForTable(deal.purchaseAmount)}
                   </TableCell>
                   <TableCell className="text-right text-xs py-1.5 px-1">
-                    {formatNumber(deal.salePrice)}
+                    {getDealPricePerTonne(deal, "sale") === null
+                      ? "-"
+                      : formatPricePerTonne(
+                          getDealPricePerTonne(deal, "sale")!,
+                        )}
                   </TableCell>
                   <TableCell className="text-right text-xs py-1.5 px-1">
                     {formatCurrencyForTable(deal.saleAmount)}

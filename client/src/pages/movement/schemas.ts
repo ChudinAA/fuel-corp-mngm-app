@@ -11,10 +11,10 @@ export const movementFormSchema = z.object({
   supplierBaseId: z.string().optional(),
   fromWarehouseId: z.string().optional().describe("Склад-источник"),
   toWarehouseId: z.string().optional().describe("Склад-получатель"),
-  inputMode: z.enum(["liters", "kg"]).default("kg").describe("Единица ввода"),
+  inputMode: z.enum(["liters", "tonnes"]).default("tonnes").describe("Единица ввода"),
   quantityLiters: z.string().optional().describe("Количество (л)"),
   density: z.string().optional().describe("Плотность"),
-  quantityKg: z.string().optional().describe("Количество (кг)"),
+  quantityTonnes: z.string().optional().describe("Масса (т)"),
   carrierId: z.string().optional().describe("Перевозчик"),
   purchasePrice: z.string().optional().describe("Цена покупки"),
   selectedPurchasePriceId: z.string().optional().nullable(),
@@ -23,6 +23,31 @@ export const movementFormSchema = z.object({
   deliveryPrice: z.string().optional().describe("Цена доставки"),
   notes: z.string().optional().describe("Примечания"),
   isDraft: z.boolean().default(false).describe("Черновик"),
+}).superRefine((data, ctx) => {
+  if (data.isDraft) return;
+  if (data.inputMode === "liters") {
+    if (!data.quantityLiters || Number(data.quantityLiters) <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Укажите количество в литрах",
+        path: ["quantityLiters"],
+      });
+    }
+    const density = Number(data.density);
+    if (!Number.isFinite(density) || density <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Укажите положительную плотность",
+        path: ["density"],
+      });
+    }
+  } else if (!data.quantityTonnes || Number(data.quantityTonnes) <= 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Укажите массу в тоннах",
+      path: ["quantityTonnes"],
+    });
+  }
 });
 
 export type MovementFormData = z.infer<typeof movementFormSchema>;

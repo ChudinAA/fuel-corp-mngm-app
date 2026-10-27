@@ -28,6 +28,7 @@ import { AddLogisticsDialog } from "./logistics-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import type { Base } from "@shared/schema";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 interface GenericLogisticsTabProps {
   type: "carrier" | "delivery_location" | "vehicle" | "trailer" | "driver";
@@ -126,7 +127,7 @@ export function GenericLogisticsTab({
             <TableHead>Перевозчик</TableHead>
             <TableHead>Гос. номер</TableHead>
             <TableHead>Модель / тип</TableHead>
-            <TableHead className="text-right">Вмест., кг</TableHead>
+            <TableHead className="text-right">Вмест., т</TableHead>
             <TableHead className="w-[64px]" />
           </>
         );
@@ -135,7 +136,7 @@ export function GenericLogisticsTab({
           <>
             <TableHead>Перевозчик</TableHead>
             <TableHead>Гос. номер</TableHead>
-            <TableHead className="text-right">Вмест., кг</TableHead>
+            <TableHead className="text-right">Вмест., т</TableHead>
             <TableHead className="w-[64px]" />
           </>
         );
@@ -225,8 +226,8 @@ export function GenericLogisticsTab({
             <TableCell className="font-medium">{item.regNumber}</TableCell>
             <TableCell className="text-sm text-muted-foreground">{item.model || "—"}</TableCell>
             <TableCell className="text-right tabular-nums text-sm">
-              {item.capacityKg
-                ? parseFloat(item.capacityKg).toLocaleString("ru")
+              {item.capacityKg !== null && item.capacityKg !== undefined
+                ? formatTonnes(kilogramsToTonnes(Number.parseFloat(item.capacityKg)))
                 : <span className="text-muted-foreground">—</span>}
             </TableCell>
             {actionCell}
@@ -243,8 +244,8 @@ export function GenericLogisticsTab({
             </TableCell>
             <TableCell className="font-medium">{item.regNumber}</TableCell>
             <TableCell className="text-right tabular-nums text-sm">
-              {item.capacityKg
-                ? parseFloat(item.capacityKg).toLocaleString("ru")
+              {item.capacityKg !== null && item.capacityKg !== undefined
+                ? formatTonnes(kilogramsToTonnes(Number.parseFloat(item.capacityKg)))
                 : <span className="text-muted-foreground">—</span>}
             </TableCell>
             {actionCell}

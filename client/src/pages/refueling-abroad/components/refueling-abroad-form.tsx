@@ -55,6 +55,29 @@ import {
 } from "./deal-chain";
 import { computeBankCommission } from "./deal-chain/types";
 import { formatCurrency, formatNumber, formatPrice } from "../utils";
+import { formatPricePerTonne, formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { calculateRefuelingPricePerTonne } from "../unit-calculations";
+
+function formatRefuelingPriceOption(
+  sourcePrice: string | number,
+  inputMode: "liters" | "tonnes",
+  density: string,
+): string {
+  const price = Number.parseFloat(String(sourcePrice));
+  const pricePerTonne = calculateRefuelingPricePerTonne(
+    price,
+    inputMode,
+    density,
+  );
+  if (pricePerTonne === null) {
+    return "Цена за тонну недоступна — проверьте плотность";
+  }
+
+  const perTonne = `${formatPricePerTonne(pricePerTonne)} $/т`;
+  return inputMode === "liters"
+    ? `${perTonne} (${formatPrice(price)} $/л)`
+    : perTonne;
+}
 import { PRODUCT_TYPES_ABROAD } from "../constants";
 import type {
   Supplier,
@@ -219,12 +242,19 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         buyerId: editData.buyerId || "",
         basisId: editData.basisId || "",
         intermediaries: [],
-        inputMode:
-          (editData.inputMode as "liters" | "kg") ||
-          (editData.quantityLiters ? "liters" : "kg"),
+        inputMode: (
+          editData.inputMode === "liters" ||
+          Number.parseFloat(editData.quantityLiters || "0") > 0
+            ? "liters"
+            : "tonnes"
+        ) as "liters" | "tonnes",
         quantityLiters: editData.quantityLiters?.toString() || "",
         density: editData.density?.toString() || "0.8",
-        quantityKg: editData.quantityKg?.toString() || "",
+        quantityTonnes: editData.quantityKg
+          ? kilogramsToTonnes(
+              Number.parseFloat(editData.quantityKg.toString()),
+            ).toString()
+          : "",
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
         purchasePriceUsd: editData.purchasePriceUsd || "",
@@ -349,11 +379,17 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       basisId: editData?.basisId || "",
       intermediaries: [],
       inputMode:
-        (editData?.inputMode as "liters" | "kg") ||
-        (editData?.quantityLiters ? "liters" : "kg"),
+        editData?.inputMode === "liters" ||
+        Number.parseFloat(editData?.quantityLiters || "0") > 0
+          ? "liters"
+          : "tonnes",
       quantityLiters: editData?.quantityLiters?.toString() || "",
       density: editData?.density?.toString() || "0.8",
-      quantityKg: editData?.quantityKg?.toString() || "",
+      quantityTonnes: editData?.quantityKg
+        ? kilogramsToTonnes(
+            Number.parseFloat(editData.quantityKg.toString()),
+          ).toString()
+        : "",
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
       purchasePriceUsd: editData?.purchasePriceUsd || "",
@@ -533,7 +569,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     inputMode: watchedValues.inputMode,
     quantityLiters: watchedValues.quantityLiters || "",
     density: watchedValues.density || "0.8",
-    quantityKg: watchedValues.quantityKg || "",
+    quantityTonnes: watchedValues.quantityTonnes || "",
     purchaseExchangeRate,
     saleExchangeRate,
     purchasePrices,
@@ -542,9 +578,20 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     selectedSalePriceId,
     productType: watchedValues.productType || "",
     chainItems,
-    initialQuantityKg:
+    initialQuantityForContract:
       isEditing && !editData.isDraft
-        ? parseFloat(editData?.quantityKg || "0")
+        ? editData?.inputMode === "liters" ||
+          Number.parseFloat(editData?.quantityLiters || "0") > 0
+          ? Number.parseFloat(editData?.quantityLiters || "0")
+          : Number.parseFloat(editData?.quantityKg || "0")
+        : 0,
+    initialPurchaseAmountUsd:
+      isEditing && !editData.isDraft
+        ? Number.parseFloat(editData?.purchaseAmountUsd || "0")
+        : 0,
+    initialSaleAmountUsd:
+      isEditing && !editData.isDraft
+        ? Number.parseFloat(editData?.saleAmountUsd || "0")
         : 0,
   });
 
@@ -683,7 +730,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         bankCommissionRub: calculations.totalBankCommissionRub,
         notes: data.notes || null,
         isApproxVolume: data.isApproxVolume || false,
-        inputMode: data.inputMode,
+        inputMode: data.inputMode === "liters" ? "liters" : "kg",
         isDraft: data.isDraft,
       };
 
@@ -1128,8 +1175,8 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                         className="flex gap-4"
                       >
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="kg" id="mode-kg" />
-                          <Label htmlFor="mode-kg">Ввод в кг</Label>
+                          <RadioGroupItem value="tonnes" id="mode-tonnes" />
+                          <Label htmlFor="mode-tonnes">Ввод в тоннах</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="liters" id="mode-liters" />
@@ -1144,21 +1191,21 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
               <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="quantityKg"
+                  name="quantityTonnes"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Масса (кг)
+                        Масса (т)
                       </FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           min="0"
-                          step="0.01"
+                          step="0.00001"
                           disabled={watchedValues.inputMode === "liters"}
                           {...field}
                           value={field.value || ""}
-                          data-testid="input-quantity-kg"
+                          data-testid="input-quantity-tonnes"
                         />
                       </FormControl>
                     </FormItem>
@@ -1187,12 +1234,12 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                   )}
                 />
 
-                {/* <div>
-                  <Label className="text-muted-foreground">Итого (кг)</Label>
+                <div>
+                  <Label className="text-muted-foreground">Итого (т)</Label>
                   <div className="h-9 px-3 flex items-center bg-muted rounded-md text-sm font-medium">
-                    {formatNumber(calculations.finalKg)}
+                    {formatTonnes(calculations.finalTonnes)}
                   </div>
-                </div> */}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1203,9 +1250,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
           onChange={setChainItems}
           purchaseAmountUsd={calculations.purchaseAmountUsd ?? 0}
           saleAmountUsd={calculations.saleAmountUsd ?? 0}
-          quantityKg={calculations.finalKg}
-          purchasePrice={calculations.purchasePrice ?? 0}
-          salePrice={calculations.salePrice ?? 0}
+          quantityTonnes={calculations.finalTonnes}
+          purchasePrice={calculations.purchasePricePerTonne ?? 0}
+          salePrice={calculations.salePricePerTonne ?? 0}
           exchangeRate={saleExchangeRate}
           currencies={currencies}
           buyerName={selectedBuyer?.name}
@@ -1287,7 +1334,11 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                                         key={`${price.id}-${idx}`}
                                         value={`${price.id}-${idx}`}
                                       >
-                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}
+                                        {formatRefuelingPriceOption(
+                                          priceVal,
+                                          watchedValues.inputMode,
+                                          watchedValues.density || "0.8",
+                                        )}
                                       </SelectItem>
                                     );
                                   } catch {
@@ -1391,7 +1442,11 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                                         key={`${price.id}-${idx}`}
                                         value={`${price.id}-${idx}`}
                                       >
-                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}
+                                        {formatRefuelingPriceOption(
+                                          priceVal,
+                                          watchedValues.inputMode,
+                                          watchedValues.density || "0.8",
+                                        )}
                                       </SelectItem>
                                     );
                                   } catch {

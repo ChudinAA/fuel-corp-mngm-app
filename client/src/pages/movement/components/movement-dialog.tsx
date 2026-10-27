@@ -28,7 +28,12 @@ import {
 import { Plus, Loader2 } from "lucide-react";
 import { movementFormSchema, type MovementFormData } from "../schemas";
 import type { MovementDialogProps } from "../types";
-import { VolumeInputSection } from "../../opt/components/opt-form-sections";
+import {
+  movementStoredKgToTonnes,
+  movementTonnesRateToLegacyKgRate,
+  type MovementInputMode,
+} from "../unit-calculations";
+import { TonneVolumeSection } from "@/pages/shared/components/tonne-volume-section";
 import { MovementFormHeader } from "./movement-form-header";
 import { MovementSourceSection } from "./movement-source-section";
 import { MovementDestinationSection } from "./movement-destination-section";
@@ -68,7 +73,7 @@ export function MovementDialog({
 }: MovementDialogProps) {
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
-  const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
+  const [inputMode, setInputMode] = useState<MovementInputMode>("tonnes");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
   const isEditing = !!editMovement && !isCopy;
@@ -91,10 +96,10 @@ export function MovementDialog({
       basisId: "",
       fromWarehouseId: "",
       toWarehouseId: "",
-      inputMode: "kg",
+      inputMode: "tonnes",
       quantityLiters: "",
       density: "",
-      quantityKg: "",
+      quantityTonnes: "",
       purchasePrice: "",
       selectedPurchasePriceId: "",
       purchasePriceId: "",
@@ -104,25 +109,26 @@ export function MovementDialog({
     },
   });
 
-  // Состояние для отслеживания начального количества КГ при редактировании
-  const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
+  const [initialQuantityTonnes, setInitialQuantityTonnes] = useState<number>(0);
 
   // Обновляем форму при изменении editMovement или открытии диалога
   useEffect(() => {
     if (editMovement) {
-      // При редактировании внутреннего перемещения вычисляем начальное количество КГ
+      // При редактировании внутреннего перемещения учитываем исходную массу.
       if (
         !isCopy &&
         editMovement.movementType === MOVEMENT_TYPE.INTERNAL &&
         editMovement.fromWarehouseId
       ) {
-        setInitialQuantityKg(parseFloat(editMovement.quantityKg || "0"));
+        setInitialQuantityTonnes(
+          movementStoredKgToTonnes(editMovement.quantityKg) ?? 0,
+        );
       } else {
-        setInitialQuantityKg(0);
+        setInitialQuantityTonnes(0);
       }
 
       // Сохранение начальных значений для проверки isDirty
-      const resetValues = {
+      const resetValues: MovementFormData = {
         movementDate: new Date(editMovement.movementDate),
         movementType: editMovement.movementType,
         productType: editMovement.productType,
@@ -132,17 +138,21 @@ export function MovementDialog({
         basisId: editMovement.basisId || "",
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId,
-        inputMode:
-          (editMovement.inputMode as "liters" | "kg") ||
-          (editMovement.quantityLiters ? "liters" : "kg"),
+        inputMode: editMovement.inputMode
+          ? editMovement.inputMode === "liters"
+            ? "liters"
+            : "tonnes"
+          : Number.parseFloat(editMovement.quantityLiters || "0") > 0
+            ? "liters"
+            : "tonnes",
         quantityLiters: editMovement.quantityLiters
           ? String(editMovement.quantityLiters)
           : undefined,
         density: editMovement.density
           ? String(editMovement.density)
           : undefined,
-        quantityKg: editMovement.quantityKg
-          ? String(editMovement.quantityKg)
+        quantityTonnes: editMovement.quantityKg
+          ? String(movementStoredKgToTonnes(editMovement.quantityKg) ?? "")
           : undefined,
         purchasePrice: editMovement.purchasePrice
           ? String(editMovement.purchasePrice)
@@ -166,14 +176,11 @@ export function MovementDialog({
           : "",
       );
 
-      if (editMovement.inputMode) {
-        setInputMode(editMovement.inputMode as "liters" | "kg");
-      } else if (editMovement.quantityLiters) {
-        setInputMode("liters");
-      }
-
-      setInitialQuantityKg(
-        isEditing ? parseFloat(editMovement.quantityKg || "0") : 0,
+      setInputMode(resetValues.inputMode);
+      setInitialQuantityTonnes(
+        isEditing
+          ? movementStoredKgToTonnes(editMovement.quantityKg) ?? 0
+          : 0,
       );
     } else {
       form.reset({
@@ -186,10 +193,10 @@ export function MovementDialog({
         basisId: "",
         fromWarehouseId: "",
         toWarehouseId: "",
-        inputMode: "kg",
+        inputMode: "tonnes",
         quantityLiters: undefined,
         density: undefined,
-        quantityKg: undefined,
+        quantityTonnes: undefined,
         carrierId: "",
         notes: "",
         selectedPurchasePriceId: "",
@@ -197,7 +204,7 @@ export function MovementDialog({
         purchasePriceIndex: 0,
       });
       setSelectedPurchasePriceId("");
-      setInitialQuantityKg(0);
+      setInitialQuantityTonnes(0);
     }
   }, [editMovement, form, warehouses]);
 
@@ -214,14 +221,17 @@ export function MovementDialog({
   const watchMovementDate = form.watch("movementDate");
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
-  const watchKg = form.watch("quantityKg");
+  const watchTonnes = form.watch("quantityTonnes");
 
   // Use custom hooks for calculations and logic
   const {
     calculatedKg,
+    calculatedTonnes,
+    tonnesNum,
     kgNum,
     availablePrices,
     purchasePrice,
+    purchasePricePerKg,
     purchasePriceId,
     purchasePriceIndex,
     purchaseAmount,
@@ -233,6 +243,7 @@ export function MovementDialog({
     totalCost,
     rawTotalCost,
     costPerKg,
+    costPerTonne,
     supplierContractVolumeStatus,
     vatAdjustment,
   } = useMovementCalculations({
@@ -248,14 +259,14 @@ export function MovementDialog({
     watchMovementDate: watchMovementDate || new Date(),
     watchLiters: watchLiters || "",
     watchDensity: watchDensity || "",
-    watchKg: watchKg || "",
+    watchTonnes: watchTonnes || "",
     inputMode,
     warehouses,
     suppliers,
     deliveryCosts,
     selectedPurchasePriceId,
     setSelectedPurchasePriceId,
-    initialQuantityKg,
+    initialQuantityTonnes,
     initialPurchaseAmount: editMovement && !isCopy
       ? parseFloat(editMovement.purchasePrice || "0") * parseFloat(editMovement.quantityKg || "0")
       : 0,
@@ -277,10 +288,10 @@ export function MovementDialog({
     watchMovementType: watchMovementType || MOVEMENT_TYPE.SUPPLY,
     watchProductType: watchProductType || PRODUCT_TYPE.KEROSENE,
     watchFromWarehouseId: watchFromWarehouseId || "",
-    kgNum,
     warehouses,
     isEditing,
-    initialQuantityKg,
+    quantityTonnes: tonnesNum,
+    initialQuantityTonnes,
     watchMovementDate: watchMovementDate || new Date(),
   });
 
@@ -304,8 +315,8 @@ export function MovementDialog({
     watchProductType: watchProductType || PRODUCT_TYPE.KEROSENE,
     watchFromWarehouseId: watchFromWarehouseId || "",
     watchCarrierId: watchCarrierId || "",
-    calculatedKg,
-    kgNum,
+    calculatedTonnes,
+    tonnesNum,
     purchasePrice,
     warehouses,
     supplierContractVolumeStatus,
@@ -363,11 +374,13 @@ export function MovementDialog({
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculatedKg,
         inputMode: data.inputMode,
-        purchasePrice: purchasePrice,
+        purchasePrice: purchasePricePerKg,
         purchasePriceId: extractedPriceId || null,
         purchasePriceIndex: extractedPriceIndex ?? 0,
         deliveryPrice:
-          deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
+          deliveryCost > 0 && tonnesNum > 0
+            ? movementTonnesRateToLegacyKgRate(deliveryCost / tonnesNum)
+            : null,
         deliveryCost: deliveryCost,
         storageCost: storageCost,
         warehouseServicesCost: warehouseServicesCost,
@@ -504,10 +517,13 @@ export function MovementDialog({
                 sameBasis={sameBasis}
               />
 
-              <VolumeInputSection
+              <TonneVolumeSection
                 form={form as any}
-                setInputMode={setInputMode}
-                calculatedKg={calculatedKg?.toString() || "0"}
+                setInputMode={(mode) => {
+                  setInputMode(mode);
+                  setSelectedPurchasePriceId("");
+                  form.setValue("selectedPurchasePriceId", "");
+                }}
               />
 
               <MovementCostSummary
@@ -519,7 +535,9 @@ export function MovementDialog({
                 warehouseServicesCost={warehouseServicesCost}
                 destinationWarehouseServices={destinationWarehouseServices}
                 deliveryCost={deliveryCost}
-                costPerKg={costPerKg}
+                costPerTonne={costPerTonne}
+                inputMode={inputMode}
+                density={watchDensity || ""}
                 watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
                 selectedPurchasePriceId={selectedPurchasePriceId}
                 setSelectedPurchasePriceId={setSelectedPurchasePriceId}

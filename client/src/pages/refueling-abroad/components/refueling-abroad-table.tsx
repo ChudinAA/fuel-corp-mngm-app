@@ -21,6 +21,11 @@ import {
   Plus,
 } from "lucide-react";
 import { formatCurrency, formatNumber } from "../utils";
+import { formatPricePerTonne, formatTonnes } from "@shared/units";
+import {
+  calculateRefuelingPricePerTonne,
+  calculateStoredRefuelingMassTonnes,
+} from "../unit-calculations";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useErrorModal } from "@/hooks/use-error-modal";
@@ -344,16 +349,16 @@ export function RefuelingAbroadTable({
                 </div>
               </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[100px]">
-                Объем (Л / КГ)
+                Объём / масса (л, т)
               </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">
-                Закупка (Цена / Сумма)
+                Закупка (USD/т / сумма)
               </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[120px]">
                 Курс закупки (₽) / Дата
               </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">
-                Продажа (Цена / Сумма)
+                Продажа (USD/т / сумма)
               </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[120px]">
                 Курс продажи (₽) / Дата
@@ -538,22 +543,52 @@ export function RefuelingAbroadTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-[12px] p-2 text-right">
-                    <div className="flex flex-col font-mono">
-                      {item.quantityLiters && (
-                        <span className="text-muted-foreground">
-                        {formatNumber(item.quantityLiters)} л
-                      </span>
-                      )}
-                      {!item.quantityLiters && (
-                        <span className="font-semibold">
-                        {formatNumber(item.quantityKg)} кг
-                      </span>
-                      )}
-                    </div>
+                    {(() => {
+                      const hasLiterQuantity =
+                        Number.parseFloat(item.quantityLiters || "0") > 0;
+                      const isLiterDeal =
+                        item.inputMode === "liters" || hasLiterQuantity;
+                      const massTonnes = calculateStoredRefuelingMassTonnes(
+                        item.inputMode,
+                        item.quantityKg,
+                        item.quantityLiters,
+                        item.density,
+                      );
+                      return (
+                        <div className="flex flex-col font-mono">
+                          {hasLiterQuantity && (
+                            <span className="text-muted-foreground">
+                              {formatNumber(item.quantityLiters)} л
+                            </span>
+                          )}
+                          <span className="font-semibold">
+                            {massTonnes === null
+                              ? "—"
+                              : `${formatTonnes(massTonnes)} т`}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="p-2 text-right">
                     <div className="flex flex-col font-mono">
-                      <span>${formatNumber(item.purchasePriceUsd)}</span>
+                      {(() => {
+                        const isLiterDeal =
+                          item.inputMode === "liters" ||
+                          Number.parseFloat(item.quantityLiters || "0") > 0;
+                        const pricePerTonne = calculateRefuelingPricePerTonne(
+                          item.purchasePriceUsd,
+                          isLiterDeal ? "liters" : "tonnes",
+                          item.density,
+                        );
+                        return (
+                          <span>
+                            {pricePerTonne === null
+                              ? "—"
+                              : `${formatPricePerTonne(pricePerTonne)} $/т`}
+                          </span>
+                        );
+                      })()}
                       <span className="font-medium text-orange-600">
                         {formatCurrency(item.purchaseAmountUsd, "USD")}
                       </span>
@@ -577,7 +612,23 @@ export function RefuelingAbroadTable({
                   </TableCell>
                   <TableCell className="p-2 text-right">
                     <div className="flex flex-col font-mono">
-                      <span>${formatNumber(item.salePriceUsd)}</span>
+                      {(() => {
+                        const isLiterDeal =
+                          item.inputMode === "liters" ||
+                          Number.parseFloat(item.quantityLiters || "0") > 0;
+                        const pricePerTonne = calculateRefuelingPricePerTonne(
+                          item.salePriceUsd,
+                          isLiterDeal ? "liters" : "tonnes",
+                          item.density,
+                        );
+                        return (
+                          <span>
+                            {pricePerTonne === null
+                              ? "—"
+                              : `${formatPricePerTonne(pricePerTonne)} $/т`}
+                          </span>
+                        );
+                      })()}
                       <span className="font-medium text-orange-600">
                         {formatCurrency(item.saleAmountUsd, "USD")}
                       </span>

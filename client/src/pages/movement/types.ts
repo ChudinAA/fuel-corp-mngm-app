@@ -1,7 +1,7 @@
 
 import type { Movement, Warehouse } from "@shared/schema";
 
-export type InputMode = "liters" | "kg";
+export type InputMode = "liters" | "tonnes";
 
 export interface MovementDialogProps {
   warehouses: Warehouse[];
@@ -28,10 +28,12 @@ export interface MovementTableProps {
 
 export interface CalculatedValues {
   calculatedKg: string | null;
-  purchasePrice: number;
+  calculatedTonnes: number | null;
+  purchasePricePerTonne: number;
   deliveryCost: number;
   totalCost: number;
   costPerKg: number;
+  costPerTonne: number;
 }
 
 export interface AllSupplier {

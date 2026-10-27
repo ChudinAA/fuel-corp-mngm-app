@@ -1,19 +1,26 @@
 import { useMemo } from "react";
 import type { Supplier, Warehouse, Price } from "@shared/schema";
 import { EQUIPMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
-import { useQuantityCalculation } from "../../shared/hooks/use-quantity-calculation";
 import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 import { useEquipmentBalance } from "@/hooks/use-equipment-balance";
-import { formatNumber, normalizeCurrencyForDisplay } from "../utils";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { normalizeCurrencyForDisplay } from "../utils";
+import {
+  calculateRefuelingAmount,
+  calculateRefuelingMassTonnes,
+  calculateRefuelingPricePerTonne,
+  refuelingTonnesToLegacyKg,
+  type RefuelingPriceUnit,
+} from "../unit-calculations";
 
 interface UseRefuelingCalculationsProps {
-  inputMode: "liters" | "kg";
+  inputMode: "liters" | "tonnes";
   quantityLiters: string;
   density: string;
-  quantityKg: string;
+  quantityTonnes: string;
   isWarehouseSupplier: boolean;
   supplierWarehouse: Warehouse | undefined;
   selectedBasis: string;
@@ -26,6 +33,9 @@ interface UseRefuelingCalculationsProps {
   productType: string;
   isEditing: boolean;
   initialQuantityKg?: number;
+  initialQuantityLiters?: number;
+  initialPurchaseAmount?: number;
+  initialSaleAmount?: number;
   initialWarehouseBalance: number;
   refuelingDate?: Date;
   isPriceRecharge?: boolean;
@@ -44,7 +54,7 @@ export function useRefuelingCalculations({
   inputMode,
   quantityLiters,
   density,
-  quantityKg,
+  quantityTonnes,
   isWarehouseSupplier,
   supplierWarehouse,
   selectedBasis,
@@ -57,6 +67,9 @@ export function useRefuelingCalculations({
   productType,
   isEditing,
   initialQuantityKg = 0,
+  initialQuantityLiters = 0,
+  initialPurchaseAmount = 0,
+  initialSaleAmount = 0,
   initialWarehouseBalance,
   refuelingDate,
   isPriceRecharge = false,
@@ -68,12 +81,20 @@ export function useRefuelingCalculations({
   isAgentFeeEnabled = true,
   isOtherServiceEnabled = true,
 }: UseRefuelingCalculationsProps) {
-  const { calculatedKg, finalKg } = useQuantityCalculation({
-    inputMode,
-    quantityLiters,
-    density,
-    quantityKg,
-  });
+  const quantityInput = inputMode === "liters" ? quantityLiters : quantityTonnes;
+  const finalTonnes =
+    calculateRefuelingMassTonnes(inputMode, quantityInput, density) ?? 0;
+  const finalKg = refuelingTonnesToLegacyKg(finalTonnes);
+  const calculatedKg = finalTonnes > 0 ? String(finalKg) : "";
+  const initialQuantityTonnes = kilogramsToTonnes(
+    Math.max(0, Number.isFinite(initialQuantityKg) ? initialQuantityKg : 0),
+  );
+  const currentContractQuantity =
+    inputMode === "liters"
+      ? Number.parseFloat(quantityLiters || "0") || 0
+      : finalKg;
+  const initialContractQuantity =
+    inputMode === "liters" ? initialQuantityLiters : initialQuantityKg;
 
   const isLikMode = equipmentType === EQUIPMENT_TYPE.LIK;
 
@@ -99,17 +120,23 @@ export function useRefuelingCalculations({
   const warehouseBalanceAtDate = useMemo(() => {
     if (isHistoricalLoading || isCurrentLoading) return null;
     
-    const hist = warehouseData && typeof warehouseData === 'object' && 'balance' in warehouseData
+    const histKg = warehouseData && typeof warehouseData === 'object' && 'balance' in warehouseData
       ? parseFloat(warehouseData.balance)
       : parseFloat(productType === PRODUCT_TYPE.PVKJ ? supplierWarehouse?.pvkjBalance || "0" : supplierWarehouse?.currentBalance || "0");
       
-    const curr = currentWarehouseData && typeof currentWarehouseData === 'object' && 'balance' in currentWarehouseData
+    const currKg = currentWarehouseData && typeof currentWarehouseData === 'object' && 'balance' in currentWarehouseData
       ? parseFloat(currentWarehouseData.balance)
       : parseFloat(productType === PRODUCT_TYPE.PVKJ ? supplierWarehouse?.pvkjBalance || "0" : supplierWarehouse?.currentBalance || "0");
 
-    const baseBalance = Math.min(hist, curr);
-    return isEditing ? baseBalance + initialQuantityKg : baseBalance;
-  }, [warehouseData, currentWarehouseData, isHistoricalLoading, isCurrentLoading, isEditing, initialQuantityKg, supplierWarehouse, productType]);
+    const safeHistKg = Number.isFinite(histKg) ? Math.max(0, histKg) : 0;
+    const safeCurrKg = Number.isFinite(currKg) ? Math.max(0, currKg) : 0;
+    const baseBalanceTonnes = kilogramsToTonnes(
+      Math.min(safeHistKg, safeCurrKg),
+    );
+    return isEditing
+      ? baseBalanceTonnes + initialQuantityTonnes
+      : baseBalanceTonnes;
+  }, [warehouseData, currentWarehouseData, isHistoricalLoading, isCurrentLoading, isEditing, initialQuantityTonnes, supplierWarehouse, productType]);
 
   const warehousePriceAtDate = useMemo(() => {
     if (isHistoricalLoading) return null;
@@ -160,6 +187,10 @@ export function useRefuelingCalculations({
     return extractedPurchasePrice;
   }, [isLikMode, isWarehouseSupplier, productType, hasBasisPvkjPrice, equipmentPriceAtDate, warehousePriceAtDate, extractedPurchasePrice]);
 
+  const isRechargeActive =
+    (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) ||
+    (isPvkjRecharge && productType === PRODUCT_TYPE.PVKJ);
+
   const salePrice = useMemo(() => {
     if (setSalePriceZero && productType === PRODUCT_TYPE.SERVICE) {
       return 0;
@@ -173,15 +204,45 @@ export function useRefuelingCalculations({
     return extractedSalePrice;
   }, [setSalePriceZero, isPriceRecharge, isPvkjRecharge, productType, purchasePrice, extractedSalePrice]);
 
-  const purchaseAmount =
-    purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
-  const baseSaleAmount =
-    salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
-  const isRechargeActive =
-    (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) ||
-    (isPvkjRecharge && productType === PRODUCT_TYPE.PVKJ);
+  const purchasePriceUnit: RefuelingPriceUnit =
+    (isLikMode && productType !== PRODUCT_TYPE.SERVICE && !hasBasisPvkjPrice) ||
+    (isWarehouseSupplier &&
+      productType !== PRODUCT_TYPE.SERVICE &&
+      !hasBasisPvkjPrice) ||
+    productType === PRODUCT_TYPE.SERVICE ||
+    hasBasisPvkjPrice
+      ? "kg"
+      : inputMode === "liters"
+        ? "liter"
+        : "kg";
+  const salePriceUnit: RefuelingPriceUnit = isRechargeActive
+    ? purchasePriceUnit
+    : inputMode === "liters"
+      ? "liter"
+      : "kg";
 
-  // agentFeeRate — ставка ₽/кг из настроек базиса (для отображения и сохранения в сделку)
+  const purchasePricePerTonne = calculateRefuelingPricePerTonne(
+    purchasePrice,
+    inputMode,
+    density,
+    purchasePriceUnit,
+  );
+  const salePricePerTonne = calculateRefuelingPricePerTonne(
+    salePrice,
+    inputMode,
+    density,
+    salePriceUnit,
+  );
+  const purchaseAmount = calculateRefuelingAmount(
+    purchasePricePerTonne,
+    finalTonnes,
+  );
+  const baseSaleAmount = calculateRefuelingAmount(
+    salePricePerTonne,
+    finalTonnes,
+  );
+
+  // Legacy agentFeeRate is stored as ₽/кг; calculations and UI use ₽/т.
   const agentFeeRate = useMemo(() => {
     if (selectedBasisId && selectedSupplier?.basisPrices) {
       const basisPrice = selectedSupplier.basisPrices.find(
@@ -192,10 +253,18 @@ export function useRefuelingCalculations({
     return 0;
   }, [selectedSupplier, selectedBasisId]);
 
-  // agentFee — итоговая сумма агентского вознаграждения (ставка × кг)
+  const agentFeeRatePerTonne = calculateRefuelingPricePerTonne(
+    agentFeeRate,
+    "tonnes",
+    density,
+    "kg",
+  ) ?? 0;
+
   const agentFee = useMemo(() => {
-    return agentFeeRate > 0 && finalKg > 0 ? agentFeeRate * finalKg : 0;
-  }, [agentFeeRate, finalKg]);
+    return agentFeeRatePerTonne > 0 && finalTonnes > 0
+      ? agentFeeRatePerTonne * finalTonnes
+      : 0;
+  }, [agentFeeRatePerTonne, finalTonnes]);
 
   // Флаг: настроена ли "Прочая услуга" для выбранного базиса (для немедленного отображения)
   const hasOtherService = useMemo(() => {
@@ -228,14 +297,14 @@ export function useRefuelingCalculations({
     if (!otherServiceBasisData) return 0;
     const val = parseFloat(otherServiceBasisData.otherServiceValue!);
     if (isNaN(val) || val <= 0) return 0;
-    if (otherServiceBasisData.otherServiceType === "royalty_per_ton") return finalKg > 0 ? val * (finalKg / 1000) : 0;
+    if (otherServiceBasisData.otherServiceType === "royalty_per_ton") return finalTonnes > 0 ? val * finalTonnes : 0;
     if (otherServiceBasisData.otherServiceType === "percent_of_amount") return (baseSaleAmount !== null && baseSaleAmount > 0) ? baseSaleAmount * val / 100 : 0;
     if (otherServiceBasisData.otherServiceType === "fixed") {
       const qty = otherServiceQuantity ? parseFloat(otherServiceQuantity) : 1;
       return val * (isNaN(qty) || qty <= 0 ? 1 : qty);
     }
     return 0;
-  }, [otherServiceBasisData, otherServiceQuantity, finalKg, baseSaleAmount]);
+  }, [otherServiceBasisData, otherServiceQuantity, finalTonnes, baseSaleAmount]);
 
   // Эффективные суммы с учётом чекбоксов включения
   const effectiveAgentFee = isAgentFeeEnabled ? agentFee : 0;
@@ -269,23 +338,28 @@ export function useRefuelingCalculations({
     }
 
     if (equipmentType === EQUIPMENT_TYPE.LIK) {
+      const likBalanceTonnes = kilogramsToTonnes(
+        Math.max(0, Number.isFinite(equipmentBalance) ? equipmentBalance : 0),
+      );
+      const availableTonnes = isEditing
+        ? likBalanceTonnes + initialQuantityTonnes
+        : likBalanceTonnes;
       if (!selectedEquipmentId) {
-        if (finalKg <= 0) {
+        if (finalTonnes <= 0) {
           return { status: "ok", message: "Выберите ТЗК" };
         }
         return { status: "error", message: "Выберите ТЗК" };
       }
-      const likBalance = isEditing ? equipmentBalance + initialQuantityKg : equipmentBalance;
-      if (finalKg <= 0) {
-        return { status: "ok", message: `${formatNumber(likBalance)} кг` };
+      if (finalTonnes <= 0) {
+        return { status: "ok", message: `${formatTonnes(availableTonnes)} т` };
       }
-      const likRemaining = likBalance - finalKg;
+      const likRemaining = availableTonnes - finalTonnes;
       if (likRemaining >= 0) {
-        return { status: "ok", message: `ОК: ${likRemaining.toFixed(2)} кг` };
+        return { status: "ok", message: `ОК: ${formatTonnes(likRemaining)} т` };
       } else {
         return {
           status: "error",
-          message: `Недостаточно на ТЗК! Доступно: ${likBalance.toFixed(2)} кг`,
+          message: `Недостаточно на ТЗК! Доступно: ${formatTonnes(availableTonnes)} т`,
         };
       }
     }
@@ -304,18 +378,18 @@ export function useRefuelingCalculations({
 
     const availableBalance = warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
 
-    if (finalKg <= 0) {
-      return { status: "ok", message: `${formatNumber(availableBalance)} кг` };
+    if (finalTonnes <= 0) {
+      return { status: "ok", message: `${formatTonnes(availableBalance)} т` };
     }
     
-    const remaining = availableBalance - finalKg;
+    const remaining = availableBalance - finalTonnes;
 
     if (remaining >= 0) {
-      return { status: "ok", message: `ОК: ${remaining.toFixed(2)} кг` };
+      return { status: "ok", message: `ОК: ${formatTonnes(remaining)} т` };
     } else {
       return {
         status: "error",
-        message: `Недостаточно! Доступно: ${availableBalance.toFixed(2)} кг`,
+        message: `Недостаточно! Доступно: ${formatTonnes(availableBalance)} т`,
       };
     }
   };
@@ -325,33 +399,41 @@ export function useRefuelingCalculations({
   // Логика проверки объема по договору
   const contractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
-    currentQuantityKg: finalKg,
-    initialQuantityKg: initialQuantityKg,
+    currentQuantityKg: currentContractQuantity,
+    initialQuantityKg: initialContractQuantity,
     mode: "refueling",
     currentDealAmount: saleAmount ?? 0,
-    initialDealAmount: (salePrice ?? 0) * initialQuantityKg,
+    initialDealAmount: initialSaleAmount,
+    displayUnit: inputMode === "liters" ? "liters" : "tonnes",
   });
 
   // Логика проверки объема по договору поставщика
   const supplierContractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
-    currentQuantityKg: finalKg,
-    initialQuantityKg: initialQuantityKg,
+    currentQuantityKg: currentContractQuantity,
+    initialQuantityKg: initialContractQuantity,
     mode: "refueling",
     currentDealAmount: purchaseAmount ?? 0,
-    initialDealAmount: (purchasePrice ?? 0) * initialQuantityKg,
+    initialDealAmount: initialPurchaseAmount,
+    displayUnit: inputMode === "liters" ? "liters" : "tonnes",
   });
 
   return {
     calculatedKg,
     finalKg,
+    finalTonnes,
     purchasePrice,
     salePrice,
+    purchasePriceUnit,
+    salePriceUnit,
+    purchasePricePerTonne,
+    salePricePerTonne,
     purchaseAmount,
     saleAmount,
     isRechargeActive,
     agentFee,
     agentFeeRate,
+    agentFeeRatePerTonne,
     otherServiceFee,
     hasOtherService,
     otherServiceName,

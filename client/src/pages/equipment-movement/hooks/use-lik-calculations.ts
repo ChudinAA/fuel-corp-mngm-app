@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import { EQUIPMENT_MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
-import { calculateKgFromLiters } from "../../movement/utils";
+import {
+  calculateEquipmentMovementTonnes,
+  equipmentMovementLegacyPricePerKgToPerTonne,
+  equipmentMovementTonnesToLegacyKg,
+  type EquipmentMovementInputMode,
+} from "../unit-calculations";
 import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 
 interface UseLikCalculationsProps {
@@ -14,8 +19,8 @@ interface UseLikCalculationsProps {
   watchMovementDate: Date;
   watchLiters?: string;
   watchDensity?: string;
-  watchKg?: string;
-  inputMode: "liters" | "kg";
+  watchTonnes?: string;
+  inputMode: EquipmentMovementInputMode;
   warehouses: any[];
   equipments: any[];
 }
@@ -27,23 +32,25 @@ export function useLikCalculations({
   watchFromEquipmentId,
   watchLiters,
   watchDensity,
-  watchKg,
+  watchTonnes,
   inputMode,
   warehouses,
   equipments,
   watchMovementDate,
 }: UseLikCalculationsProps) {
-  const calculatedKg = useMemo(() => {
-    if (inputMode === "liters" && watchLiters && watchDensity) {
-      return calculateKgFromLiters(
-        parseFloat(watchLiters),
-        parseFloat(watchDensity),
-      );
-    }
-    return watchKg ? parseFloat(watchKg) : 0;
-  }, [inputMode, watchLiters, watchDensity, watchKg]);
-
-  const kgNum = calculatedKg || 0;
+  const calculatedTonnes = useMemo(
+    () =>
+      calculateEquipmentMovementTonnes(
+        inputMode,
+        watchTonnes,
+        watchLiters,
+        watchDensity,
+      ),
+    [inputMode, watchTonnes, watchLiters, watchDensity],
+  );
+  const tonnesNum = calculatedTonnes ?? 0;
+  const calculatedKg = equipmentMovementTonnesToLegacyKg(tonnesNum);
+  const kgNum = calculatedKg;
 
   // Live balance API gives real-time averageCost — avoids stale warehouse list props
   const isStorageToTzk = watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK;
@@ -53,7 +60,7 @@ export function useLikCalculations({
     watchProductType,
   );
 
-  const averageCost = useMemo(() => {
+  const averageCostPerKg = useMemo(() => {
     if (isStorageToTzk) {
       // Prefer live averageCost from balance API (always up-to-date)
       if (balanceData && typeof balanceData === "object" && "averageCost" in balanceData && balanceData.averageCost) {
@@ -87,12 +94,17 @@ export function useLikCalculations({
     equipments,
   ]);
 
-  const purchaseAmount = kgNum * averageCost;
+  const averageCostPerTonne =
+    equipmentMovementLegacyPricePerKgToPerTonne(averageCostPerKg) ?? 0;
+  const purchaseAmount = tonnesNum * averageCostPerTonne;
 
   return {
     calculatedKg,
+    calculatedTonnes,
+    tonnesNum,
     kgNum,
-    averageCost,
+    averageCostPerKg,
+    averageCostPerTonne,
     purchaseAmount,
   };
 }

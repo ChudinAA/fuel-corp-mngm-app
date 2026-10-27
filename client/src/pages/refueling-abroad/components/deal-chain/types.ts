@@ -49,11 +49,11 @@ export function computeIntermediaryCommission(
   incomeType: IntermediaryIncomeType,
   rateValue: number | undefined,
   saleAmountUsd: number,
-  quantityKg: number,
+  quantityTonnes: number,
 ): number {
   if (!rateValue) return 0;
   if (incomeType === "percent_sale") return (saleAmountUsd * rateValue) / 100;
-  if (incomeType === "royalty_per_ton") return (quantityKg / 1000) * rateValue;
+  if (incomeType === "royalty_per_ton") return quantityTonnes * rateValue;
   if (incomeType === "fixed") return rateValue;
   return 0;
 }

@@ -268,6 +268,22 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     currentCurrencyId: z.string().nullable().optional(),
   })
   .superRefine((data, ctx) => {
+    if (
+      !data.isDraft &&
+      data.inputMode === "liters" &&
+      (data.quantityLiters ?? 0) > 0 &&
+      (data.density === null ||
+        data.density === undefined ||
+        !Number.isFinite(data.density) ||
+        data.density <= 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Плотность должна быть положительной для пересчёта в тонны",
+        path: ["density"],
+      });
+    }
+
     if (!data.isDraft) {
       if (!data.refuelingDate) {
         ctx.addIssue({
@@ -300,7 +316,7 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
       if (data.quantityKg === undefined || data.quantityKg === null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Количество (кг) обязательно",
+          message: "Масса обязательна",
           path: ["quantityKg"],
         });
       }

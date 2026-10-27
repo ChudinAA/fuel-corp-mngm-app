@@ -48,6 +48,7 @@ import {
   Warehouse,
 } from "lucide-react";
 import type { LogisticsCarrier, Base } from "@shared/schema";
+import { kilogramsToTonnes, tonnesToKilograms } from "@shared/units";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import { AddBaseDialog } from "./bases-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -80,7 +81,7 @@ const logisticsFormSchema = z
     baseId: z.string().optional(),
     plateNumber: z.string().optional(),
     vehicleType: z.string().optional(),
-    capacityKg: z.string().optional(),
+    capacityTonnes: z.string().optional(),
     fullName: z.string().optional(),
     phone: z.string().optional(),
     licenseNumber: z.string().optional(),
@@ -159,7 +160,7 @@ export function AddLogisticsDialog({
       baseId: undefined,
       plateNumber: "",
       vehicleType: "",
-      capacityKg: "",
+      capacityTonnes: "",
       licenseNumber: "",
       licenseExpiry: "",
       storageCost: "",
@@ -194,7 +195,7 @@ export function AddLogisticsDialog({
 
     form.setValue("plateNumber", "");
     form.setValue("vehicleType", "");
-    form.setValue("capacityKg", "");
+    form.setValue("capacityTonnes", "");
     form.setValue("licenseNumber", "");
     form.setValue("licenseExpiry", "");
     form.setValue("notes", "");
@@ -236,7 +237,9 @@ export function AddLogisticsDialog({
           regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
           model: data.vehicleType,
-          capacityKg: data.capacityKg ? parseFloat(data.capacityKg) : null,
+          capacityKg: data.capacityTonnes
+            ? tonnesToKilograms(parseFloat(data.capacityTonnes))
+            : null,
           isActive: data.isActive,
         };
       } else if (data.type === "trailer") {
@@ -246,7 +249,9 @@ export function AddLogisticsDialog({
         payload = {
           regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
-          capacityKg: data.capacityKg ? parseFloat(data.capacityKg) : null,
+          capacityKg: data.capacityTonnes
+            ? tonnesToKilograms(parseFloat(data.capacityTonnes))
+            : null,
           isActive: data.isActive,
         };
       } else if (data.type === "driver") {
@@ -301,7 +306,7 @@ export function AddLogisticsDialog({
         baseId: undefined,
         plateNumber: "",
         vehicleType: "",
-        capacityKg: "",
+        capacityTonnes: "",
         licenseNumber: "",
         licenseExpiry: "",
         notes: "",
@@ -344,12 +349,16 @@ export function AddLogisticsDialog({
         formData.plateNumber = data.regNumber;
         formData.carrierId = data.carrierId || undefined;
         formData.vehicleType = data.model || "";
-        formData.capacityKg = data.capacityKg || "";
+        formData.capacityTonnes = data.capacityKg
+          ? kilogramsToTonnes(parseFloat(data.capacityKg)).toString()
+          : "";
       } else if (editItem.type === "trailer") {
         formData.name = "";
         formData.plateNumber = data.regNumber;
         formData.carrierId = data.carrierId || undefined;
-        formData.capacityKg = data.capacityKg || "";
+        formData.capacityTonnes = data.capacityKg
+          ? kilogramsToTonnes(parseFloat(data.capacityKg)).toString()
+          : "";
       } else if (editItem.type === "driver") {
         formData.name = data.fullName;
         formData.carrierId = data.carrierId || undefined;
@@ -379,7 +388,7 @@ export function AddLogisticsDialog({
         baseId: undefined,
         plateNumber: "",
         vehicleType: "",
-        capacityKg: "",
+        capacityTonnes: "",
         licenseNumber: "",
         licenseExpiry: "",
         notes: "",
@@ -670,14 +679,16 @@ export function AddLogisticsDialog({
             {(selectedType === "vehicle" || selectedType === "trailer") && (
               <FormField
                 control={form.control}
-                name="capacityKg"
+                name="capacityTonnes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Вместимость (кг)</FormLabel>
+                    <FormLabel>Вместимость (т)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="Вместимость"
+                        min="0"
+                        step="0.00001"
+                        placeholder="0.00000"
                         data-testid="input-logistics-capacity"
                         {...field}
                       />

@@ -18,6 +18,11 @@ import type { Price, Supplier } from "@shared/schema";
 import type { RefuelingFormData } from "../schemas";
 import { CalculatedField } from "../calculated-field";
 import { formatNumber, formatPrice, formatCurrency } from "../utils";
+import { formatPricePerTonne, pricePerKilogramToPerTonne } from "@shared/units";
+import {
+  formatRefuelingPriceOption,
+  type RefuelingPriceUnit,
+} from "../unit-calculations";
 import { EQUIPMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
@@ -43,13 +48,16 @@ interface RefuelingPricingSectionProps {
   setSelectedSalePriceId: (id: string) => void;
   purchasePrice: number | null;
   salePrice: number | null;
+  purchasePriceUnit: RefuelingPriceUnit;
+  salePriceUnit: RefuelingPriceUnit;
+  purchasePricePerTonne: number | null;
+  salePricePerTonne: number | null;
   purchaseAmount: number | null;
   saleAmount: number | null;
   profit: number | null;
   isRechargeActive?: boolean;
   agentFee: number;
-  /** Ставка агентского вознаграждения ₽/кг (для отображения) */
-  agentFeeRate?: number;
+  agentFeeRatePerTonne: number;
   otherServiceFee?: number;
   /** Флаг: настроена ли "Прочая услуга" (для немедленного отображения) */
   hasOtherService?: boolean;
@@ -89,12 +97,16 @@ export function RefuelingPricingSection({
   setSelectedSalePriceId,
   purchasePrice,
   salePrice,
+  purchasePriceUnit,
+  salePriceUnit,
+  purchasePricePerTonne,
+  salePricePerTonne,
   purchaseAmount,
   saleAmount,
   profit,
   isRechargeActive = false,
   agentFee,
-  agentFeeRate = 0,
+  agentFeeRatePerTonne,
   otherServiceFee = 0,
   hasOtherService = false,
   otherServiceName,
@@ -111,6 +123,8 @@ export function RefuelingPricingSection({
   onAgentFeeEnabledChange,
   onOtherServiceEnabledChange,
 }: RefuelingPricingSectionProps) {
+  const inputMode = form.watch("inputMode");
+  const density = form.watch("density");
   const { hasPermission } = useAuth();
 
   const watchSupplierId = form.watch("supplierId");
@@ -184,7 +198,9 @@ export function RefuelingPricingSection({
                   Цена, установленная поставщиком
                 </span>
                 <span className="text-sm font-medium">
-                  {formatPrice(basisPvkjPrice)} ₽/кг
+                  {formatPricePerTonne(
+                    pricePerKilogramToPerTonne(Number(basisPvkjPrice)),
+                  )} ₽/т
                 </span>
               </div>
             )}
@@ -218,7 +234,9 @@ export function RefuelingPricingSection({
                   Цена, установленная поставщиком
                 </span>
                 <span className="text-sm font-medium">
-                  {formatPrice(basisServicePrice)} ₽/кг
+                  {formatPricePerTonne(
+                    pricePerKilogramToPerTonne(Number(basisServicePrice)),
+                  )} ₽/т
                 </span>
               </div>
             )}
@@ -327,7 +345,13 @@ export function RefuelingPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatPrice(priceVal)} ₽/кг
+                                  {formatRefuelingPriceOption(
+                                    priceVal,
+                                    inputMode,
+                                    density,
+                                    "₽",
+                                    purchasePriceUnit,
+                                  )}
                                 </SelectItem>
                               );
                             } catch {
@@ -359,24 +383,32 @@ export function RefuelingPricingSection({
           productType === PRODUCT_TYPE.SERVICE ? (
           <CalculatedField
             label="Покупка"
-            value={purchasePrice !== null ? formatPrice(purchasePrice) : "—"}
-            suffix={purchasePrice !== null ? " ₽/кг" : ""}
+            value={
+              purchasePricePerTonne !== null
+                ? formatPricePerTonne(purchasePricePerTonne)
+                : "—"
+            }
+            suffix={purchasePricePerTonne !== null ? " ₽/т" : ""}
             status="ok"
           />
         ) : basisPvkjPrice &&
           productType === PRODUCT_TYPE.PVKJ ? (
           <CalculatedField
             label="Покупка"
-            value={purchasePrice !== null ? formatPrice(purchasePrice) : "—"}
-            suffix={purchasePrice !== null ? " ₽/кг" : ""}
+            value={
+              purchasePricePerTonne !== null
+                ? formatPricePerTonne(purchasePricePerTonne)
+                : "—"
+            }
+            suffix={purchasePricePerTonne !== null ? " ₽/т" : ""}
             status="ok"
           />
         ) : !isWarehouseSupplier && productType !== PRODUCT_TYPE.SERVICE ? (
-          purchasePrice !== null ? (
+          purchasePricePerTonne !== null ? (
             <CalculatedField
               label="Покупка"
-              value={formatPrice(purchasePrice)}
-              suffix=" ₽/кг"
+              value={formatPricePerTonne(purchasePricePerTonne)}
+              suffix=" ₽/т"
               status="ok"
             />
           ) : (
@@ -399,10 +431,12 @@ export function RefuelingPricingSection({
           <CalculatedField
             label="Покупка"
             value={
-              purchasePrice !== null ? formatPrice(purchasePrice) : "Нет цены!"
+              purchasePricePerTonne !== null
+                ? formatPricePerTonne(purchasePricePerTonne)
+                : "Нет цены!"
             }
-            suffix={purchasePrice !== null ? " ₽/кг" : ""}
-            status={purchasePrice !== null ? "ok" : "error"}
+            suffix={purchasePricePerTonne !== null ? " ₽/т" : ""}
+            status={purchasePricePerTonne !== null ? "ok" : "error"}
           />
         )}
 
@@ -462,7 +496,13 @@ export function RefuelingPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatPrice(priceVal)} ₽/кг
+                                  {formatRefuelingPriceOption(
+                                    priceVal,
+                                    inputMode,
+                                    density,
+                                    "₽",
+                                    salePriceUnit,
+                                  )}
                                 </SelectItem>
                               );
                             } catch {
@@ -494,8 +534,12 @@ export function RefuelingPricingSection({
             (form.watch("isPvkjRecharge") && productType === PRODUCT_TYPE.PVKJ) ? (
           <CalculatedField
             label="Продажа"
-            value={purchasePrice !== null ? formatPrice(purchasePrice) : "—"}
-            suffix={purchasePrice !== null ? " ₽/кг" : ""}
+            value={
+              salePricePerTonne !== null
+                ? formatPricePerTonne(salePricePerTonne)
+                : "—"
+            }
+            suffix={salePricePerTonne !== null ? " ₽/т" : ""}
             status="ok"
           />
         ) : (
@@ -530,7 +574,7 @@ export function RefuelingPricingSection({
       </div>
 
       {/* Агентское вознаграждение */}
-      {agentFeeRate > 0 && (
+      {agentFeeRatePerTonne > 0 && (
         <div className="rounded-md border p-3">
           <div className="flex items-center gap-3">
             <Checkbox
@@ -540,7 +584,8 @@ export function RefuelingPricingSection({
             />
             <div className="flex-1 min-w-0">
               <span className="text-sm">
-                Агентское вознаграждение: {formatPrice(agentFeeRate)} ₽/кг
+                Агентское вознаграждение:{" "}
+                {formatPricePerTonne(agentFeeRatePerTonne)} ₽/т
               </span>
               {agentFee > 0 && (
                 <span className={`ml-2 text-sm ${isAgentFeeEnabled ? "text-muted-foreground" : "text-muted-foreground line-through"}`}>

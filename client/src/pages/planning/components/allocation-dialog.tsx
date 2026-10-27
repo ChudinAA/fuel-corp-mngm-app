@@ -230,7 +230,7 @@ export function AllocationDialog({
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.001"
+                      step="0.00001"
                       {...field}
                       data-testid="input-allocation-volume"
                     />

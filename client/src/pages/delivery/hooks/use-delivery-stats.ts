@@ -1,9 +1,14 @@
 
 import type { DeliveryCost } from "@shared/schema";
+import { pricePerKilogramToPerTonne } from "@shared/units";
 
 export function useDeliveryStats(deliveryCosts: DeliveryCost[] | undefined) {
-  const averageCostPerKg = deliveryCosts && deliveryCosts.length > 0
-    ? deliveryCosts.reduce((sum, cost) => sum + parseFloat(cost.costPerKg.toString()), 0) / deliveryCosts.length
+  const averageCostPerTonne = deliveryCosts && deliveryCosts.length > 0
+    ? deliveryCosts.reduce(
+        (sum, cost) =>
+          sum + pricePerKilogramToPerTonne(Number(cost.costPerKg)),
+        0,
+      ) / deliveryCosts.length
     : 0;
 
   const activeCarriersCount = deliveryCosts
@@ -11,7 +16,7 @@ export function useDeliveryStats(deliveryCosts: DeliveryCost[] | undefined) {
     : 0;
 
   return {
-    averageCostPerKg,
+    averageCostPerTonne,
     activeCarriersCount,
   };
 }

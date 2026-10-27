@@ -17,7 +17,7 @@ interface ChainNodeProps {
   onRemove: () => void;
   purchaseAmountUsd: number;
   saleAmountUsd: number;
-  quantityKg: number;
+  quantityTonnes: number;
   fromAmount?: number;
   toAmount?: number;
   purchaseExchangeRate?: number;
@@ -64,7 +64,7 @@ export function ChainNode({
   onRemove,
   purchaseAmountUsd,
   saleAmountUsd,
-  quantityKg,
+  quantityTonnes,
   fromAmount,
   toAmount,
   purchaseExchangeRate,
@@ -85,7 +85,7 @@ export function ChainNode({
       item.incomeType || "fixed",
       item.rateValue,
       saleAmountUsd,
-      quantityKg,
+      quantityTonnes,
     );
 
     item.commissionUsd = realtimeCommission;

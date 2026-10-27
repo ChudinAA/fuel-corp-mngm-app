@@ -45,6 +45,11 @@ import {
   formatPrice,
   getProductLabel,
 } from "@/pages/opt/utils";
+import { formatPricePerTonne, formatTonnes } from "@shared/units";
+import {
+  calculateStoredTransportationMassTonnes,
+  calculateTransportationPricePerTonne,
+} from "../unit-calculations";
 import { useTransportationTable } from "../hooks/use-transportation-table";
 import {
   EntityActionsMenu,
@@ -60,6 +65,31 @@ import {
   TRANSPORTATION_TABLE_COLUMNS,
   DEFAULT_TRANSPORTATION_COLUMNS,
 } from "../constants";
+
+function getTransportationMassTonnes(deal: any): number | null {
+  return calculateStoredTransportationMassTonnes(
+    deal.quantityKg,
+    deal.quantityLiters,
+    deal.density,
+  );
+}
+
+function getTransportationPricePerTonne(deal: any): number | null {
+  const tonnes = getTransportationMassTonnes(deal);
+  const saleAmount = Number.parseFloat(String(deal.saleAmount ?? ""));
+  if (tonnes !== null && tonnes > 0 && Number.isFinite(saleAmount)) {
+    return saleAmount / tonnes;
+  }
+
+  const isLiterPrice =
+    deal.inputMode === "liters" ||
+    Number.parseFloat(String(deal.quantityLiters ?? "0")) > 0;
+  return calculateTransportationPricePerTonne(
+    deal.salePrice,
+    isLiterPrice ? "liter" : "kg",
+    deal.density,
+  );
+}
 
 function isCreatedToday(createdAt: string | null | undefined): boolean {
   if (!createdAt) return false;
@@ -190,8 +220,14 @@ export function TransportationTable({
     "Базис доставки": d.customerBasis || "",
     Перевозчик: d.carrier?.name || "",
     "Пункт доставки": d.deliveryLocation?.name || "",
-    Кг: d.quantityKg || "",
-    "Цена услуги": d.salePrice || "",
+    Тонны:
+      getTransportationMassTonnes(d) === null
+        ? ""
+        : formatTonnes(getTransportationMassTonnes(d)!),
+    "Цена услуги (₽/т)":
+      getTransportationPricePerTonne(d) === null
+        ? ""
+        : formatPricePerTonne(getTransportationPricePerTonne(d)!),
     "Сумма услуги (₽)": d.saleAmount || "",
     "Стоимость доставки": d.deliveryCost || "",
     Прибыль: d.profit || "",
@@ -401,12 +437,18 @@ export function TransportationTable({
                   )}
                   {isColumnVisible("quantityKg") && (
                     <TableCell className="text-right text-xs py-1.5 px-1">
-                      {formatNumberForTable(deal.quantityKg)}
+                      {getTransportationMassTonnes(deal) === null
+                        ? "—"
+                        : formatTonnes(getTransportationMassTonnes(deal)!)}
                     </TableCell>
                   )}
                   {isColumnVisible("salePrice") && (
                     <TableCell className="text-right text-xs py-1.5 px-1">
-                      {formatPrice(deal.salePrice) ?? "—"}
+                      {getTransportationPricePerTonne(deal) === null
+                        ? "—"
+                        : formatPricePerTonne(
+                            getTransportationPricePerTonne(deal)!,
+                          )}
                     </TableCell>
                   )}
                   {isColumnVisible("saleAmount") && (

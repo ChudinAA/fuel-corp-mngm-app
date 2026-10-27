@@ -1,16 +1,20 @@
 import { useMemo } from "react";
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useWarehouseBalance as useBaseWarehouseBalance } from "@/hooks/use-warehouse-balance";
-import { formatNumber } from "../utils";
+import {
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 
 interface UseWarehouseBalanceProps {
   watchMovementType: string;
   watchProductType: string;
   watchFromWarehouseId: string;
-  kgNum: number;
+  quantityTonnes: number;
   warehouses: any[];
   isEditing?: boolean;
-  initialQuantityKg?: number;
+  initialQuantityTonnes?: number;
   watchMovementDate?: Date;
 }
 
@@ -26,10 +30,10 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
     watchMovementType,
     watchProductType,
     watchFromWarehouseId,
-    kgNum,
+    quantityTonnes,
     warehouses,
     isEditing = false,
-    initialQuantityKg = 0,
+    initialQuantityTonnes = 0,
     watchMovementDate,
   } = props;
 
@@ -72,46 +76,72 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
 
     const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
     
-    const hist = historicalBalanceStr && typeof historicalBalanceStr === 'object' && 'balance' in historicalBalanceStr
-      ? parseFloat(historicalBalanceStr.balance)
-      : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+    const histKg =
+      historicalBalanceStr &&
+      typeof historicalBalanceStr === "object" &&
+      "balance" in historicalBalanceStr
+        ? Number.parseFloat(historicalBalanceStr.balance)
+        : Number.parseFloat(
+            isPvkj
+              ? fromWarehouse.pvkjBalance || "0"
+              : fromWarehouse.currentBalance || "0",
+          );
       
-    const curr = currentBalanceStr && typeof currentBalanceStr === 'object' && 'balance' in currentBalanceStr
-      ? parseFloat(currentBalanceStr.balance)
-      : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+    const currKg =
+      currentBalanceStr &&
+      typeof currentBalanceStr === "object" &&
+      "balance" in currentBalanceStr
+        ? Number.parseFloat(currentBalanceStr.balance)
+        : Number.parseFloat(
+            isPvkj
+              ? fromWarehouse.pvkjBalance || "0"
+              : fromWarehouse.currentBalance || "0",
+          );
     
-    let baseBalance = Math.min(hist, curr);
+    const baseBalanceTonnes = Math.min(
+      kilogramsToTonnes(histKg),
+      kilogramsToTonnes(currKg),
+    );
     
-    // ВАЖНО: Приводим к единообразию с ОПТ и Заправками.
-    // initialQuantityKg теперь передается как начальный объем сделки (initialQuantityKg).
-    let balance = isEditing ? baseBalance + initialQuantityKg : baseBalance;
+    const balanceTonnes = isEditing
+      ? baseBalanceTonnes + initialQuantityTonnes
+      : baseBalanceTonnes;
 
-    const cost = historicalBalanceStr && typeof historicalBalanceStr === 'object' && 'averageCost' in historicalBalanceStr && historicalBalanceStr.averageCost
-      ? parseFloat(historicalBalanceStr.averageCost)
-      : parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
+    const averageCostPerKg =
+      historicalBalanceStr &&
+      typeof historicalBalanceStr === "object" &&
+      "averageCost" in historicalBalanceStr &&
+      historicalBalanceStr.averageCost
+        ? Number.parseFloat(historicalBalanceStr.averageCost)
+        : Number.parseFloat(
+            isPvkj
+              ? fromWarehouse.pvkjAverageCost || "0"
+              : fromWarehouse.averageCost || "0",
+          );
+    const costPerTonne = pricePerKilogramToPerTonne(averageCostPerKg);
 
-    if (balance <= 0) {
-      return { balance, cost, status: "error", message: "Склад пуст" };
+    if (balanceTonnes <= 0) {
+      return { balance: balanceTonnes, cost: costPerTonne, status: "error", message: "Склад пуст" };
     }
 
-    if (cost <= 0) {
-      return { balance, cost, status: "error", message: "Нет себестоимости" };
+    if (costPerTonne <= 0) {
+      return { balance: balanceTonnes, cost: costPerTonne, status: "error", message: "Нет себестоимости" };
     }
 
-    if (kgNum <= 0) {
-      return { balance, cost, status: "ok", message: `${formatNumber(balance)} кг` };
+    if (quantityTonnes <= 0) {
+      return { balance: balanceTonnes, cost: costPerTonne, status: "ok", message: `${formatTonnes(balanceTonnes)} т` };
     }
     
-    if (kgNum > 0) {
-      const remaining = balance - kgNum;
-      if (remaining < 0) {
-        return { balance, cost, status: "error", message: `Недостаточно! Доступно: ${balance.toLocaleString()} кг` };
+    if (quantityTonnes > 0) {
+      const remainingTonnes = balanceTonnes - quantityTonnes;
+      if (remainingTonnes < 0) {
+        return { balance: balanceTonnes, cost: costPerTonne, status: "error", message: `Недостаточно! Доступно: ${formatTonnes(balanceTonnes)} т` };
       }
-      return { balance, cost, status: "ok", message: `ОК: ${remaining.toLocaleString()} кг` };
+      return { balance: balanceTonnes, cost: costPerTonne, status: "ok", message: `ОК: ${formatTonnes(remainingTonnes)} т` };
     }
 
-    return { balance, cost, status: "ok", message: `${balance.toLocaleString()} кг` };
-  }, [watchMovementType, watchProductType, watchFromWarehouseId, kgNum, warehouses, isEditing, initialQuantityKg, historicalBalanceStr, currentBalanceStr, isLoading]);
+    return { balance: balanceTonnes, cost: costPerTonne, status: "ok", message: `${formatTonnes(balanceTonnes)} т` };
+  }, [watchMovementType, watchProductType, watchFromWarehouseId, quantityTonnes, warehouses, isEditing, initialQuantityTonnes, historicalBalanceStr, currentBalanceStr, isLoading]);
 }
 
 export const useWarehouseBalance = useWarehouseBalanceMov;

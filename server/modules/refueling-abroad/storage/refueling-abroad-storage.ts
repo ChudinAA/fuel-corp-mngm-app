@@ -956,9 +956,18 @@ export class RefuelingAbroadStorage {
   }
 
   async getUsedVolumeByPrice(priceId: string): Promise<number> {
+    const price = await db.query.prices.findFirst({
+      where: eq(prices.id, priceId),
+      columns: { priceUnit: true },
+    });
+    const quantityColumn =
+      price?.priceUnit === "liter"
+        ? refuelingAbroad.quantityLiters
+        : refuelingAbroad.quantityKg;
+
     const [result] = await db
       .select({
-        total: sql<string>`COALESCE(SUM(${refuelingAbroad.quantityKg}), 0)`,
+        total: sql<string>`COALESCE(SUM(${quantityColumn}), 0)`,
       })
       .from(refuelingAbroad)
       .where(

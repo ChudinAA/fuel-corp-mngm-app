@@ -22,6 +22,7 @@ interface UseTransportationFiltersProps {
   customerBasisId: string;
   carrierId: string;
   productType: string;
+  inputMode: "liters" | "tonnes";
   nomenclatureId?: string;
   allBases: Base[] | undefined;
   carriers: LogisticsCarrier[] | undefined;
@@ -37,6 +38,7 @@ export function useTransportationFilters({
   customerBasisId,
   carrierId,
   productType,
+  inputMode,
   nomenclatureId,
   allBases,
   carriers,
@@ -63,6 +65,7 @@ export function useTransportationFilters({
     nomenclatureId,
     date: dealDate ?? null,
     enabled: !!supplierId && !!basisId && !!customerBasisId && !!dealDate && isAviaService,
+    priceUnit: inputMode === "liters" ? "liter" : "kg",
   });
 
   const saleLookup = usePriceLookup({
@@ -75,6 +78,7 @@ export function useTransportationFilters({
     nomenclatureId,
     date: dealDate ?? null,
     enabled: !!buyerId && !!customerBasisId && !!dealDate,
+    priceUnit: inputMode === "liters" ? "liter" : "kg",
   });
 
   const purchasePrices = useMemo(

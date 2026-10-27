@@ -24,6 +24,8 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useRefuelingFilters } from "../hooks/use-refueling-filters";
 import { useRefuelingCalculations } from "../hooks/use-refueling-calculations";
+import { formatRefuelingPriceOption } from "../unit-calculations";
+import { formatPricePerTonne, pricePerKilogramToPerTonne } from "@shared/units";
 import { CalculatedField } from "../calculated-field";
 import { formatNumber, formatPrice, formatCurrency } from "../utils";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
@@ -44,7 +46,7 @@ const OTHER_SERVICE_TYPE_LABELS: Record<string, string> = {
 export interface AdditionalProductPayload {
   productType: string;
   nomenclatureId: string | null;
-  inputMode: "liters" | "kg";
+  inputMode: "liters" | "tonnes";
   quantityLiters: number | null;
   density: number | null;
   quantityKg: number;
@@ -210,11 +212,16 @@ export const AdditionalProductSection = forwardRef<
       calculatedKg,
       purchasePrice,
       salePrice,
+      purchasePriceUnit,
+      salePriceUnit,
+      purchasePricePerTonne,
+      salePricePerTonne,
       purchaseAmount,
       saleAmount,
       isRechargeActive,
       agentFee,
       agentFeeRate,
+      agentFeeRatePerTonne,
       otherServiceFee,
       hasOtherService,
       otherServiceName,
@@ -228,7 +235,7 @@ export const AdditionalProductSection = forwardRef<
       inputMode: volume.inputMode,
       quantityLiters: volume.quantityLiters,
       density: volume.density,
-      quantityKg: volume.quantityKg,
+      quantityTonnes: volume.quantityTonnes,
       isWarehouseSupplier,
       supplierWarehouse,
       selectedBasis,
@@ -241,6 +248,13 @@ export const AdditionalProductSection = forwardRef<
       productType,
       isEditing: !!editData,
       initialQuantityKg: Number.parseFloat(editData?.quantityKg || "0"),
+      initialQuantityLiters: Number.parseFloat(
+        editData?.quantityLiters || "0",
+      ),
+      initialPurchaseAmount: Number.parseFloat(
+        editData?.purchaseAmount || "0",
+      ),
+      initialSaleAmount: Number.parseFloat(editData?.saleAmount || "0"),
       initialWarehouseBalance: 0,
       refuelingDate,
       isPriceRecharge,
@@ -305,7 +319,7 @@ export const AdditionalProductSection = forwardRef<
         return {
           productType,
           nomenclatureId: nomenclatureId || null,
-          inputMode: productType === PRODUCT_TYPE.SERVICE ? "kg" : volume.inputMode,
+          inputMode: productType === PRODUCT_TYPE.SERVICE ? "tonnes" : volume.inputMode,
           quantityLiters:
             productType !== PRODUCT_TYPE.SERVICE &&
             volume.inputMode === "liters" &&
@@ -422,7 +436,9 @@ export const AdditionalProductSection = forwardRef<
                     Цена, установленная поставщиком
                   </span>
                   <span className="text-sm font-medium">
-                    {formatPrice(basisPvkjPrice)} ₽/кг
+                    {formatPricePerTonne(
+                      pricePerKilogramToPerTonne(Number(basisPvkjPrice)),
+                    )} ₽/т
                   </span>
                 </div>
               )}
@@ -451,7 +467,9 @@ export const AdditionalProductSection = forwardRef<
                     Цена, установленная поставщиком
                   </span>
                   <span className="text-sm font-medium">
-                    {formatPrice(basisServicePrice)} ₽/кг
+                    {formatPricePerTonne(
+                      pricePerKilogramToPerTonne(Number(basisServicePrice)),
+                    )} ₽/т
                   </span>
                 </div>
               )}
@@ -519,7 +537,13 @@ export const AdditionalProductSection = forwardRef<
                                 key={`${price.id}-${idx}`}
                                 value={`${price.id}-${idx}`}
                               >
-                                {formatPrice(parsed.price || "0")} ₽/кг
+                                {formatRefuelingPriceOption(
+                                  parsed.price || "0",
+                                  volume.inputMode,
+                                  volume.density,
+                                  "₽",
+                                  purchasePriceUnit,
+                                )}
                               </SelectItem>
                             );
                           } catch {
@@ -551,18 +575,20 @@ export const AdditionalProductSection = forwardRef<
               <CalculatedField
                 label="Покупка"
                 value={
-                  purchasePrice !== null ? formatPrice(purchasePrice) : "—"
+                  purchasePricePerTonne !== null
+                    ? formatPricePerTonne(purchasePricePerTonne)
+                    : "—"
                 }
-                suffix={purchasePrice !== null ? " ₽/кг" : ""}
+                suffix={purchasePricePerTonne !== null ? " ₽/т" : ""}
                 status="ok"
               />
             ) : !isWarehouseSupplier &&
               productType !== PRODUCT_TYPE.SERVICE ? (
-              purchasePrice !== null ? (
+              purchasePricePerTonne !== null ? (
                 <CalculatedField
                   label="Покупка"
-                  value={formatPrice(purchasePrice)}
-                  suffix=" ₽/кг"
+                  value={formatPricePerTonne(purchasePricePerTonne)}
+                  suffix=" ₽/т"
                   status="ok"
                 />
               ) : (
@@ -588,12 +614,12 @@ export const AdditionalProductSection = forwardRef<
               <CalculatedField
                 label="Покупка"
                 value={
-                  purchasePrice !== null
-                    ? formatPrice(purchasePrice)
+                  purchasePricePerTonne !== null
+                    ? formatPricePerTonne(purchasePricePerTonne)
                     : "Нет цены!"
                 }
-                suffix={purchasePrice !== null ? " ₽/кг" : ""}
-                status={purchasePrice !== null ? "ok" : "error"}
+                suffix={purchasePricePerTonne !== null ? " ₽/т" : ""}
+                status={purchasePricePerTonne !== null ? "ok" : "error"}
               />
             )}
 
@@ -627,7 +653,13 @@ export const AdditionalProductSection = forwardRef<
                                 key={`${price.id}-${idx}`}
                                 value={`${price.id}-${idx}`}
                               >
-                                {formatPrice(parsed.price || "0")} ₽/кг
+                                {formatRefuelingPriceOption(
+                                  parsed.price || "0",
+                                  volume.inputMode,
+                                  volume.density,
+                                  "₽",
+                                  salePriceUnit,
+                                )}
                               </SelectItem>
                             );
                           } catch {
@@ -658,9 +690,11 @@ export const AdditionalProductSection = forwardRef<
               <CalculatedField
                 label="Продажа"
                 value={
-                  purchasePrice !== null ? formatPrice(purchasePrice) : "—"
+                  salePricePerTonne !== null
+                    ? formatPricePerTonne(salePricePerTonne)
+                    : "—"
                 }
-                suffix={purchasePrice !== null ? " ₽/кг" : ""}
+                suffix={salePricePerTonne !== null ? " ₽/т" : ""}
                 status="ok"
               />
             ) : (
@@ -707,7 +741,8 @@ export const AdditionalProductSection = forwardRef<
                 />
                 <div className="flex-1 min-w-0">
                   <span className="text-sm">
-                    Агентское вознаграждение: {formatPrice(agentFeeRate)} ₽/кг
+                    Агентское вознаграждение:{" "}
+                    {formatPricePerTonne(agentFeeRatePerTonne)} ₽/т
                   </span>
                   {agentFee > 0 && (
                     <span

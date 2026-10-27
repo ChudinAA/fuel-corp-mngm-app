@@ -68,7 +68,13 @@ import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 import { CalculatedField } from "@/pages/opt/components/calculated-field";
-import { formatCurrency, formatNumber, formatPrice } from "@/pages/opt/utils";
+import { formatCurrency, formatPrice } from "@/pages/opt/utils";
+import { formatPricePerTonne, formatTonnes, kilogramsToTonnes } from "@shared/units";
+import {
+  calculateTransportationMassTonnes,
+  formatTransportationPriceOption,
+  type TransportationPriceUnit,
+} from "../unit-calculations";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { NomenclatureField } from "@/pages/shared/components/nomenclature-field";
@@ -91,7 +97,6 @@ export const TransportationForm = forwardRef<
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
-  const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
   const [addCarrierOpen, setAddCarrierOpen] = useState(false);
@@ -115,8 +120,8 @@ export const TransportationForm = forwardRef<
       nomenclatureId: "",
       quantityLiters: null,
       density: null,
-      quantityKg: null,
-      inputMode: "kg",
+      quantityTonnes: null,
+      inputMode: "tonnes",
       purchasePriceId: null,
       purchasePriceIndex: 0,
       salePriceId: null,
@@ -177,8 +182,8 @@ export const TransportationForm = forwardRef<
   const watchNomenclatureId = form.watch("nomenclatureId") || "";
   const watchQuantityLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
-  const watchQuantityKg = form.watch("quantityKg");
-  const watchFormInputMode = form.watch("inputMode") || "kg";
+  const watchQuantityTonnes = form.watch("quantityTonnes");
+  const watchFormInputMode = form.watch("inputMode") || "tonnes";
 
   const dealDateObj = watchDealDate ? new Date(watchDealDate) : null;
 
@@ -202,22 +207,26 @@ export const TransportationForm = forwardRef<
     carriers,
     deliveryLocations,
     deliveryCosts,
+    inputMode: watchFormInputMode,
   });
 
   const {
     calculatedKg,
     finalKg,
+    finalTonnes,
     salePrice,
+    salePricePerTonne,
     deliveryCost,
     matchedDeliveryCost,
     deliveryTariff,
+    deliveryTariffPerTonne,
     saleAmount,
     profit: calculatedProfit,
   } = useTransportationCalculations({
-    inputMode: watchFormInputMode as "liters" | "kg",
+    inputMode: watchFormInputMode as "liters" | "tonnes",
     quantityLiters: watchQuantityLiters?.toString() || "",
     density: watchDensity?.toString() || "",
-    quantityKg: watchQuantityKg?.toString() || "",
+    quantityTonnes: watchQuantityTonnes?.toString() || "",
     basisId: watchBasisId,
     purchasePrices: [],
     salePrices,
@@ -344,10 +353,14 @@ export const TransportationForm = forwardRef<
           ? parseFloat(editData.quantityLiters)
           : null,
         density: editData.density ? parseFloat(editData.density) : null,
-        quantityKg: editData.quantityKg
-          ? parseFloat(editData.quantityKg)
+        quantityTonnes: editData.quantityKg
+          ? kilogramsToTonnes(parseFloat(editData.quantityKg))
           : null,
-        inputMode: editData.inputMode || "kg",
+        inputMode:
+          editData.inputMode === "liters" ||
+          Number.parseFloat(editData.quantityLiters || "0") > 0
+            ? "liters"
+            : "tonnes",
         purchasePriceId: null,
         purchasePriceIndex: 0,
         salePriceId: salePriceCompositeId || null,
@@ -360,8 +373,6 @@ export const TransportationForm = forwardRef<
       initialValuesRef.current = resetValues;
       form.reset(resetValues, { keepDefaultValues: false });
       setSelectedSalePriceId(salePriceCompositeId);
-      if (editData.inputMode)
-        setInputMode(editData.inputMode as "liters" | "kg");
     }
   }, [editData]);
 
@@ -491,7 +502,18 @@ export const TransportationForm = forwardRef<
       .map((pv: any, idx: number) => {
         const parsed = typeof pv === "string" ? JSON.parse(pv) : pv;
         const val = parseFloat(parsed?.price || "0");
-        return { value: `${p.id}-${idx}`, label: `${formatPrice(val)} ₽/кг` };
+        const priceUnit: TransportationPriceUnit =
+          p.priceUnit === "liter" || p.priceUnit === "tonne"
+            ? p.priceUnit
+            : "kg";
+        return {
+          value: `${p.id}-${idx}`,
+          label: formatTransportationPriceOption(
+            val,
+            priceUnit,
+            watchDensity?.toString(),
+          ),
+        };
       })
       .flat();
   };
@@ -704,16 +726,43 @@ export const TransportationForm = forwardRef<
                         Литры/Плотность
                       </Label>
                       <Switch
-                        checked={field.value === "kg"}
+                        checked={field.value === "tonnes"}
                         onCheckedChange={(checked) => {
-                          const mode = checked ? "kg" : "liters";
+                          const mode = checked ? "tonnes" : "liters";
+                          if (mode === "tonnes") {
+                            const tonnes = calculateTransportationMassTonnes(
+                              "liters",
+                              form.getValues("quantityLiters"),
+                              form.getValues("density"),
+                            );
+                            form.setValue("quantityTonnes", tonnes, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            });
+                          } else {
+                            const density =
+                              form.getValues("density") ?? 0;
+                            const tonnes =
+                              form.getValues("quantityTonnes") ?? 0;
+                            form.setValue(
+                              "quantityLiters",
+                              density > 0 ? (tonnes * 1_000) / density : null,
+                              {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              },
+                            );
+                          }
                           field.onChange(mode);
-                          setInputMode(mode);
+                          setSelectedSalePriceId("");
+                          form.setValue("salePriceId", null, {
+                            shouldDirty: true,
+                          });
                         }}
                         data-testid="switch-input-mode"
                       />
                       <Label className="text-sm text-muted-foreground">
-                        КГ
+                        Т
                       </Label>
                     </div>
                   )}
@@ -735,7 +784,7 @@ export const TransportationForm = forwardRef<
                           step="0.01"
                           placeholder="0.00"
                           data-testid="input-liters"
-                          disabled={watchFormInputMode === "kg"}
+                          disabled={watchFormInputMode === "tonnes"}
                           value={field.value ?? ""}
                           onChange={(e) =>
                             field.onChange(
@@ -763,7 +812,7 @@ export const TransportationForm = forwardRef<
                           step="0.0001"
                           placeholder="0.8000"
                           data-testid="input-density"
-                          disabled={watchFormInputMode === "kg"}
+                          disabled={watchFormInputMode === "tonnes"}
                           value={field.value ?? ""}
                           onChange={(e) =>
                             field.onChange(
@@ -780,17 +829,17 @@ export const TransportationForm = forwardRef<
                 />
                 <FormField
                   control={form.control}
-                  name="quantityKg"
+                  name="quantityTonnes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Кг</FormLabel>
+                      <FormLabel>Масса (т)</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           min="0"
-                          step="0.01"
-                          placeholder="0.00"
-                          data-testid="input-kg"
+                          step="0.00001"
+                          placeholder="0.00000"
+                          data-testid="input-quantity-tonnes"
                           disabled={watchFormInputMode === "liters"}
                           value={field.value ?? ""}
                           onChange={(e) =>
@@ -807,10 +856,10 @@ export const TransportationForm = forwardRef<
                   )}
                 />
               </div>
-              {watchFormInputMode === "liters" && calculatedKg && (
+              {watchFormInputMode === "liters" && finalTonnes !== null && finalTonnes > 0 && (
                 <p className="text-sm text-muted-foreground mt-2">
-                  Расчетный вес:{" "}
-                  <strong>{formatNumber(parseFloat(calculatedKg))} кг</strong>
+                  Расчетная масса:{" "}
+                  <strong>{formatTonnes(finalTonnes)} т</strong>
                 </p>
               )}
             </CardContent>
@@ -918,9 +967,11 @@ export const TransportationForm = forwardRef<
 
               <div className="grid gap-4 md:grid-cols-2">
                 <CalculatedField
-                  label="Тариф (₽/кг)"
+                  label="Тариф (₽/т)"
                   value={
-                    deliveryTariff !== null ? formatPrice(deliveryTariff) : "—"
+                    deliveryTariffPerTonne !== null
+                      ? formatPricePerTonne(deliveryTariffPerTonne)
+                      : "—"
                   }
                 />
                 <CalculatedField

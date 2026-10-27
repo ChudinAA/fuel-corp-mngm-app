@@ -191,9 +191,41 @@ export const insertMovementSchema = z
       if (data.quantityKg === undefined || data.quantityKg === null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Количество (кг) обязательно",
+          message: "Масса обязательна",
           path: ["quantityKg"],
         });
+      } else if (!Number.isFinite(data.quantityKg) || data.quantityKg <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Масса должна быть больше нуля",
+          path: ["quantityKg"],
+        });
+      }
+      if (data.inputMode === "liters") {
+        if (
+          data.quantityLiters === undefined ||
+          data.quantityLiters === null ||
+          !Number.isFinite(data.quantityLiters) ||
+          data.quantityLiters <= 0
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Укажите количество в литрах",
+            path: ["quantityLiters"],
+          });
+        }
+        if (
+          data.density === undefined ||
+          data.density === null ||
+          !Number.isFinite(data.density) ||
+          data.density <= 0
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Укажите положительную плотность",
+            path: ["density"],
+          });
+        }
       }
     }
   });

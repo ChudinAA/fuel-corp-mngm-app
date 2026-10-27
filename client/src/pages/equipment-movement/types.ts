@@ -1,6 +1,6 @@
 import type { EquipmentMovement, Warehouse, Equipment } from "@shared/schema";
 
-export type InputMode = "liters" | "kg";
+export type InputMode = "liters" | "tonnes";
 
 export interface EquipmentMovementDialogProps {
   warehouses: Warehouse[];

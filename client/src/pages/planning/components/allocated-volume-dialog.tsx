@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { kgToTons } from "../utils/planning-utils";
+import { kgToTons, tonsToKg } from "../utils/planning-utils";
 import type { PlanningPeriod } from "../planning-page";
 
 interface SupplierAllocatedVolume {
@@ -117,7 +117,7 @@ export function AllocatedVolumeDialog({
         supplierId,
         periodFrom: selectedMonthData.from,
         periodTo: selectedMonthData.to,
-        volume: (parseFloat(volume) * 1000).toFixed(2),
+        volume: tonsToKg(volume),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });
       queryClient.invalidateQueries({ queryKey: ["/api/planning/resources"] });
@@ -159,10 +159,10 @@ export function AllocatedVolumeDialog({
             <Label>Объём (тонн)</Label>
             <Input
               type="number"
-              step="0.001"
+              step="0.00001"
               value={volume}
               onChange={(e) => setVolume(e.target.value)}
-              placeholder="0.000"
+              placeholder="0.00000"
               data-testid="input-allocated-volume"
             />
             {existingVolumes.find(

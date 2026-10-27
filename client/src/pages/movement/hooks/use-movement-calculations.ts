@@ -8,7 +8,6 @@ import {
   DELIVERY_ENTITY_TYPE,
   ProductType,
 } from "@shared/constants";
-import { calculateKgFromLiters } from "../utils";
 import type { AllSupplier } from "../types";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 import type { UseFormReturn } from "react-hook-form";
@@ -16,6 +15,16 @@ import type { MovementFormData } from "../schemas";
 import { usePriceExtraction } from "@/pages/shared/hooks/use-price-extraction";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { usePriceLookup } from "@/pages/shared/hooks/use-price-lookup";
+import {
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
+import {
+  calculateMovementMassTonnes,
+  calculateMovementPricePerTonne,
+  movementTonnesRateToLegacyKgRate,
+  movementTonnesToLegacyKg,
+  type MovementPriceUnit,
+} from "../unit-calculations";
 
 interface UseMovementCalculationsProps {
   form?: UseFormReturn<MovementFormData>;
@@ -30,14 +39,14 @@ interface UseMovementCalculationsProps {
   watchMovementDate: Date;
   watchLiters: string | undefined;
   watchDensity: string | undefined;
-  watchKg: string | undefined;
-  inputMode: "liters" | "kg";
+  watchTonnes: string | undefined;
+  inputMode: "liters" | "tonnes";
   warehouses: any[];
   suppliers: AllSupplier[];
   deliveryCosts: any[];
   selectedPurchasePriceId: string;
   setSelectedPurchasePriceId: (id: string) => void;
-  initialQuantityKg: number;
+  initialQuantityTonnes: number;
   initialPurchaseAmount?: number;
 }
 
@@ -59,31 +68,32 @@ export function useMovementCalculations({
   watchMovementDate,
   watchLiters,
   watchDensity,
-  watchKg,
+  watchTonnes,
   inputMode,
   warehouses,
   suppliers,
   deliveryCosts,
   selectedPurchasePriceId,
   setSelectedPurchasePriceId,
-  initialQuantityKg,
+  initialQuantityTonnes,
   initialPurchaseAmount = 0,
 }: UseMovementCalculationsProps) {
   const watchSelectedPurchasePriceId =
     selectedPurchasePriceId || form?.watch("selectedPurchasePriceId") || "";
 
-  // Calculate quantity in kg
-  const calculatedKg = useMemo(() => {
-    if (inputMode === "liters" && watchLiters && watchDensity) {
-      return calculateKgFromLiters(
-        parseFloat(watchLiters),
-        parseFloat(watchDensity),
-      );
-    }
-    return watchKg && watchKg !== "" ? parseFloat(watchKg) : 0;
-  }, [inputMode, watchLiters, watchDensity, watchKg]);
-
-  const kgNum = calculatedKg || 0;
+  const calculatedTonnes = useMemo(
+    () =>
+      calculateMovementMassTonnes(
+        inputMode,
+        watchTonnes,
+        watchLiters,
+        watchDensity,
+      ),
+    [inputMode, watchTonnes, watchLiters, watchDensity],
+  );
+  const tonnesNum = calculatedTonnes ?? 0;
+  const kgNum = movementTonnesToLegacyKg(tonnesNum);
+  const calculatedKg = kgNum;
   
   // Find matching prices for supplier
   const purchaseLookup = usePriceLookup({
@@ -95,6 +105,7 @@ export function useMovementCalculations({
     nomenclatureId,
     date: watchMovementDate,
     enabled: !!watchSupplierId && !!watchBasisId && !!watchMovementDate,
+    priceUnit: inputMode === "liters" ? "liter" : "kg",
   });
 
   const availablePurchasePrices = useMemo(() => {
@@ -102,7 +113,7 @@ export function useMovementCalculations({
   }, [purchaseLookup.data]);
 
   // Extract actual price value using shared hook
-  const { purchasePrice } =
+  const { purchasePrice: rawPurchasePrice } =
     usePriceExtraction({
       purchasePrices: availablePurchasePrices,
       salePrices: [],
@@ -111,6 +122,22 @@ export function useMovementCalculations({
       isWarehouseSupplier: false,
       supplierWarehouse: undefined,
     });
+  const { priceId, priceIndex } = parsePriceCompositeId(
+    watchSelectedPurchasePriceId,
+  );
+  const selectedPriceRecord = availablePurchasePrices.find(
+    (price) => price.id === priceId,
+  );
+  const purchasePriceUnit: MovementPriceUnit =
+    selectedPriceRecord?.priceUnit === "liter" ||
+    selectedPriceRecord?.priceUnit === "tonne"
+      ? selectedPriceRecord.priceUnit
+      : "kg";
+  const selectedPurchasePricePerTonne = calculateMovementPricePerTonne(
+    rawPurchasePrice,
+    purchasePriceUnit,
+    watchDensity,
+  );
 
   // Автоматическая установка выбранной цены, если она не установлена
   useEffect(() => {
@@ -149,10 +176,10 @@ export function useMovementCalculations({
       : null;
   }, [fromWarehouseData, isFromWarehouseLoading]);
 
-  const finalPurchasePrice = useMemo(() => {
+  const finalPurchasePricePerTonne = useMemo(() => {
     if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
       if (warehousePriceAtDate !== null) {
-        return warehousePriceAtDate;
+        return pricePerKilogramToPerTonne(warehousePriceAtDate);
       }
       
       const fromWarehouse = warehouses.find(
@@ -163,37 +190,41 @@ export function useMovementCalculations({
         const averageCost = isPvkj
           ? fromWarehouse.pvkjAverageCost
           : fromWarehouse.averageCost;
-        return averageCost ? parseFloat(averageCost) : null;
+        return averageCost
+          ? pricePerKilogramToPerTonne(parseFloat(averageCost))
+          : null;
       }
     }
-    return purchasePrice;
+    return selectedPurchasePricePerTonne;
   }, [
     watchMovementType,
     watchFromWarehouseId,
     warehouses,
     watchProductType,
-    purchasePrice,
+    selectedPurchasePricePerTonne,
     warehousePriceAtDate
   ]);
 
   const purchaseAmount = useMemo(() => {
-    return finalPurchasePrice && kgNum > 0 ? finalPurchasePrice * kgNum : 0;
-  }, [finalPurchasePrice, kgNum]);
+    return finalPurchasePricePerTonne && tonnesNum > 0
+      ? finalPurchasePricePerTonne * tonnesNum
+      : 0;
+  }, [finalPurchasePricePerTonne, tonnesNum]);
 
   // Get storage cost
   const storageCost = useMemo((): number => {
-    if (!watchToWarehouseId || kgNum <= 0) return 0;
+    if (!watchToWarehouseId || tonnesNum <= 0) return 0;
 
     const warehouse = warehouses.find((w) => w.id === watchToWarehouseId);
     if (!warehouse || !warehouse.storageCost) return 0;
 
     const storageCostPerTon = parseFloat(warehouse.storageCost);
-    return (storageCostPerTon / 1000) * kgNum;
-  }, [watchToWarehouseId, kgNum, warehouses]);
+    return storageCostPerTon * tonnesNum;
+  }, [watchToWarehouseId, tonnesNum, warehouses]);
 
   // Get warehouse services cost
   const warehouseServicesCost = useMemo((): number => {
-    if (!watchToWarehouseId || kgNum <= 0) return 0;
+    if (!watchToWarehouseId || tonnesNum <= 0) return 0;
 
     const warehouse = warehouses.find((w) => w.id === watchToWarehouseId);
     if (!warehouse || !warehouse.services || warehouse.services.length === 0) return 0;
@@ -204,7 +235,7 @@ export function useMovementCalculations({
       if (isNaN(value) || value <= 0) continue;
 
       if (service.serviceType === "royalty_per_ton") {
-        total += value * (kgNum / 1000);
+        total += value * tonnesNum;
       } else if (service.serviceType === "percent_of_amount") {
         total += purchaseAmount * (value / 100);
       } else if (service.serviceType === "fixed") {
@@ -212,7 +243,7 @@ export function useMovementCalculations({
       }
     }
     return total;
-  }, [watchToWarehouseId, kgNum, warehouses, purchaseAmount]);
+  }, [watchToWarehouseId, tonnesNum, warehouses, purchaseAmount]);
 
   // Get delivery cost
   const matchedDeliveryCost = useMemo(() => {
@@ -299,17 +330,20 @@ export function useMovementCalculations({
     suppliers,
     deliveryCosts,
   ]);
-  const deliveryCost = matchedDeliveryCost && kgNum > 0
-    ? parseFloat(matchedDeliveryCost.costPerKg) * kgNum : 0;
+  const deliveryCost =
+    matchedDeliveryCost && tonnesNum > 0
+      ? pricePerKilogramToPerTonne(
+          Number.parseFloat(matchedDeliveryCost.costPerKg),
+        ) * tonnesNum
+      : 0;
 
-  const { priceId, priceIndex } = parsePriceCompositeId(watchSelectedPurchasePriceId);
   const purchasePriceId = priceId;
   const purchasePriceIndex = priceIndex;
 
   const supplierContractVolumeStatus = useContractVolume({
     priceId: priceId || null,
     currentQuantityKg: kgNum,
-    initialQuantityKg: initialQuantityKg,
+    initialQuantityKg: movementTonnesToLegacyKg(initialQuantityTonnes),
     mode: "opt",
     currentDealAmount: purchaseAmount,
     initialDealAmount: initialPurchaseAmount,
@@ -382,10 +416,15 @@ export function useMovementCalculations({
     return rawTotalCost;
   }, [rawTotalCost, vatAdjustment]);
 
-  const costPerKg = useMemo(
-    () => (kgNum > 0 ? totalCost / kgNum : 0),
-    [totalCost, kgNum],
+  const costPerTonne = useMemo(
+    () => (tonnesNum > 0 ? totalCost / tonnesNum : 0),
+    [totalCost, tonnesNum],
   );
+  const costPerKg = movementTonnesRateToLegacyKgRate(costPerTonne);
+  const purchasePricePerKg =
+    finalPurchasePricePerTonne === null
+      ? null
+      : movementTonnesRateToLegacyKgRate(finalPurchasePricePerTonne);
 
   const availablePrices = useMemo(() => {
     return availablePurchasePrices.flatMap((p) => {
@@ -393,6 +432,7 @@ export function useMovementCalculations({
         const values = p.priceValues?.map((v: string) => JSON.parse(v)) || [];
         return values.map((v: any, idx: number) => ({
           ...v,
+          priceUnit: v.priceUnit || p.priceUnit || "kg",
           priceId: p.id,
           contractNumber: p.contractNumber,
           index: idx,
@@ -411,9 +451,12 @@ export function useMovementCalculations({
 
   return {
     calculatedKg,
+    calculatedTonnes,
+    tonnesNum,
     kgNum,
     availablePrices,
-    purchasePrice: finalPurchasePrice,
+    purchasePrice: finalPurchasePricePerTonne,
+    purchasePricePerKg,
     purchasePriceId,
     purchasePriceIndex,
     purchaseAmount,
@@ -425,6 +468,7 @@ export function useMovementCalculations({
     totalCost,
     rawTotalCost,
     costPerKg,
+    costPerTonne,
     supplierContractVolumeStatus,
     vatAdjustment,
   };

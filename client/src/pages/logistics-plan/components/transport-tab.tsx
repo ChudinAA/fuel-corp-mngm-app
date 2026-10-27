@@ -60,6 +60,7 @@ import { TransportUnitDialog } from "./transport-unit-dialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 interface TransportTabProps {
   periodFrom: string;
@@ -851,7 +852,9 @@ export function TransportTab({ periodFrom, periodTo }: TransportTabProps) {
                         )}
                         {unit.vehicle.capacityKg && (
                           <span className="text-xs text-muted-foreground">
-                            {parseFloat(unit.vehicle.capacityKg).toLocaleString("ru")} кг
+                            {formatTonnes(
+                              kilogramsToTonnes(Number.parseFloat(unit.vehicle.capacityKg)),
+                            )} т
                           </span>
                         )}
                       </div>
@@ -867,7 +870,9 @@ export function TransportTab({ periodFrom, periodTo }: TransportTabProps) {
                         <span className="text-sm">{unit.trailer.regNumber}</span>
                         {unit.trailer.capacityKg && (
                           <span className="text-xs text-muted-foreground">
-                            {parseFloat(unit.trailer.capacityKg).toLocaleString("ru")} кг
+                            {formatTonnes(
+                              kilogramsToTonnes(Number.parseFloat(unit.trailer.capacityKg)),
+                            )} т
                           </span>
                         )}
                       </div>

@@ -48,7 +48,12 @@ import {
   type EquipmentMovementFormData,
 } from "../schemas";
 import type { EquipmentMovementDialogProps } from "../types";
-import { VolumeInputSection } from "../../opt/components/opt-form-sections";
+import { TonneVolumeSection } from "@/pages/shared/components/tonne-volume-section";
+import {
+  equipmentMovementLegacyKgToTonnes,
+  type EquipmentMovementInputMode,
+} from "../unit-calculations";
+import { formatPricePerTonne, formatTonnes } from "@shared/units";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,7 +78,8 @@ export function EquipmentMovementDialog({
 }: EquipmentMovementDialogProps) {
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
-  const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
+  const [inputMode, setInputMode] =
+    useState<EquipmentMovementInputMode>("tonnes");
   const isEditing = !!editMovement && !isCopy;
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const initialValuesRef = useRef<EquipmentMovementFormData | null>(null);
@@ -89,10 +95,10 @@ export function EquipmentMovementDialog({
       toWarehouseId: "",
       fromEquipmentId: "",
       toEquipmentId: "",
-      inputMode: "kg",
+      inputMode: "tonnes",
       quantityLiters: "",
       density: "",
-      quantityKg: "",
+      quantityTonnes: "",
       notes: "",
       isDraft: false,
     },
@@ -106,7 +112,7 @@ export function EquipmentMovementDialog({
   const watchProductType = form.watch("productType");
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
-  const watchKg = form.watch("quantityKg");
+  const watchTonnes = form.watch("quantityTonnes");
   const watchMovementDate = form.watch("movementDate");
 
   const likWarehouses = warehouses.filter(
@@ -120,7 +126,7 @@ export function EquipmentMovementDialog({
 
   useEffect(() => {
     if (editMovement) {
-      const resetValues = {
+      const resetValues: EquipmentMovementFormData = {
         movementDate: new Date(editMovement.movementDate),
         movementType:
           (editMovement as any).movementType ||
@@ -131,11 +137,18 @@ export function EquipmentMovementDialog({
         toWarehouseId: editMovement.toWarehouseId || "",
         fromEquipmentId: editMovement.fromEquipmentId || "",
         toEquipmentId: editMovement.toEquipmentId || "",
-        inputMode: ((editMovement.inputMode as "liters" | "kg") ||
-          (editMovement.quantityLiters ? "liters" : "kg")),
+        inputMode: editMovement.inputMode
+          ? editMovement.inputMode === "liters"
+            ? "liters"
+            : "tonnes"
+          : Number.parseFloat(editMovement.quantityLiters || "0") > 0
+            ? "liters"
+            : "tonnes",
         quantityLiters: editMovement.quantityLiters?.toString() || "",
         density: editMovement.density?.toString() || "",
-        quantityKg: editMovement.quantityKg?.toString() || "",
+        quantityTonnes: editMovement.quantityKg
+          ? String(equipmentMovementLegacyKgToTonnes(editMovement.quantityKg))
+          : "",
         notes: editMovement.notes || "",
         isDraft: editMovement.isDraft || false,
       };
@@ -152,18 +165,24 @@ export function EquipmentMovementDialog({
         toWarehouseId: "",
         fromEquipmentId: "",
         toEquipmentId: "",
-        inputMode: "kg",
+        inputMode: "tonnes",
         quantityLiters: "",
         density: "",
-        quantityKg: "",
+        quantityTonnes: "",
         notes: "",
         isDraft: false,
       });
-      setInputMode("kg");
+      setInputMode("tonnes");
     }
   }, [editMovement, form, open]);
 
-  const { calculatedKg, kgNum, purchaseAmount, averageCost } =
+  const {
+    calculatedKg,
+    tonnesNum,
+    purchaseAmount,
+    averageCostPerKg,
+    averageCostPerTonne,
+  } =
     useLikCalculations({
       form,
       watchMovementType,
@@ -175,28 +194,29 @@ export function EquipmentMovementDialog({
       watchMovementDate,
       watchLiters,
       watchDensity,
-      watchKg,
+      watchTonnes,
       inputMode,
       warehouses,
       equipments: likEquipments,
     });
+
+  const initialQuantityTonnes =
+    isEditing || isCopy
+      ? equipmentMovementLegacyKgToTonnes(editMovement?.quantityKg || 0) ?? 0
+      : 0;
 
   const likBalance = useLikBalance({
     watchMovementType,
     watchProductType,
     watchFromWarehouseId,
     watchFromEquipmentId,
-    kgNum,
+    quantityTonnes: tonnesNum,
     warehouses,
     equipments: likEquipments,
     isEditing,
-    initialQuantityKg:
-      isEditing || isCopy ? parseFloat(editMovement?.quantityKg || "0") : 0,
+    initialQuantityTonnes,
     watchMovementDate,
   });
-
-  const initialQuantityKg =
-    isEditing || isCopy ? parseFloat(editMovement?.quantityKg || "0") : 0;
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -214,7 +234,7 @@ export function EquipmentMovementDialog({
         quantityLiters: data.quantityLiters ? data.quantityLiters : null,
         density: data.density ? data.density : null,
         totalCost: purchaseAmount,
-        costPerKg: averageCost,
+        costPerKg: averageCostPerKg,
         isDraft: !!isDraft,
       };
       const res = await apiRequest(
@@ -488,7 +508,7 @@ export function EquipmentMovementDialog({
                     {isEditing && (
                       <p className="text-[10px] text-muted-foreground mt-1 italic">
                         * С учетом текущего перемещения (
-                        {initialQuantityKg.toLocaleString()} кг)
+                        {formatTonnes(initialQuantityTonnes)} т)
                       </p>
                     )}
                   </div>
@@ -528,19 +548,18 @@ export function EquipmentMovementDialog({
                 </div>
               </div>
 
-              <VolumeInputSection
+              <TonneVolumeSection
                 form={form as any}
                 setInputMode={setInputMode}
-                calculatedKg={calculatedKg?.toString() || "0"}
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">
-                    Себестоимость (за кг):
+                    Себестоимость (за тонну):
                   </p>
                   <p className="text-lg font-bold">
-                    {averageCost.toLocaleString()} ₽
+                    {formatPricePerTonne(averageCostPerTonne)} ₽/т
                   </p>
                 </div>
                 <div className="space-y-1">

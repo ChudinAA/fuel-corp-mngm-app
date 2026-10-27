@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Price } from "@shared/schema";
+import { formatTonnes } from "@shared/units";
 
 interface UseContractVolumeProps {
   priceId: string | null;
@@ -8,6 +9,7 @@ interface UseContractVolumeProps {
   mode: "opt" | "refueling" | "refueling-abroad";
   currentDealAmount?: number;
   initialDealAmount?: number;
+  displayUnit?: "kg" | "tonnes" | "liters";
 }
 
 export function useContractVolume({
@@ -17,6 +19,7 @@ export function useContractVolume({
   mode,
   currentDealAmount = 0,
   initialDealAmount = 0,
+  displayUnit = "kg",
 }: UseContractVolumeProps) {
   const { data: price, isLoading: isLoadingPrice } = useQuery<Price>({
     queryKey: ["/api/prices", priceId],
@@ -36,6 +39,17 @@ export function useContractVolume({
     queryKey: [`/api/${mode}/contract-used-amount`, priceId],
     enabled: !!priceId && (price as any)?.limitType === "amount",
   });
+
+  const formatVolume = (value: number) => {
+    if (displayUnit === "tonnes") {
+      return `${formatTonnes(value / 1_000)} т`;
+    }
+    const formatted = new Intl.NumberFormat("ru-RU", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+    return `${formatted} ${displayUnit === "liters" ? "л" : "кг"}`;
+  };
 
   if (!priceId) {
     return { remaining: 0, status: "ok" as const, message: "—" };
@@ -101,13 +115,13 @@ export function useContractVolume({
       return {
         remaining,
         status: "ok" as const,
-        message: `ОК: ${remaining.toFixed(2)} кг`,
+        message: `ОК: ${formatVolume(remaining)}`,
       };
     } else {
       return {
         remaining,
         status: "error" as const,
-        message: `Превышен! Остаток: ${(totalVolume - usedVolume + initialQuantityKg).toFixed(2)} кг`,
+        message: `Превышен! Остаток: ${formatVolume(totalVolume - usedVolume + initialQuantityKg)}`,
       };
     }
   } catch (e) {

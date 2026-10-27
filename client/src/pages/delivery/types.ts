@@ -11,7 +11,7 @@ export const deliveryCostFormSchema = z.object({
   toEntityType: z.string().min(1, "Выберите тип назначения"),
   toEntityId: z.string().min(1, "Выберите пункт назначения"),
   toLocation: z.string().min(1, "Укажите куда"),
-  costPerKg: z.string().min(1, "Укажите стоимость за кг"),
+  costPerTonne: z.string().min(1, "Укажите стоимость за тонну"),
   distance: z.string().optional(),
   transitDays: z.string().optional(),
   priority: z.string().optional(),

@@ -43,6 +43,12 @@ import {
 } from "@/components/ui/dialog";
 import { ExportButton } from "@/components/export/export-button";
 import { formatNumber, formatDate } from "../utils";
+import {
+  formatPricePerTonne,
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 import type { MovementTableProps } from "../types";
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
@@ -285,10 +291,10 @@ export function MovementTable({
                 </div>
               </TableHead>
               <TableHead className="text-right w-[60px] text-xs font-semibold px-1 py-1">
-                КГ
+                т
               </TableHead>
               <TableHead className="text-right w-[70px] text-xs font-semibold px-1 py-1 leading-tight">
-                Цена
+                Цена ₽/т
               </TableHead>
               <TableHead className="text-right w-[75px] text-xs font-semibold px-1 py-1 leading-tight">
                 Сумма
@@ -314,7 +320,7 @@ export function MovementTable({
                 Услуги
               </TableHead>
               <TableHead className="text-right w-[70px] text-xs font-semibold px-1 py-1">
-                Себест.
+                Себест. ₽/т
               </TableHead>
               <TableHead className="w-[10px] px-1 py-1 sticky right-0 bg-background z-10"></TableHead>
             </TableRow>
@@ -369,6 +375,10 @@ export function MovementTable({
                     purchasePrice && quantityKg > 0
                       ? purchasePrice * quantityKg
                       : 0;
+                  const purchasePricePerTonne =
+                    purchasePrice === null
+                      ? null
+                      : pricePerKilogramToPerTonne(purchasePrice);
                   const deliveryCost = item.deliveryCost
                     ? parseFloat(item.deliveryCost)
                     : 0;
@@ -379,6 +389,7 @@ export function MovementTable({
                   const costPerKg = item.costPerKg
                     ? parseFloat(item.costPerKg)
                     : 0;
+                  const costPerTonne = pricePerKilogramToPerTonne(costPerKg);
                   const serviceTypes: Array<{ serviceType: string; serviceValue: string }> =
                     item.warehouseServiceTypes || [];
                   _rows.push((
@@ -450,11 +461,11 @@ export function MovementTable({
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-medium text-xs py-1.5 px-1">
-                      {formatNumberWithK(item.quantityKg)}
+                      {formatTonnes(kilogramsToTonnes(quantityKg))}
                     </TableCell>
                     <TableCell className="text-right font-bold text-xs py-1.5 px-1">
-                      {purchasePrice !== null
-                        ? formatNumber(purchasePrice)
+                      {purchasePricePerTonne !== null
+                        ? formatPricePerTonne(purchasePricePerTonne)
                         : "—"}
                     </TableCell>
                     <TableCell className="text-right text-xs py-1.5 px-1">
@@ -520,7 +531,7 @@ export function MovementTable({
                       )}
                     </TableCell>
                     <TableCell className="text-right font-bold text-xs py-1.5 px-1">
-                      {formatNumber(costPerKg)}
+                      {formatPricePerTonne(costPerTonne)}
                     </TableCell>
                     <TableCell className="py-1.5 px-1 sticky right-0 bg-background">
                       {item.fromExchange ? (

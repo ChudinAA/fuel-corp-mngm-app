@@ -24,6 +24,10 @@ import type { DeliveryCost } from "@shared/schema";
 import { formatNumber } from "../utils";
 import { BASE_TYPE, DELIVERY_ENTITY_TYPE } from "@shared/constants";
 import { cn } from "@/lib/utils";
+import {
+  formatPricePerTonne,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 
 interface DeliveryTableProps {
   costs: DeliveryCost[];
@@ -260,7 +264,7 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
           <TableRow>
             <TableHead>Перевозчик</TableHead>
             <TableHead>Маршрут</TableHead>
-            <TableHead className="text-right">За кг (₽)</TableHead>
+            <TableHead className="text-right">За тонну (₽/т)</TableHead>
             <TableHead className="text-right">Расст. (км)</TableHead>
             <TableHead>Сутки</TableHead>
             <TableHead>Приоритет</TableHead>
@@ -319,7 +323,10 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                     </TooltipProvider>
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
-                    {formatNumber(cost.costPerKg)} ₽
+                    {formatPricePerTonne(
+                      pricePerKilogramToPerTonne(Number(cost.costPerKg)),
+                    )}{" "}
+                    ₽/т
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {cost.distance ? formatNumber(cost.distance) : "—"}

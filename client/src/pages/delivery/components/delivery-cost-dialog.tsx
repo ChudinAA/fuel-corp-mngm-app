@@ -38,6 +38,10 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Loader2, UserPlus } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
+import {
+  deliveryRatePerKgForSave,
+  deliveryRatePerTonneInputValue,
+} from "../unit-calculations";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -94,7 +98,7 @@ export function AddDeliveryCostDialog({
       toEntityType: "",
       toEntityId: "",
       toLocation: "",
-      costPerKg: "",
+      costPerTonne: "",
       distance: "",
       transitDays: "",
       priority: "",
@@ -113,7 +117,9 @@ export function AddDeliveryCostDialog({
       toEntityType: editDeliveryCost?.toEntityType || "",
       toEntityId: editDeliveryCost?.toEntityId || "",
       toLocation: editDeliveryCost?.toLocation || "",
-      costPerKg: editDeliveryCost?.costPerKg?.toString() || "",
+      costPerTonne: deliveryRatePerTonneInputValue(
+        editDeliveryCost?.costPerKg,
+      ),
       distance: editDeliveryCost?.distance?.toString() || "",
       transitDays: editDeliveryCost?.transitDays?.toString() || "",
       priority: editDeliveryCost?.priority?.toString() || "",
@@ -184,7 +190,12 @@ export function AddDeliveryCostDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
-      const res = await apiRequest("POST", "/api/delivery-costs", { ...data, contractId: data.contractId || null });
+      const { costPerTonne, ...rest } = data;
+      const res = await apiRequest("POST", "/api/delivery-costs", {
+        ...rest,
+        costPerKg: deliveryRatePerKgForSave(costPerTonne).toString(),
+        contractId: data.contractId || null,
+      });
       return res.json();
     },
     onSuccess: (data) => {
@@ -205,10 +216,18 @@ export function AddDeliveryCostDialog({
 
   const updateMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
+      const { costPerTonne, ...rest } = data;
       const res = await apiRequest(
         "PATCH",
         `/api/delivery-costs/${editDeliveryCost?.id}`,
-        { ...data, contractId: data.contractId || null },
+        {
+          ...rest,
+          costPerKg: deliveryRatePerKgForSave(
+            costPerTonne,
+            editDeliveryCost?.costPerKg,
+          ).toString(),
+          contractId: data.contractId || null,
+        },
       );
       return res.json();
     },
@@ -238,7 +257,9 @@ export function AddDeliveryCostDialog({
         toEntityType: editDeliveryCost.toEntityType || "",
         toEntityId: editDeliveryCost.toEntityId || "",
         toLocation: editDeliveryCost.toLocation || "",
-        costPerKg: editDeliveryCost.costPerKg?.toString() || "",
+        costPerTonne: deliveryRatePerTonneInputValue(
+          editDeliveryCost.costPerKg,
+        ),
         distance: editDeliveryCost.distance?.toString() || "",
         transitDays: editDeliveryCost.transitDays?.toString() || "",
         priority: editDeliveryCost.priority?.toString() || "",
@@ -534,17 +555,17 @@ export function AddDeliveryCostDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="costPerKg"
+                name="costPerTonne"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Стоимость за кг (₽)</FormLabel>
+                    <FormLabel>Стоимость за тонну (₽/т)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min="0"
-                        step="0.000001"
-                        placeholder="0.000000"
-                        data-testid="input-cost-per-kg"
+                        step="0.01"
+                        placeholder="0.00"
+                        data-testid="input-cost-per-tonne"
                         {...field}
                       />
                     </FormControl>

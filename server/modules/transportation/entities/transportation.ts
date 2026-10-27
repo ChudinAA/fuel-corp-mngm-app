@@ -156,6 +156,20 @@ export const insertTransportationSchema = z
   })
   .superRefine((data, ctx) => {
     if (!data.isDraft) {
+      if (
+        data.inputMode === "liters" &&
+        (data.quantityLiters ?? 0) > 0 &&
+        (data.density === null ||
+          data.density === undefined ||
+          !Number.isFinite(data.density) ||
+          data.density <= 0)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Плотность должна быть положительной для пересчёта в тонны",
+          path: ["density"],
+        });
+      }
       if (!data.buyerId) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -180,7 +194,7 @@ export const insertTransportationSchema = z
       if (data.quantityKg === undefined || data.quantityKg === null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Количество (кг) обязательно",
+          message: "Масса обязательна",
           path: ["quantityKg"],
         });
       }

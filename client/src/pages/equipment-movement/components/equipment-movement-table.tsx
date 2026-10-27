@@ -13,6 +13,12 @@ import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { Pencil, Trash2, History, Filter, Search, Copy, Plus, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { formatNumber, formatDate } from "../utils";
+import {
+  formatPricePerTonne,
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 import { useEquipmentMovementTable } from "../hooks/use-equipment-movement-table";
 import type { EquipmentMovementTableProps } from "../types";
 import { useState } from "react";
@@ -178,10 +184,10 @@ export function EquipmentMovementTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right">КГ</TableHead>
+              <TableHead className="text-right">Масса, т</TableHead>
               <TableHead className="text-right">Литры</TableHead>
               <TableHead className="text-right">Плотность</TableHead>
-              <TableHead className="text-right">Себест.</TableHead>
+              <TableHead className="text-right">Себест., ₽/т</TableHead>
               <TableHead className="w-[50px] sticky right-0 bg-background z-10"></TableHead>
             </TableRow>
           </TableHeader>
@@ -230,7 +236,7 @@ export function EquipmentMovementTable({
                     {item?.toEquipmentName || item?.toWarehouseName || "—"}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatNumber(item?.quantityKg)}
+                    {formatTonnes(kilogramsToTonnes(Number(item?.quantityKg || 0)))}
                   </TableCell>
                   <TableCell className="text-right text-muted-foreground">
                     {item?.quantityLiters
@@ -243,7 +249,9 @@ export function EquipmentMovementTable({
                       : "—"}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatNumber(item?.costPerKg)}
+                    {formatPricePerTonne(
+                      pricePerKilogramToPerTonne(Number(item?.costPerKg || 0)),
+                    )}
                   </TableCell>
                   <TableCell className="sticky right-0 bg-background">
                     <EntityActionsMenu

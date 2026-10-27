@@ -12,8 +12,8 @@ export const transportationFormSchema = z
     nomenclatureId: z.string().nullable().optional().describe("Номенклатура"),
     quantityLiters: z.number().nullable().optional().describe("Количество (л)"),
     density: z.number().nullable().optional().describe("Плотность"),
-    quantityKg: z.number().nullable().optional().describe("Количество (кг)"),
-    inputMode: z.string().nullable().optional().describe("Единица ввода"),
+    quantityTonnes: z.number().nullable().optional().describe("Масса (т)"),
+    inputMode: z.enum(["liters", "tonnes"]).nullable().optional().describe("Единица ввода"),
     purchasePrice: z.number().nullable().optional().describe("Цена покупки"),
     purchasePriceId: z.string().nullable().optional(),
     purchasePriceIndex: z.number().default(0),
@@ -46,11 +46,39 @@ export const transportationFormSchema = z
           path: ["dealDate"],
         });
       }
-      if (data.quantityKg === null || data.quantityKg === undefined) {
+      if (data.inputMode === "liters") {
+        if (
+          data.quantityLiters === null ||
+          data.quantityLiters === undefined ||
+          data.quantityLiters <= 0
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Укажите количество в литрах",
+            path: ["quantityLiters"],
+          });
+        }
+        if (
+          data.density === null ||
+          data.density === undefined ||
+          !Number.isFinite(data.density) ||
+          data.density <= 0
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Укажите положительную плотность",
+            path: ["density"],
+          });
+        }
+      } else if (
+        data.quantityTonnes === null ||
+        data.quantityTonnes === undefined ||
+        data.quantityTonnes <= 0
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Укажите количество (кг)",
-          path: ["quantityKg"],
+          message: "Укажите массу в тоннах",
+          path: ["quantityTonnes"],
         });
       }
     }

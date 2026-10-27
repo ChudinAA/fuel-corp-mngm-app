@@ -67,7 +67,7 @@ interface DealChainSectionProps {
   onChange: (items: ChainItem[]) => void;
   purchaseAmountUsd: number;
   saleAmountUsd: number;
-  quantityKg: number;
+  quantityTonnes: number;
   purchasePrice: number;
   salePrice: number;
   exchangeRate: number;
@@ -146,7 +146,7 @@ export function DealChainSection({
   onChange,
   purchaseAmountUsd,
   saleAmountUsd,
-  quantityKg,
+  quantityTonnes,
   purchasePrice,
   salePrice,
   exchangeRate,
@@ -539,7 +539,7 @@ export function DealChainSection({
         item.incomeType || "fixed",
         item.rateValue,
         saleAmountUsd,
-        quantityKg,
+        quantityTonnes,
       )
     );
   }, 0);
@@ -704,7 +704,7 @@ export function DealChainSection({
                     onRemove={() => handleRemove(idx)}
                     purchaseAmountUsd={purchaseAmountUsd}
                     saleAmountUsd={saleAmountUsd}
-                    quantityKg={quantityKg}
+                    quantityTonnes={quantityTonnes}
                     fromAmount={running?.fromAmount}
                     toAmount={running?.toAmount}
                     purchaseExchangeRate={purchaseExchangeRate}
@@ -949,7 +949,7 @@ export function DealChainSection({
         }
         saleAmountUsd={saleAmountUsd}
         purchaseAmountUsd={purchaseAmountUsd}
-        quantityKg={quantityKg}
+        quantityTonnes={quantityTonnes}
         exchangeRate={exchangeRate}
       />
 
