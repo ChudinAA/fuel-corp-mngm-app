@@ -55,6 +55,7 @@ import type {
 } from "./types";
 import {
   calculatePlanningBalanceChainInTonnes,
+  calculateWarehouseSummaryTonnes,
   legacyKilogramsToTonnes,
   tonnesToLegacyKilograms,
 } from "../unit-calculations";
@@ -940,14 +941,25 @@ export class PlanningStorage implements IPlanningStorage {
       const balancePlan = lastEntry
         ? lastEntry.balanceAfter || "0"
         : "0";
+      const balanceFact = wh.currentBalance || "0";
+      const tonneValues = calculateWarehouseSummaryTonnes(
+        plannedIncome,
+        plannedExpense,
+        balancePlan,
+        balanceFact,
+      );
 
       result.push({
         warehouseId: wh.id,
         warehouseName: wh.name,
         plannedIncome: tonnesToLegacyKilograms(plannedIncome),
+        plannedIncomeTonnes: String(tonneValues.plannedIncomeTonnes),
         plannedExpense: tonnesToLegacyKilograms(plannedExpense),
+        plannedExpenseTonnes: String(tonneValues.plannedExpenseTonnes),
         balancePlan,
-        balanceFact: wh.currentBalance || "0",
+        balancePlanTonnes: String(tonneValues.balancePlanTonnes),
+        balanceFact,
+        balanceFactTonnes: String(tonneValues.balanceFactTonnes),
       });
     }
 

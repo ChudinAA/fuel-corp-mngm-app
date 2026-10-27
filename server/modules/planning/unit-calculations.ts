@@ -42,6 +42,26 @@ export function tonnesToLegacyKilograms(tonnes: number): string {
   return tonnesToKilograms(finiteNumber(tonnes, "tonnes")).toFixed(2);
 }
 
+export function calculateWarehouseSummaryTonnes(
+  plannedIncomeTonnes: number,
+  plannedExpenseTonnes: number,
+  balancePlanKg: string | number,
+  balanceFactKg: string | number,
+) {
+  return {
+    plannedIncomeTonnes: finiteNumber(plannedIncomeTonnes, "planned income tonnes"),
+    plannedExpenseTonnes: finiteNumber(plannedExpenseTonnes, "planned expense tonnes"),
+    balancePlanTonnes: legacyKilogramsToTonnes(
+      balancePlanKg,
+      "planned warehouse balance",
+    ),
+    balanceFactTonnes: legacyKilogramsToTonnes(
+      balanceFactKg,
+      "actual warehouse balance",
+    ),
+  };
+}
+
 /**
  * Recalculate the planning balance chain in tonnes while keeping the existing
  * kg-based database contract at the persistence boundary.

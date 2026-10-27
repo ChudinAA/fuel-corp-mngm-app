@@ -89,9 +89,13 @@ export interface WarehouseSummaryRow {
   warehouseId: string;
   warehouseName: string;
   plannedIncome: string;
+  plannedIncomeTonnes: string;
   plannedExpense: string;
+  plannedExpenseTonnes: string;
   balancePlan: string;
+  balancePlanTonnes: string;
   balanceFact: string;
+  balanceFactTonnes: string;
 }
 
 export interface CustomerWarehouseVolume {

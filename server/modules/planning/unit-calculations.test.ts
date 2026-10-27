@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  calculateWarehouseSummaryTonnes,
   calculatePlanningBalanceChainInTonnes,
   legacyKilogramsToTonnes,
   tonnesToLegacyKilograms,
@@ -64,6 +65,23 @@ test("planning summary totals round-trip summed legacy kilograms", () => {
   );
 
   assert.equal(tonnesToLegacyKilograms(totalTonnes), "1000.52");
+});
+
+test("warehouse planning summary exposes explicit tonne values from legacy kilograms", () => {
+  assert.deepEqual(
+    calculateWarehouseSummaryTonnes(
+      0.01234,
+      0.005,
+      "1000.01",
+      "2345.67",
+    ),
+    {
+      plannedIncomeTonnes: 0.01234,
+      plannedExpenseTonnes: 0.005,
+      balancePlanTonnes: 1.00001,
+      balanceFactTonnes: 2.34567,
+    },
+  );
 });
 
 test("planning balance conversion fails on malformed mass values", () => {

@@ -35,6 +35,7 @@ import { FieldCommentPopover } from "./field-comment-popover";
 import { TopLevelResourceDetail } from "./top-level-resource-detail";
 import { WarehouseSupplyTagsBadges, WarehouseSupplyTagsDialog } from "./warehouse-supply-tags-dialog";
 import { fmtTons } from "../utils/planning-utils";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 interface ResourceSummaryRow {
   supplierId: string | null;
@@ -52,9 +53,13 @@ interface WarehouseSummaryRow {
   warehouseId: string;
   warehouseName: string;
   plannedIncome: string;
+  plannedIncomeTonnes?: string;
   plannedExpense: string;
+  plannedExpenseTonnes?: string;
   balancePlan: string;
+  balancePlanTonnes?: string;
   balanceFact: string;
+  balanceFactTonnes?: string;
 }
 
 interface CustomerWarehouseVolume {
@@ -82,6 +87,18 @@ function fmtPeriod(period: PlanningPeriod) {
     periodFrom: format(period.from, "yyyy-MM-dd"),
     periodTo: format(period.to, "yyyy-MM-dd"),
   };
+}
+
+function summaryMassTonnes(tonnes: string | undefined, legacyKg: string): number {
+  return tonnes === undefined
+    ? kilogramsToTonnes(Number(legacyKg))
+    : Number(tonnes);
+}
+
+function formatSummaryMass(tonnes: string | undefined, legacyKg: string): string {
+  return tonnes === undefined
+    ? fmtTons(legacyKg)
+    : `${formatTonnes(tonnes)} т`;
 }
 
 export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; scenarioId: string | null }) {
@@ -480,8 +497,8 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                 </TableRow>
               ) : (
                 warehousesSummary.map((row) => {
-                  const balPlan = parseFloat(row.balancePlan);
-                  const balFact = parseFloat(row.balanceFact);
+                  const balPlan = summaryMassTonnes(row.balancePlanTonnes, row.balancePlan);
+                  const balFact = summaryMassTonnes(row.balanceFactTonnes, row.balanceFact);
                   return (
                     <TableRow key={row.warehouseId} data-testid={`row-warehouse-${row.warehouseId}`}>
                       <TableCell className="font-medium">
@@ -499,7 +516,9 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-emerald-600">{fmtTons(row.plannedIncome)}</span>
+                          <span className="text-emerald-600">
+                            {formatSummaryMass(row.plannedIncomeTonnes, row.plannedIncome)}
+                          </span>
                           <FieldCommentPopover
                             entityType="warehouse_plan"
                             entityId={row.warehouseId}
@@ -509,7 +528,9 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-amber-600">{fmtTons(row.plannedExpense)}</span>
+                          <span className="text-amber-600">
+                            {formatSummaryMass(row.plannedExpenseTonnes, row.plannedExpense)}
+                          </span>
                           <FieldCommentPopover
                             entityType="warehouse_plan"
                             entityId={row.warehouseId}
@@ -527,7 +548,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                 : "text-muted-foreground"
                           }
                         >
-                          {balPlan > 0 ? "+" : ""}{fmtTons(row.balancePlan)}
+                          {balPlan > 0 ? "+" : ""}{formatSummaryMass(row.balancePlanTonnes, row.balancePlan)}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -540,7 +561,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                 : "text-muted-foreground"
                           }
                         >
-                          {balFact > 0 ? "+" : ""}{fmtTons(row.balanceFact)}
+                          {balFact > 0 ? "+" : ""}{formatSummaryMass(row.balanceFactTonnes, row.balanceFact)}
                         </span>
                       </TableCell>
                     </TableRow>
