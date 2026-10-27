@@ -12,6 +12,11 @@ import {
   warehouses,
 } from "../server/modules/warehouses/entities/warehouses";
 import { WarehouseTransactionService } from "../server/modules/warehouses/services/warehouse-transaction-service";
+import {
+  equipmentTransactions,
+  equipments,
+} from "../server/modules/warehouses-equipment/entities/equipment";
+import { EquipmentTransactionService } from "../server/modules/warehouses-equipment/services/equipment-transaction-service";
 
 const firstDate = "2026-10-20T10:00:00.000Z";
 
@@ -19,6 +24,7 @@ type Fixture = {
   supplierId: string;
   customerId: string;
   warehouseIds: string[];
+  equipmentIds: string[];
   deals: any[];
 };
 
@@ -51,7 +57,11 @@ function makeDeal(
 
 async function createFixture(
   productTypes: string[],
-  options: { isDraft?: boolean; createSecondWarehouse?: boolean } = {},
+  options: {
+    isDraft?: boolean;
+    createSecondWarehouse?: boolean;
+    useEquipment?: boolean;
+  } = {},
 ): Promise<Fixture> {
   const [supplier] = await db
     .insert(suppliers)
@@ -81,28 +91,53 @@ async function createFixture(
     )
     .returning();
   const warehouseIds = warehousesCreated.map((warehouse) => warehouse.id);
+  const equipmentIds: string[] = [];
 
   try {
+    if (options.useEquipment) {
+      const [equipment] = await db
+        .insert(equipments)
+        .values({
+          name: `refueling-atomicity-equipment-${crypto.randomUUID()}`,
+          currentBalance: "100",
+          averageCost: "10",
+          pvkjBalance: "100",
+          pvkjAverageCost: "10",
+        })
+        .returning();
+      equipmentIds.push(equipment.id);
+    }
+
     const storage = new AircraftRefuelingStorage();
     const deals = await storage.createRefuelings(
-      productTypes.map((type) =>
-        makeDeal(
+      productTypes.map((type) => {
+        const deal = makeDeal(
           type,
           supplier.id,
           customer.id,
           warehouseIds[0],
           type === PRODUCT_TYPE.SERVICE ? 3 : 10,
           { isDraft: options.isDraft },
-        ),
-      ),
+        );
+        return options.useEquipment
+          ? { ...deal, equipmentId: equipmentIds[0], warehouseId: null }
+          : deal;
+      }),
     );
     return {
       supplierId: supplier.id,
       customerId: customer.id,
       warehouseIds,
+      equipmentIds,
       deals,
     };
   } catch (error) {
+    if (equipmentIds.length) {
+      await db
+        .delete(equipmentTransactions)
+        .where(inArray(equipmentTransactions.equipmentId, equipmentIds));
+      await db.delete(equipments).where(inArray(equipments.id, equipmentIds));
+    }
     await db.delete(warehouseTransactions).where(
       inArray(warehouseTransactions.warehouseId, warehouseIds),
     );
@@ -115,6 +150,11 @@ async function createFixture(
 
 async function cleanupFixture(fixture: Fixture) {
   const dealIds = fixture.deals.map((deal) => deal.id);
+  if (fixture.equipmentIds.length) {
+    await db
+      .delete(equipmentTransactions)
+      .where(inArray(equipmentTransactions.equipmentId, fixture.equipmentIds));
+  }
   if (dealIds.length) {
     await db
       .delete(aircraftRefueling)
@@ -126,13 +166,22 @@ async function cleanupFixture(fixture: Fixture) {
   await db
     .delete(warehouses)
     .where(inArray(warehouses.id, fixture.warehouseIds));
+  if (fixture.equipmentIds.length) {
+    await db.delete(equipments).where(inArray(equipments.id, fixture.equipmentIds));
+  }
   await db.delete(customers).where(sql`${customers.id} = ${fixture.customerId}`);
   await db.delete(suppliers).where(sql`${suppliers.id} = ${fixture.supplierId}`);
 }
 
 async function readSnapshot(fixture: Fixture) {
   const dealIds = fixture.deals.map((deal) => deal.id);
-  const [dealRows, transactionRows, warehouseRows] = await Promise.all([
+  const [
+    dealRows,
+    transactionRows,
+    warehouseRows,
+    equipmentTransactionRows,
+    equipmentRows,
+  ] = await Promise.all([
     db
       .select()
       .from(aircraftRefueling)
@@ -145,11 +194,27 @@ async function readSnapshot(fixture: Fixture) {
       .select()
       .from(warehouses)
       .where(inArray(warehouses.id, fixture.warehouseIds)),
+    fixture.equipmentIds.length
+      ? db
+          .select()
+          .from(equipmentTransactions)
+          .where(inArray(equipmentTransactions.equipmentId, fixture.equipmentIds))
+      : Promise.resolve([]),
+    fixture.equipmentIds.length
+      ? db
+          .select()
+          .from(equipments)
+          .where(inArray(equipments.id, fixture.equipmentIds))
+      : Promise.resolve([]),
   ]);
   return {
     deals: dealRows.sort((a, b) => a.id.localeCompare(b.id)),
     transactions: transactionRows.sort((a, b) => a.id.localeCompare(b.id)),
     warehouses: warehouseRows.sort((a, b) => a.id.localeCompare(b.id)),
+    equipmentTransactions: equipmentTransactionRows.sort((a, b) =>
+      a.id.localeCompare(b.id),
+    ),
+    equipments: equipmentRows.sort((a, b) => a.id.localeCompare(b.id)),
   };
 }
 
@@ -381,6 +446,70 @@ test("refueling order edits and failures preserve deals, movements, and stock at
       assert.deepEqual(await readSnapshot(fixture), before);
     } finally {
       WarehouseTransactionService.createTransactionAndUpdateWarehouse = originalCreate;
+      await cleanupFixture(fixture);
+    }
+  });
+
+  await t.test("a failed equipment movement rolls back the whole multi-product edit", async () => {
+    const fixture = await createFixture(
+      [PRODUCT_TYPE.KEROSENE, PRODUCT_TYPE.PVKJ, PRODUCT_TYPE.SERVICE],
+      { useEquipment: true },
+    );
+    assert.ok(
+      fixture.deals.every((deal) => deal.equipmentId === fixture.equipmentIds[0]),
+      "all product rows in the order should point to the fuel equipment",
+    );
+    const initialEquipmentMovements = await db
+      .select()
+      .from(equipmentTransactions)
+      .where(inArray(equipmentTransactions.equipmentId, fixture.equipmentIds));
+    assert.equal(
+      initialEquipmentMovements.length,
+      2,
+      "kerosene and PVKJ should each have an equipment movement",
+    );
+    const before = await readSnapshot(fixture);
+    const originalCreate =
+      EquipmentTransactionService.createTransactionAndUpdateEquipment;
+    let appliedMovementCount = 0;
+    try {
+      (EquipmentTransactionService as any).createTransactionAndUpdateEquipment =
+        async (...args: any[]) => {
+          const result = await originalCreate.apply(
+            EquipmentTransactionService,
+            args,
+          );
+          appliedMovementCount += 1;
+          if (appliedMovementCount === 1) {
+            throw new Error(
+              "Simulated failure after applying the first equipment movement",
+            );
+          }
+          return result;
+        };
+
+      await assert.rejects(
+        storage.updateRefuelingOrder(
+          fixture.deals[0].id,
+          fixture.deals.map((deal) =>
+            editDeal(
+              deal,
+              Number(deal.quantityKg) + 5,
+              "2026-10-26T10:00:00.000Z",
+            ),
+          ),
+        ),
+        /Simulated failure/,
+      );
+      assert.equal(
+        appliedMovementCount,
+        1,
+        "the failure should occur after one equipment movement was applied",
+      );
+      assert.deepEqual(await readSnapshot(fixture), before);
+    } finally {
+      EquipmentTransactionService.createTransactionAndUpdateEquipment =
+        originalCreate;
       await cleanupFixture(fixture);
     }
   });
