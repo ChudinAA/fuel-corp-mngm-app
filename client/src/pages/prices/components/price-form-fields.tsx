@@ -492,7 +492,7 @@ export function PriceFormFields({
                     }`}
                     data-testid="button-limit-type-volume"
                   >
-                    По объёму (кг)
+                    По объёму (т)
                   </button>
                   <button
                     type="button"
@@ -519,13 +519,13 @@ export function PriceFormFields({
             name="volume"
             render={({ field }) => (
               <FormItem className={(!isLimitEnabled || limitType === "amount") ? "opacity-40 pointer-events-none" : ""}>
-                <FormLabel>Объем по договору (кг)</FormLabel>
+                <FormLabel>Объем по договору (т)</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
-                    step="0.01"
+                    step="0.00001"
                     min="0"
-                    placeholder="Объем поставки"
+                    placeholder="Объем поставки в тоннах"
                     data-testid="input-volume"
                     disabled={!isLimitEnabled || limitType === "amount"}
                     {...field}
@@ -576,9 +576,9 @@ export function PriceFormFields({
                         ? "bg-primary text-primary-foreground border-primary"
                         : "border-input hover-elevate"
                     }`}
-                    data-testid="button-price-unit-kg"
+                    data-testid="button-price-unit-tonne"
                   >
-                    за кг
+                    за тонну
                   </button>
                   <button
                     type="button"
@@ -607,7 +607,7 @@ export function PriceFormFields({
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.00001"
+                      step="0.01"
                       min="0"
                       placeholder="Цена"
                       data-testid={`input-price-${index}`}

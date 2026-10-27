@@ -16,6 +16,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
+import type { DeliveryCostApiRecord } from "@/pages/delivery/types";
 
 interface MovementDestinationSectionProps {
   form: UseFormReturn<MovementFormData>;
@@ -29,7 +30,7 @@ interface MovementDestinationSectionProps {
     status: "ok" | "error" | "warning";
   };
   sameBasis?: boolean;
-  matchedDeliveryCost?: import("@shared/schema").DeliveryCost | null;
+  matchedDeliveryCost?: DeliveryCostApiRecord | null;
 }
 
 export function MovementDestinationSection({

@@ -13,6 +13,14 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, getAuditContext } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { AuditService } from "../../audit/services/audit-service";
+import { formatTonnes, legacyDealMassToTonnes } from "@shared/units";
+import {
+  RefuelingAbroadApiInputError,
+  refuelingAbroadDealToApi,
+  refuelingAbroadInputUsesNormalizedRates,
+  refuelingAbroadResultToApi,
+  toLegacyRefuelingAbroadInput,
+} from "../refueling-abroad-api-adapters";
 
 /** Строит полную метку сделки для записей аудита — в формате entity summary */
 async function buildDealLabel(refuelingId: string): Promise<string> {
@@ -43,10 +51,14 @@ async function buildDealLabel(refuelingId: string): Promise<string> {
     }
 
     // Количество
-    const qtyKg = deal.quantityKg != null ? Number(deal.quantityKg) : 0;
     const qtyL = deal.quantityLiters != null ? Number(deal.quantityLiters) : 0;
-    if (qtyKg > 0) {
-      parts.push(`${qtyKg.toLocaleString("ru-RU")} кг`);
+    const quantityTonnes = legacyDealMassToTonnes(
+      deal.quantityKg,
+      deal.quantityLiters,
+      deal.density,
+    );
+    if (quantityTonnes !== null && quantityTonnes > 0) {
+      parts.push(`${formatTonnes(quantityTonnes)} т`);
     } else if (qtyL > 0) {
       parts.push(`${qtyL.toLocaleString("ru-RU")} л`);
     }
@@ -97,7 +109,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
           search,
           columnFilters,
         );
-        res.json(result);
+        res.json(refuelingAbroadResultToApi(result));
       } catch (error: any) {
         console.error("Error fetching refueling abroad records:", error);
         res
@@ -130,9 +142,9 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     async (req, res) => {
       try {
         const { priceId } = req.params;
-        const usedVolume =
+        const volume =
           await refuelingAbroadStorage.getUsedVolumeByPrice(priceId);
-        res.json({ usedVolume });
+        res.json(volume);
       } catch (error) {
         console.error("Error getting used volume:", error);
         res
@@ -149,7 +161,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     async (req, res) => {
       try {
         const drafts = await refuelingAbroadStorage.getDrafts();
-        res.json(drafts);
+        res.json(refuelingAbroadResultToApi(drafts));
       } catch (error: any) {
         console.error("Error fetching drafts:", error);
         res.status(500).json({ message: "Ошибка получения черновиков" });
@@ -167,7 +179,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Запись не найдена" });
         }
-        res.json(item);
+        res.json(refuelingAbroadDealToApi(item));
       } catch (error: any) {
         console.error("Error fetching refueling abroad record:", error);
         res.status(500).json({ message: "Ошибка получения записи" });
@@ -186,12 +198,20 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        const validatedData = insertRefuelingAbroadSchema.parse(req.body);
+        const validatedData = insertRefuelingAbroadSchema.parse(
+          toLegacyRefuelingAbroadInput(req.body),
+        );
+        if (refuelingAbroadInputUsesNormalizedRates(req.body)) {
+          validatedData.inputMode = "kg";
+        }
         const userId = req.session.userId?.toString();
         const item = await refuelingAbroadStorage.create(validatedData, userId);
         SSEService.notifyEntityChanged("refueling-abroad", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(item);
+        res.status(201).json(refuelingAbroadDealToApi(item));
       } catch (error: any) {
+        if (error instanceof RefuelingAbroadApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) {
           return res
             .status(400)
@@ -241,7 +261,12 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        const validatedData = insertRefuelingAbroadSchema.parse(req.body);
+        const validatedData = insertRefuelingAbroadSchema.parse(
+          toLegacyRefuelingAbroadInput(req.body),
+        );
+        if (refuelingAbroadInputUsesNormalizedRates(req.body)) {
+          validatedData.inputMode = "kg";
+        }
         const userId = req.session.userId?.toString();
         const item = await refuelingAbroadStorage.update(
           req.params.id,
@@ -252,8 +277,11 @@ export function registerRefuelingAbroadRoutes(app: Express) {
           return res.status(404).json({ message: "Запись не найдена" });
         }
         SSEService.notifyEntityChanged("refueling-abroad", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(item);
+        res.json(refuelingAbroadDealToApi(item));
       } catch (error: any) {
+        if (error instanceof RefuelingAbroadApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) {
           return res
             .status(400)
@@ -304,7 +332,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         const items = await refuelingAbroadStorage.getBySupplierId(
           req.params.supplierId,
         );
-        res.json(items);
+        res.json(refuelingAbroadResultToApi(items));
       } catch (error: any) {
         console.error("Error fetching by supplier:", error);
         res.status(500).json({ message: "Ошибка получения записей" });
@@ -321,7 +349,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         const items = await refuelingAbroadStorage.getByBuyerId(
           req.params.buyerId,
         );
-        res.json(items);
+        res.json(refuelingAbroadResultToApi(items));
       } catch (error: any) {
         console.error("Error fetching by buyer:", error);
         res.status(500).json({ message: "Ошибка получения записей" });
@@ -338,7 +366,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         const items = await refuelingAbroadStorage.getByStorageCardId(
           req.params.storageCardId,
         );
-        res.json(items);
+        res.json(refuelingAbroadResultToApi(items));
       } catch (error: any) {
         console.error("Error fetching by storage card:", error);
         res.status(500).json({ message: "Ошибка получения записей" });
@@ -716,7 +744,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     async (req, res) => {
       try {
         const items = await refuelingAbroadStorage.getDeleted();
-        res.json(items);
+        res.json(refuelingAbroadResultToApi(items));
       } catch (error: any) {
         console.error("Error fetching deleted records:", error);
         res.status(500).json({ message: "Ошибка получения удаленных записей" });
@@ -748,7 +776,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Запись не найдена" });
         }
-        res.json(item);
+        res.json(refuelingAbroadDealToApi(item));
       } catch (error: any) {
         console.error("Error restoring refueling abroad record:", error);
         res.status(500).json({ message: "Ошибка восстановления записи" });

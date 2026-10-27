@@ -11,7 +11,9 @@ export interface IAircraftRefuelingStorage {
     data: Partial<InsertAircraftRefueling>
   ): Promise<AircraftRefueling | undefined>;
   deleteRefueling(id: string): Promise<boolean>;
-  getUsedVolumeByPrice(priceId: string): Promise<number>;
+  getUsedVolumeByPrice(
+    priceId: string,
+  ): Promise<{ usedVolumeTonnes: number; usedVolume: number }>;
   getUsedAmountByPrice(priceId: string): Promise<number>;
   checkDuplicate(data: {
     refuelingDate: string;

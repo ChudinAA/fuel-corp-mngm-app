@@ -18,13 +18,13 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Maximize2 } from "lucide-react";
-import type { Opt } from "@shared/schema";
+import type { OptApi } from "./opt/types";
 import { AddOptDialog } from "./opt/components/add-opt-dialog";
 import { OptTable } from "./opt/components/opt-table";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function OptPage() {
-  const [editingOpt, setEditingOpt] = useState<Opt | null>(null);
+  const [editingOpt, setEditingOpt] = useState<OptApi | null>(null);
   const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -43,13 +43,13 @@ export default function OptPage() {
     setIsDialogOpen(true);
   };
 
-  const handleEditOpt = (opt: Opt) => {
+  const handleEditOpt = (opt: OptApi) => {
     setEditingOpt(opt);
     setIsCopy(false);
     setIsDialogOpen(true);
   };
 
-  const handleCopyOpt = (opt: Opt) => {
+  const handleCopyOpt = (opt: OptApi) => {
     setEditingOpt(opt);
     setIsCopy(true);
     setIsDialogOpen(true);

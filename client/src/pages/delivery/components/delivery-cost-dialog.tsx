@@ -37,10 +37,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Loader2, UserPlus } from "lucide-react";
-import type { DeliveryCost } from "@shared/schema";
 import {
-  deliveryRatePerKgForSave,
-  deliveryRatePerTonneInputValue,
+  deliveryRateForApi,
+  deliveryRateInputValue,
 } from "../unit-calculations";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
@@ -48,12 +47,13 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   deliveryCostFormSchema,
   DELIVERY_ENTITY_TYPES,
+  type DeliveryCostApiRecord,
   type DeliveryCostFormData,
 } from "../types";
 import { getEntitiesByType } from "../utils";
 
 interface AddDeliveryCostDialogProps {
-  editDeliveryCost: DeliveryCost | null;
+  editDeliveryCost: DeliveryCostApiRecord | null;
   isInline?: boolean;
   inlineOpen?: boolean;
   onInlineOpenChange?: (open: boolean) => void;
@@ -117,9 +117,7 @@ export function AddDeliveryCostDialog({
       toEntityType: editDeliveryCost?.toEntityType || "",
       toEntityId: editDeliveryCost?.toEntityId || "",
       toLocation: editDeliveryCost?.toLocation || "",
-      costPerTonne: deliveryRatePerTonneInputValue(
-        editDeliveryCost?.costPerKg,
-      ),
+      costPerTonne: deliveryRateInputValue(editDeliveryCost?.costPerTonne),
       distance: editDeliveryCost?.distance?.toString() || "",
       transitDays: editDeliveryCost?.transitDays?.toString() || "",
       priority: editDeliveryCost?.priority?.toString() || "",
@@ -193,7 +191,7 @@ export function AddDeliveryCostDialog({
       const { costPerTonne, ...rest } = data;
       const res = await apiRequest("POST", "/api/delivery-costs", {
         ...rest,
-        costPerKg: deliveryRatePerKgForSave(costPerTonne).toString(),
+        costPerTonne: deliveryRateForApi(costPerTonne),
         contractId: data.contractId || null,
       });
       return res.json();
@@ -222,10 +220,7 @@ export function AddDeliveryCostDialog({
         `/api/delivery-costs/${editDeliveryCost?.id}`,
         {
           ...rest,
-          costPerKg: deliveryRatePerKgForSave(
-            costPerTonne,
-            editDeliveryCost?.costPerKg,
-          ).toString(),
+          costPerTonne: deliveryRateForApi(costPerTonne),
           contractId: data.contractId || null,
         },
       );
@@ -257,9 +252,7 @@ export function AddDeliveryCostDialog({
         toEntityType: editDeliveryCost.toEntityType || "",
         toEntityId: editDeliveryCost.toEntityId || "",
         toLocation: editDeliveryCost.toLocation || "",
-        costPerTonne: deliveryRatePerTonneInputValue(
-          editDeliveryCost.costPerKg,
-        ),
+        costPerTonne: deliveryRateInputValue(editDeliveryCost.costPerTonne),
         distance: editDeliveryCost.distance?.toString() || "",
         transitDays: editDeliveryCost.transitDays?.toString() || "",
         priority: editDeliveryCost.priority?.toString() || "",

@@ -236,7 +236,12 @@ export function EquipmentMovementTable({
                     {item?.toEquipmentName || item?.toWarehouseName || "—"}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatTonnes(kilogramsToTonnes(Number(item?.quantityKg || 0)))}
+                    {formatTonnes(
+                      item?.quantityTonnes !== null &&
+                        item?.quantityTonnes !== undefined
+                        ? Number(item.quantityTonnes)
+                        : kilogramsToTonnes(Number(item?.quantityKg || 0)),
+                    )}
                   </TableCell>
                   <TableCell className="text-right text-muted-foreground">
                     {item?.quantityLiters
@@ -250,7 +255,12 @@ export function EquipmentMovementTable({
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatPricePerTonne(
-                      pricePerKilogramToPerTonne(Number(item?.costPerKg || 0)),
+                      item?.costPerTonne !== null &&
+                        item?.costPerTonne !== undefined
+                        ? Number(item.costPerTonne)
+                        : pricePerKilogramToPerTonne(
+                            Number(item?.costPerKg || 0),
+                          ),
                     )}
                   </TableCell>
                   <TableCell className="sticky right-0 bg-background">

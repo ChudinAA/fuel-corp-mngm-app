@@ -69,6 +69,7 @@ import { cn } from "@/lib/utils";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { AddPriceDialog } from "./add-price-dialog";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 const PAGE_SIZE = 100;
 
@@ -529,10 +530,11 @@ export function PricesTable({
                           {getPriceDisplay(
                             price.priceValues,
                             price.currencySymbol || "₽",
+                            price.priceUnit === "liter" ? "liter" : "kg",
                           )}
                         </span>
                         <span className="text-[11px] text-muted-foreground font-normal border rounded px-1 py-0.5 leading-none">
-                          {price.priceUnit === "liter" ? "л" : "кг"}
+                          {price.priceUnit === "liter" ? "л" : "т"}
                         </span>
                       </div>
                     </TableCell>
@@ -542,7 +544,7 @@ export function PricesTable({
                           ? `${formatNumberForTable((price as any).maxDealAmount)} ₽`
                           : "—"
                         : price.volume
-                          ? `${formatNumberForTable(price.volume)} кг`
+                          ? `${formatTonnes(kilogramsToTonnes(Number(price.volume)))} т`
                           : "—"}
                     </TableCell>
                     <TableCell className="text-right">
@@ -553,7 +555,7 @@ export function PricesTable({
                               ? `${formatNumberForTable((price as any).soldAmount)} ₽`
                               : "—"
                             : price.soldVolume && parseFloat(price.soldVolume) > 0
-                              ? `${formatNumberForTable(price.soldVolume)} кг`
+                              ? `${formatTonnes(kilogramsToTonnes(Number(price.soldVolume)))} т`
                               : "—"}
                         </span>
                         <Tooltip>

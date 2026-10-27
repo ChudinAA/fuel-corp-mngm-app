@@ -3,9 +3,9 @@ import type {
   Base,
   LogisticsCarrier,
   LogisticsDeliveryLocation,
-  DeliveryCost,
   Price,
 } from "@shared/schema";
+import type { DeliveryCostApiRecord } from "@/pages/delivery/types";
 import {
   COUNTERPARTY_TYPE,
   COUNTERPARTY_ROLE,
@@ -27,7 +27,7 @@ interface UseTransportationFiltersProps {
   allBases: Base[] | undefined;
   carriers: LogisticsCarrier[] | undefined;
   deliveryLocations: LogisticsDeliveryLocation[] | undefined;
-  deliveryCosts: DeliveryCost[] | undefined;
+  deliveryCosts: DeliveryCostApiRecord[] | undefined;
 }
 
 export function useTransportationFilters({

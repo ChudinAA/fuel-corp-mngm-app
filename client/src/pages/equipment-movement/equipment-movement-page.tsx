@@ -5,13 +5,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AuditPanel } from "@/components/audit-panel";
-import type { EquipmentMovement, Warehouse, Equipment } from "@shared/schema";
+import type { Warehouse, Equipment } from "@shared/schema";
 import { EquipmentMovementDialog } from "./components/equipment-movement-dialog";
 import { EquipmentMovementTable } from "./components/equipment-movement-table";
+import type { EquipmentMovementApiRecord } from "./types";
 
 export default function EquipmentMovementPage() {
   const [editingMovement, setEditingMovement] =
-    useState<EquipmentMovement | null>(null);
+    useState<EquipmentMovementApiRecord | null>(null);
   const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);

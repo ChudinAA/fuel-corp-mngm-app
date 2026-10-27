@@ -47,10 +47,6 @@ import {
 } from "@/components/ui/tooltip";
 import { formatPricePerTonne, formatTonnes } from "@shared/units";
 import {
-  calculateRefuelingPricePerTonne,
-  calculateStoredRefuelingMassTonnes,
-} from "../unit-calculations";
-import {
   formatNumber,
   formatNumberForTable,
   formatCurrencyForTable,
@@ -72,11 +68,7 @@ function getDealPricePerTonne(
   deal: any,
   side: "purchase" | "sale",
 ): number | null {
-  const tonnes = calculateStoredRefuelingMassTonnes(
-    deal.quantityKg,
-    deal.quantityLiters,
-    deal.density,
-  );
+  const tonnes = Number(deal.quantityTonnes);
   const amountValue =
     side === "purchase" ? deal.purchaseAmount : deal.saleAmount;
   const amount = Number.parseFloat(String(amountValue ?? ""));
@@ -95,16 +87,12 @@ function getDealPricePerTonne(
     return (amount - agentFee - otherServiceFee) / tonnes;
   }
 
-  const inputMode =
-    deal.inputMode === "liters" ||
-    Number.parseFloat(String(deal.quantityLiters ?? "0")) > 0
-      ? "liters"
-      : "tonnes";
-  return calculateRefuelingPricePerTonne(
-    side === "purchase" ? deal.purchasePrice : deal.salePrice,
-    inputMode,
-    deal.density,
-  );
+  const savedRate =
+    side === "purchase"
+      ? deal.purchasePricePerTonne
+      : deal.salePricePerTonne;
+  const rate = Number.parseFloat(String(savedRate ?? ""));
+  return Number.isFinite(rate) ? rate : null;
 }
 
 interface RefuelingDealActionsProps {
@@ -621,11 +609,7 @@ export function RefuelingTable({
                   <StatCell
                     values={deals.map(
                       (d: any) =>
-                        calculateStoredRefuelingMassTonnes(
-                          d.quantityKg,
-                          d.quantityLiters,
-                          d.density,
-                        ) ?? 0,
+                        Number(d.quantityTonnes ?? 0),
                     )}
                     formatFn={(v) => formatTonnes(v)}
                   />
@@ -827,11 +811,7 @@ export function RefuelingTable({
                         <TooltipTrigger asChild>
                           <span className={cn(deal.isApproxVolume && "approx-volume-animated cursor-help")}>
                             {formatTonnes(
-                              calculateStoredRefuelingMassTonnes(
-                                deal.quantityKg,
-                                deal.quantityLiters,
-                                deal.density,
-                              ) ?? 0,
+                              Number(deal.quantityTonnes ?? 0),
                             )}
                           </span>
                         </TooltipTrigger>

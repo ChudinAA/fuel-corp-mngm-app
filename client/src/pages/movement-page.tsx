@@ -5,12 +5,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AuditPanel } from "@/components/audit-panel";
-import type { Movement, Warehouse } from "@shared/schema";
+import type { Warehouse } from "@shared/schema";
 import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
+import type { MovementApiRecord } from "./movement/types";
 
 export default function MovementPage() {
-  const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
+  const [editingMovement, setEditingMovement] =
+    useState<MovementApiRecord | null>(null);
   const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
@@ -81,7 +83,7 @@ export default function MovementPage() {
     },
   });
 
-  const handleEditClick = (movement: Movement) => {
+  const handleEditClick = (movement: MovementApiRecord) => {
     setEditingMovement(movement);
     setIsCopy(!!movement && !movement.id);
     setIsDialogOpen(true);

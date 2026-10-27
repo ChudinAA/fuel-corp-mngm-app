@@ -30,7 +30,7 @@ interface UseRefuelingAbroadCalculationsProps {
   selectedSalePriceId: string;
   productType: string;
   chainItems: ChainItem[];
-  initialQuantityForContract?: number;
+  initialQuantityTonnes?: number;
   initialPurchaseAmountUsd?: number;
   initialSaleAmountUsd?: number;
 }
@@ -48,7 +48,7 @@ export function useRefuelingAbroadCalculations({
   selectedSalePriceId,
   productType,
   chainItems,
-  initialQuantityForContract = 0,
+  initialQuantityTonnes = 0,
   initialPurchaseAmountUsd = 0,
   initialSaleAmountUsd = 0,
 }: UseRefuelingAbroadCalculationsProps) {
@@ -59,11 +59,6 @@ export function useRefuelingAbroadCalculations({
       density,
     ) ?? 0;
   const finalKg = tonnesToKilograms(finalTonnes);
-  const contractQuantity =
-    inputMode === "liters"
-      ? Number.parseFloat(quantityLiters || "0")
-      : finalKg;
-
   const {
     purchasePrice: extractedPurchasePrice,
     salePrice: extractedSalePrice,
@@ -202,23 +197,21 @@ export function useRefuelingAbroadCalculations({
   // Логика проверки объема по договору
   const contractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
-    currentQuantityKg: contractQuantity,
-    initialQuantityKg: initialQuantityForContract,
+    currentQuantityTonnes: finalTonnes,
+    initialQuantityTonnes,
     mode: "refueling-abroad",
     currentDealAmount: saleAmountUsd ?? 0,
     initialDealAmount: initialSaleAmountUsd,
-    displayUnit: inputMode === "liters" ? "liters" : "tonnes",
   });
 
   // Логика проверки объема по договору поставщика
   const supplierContractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
-    currentQuantityKg: contractQuantity,
-    initialQuantityKg: initialQuantityForContract,
+    currentQuantityTonnes: finalTonnes,
+    initialQuantityTonnes,
     mode: "refueling-abroad",
     currentDealAmount: purchaseAmountUsd ?? 0,
     initialDealAmount: initialPurchaseAmountUsd,
-    displayUnit: inputMode === "liters" ? "liters" : "tonnes",
   });
 
   return {

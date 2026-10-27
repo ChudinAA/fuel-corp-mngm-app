@@ -4,6 +4,29 @@ import { db } from "server/db";
 import { opt, aircraftRefueling, savedReports, suppliers, customers, warehouseTransactions } from "@shared/schema";
 import { IAnalyticsStorage, AnalyticsData, AnalyticsSummary } from "./types";
 import type { SavedReport } from "../../reports/storage/types";
+import { legacyDealMassToTonnes } from "@shared/units";
+
+const dealMassTonnes = (deal: {
+  quantityKg: string | null;
+  quantityLiters: string | null;
+  density: string | null;
+}) =>
+  legacyDealMassToTonnes(deal.quantityKg, deal.quantityLiters, deal.density) ?? 0;
+
+function legacyDealMassKilogramsSql(
+  quantityKg: unknown,
+  quantityLiters: unknown,
+  density: unknown,
+) {
+  return sql`
+    CASE
+      WHEN CAST(COALESCE(${quantityLiters}, '0') AS NUMERIC) > 0
+        AND CAST(COALESCE(${density}, '0') AS NUMERIC) > 0
+      THEN CAST(${quantityLiters} AS NUMERIC) * CAST(${density} AS NUMERIC)
+      ELSE CAST(${quantityKg} AS NUMERIC)
+    END
+  `;
+}
 
 export class AnalyticsStorage implements IAnalyticsStorage {
   async getAnalyticsData(
@@ -35,7 +58,7 @@ export class AnalyticsStorage implements IAnalyticsStorage {
     return {
       totalRevenue: 0,
       totalProfit: 0,
-      totalVolume: 0,
+      totalVolumeTonnes: 0,
       averageMargin: 0,
       topSuppliers: [],
       topBuyers: [],
@@ -61,27 +84,27 @@ export class AnalyticsStorage implements IAnalyticsStorage {
 
     const totalRevenue = deals.reduce((sum, deal) => sum + parseFloat(deal.saleAmount || '0'), 0);
     const totalProfit = deals.reduce((sum, deal) => sum + parseFloat(deal.profit || '0'), 0);
-    const totalVolume = deals.reduce((sum, deal) => sum + parseFloat(deal.quantityKg || '0'), 0);
+    const totalVolumeTonnes = deals.reduce((sum, deal) => sum + dealMassTonnes(deal), 0);
     const averageMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
     // Group by suppliers
-    const supplierMap = new Map<string, { name: string; volume: number; revenue: number }>();
+    const supplierMap = new Map<string, { name: string; volumeTonnes: number; revenue: number }>();
     deals.forEach(deal => {
       const supplierId = deal.supplierId;
       const supplierName = deal.supplier?.name || 'Неизвестно';
-      const existing = supplierMap.get(supplierId) || { name: supplierName, volume: 0, revenue: 0 };
-      existing.volume += parseFloat(deal.quantityKg || '0');
+      const existing = supplierMap.get(supplierId) || { name: supplierName, volumeTonnes: 0, revenue: 0 };
+      existing.volumeTonnes += dealMassTonnes(deal);
       existing.revenue += parseFloat(deal.saleAmount || '0');
       supplierMap.set(supplierId, existing);
     });
 
     // Group by buyers
-    const buyerMap = new Map<string, { name: string; volume: number; revenue: number }>();
+    const buyerMap = new Map<string, { name: string; volumeTonnes: number; revenue: number }>();
     deals.forEach(deal => {
       const buyerId = deal.buyerId;
       const buyerName = deal.buyer?.name || 'Неизвестно';
-      const existing = buyerMap.get(buyerId) || { name: buyerName, volume: 0, revenue: 0 };
-      existing.volume += parseFloat(deal.quantityKg || '0');
+      const existing = buyerMap.get(buyerId) || { name: buyerName, volumeTonnes: 0, revenue: 0 };
+      existing.volumeTonnes += dealMassTonnes(deal);
       existing.revenue += parseFloat(deal.saleAmount || '0');
       buyerMap.set(buyerId, existing);
     });
@@ -97,7 +120,7 @@ export class AnalyticsStorage implements IAnalyticsStorage {
     return {
       totalRevenue,
       totalProfit,
-      totalVolume,
+      totalVolumeTonnes,
       averageMargin,
       topSuppliers,
       topBuyers,
@@ -123,26 +146,26 @@ export class AnalyticsStorage implements IAnalyticsStorage {
 
     const totalRevenue = operations.reduce((sum, op) => sum + parseFloat(op.saleAmount || '0'), 0);
     const totalProfit = operations.reduce((sum, op) => sum + parseFloat(op.profit || '0'), 0);
-    const totalVolume = operations.reduce((sum, op) => sum + parseFloat(op.quantityKg || '0'), 0);
+    const totalVolumeTonnes = operations.reduce((sum, op) => sum + dealMassTonnes(op), 0);
     const averageMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
     // Product type distribution
     const productTypeMap = new Map<string, number>();
     operations.forEach(op => {
       const existing = productTypeMap.get(op.productType) || 0;
-      productTypeMap.set(op.productType, existing + parseFloat(op.quantityKg || '0'));
+      productTypeMap.set(op.productType, existing + dealMassTonnes(op));
     });
 
     const productTypeDistribution = Array.from(productTypeMap.entries()).map(([type, volume]) => ({
       type,
-      volume,
-      percentage: totalVolume > 0 ? (volume / totalVolume) * 100 : 0,
+      volumeTonnes: volume,
+      percentage: totalVolumeTonnes > 0 ? (volume / totalVolumeTonnes) * 100 : 0,
     }));
 
     return {
       totalRevenue,
       totalProfit,
-      totalVolume,
+      totalVolumeTonnes,
       averageMargin,
       topSuppliers: [],
       topBuyers: [],
@@ -160,15 +183,12 @@ export class AnalyticsStorage implements IAnalyticsStorage {
       const periodData: any = {};
 
       if (metrics.includes('sales')) {
-        const [salesData] = await db
+        const [optSales] = await db
           .select({
-            optVolume: sql<string>`COALESCE(SUM(CAST(${opt.quantityKg} AS NUMERIC)), 0)`,
+            optVolumeTonnes: sql<string>`COALESCE(SUM(${legacyDealMassKilogramsSql(opt.quantityKg, opt.quantityLiters, opt.density)}) / 1000, 0)::text`,
             optRevenue: sql<string>`COALESCE(SUM(CAST(${opt.saleAmount} AS NUMERIC)), 0)`,
-            refuelingVolume: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.quantityKg} AS NUMERIC)), 0)`,
-            refuelingRevenue: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
           })
           .from(opt)
-          .leftJoin(aircraftRefueling, sql`1=1`)
           .where(
             and(
               gte(opt.dealDate, period.startDate),
@@ -177,17 +197,29 @@ export class AnalyticsStorage implements IAnalyticsStorage {
             )
           );
 
-        periodData.sales = salesData;
+        const [refuelingSales] = await db
+          .select({
+            refuelingVolumeTonnes: sql<string>`COALESCE(SUM(${legacyDealMassKilogramsSql(aircraftRefueling.quantityKg, aircraftRefueling.quantityLiters, aircraftRefueling.density)}) / 1000, 0)::text`,
+            refuelingRevenue: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
+          })
+          .from(aircraftRefueling)
+          .where(
+            and(
+              gte(aircraftRefueling.refuelingDate, period.startDate),
+              lte(aircraftRefueling.refuelingDate, period.endDate),
+              isNull(aircraftRefueling.deletedAt),
+            ),
+          );
+
+        periodData.sales = { ...optSales, ...refuelingSales };
       }
 
       if (metrics.includes('profit')) {
-        const [profitData] = await db
+        const [optProfit] = await db
           .select({
             optProfit: sql<string>`COALESCE(SUM(CAST(${opt.profit} AS NUMERIC)), 0)`,
-            refuelingProfit: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.profit} AS NUMERIC)), 0)`,
           })
           .from(opt)
-          .leftJoin(aircraftRefueling, sql`1=1`)
           .where(
             and(
               gte(opt.dealDate, period.startDate),
@@ -196,13 +228,26 @@ export class AnalyticsStorage implements IAnalyticsStorage {
             )
           );
 
-        periodData.profit = profitData;
+        const [refuelingProfit] = await db
+          .select({
+            refuelingProfit: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.profit} AS NUMERIC)), 0)`,
+          })
+          .from(aircraftRefueling)
+          .where(
+            and(
+              gte(aircraftRefueling.refuelingDate, period.startDate),
+              lte(aircraftRefueling.refuelingDate, period.endDate),
+              isNull(aircraftRefueling.deletedAt),
+            ),
+          );
+
+        periodData.profit = { ...optProfit, ...refuelingProfit };
       }
 
       if (metrics.includes('warehouse')) {
         const [warehouseData] = await db
           .select({
-            totalBalance: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantity} AS NUMERIC)), 0)`,
+            totalBalanceTonnes: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantity} AS NUMERIC)) / 1000, 0)::text`,
           })
           .from(warehouseTransactions)
           .where(isNull(warehouseTransactions.deletedAt));

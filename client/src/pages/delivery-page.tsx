@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, History, X } from "lucide-react";
-import type { DeliveryCost } from "@shared/schema";
+import type { DeliveryCostApiRecord } from "./delivery/types";
 
 import { AddDeliveryCostDialog } from "./delivery/components/delivery-cost-dialog";
 import { DeliveryStatsCards } from "./delivery/components/delivery-stats-cards";
@@ -22,10 +22,11 @@ export default function DeliveryPage() {
   const [filterCarrierId, setFilterCarrierId] = useState<string>("all");
   const [filterFrom, setFilterFrom] = useState<string>("all");
   const [filterTo, setFilterTo] = useState<string>("all");
-  const [editingDeliveryCost, setEditingDeliveryCost] = useState<DeliveryCost | null>(null);
+  const [editingDeliveryCost, setEditingDeliveryCost] =
+    useState<DeliveryCostApiRecord | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
 
-  const { data: deliveryCosts, isLoading } = useQuery<DeliveryCost[]>({
+  const { data: deliveryCosts, isLoading } = useQuery<DeliveryCostApiRecord[]>({
     queryKey: ["/api/delivery-costs"],
   });
 

@@ -5,6 +5,11 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { storage } from "../../../storage/index";
+import {
+  deliveryCostsToApi,
+  DeliveryApiInputError,
+  toLegacyDeliveryCostInput,
+} from "../delivery-api-adapters";
 
 export function registerDeliveryRoutes(app: Express) {
   // Получить все тарифы доставки
@@ -15,7 +20,7 @@ export function registerDeliveryRoutes(app: Express) {
     async (req: Request, res: Response) => {
       try {
         const costs = await storage.delivery.getAllDeliveryCosts();
-        res.json(costs);
+        res.json(deliveryCostsToApi(costs));
       } catch (error) {
         console.error("Error fetching delivery costs:", error);
         res.status(500).json({ message: "Ошибка получения тарифов доставки" });
@@ -35,7 +40,7 @@ export function registerDeliveryRoutes(app: Express) {
         if (!cost) {
           return res.status(404).json({ message: "Тариф доставки не найден" });
         }
-        res.json(cost);
+        res.json(deliveryCostsToApi(cost));
       } catch (error) {
         console.error("Error fetching delivery cost:", error);
         res.status(500).json({ message: "Ошибка получения тарифа доставки" });
@@ -61,7 +66,8 @@ export function registerDeliveryRoutes(app: Express) {
           transitDays: req.body.transitDays != null && req.body.transitDays !== "" ? Number(req.body.transitDays) : undefined,
           priority: req.body.priority != null && req.body.priority !== "" ? Number(req.body.priority) : undefined,
         };
-        const data = insertDeliveryCostSchema.parse(coerced);
+        const normalized = toLegacyDeliveryCostInput(coerced);
+        const data = insertDeliveryCostSchema.parse(normalized);
         if (data.contractId) {
           const contract = await storage.catalogs.getContract(data.contractId);
           if (!contract || contract.carrierId !== data.carrierId) {
@@ -72,8 +78,11 @@ export function registerDeliveryRoutes(app: Express) {
           data,
           req.session.userId
         );
-        res.status(201).json(created);
+        res.status(201).json(deliveryCostsToApi(created));
       } catch (error: any) {
+        if (error instanceof DeliveryApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }
@@ -107,9 +116,10 @@ export function registerDeliveryRoutes(app: Express) {
           transitDays: req.body.transitDays != null && req.body.transitDays !== "" ? Number(req.body.transitDays) : undefined,
           priority: req.body.priority != null && req.body.priority !== "" ? Number(req.body.priority) : undefined,
         };
-        const rawData = insertDeliveryCostSchema.partial().parse(coercedPatch);
         const current = await storage.delivery.getDeliveryCost(id);
         if (!current) return res.status(404).json({ message: "Тариф доставки не найден" });
+        const normalized = toLegacyDeliveryCostInput(coercedPatch, current);
+        const rawData = insertDeliveryCostSchema.partial().parse(normalized);
         const effectiveContractId = rawData.contractId === undefined ? current.contractId : rawData.contractId;
         if (effectiveContractId) {
           const contract = await storage.catalogs.getContract(effectiveContractId);
@@ -133,8 +143,11 @@ export function registerDeliveryRoutes(app: Express) {
           return res.status(404).json({ message: "Тариф доставки не найден" });
         }
 
-        res.json(updated);
+        res.json(deliveryCostsToApi(updated));
       } catch (error) {
+        if (error instanceof DeliveryApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }

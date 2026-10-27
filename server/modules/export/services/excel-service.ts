@@ -81,7 +81,7 @@ export class ExcelService {
     data.forEach((item, rowIndex) => {
       const rowValues = allowedColumns.map((col) => {
         const raw = this.getNestedValue(item, col.key);
-        return this.formatValue(raw, col);
+        return this.formatValue(raw, col, item);
       });
 
       const dataRow = worksheet.addRow(rowValues);
@@ -113,7 +113,7 @@ export class ExcelService {
           cell.alignment = { horizontal: "right", vertical: "middle" };
           if (typeof cell.value === "number") {
             const isInt = Number.isInteger(cell.value);
-            cell.numFmt = isInt ? "#,##0" : "#,##0.##";
+            cell.numFmt = col?.numberFormat || (isInt ? "#,##0" : "#,##0.##");
           }
         } else if (col?.type === "date") {
           cell.alignment = { horizontal: "center", vertical: "middle" };
@@ -165,10 +165,10 @@ export class ExcelService {
     return path.split(".").reduce((current, key) => current?.[key], obj);
   }
 
-  private formatValue(value: any, column: ColumnConfig): any {
+  private formatValue(value: any, column: ColumnConfig, row?: any): any {
     if (value === null || value === undefined) return "";
 
-    if (column.format) return column.format(value);
+    if (column.format) return column.format(value, row);
 
     switch (column.type) {
       case "date":

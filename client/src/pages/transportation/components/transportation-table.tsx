@@ -67,6 +67,13 @@ import {
 } from "../constants";
 
 function getTransportationMassTonnes(deal: any): number | null {
+  if (
+    deal.quantityTonnes !== null &&
+    deal.quantityTonnes !== undefined &&
+    Number.isFinite(Number(deal.quantityTonnes))
+  ) {
+    return Number(deal.quantityTonnes);
+  }
   return calculateStoredTransportationMassTonnes(
     deal.quantityKg,
     deal.quantityLiters,
@@ -75,6 +82,13 @@ function getTransportationMassTonnes(deal: any): number | null {
 }
 
 function getTransportationPricePerTonne(deal: any): number | null {
+  if (
+    deal.salePricePerTonne !== null &&
+    deal.salePricePerTonne !== undefined &&
+    Number.isFinite(Number(deal.salePricePerTonne))
+  ) {
+    return Number(deal.salePricePerTonne);
+  }
   const tonnes = getTransportationMassTonnes(deal);
   const saleAmount = Number.parseFloat(String(deal.saleAmount ?? ""));
   if (tonnes !== null && tonnes > 0 && Number.isFinite(saleAmount)) {
@@ -435,7 +449,7 @@ export function TransportationTable({
                       <span className="truncate block">{deal.deliveryLocation?.name || "—"}</span>
                     </TableCell>
                   )}
-                  {isColumnVisible("quantityKg") && (
+                  {isColumnVisible("quantityTonnes") && (
                     <TableCell className="text-right text-xs py-1.5 px-1">
                       {getTransportationMassTonnes(deal) === null
                         ? "—"

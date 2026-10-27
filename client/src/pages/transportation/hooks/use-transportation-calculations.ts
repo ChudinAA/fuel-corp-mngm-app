@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import type { DeliveryCost, Price } from "@shared/schema";
+import type { Price } from "@shared/schema";
+import type { DeliveryCostApiRecord } from "@/pages/delivery/types";
 import { DELIVERY_ENTITY_TYPE } from "@shared/constants";
 import { usePriceExtraction } from "@/pages/shared/hooks/use-price-extraction";
 import {
@@ -21,7 +22,7 @@ interface UseTransportationCalculationsProps {
   salePrices: Price[];
   selectedPurchasePriceId: string;
   selectedSalePriceId: string;
-  deliveryCosts: DeliveryCost[] | undefined;
+  deliveryCosts: DeliveryCostApiRecord[] | undefined;
   carrierId: string;
   deliveryLocationId: string;
   isAviaService: boolean;
@@ -100,17 +101,14 @@ export function useTransportationCalculations({
       return matchesCarrier && matchesDestination && matchesSource && dc.isActive;
     });
 
-    if (cost?.costPerKg) {
+    if (cost?.costPerTonne) {
       return cost;
     }
     return null;
   }, [isAviaService, deliveryLocationId, carrierId, deliveryCosts, basisId]);
 
   const deliveryTariffPerTonne = matchedDeliveryCost
-    ? calculateTransportationPricePerTonne(
-        matchedDeliveryCost.costPerKg,
-        "kg",
-      )
+    ? Number(matchedDeliveryCost.costPerTonne)
     : null;
   const deliveryCost =
     deliveryTariffPerTonne !== null && finalTonnes !== null && finalTonnes > 0

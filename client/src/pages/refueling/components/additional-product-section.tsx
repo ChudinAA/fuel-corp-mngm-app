@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { X, Plus } from "lucide-react";
 import type { Supplier, Base, Warehouse, Price } from "@shared/schema";
-import type { AircraftRefueling } from "@shared/schema";
+import type { RefuelingApi } from "../types";
 import {
   PRODUCT_TYPE,
   BASE_TYPE,
@@ -49,20 +49,20 @@ export interface AdditionalProductPayload {
   inputMode: "liters" | "tonnes";
   quantityLiters: number | null;
   density: number | null;
-  quantityKg: number;
+  quantityTonnes: number;
   isPriceRecharge: boolean;
   isPvkjRecharge: boolean;
   setSalePriceZero: boolean;
-  purchasePrice: number | null;
+  purchasePricePerTonne: number | null;
   purchasePriceId: string | null;
   purchasePriceIndex: number;
-  salePrice: number | null;
+  salePricePerTonne: number | null;
   salePriceId: string | null;
   salePriceIndex: number;
   purchaseAmount: number | null;
   saleAmount: number | null;
   agentFee: number | null;
-  agentFeeRate: number | null;
+  agentFeeRatePerTonne: number | null;
   isAgentFeeEnabled: boolean;
   otherServiceFee: number | null;
   otherServiceName: string | null;
@@ -79,7 +79,7 @@ export interface AdditionalProductSectionHandle {
 
 interface AdditionalProductSectionProps {
   productType: string;
-  editData?: AircraftRefueling | null;
+  editData?: RefuelingApi | null;
   canRemove?: boolean;
   onRemove: () => void;
   // Common shared values from parent form
@@ -210,6 +210,7 @@ export const AdditionalProductSection = forwardRef<
     // Calculations for this product
     const {
       calculatedKg,
+      finalTonnes,
       purchasePrice,
       salePrice,
       purchasePriceUnit,
@@ -247,10 +248,7 @@ export const AdditionalProductSection = forwardRef<
       selectedSupplier,
       productType,
       isEditing: !!editData,
-      initialQuantityKg: Number.parseFloat(editData?.quantityKg || "0"),
-      initialQuantityLiters: Number.parseFloat(
-        editData?.quantityLiters || "0",
-      ),
+      initialQuantityTonnes: Number(editData?.quantityTonnes || 0),
       initialPurchaseAmount: Number.parseFloat(
         editData?.purchaseAmount || "0",
       ),
@@ -332,21 +330,21 @@ export const AdditionalProductSection = forwardRef<
             volume.density
               ? Number.parseFloat(volume.density)
               : null,
-          quantityKg: calculatedKg ? Number.parseFloat(calculatedKg) : 0,
+          quantityTonnes: finalTonnes,
           isPriceRecharge,
           isPvkjRecharge,
           setSalePriceZero,
-          purchasePrice: purchasePrice !== null ? purchasePrice : null,
+          purchasePricePerTonne,
           purchasePriceId: purchasePriceId || null,
           purchasePriceIndex:
             purchasePriceIndex !== undefined ? purchasePriceIndex : 0,
-          salePrice: salePrice !== null ? salePrice : null,
+          salePricePerTonne,
           salePriceId: salePriceId || null,
           salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : 0,
           purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
           saleAmount: saleAmount !== null ? saleAmount : null,
           agentFee: agentFee !== null ? agentFee : null,
-          agentFeeRate: agentFeeRate || null,
+          agentFeeRatePerTonne,
           isAgentFeeEnabled,
           otherServiceFee: otherServiceFee || null,
           otherServiceName: otherServiceName || null,

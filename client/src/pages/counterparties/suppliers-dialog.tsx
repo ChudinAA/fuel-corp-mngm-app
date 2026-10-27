@@ -5,6 +5,10 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import {
+  pricePerKilogramToPerTonne,
+  pricePerTonneToPerKilogram,
+} from "@shared/units";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
@@ -81,6 +85,18 @@ type BasisPriceEntry = {
 };
 
 type SupplierFormData = z.infer<typeof supplierFormSchema>;
+
+function legacyKilogramRateToFormTonnes(value: string | number | null | undefined): string {
+  if (value == null || value === "") return "";
+  const rate = Number(value);
+  return Number.isFinite(rate) ? pricePerKilogramToPerTonne(rate).toFixed(2) : "";
+}
+
+function formTonnesRateToLegacyKilograms(value: string): string | null {
+  if (value === "") return null;
+  const rate = Number(value);
+  return Number.isFinite(rate) ? String(pricePerTonneToPerKilogram(rate)) : null;
+}
 
 interface AddSupplierDialogProps {
   bases: Base[];
@@ -183,9 +199,9 @@ export function AddSupplierDialog({
         const entry = basisPricesMap[basisId] || defaultBasisPriceEntry();
         return {
           basisId,
-          servicePrice: entry.servicePrice ? entry.servicePrice : null,
-          pvkjPrice: entry.pvkjPrice ? entry.pvkjPrice : null,
-          agentFee: entry.agentFee ? entry.agentFee : null,
+          servicePrice: formTonnesRateToLegacyKilograms(entry.servicePrice),
+          pvkjPrice: formTonnesRateToLegacyKilograms(entry.pvkjPrice),
+          agentFee: formTonnesRateToLegacyKilograms(entry.agentFee),
           otherServiceType: entry.otherServiceType || null,
           otherServiceValue: entry.otherServiceValue ? entry.otherServiceValue : null,
           otherServiceName: entry.otherServiceName || null,
@@ -326,9 +342,9 @@ export function AddSupplierDialog({
       if (editItem.basisPrices && Array.isArray(editItem.basisPrices)) {
         editItem.basisPrices.forEach((bp: { basisId: string; servicePrice?: string | null; pvkjPrice?: string | null; agentFee?: string | null; otherServiceType?: string | null; otherServiceValue?: string | null }) => {
           pricesMap[bp.basisId] = {
-            servicePrice: bp.servicePrice || "",
-            pvkjPrice: bp.pvkjPrice || "",
-            agentFee: bp.agentFee || "",
+            servicePrice: legacyKilogramRateToFormTonnes(bp.servicePrice),
+            pvkjPrice: legacyKilogramRateToFormTonnes(bp.pvkjPrice),
+            agentFee: legacyKilogramRateToFormTonnes(bp.agentFee),
             otherServiceType: bp.otherServiceType || "",
             otherServiceValue: bp.otherServiceValue || "",
             otherServiceName: (bp as any).otherServiceName || "",
@@ -575,12 +591,12 @@ export function AddSupplierDialog({
                     <div className="space-y-2">
                       <div className="grid grid-cols-3 gap-2">
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">Стоимость услуги</label>
+                          <label className="text-xs text-muted-foreground">Услуга (₽/т)</label>
                           <Input
-                            placeholder="0.000000"
+                            placeholder="0.00"
                             type="number"
                             min="0"
-                            step="0.000001"
+                            step="0.01"
                             value={basisPrices.servicePrice}
                             onChange={(e) => setBasisPricesMap(prev => ({
                               ...prev,
@@ -590,12 +606,12 @@ export function AddSupplierDialog({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">Стоимость ПВКЖ</label>
+                          <label className="text-xs text-muted-foreground">ПВКЖ (₽/т)</label>
                           <Input
-                            placeholder="0.000000"
+                            placeholder="0.00"
                             type="number"
                             min="0"
-                            step="0.000001"
+                            step="0.01"
                             value={basisPrices.pvkjPrice}
                             onChange={(e) => setBasisPricesMap(prev => ({
                               ...prev,
@@ -605,12 +621,12 @@ export function AddSupplierDialog({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">Агентские (₽/кг)</label>
+                          <label className="text-xs text-muted-foreground">Агентские (₽/т)</label>
                           <Input
-                            placeholder="0.000000"
+                            placeholder="0.00"
                             type="number"
                             min="0"
-                            step="0.000001"
+                            step="0.01"
                             value={basisPrices.agentFee}
                             onChange={(e) => setBasisPricesMap(prev => ({
                               ...prev,
@@ -660,7 +676,7 @@ export function AddSupplierDialog({
                               }
                               type="number"
                               min="0"
-                              step="0.000001"
+                              step="0.01"
                               value={basisPrices.otherServiceValue}
                               onChange={(e) => setBasisPricesMap(prev => ({
                                 ...prev,

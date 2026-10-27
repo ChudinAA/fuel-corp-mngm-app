@@ -25,7 +25,12 @@ try {
     WITH source_sales AS (
       SELECT
         date_trunc('month', deal_date) AS month_start,
-        CAST(quantity_kg AS NUMERIC) AS volume_kg
+        CASE
+          WHEN CAST(COALESCE(quantity_liters, '0') AS NUMERIC) > 0
+            AND CAST(COALESCE(density, '0') AS NUMERIC) > 0
+          THEN CAST(quantity_liters AS NUMERIC) * CAST(density AS NUMERIC)
+          ELSE CAST(quantity_kg AS NUMERIC)
+        END AS volume_kg
       FROM opt
       WHERE deleted_at IS NULL
 
@@ -33,7 +38,12 @@ try {
 
       SELECT
         date_trunc('month', refueling_date) AS month_start,
-        CAST(quantity_kg AS NUMERIC) AS volume_kg
+        CASE
+          WHEN CAST(COALESCE(quantity_liters, '0') AS NUMERIC) > 0
+            AND CAST(COALESCE(density, '0') AS NUMERIC) > 0
+          THEN CAST(quantity_liters AS NUMERIC) * CAST(density AS NUMERIC)
+          ELSE CAST(quantity_kg AS NUMERIC)
+        END AS volume_kg
       FROM aircraft_refueling
       WHERE deleted_at IS NULL
     ),

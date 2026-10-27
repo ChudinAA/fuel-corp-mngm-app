@@ -22,10 +22,6 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatNumber } from "../utils";
 import { formatPricePerTonne, formatTonnes } from "@shared/units";
-import {
-  calculateRefuelingPricePerTonne,
-  calculateStoredRefuelingMassTonnes,
-} from "../unit-calculations";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useErrorModal } from "@/hooks/use-error-modal";
@@ -546,14 +542,10 @@ export function RefuelingAbroadTable({
                     {(() => {
                       const hasLiterQuantity =
                         Number.parseFloat(item.quantityLiters || "0") > 0;
-                      const isLiterDeal =
-                        item.inputMode === "liters" || hasLiterQuantity;
-                      const massTonnes = calculateStoredRefuelingMassTonnes(
-                        item.inputMode,
-                        item.quantityKg,
-                        item.quantityLiters,
-                        item.density,
-                      );
+                      const massTonnes =
+                        item.quantityTonnes == null
+                          ? null
+                          : Number(item.quantityTonnes);
                       return (
                         <div className="flex flex-col font-mono">
                           {hasLiterQuantity && (
@@ -573,14 +565,10 @@ export function RefuelingAbroadTable({
                   <TableCell className="p-2 text-right">
                     <div className="flex flex-col font-mono">
                       {(() => {
-                        const isLiterDeal =
-                          item.inputMode === "liters" ||
-                          Number.parseFloat(item.quantityLiters || "0") > 0;
-                        const pricePerTonne = calculateRefuelingPricePerTonne(
-                          item.purchasePriceUsd,
-                          isLiterDeal ? "liters" : "tonnes",
-                          item.density,
-                        );
+                        const pricePerTonne =
+                          item.purchasePriceUsdPerTonne == null
+                            ? null
+                            : Number(item.purchasePriceUsdPerTonne);
                         return (
                           <span>
                             {pricePerTonne === null
@@ -613,14 +601,10 @@ export function RefuelingAbroadTable({
                   <TableCell className="p-2 text-right">
                     <div className="flex flex-col font-mono">
                       {(() => {
-                        const isLiterDeal =
-                          item.inputMode === "liters" ||
-                          Number.parseFloat(item.quantityLiters || "0") > 0;
-                        const pricePerTonne = calculateRefuelingPricePerTonne(
-                          item.salePriceUsd,
-                          isLiterDeal ? "liters" : "tonnes",
-                          item.density,
-                        );
+                        const pricePerTonne =
+                          item.salePriceUsdPerTonne == null
+                            ? null
+                            : Number(item.salePriceUsdPerTonne);
                         return (
                           <span>
                             {pricePerTonne === null

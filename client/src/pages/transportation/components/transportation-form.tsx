@@ -42,10 +42,10 @@ import { Plus, Loader2 } from "lucide-react";
 import type {
   Base,
   Customer,
-  DeliveryCost,
   LogisticsCarrier,
   LogisticsDeliveryLocation,
 } from "@shared/schema";
+import type { DeliveryCostApiRecord } from "@/pages/delivery/types";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { useDuplicateCheck } from "@/pages/shared/hooks/use-duplicate-check";
@@ -169,7 +169,7 @@ export const TransportationForm = forwardRef<
   const { data: deliveryLocations } = useQuery<LogisticsDeliveryLocation[]>({
     queryKey: ["/api/logistics/delivery-locations"],
   });
-  const { data: deliveryCosts } = useQuery<DeliveryCost[]>({
+  const { data: deliveryCosts } = useQuery<DeliveryCostApiRecord[]>({
     queryKey: ["/api/delivery-costs"],
   });
 
@@ -259,7 +259,7 @@ export const TransportationForm = forwardRef<
       basisId: watchBasisId,
       customerBasisId: watchCustomerBasisId,
       deliveryLocationId: form.watch("deliveryLocationId") || null,
-      quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
+      quantityTonnes: finalTonnes ?? 0,
     }),
   });
 
@@ -353,9 +353,13 @@ export const TransportationForm = forwardRef<
           ? parseFloat(editData.quantityLiters)
           : null,
         density: editData.density ? parseFloat(editData.density) : null,
-        quantityTonnes: editData.quantityKg
-          ? kilogramsToTonnes(parseFloat(editData.quantityKg))
-          : null,
+        quantityTonnes:
+          editData.quantityTonnes !== null &&
+          editData.quantityTonnes !== undefined
+            ? Number(editData.quantityTonnes)
+            : editData.quantityKg
+              ? kilogramsToTonnes(parseFloat(editData.quantityKg))
+              : null,
         inputMode:
           editData.inputMode === "liters" ||
           Number.parseFloat(editData.quantityLiters || "0") > 0
@@ -395,14 +399,15 @@ export const TransportationForm = forwardRef<
       productType: data.productType || PRODUCT_TYPE.KEROSENE,
       nomenclatureId: data.nomenclatureId || null,
       contractNumber: salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
-      quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+      quantityTonnes: finalTonnes,
       quantityLiters: data.quantityLiters || null,
       density: data.density || null,
       inputMode: data.inputMode,
       purchasePrice: null,
       purchasePriceId: null,
       purchasePriceIndex: null,
-      salePrice: salePrice !== null ? salePrice : null,
+      salePricePerTonne:
+        salePricePerTonne !== null ? salePricePerTonne : null,
       salePriceId: salePriceId || null,
       salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
       purchaseAmount: null,
@@ -410,7 +415,8 @@ export const TransportationForm = forwardRef<
       carrierId: data.carrierId || null,
       deliveryLocationId: data.deliveryLocationId || null,
       deliveryCost: deliveryCost !== null ? deliveryCost : null,
-      deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
+      deliveryTariffPerTonne:
+        deliveryTariffPerTonne !== null ? deliveryTariffPerTonne : null,
       profit: profit !== null ? profit : null,
       notes: data.notes || null,
       isDraft,
@@ -476,8 +482,8 @@ export const TransportationForm = forwardRef<
     const isDraft = isDraftSubmit ?? data.isDraft ?? false;
 
     if (!isDraft) {
-      const kgVal = calculatedKg ? parseFloat(calculatedKg) : 0;
-      if (kgVal <= 0) {
+      const tonnesValue = finalTonnes ?? 0;
+      if (tonnesValue <= 0) {
         showError("Укажите корректное количество топлива");
         return;
       }

@@ -37,8 +37,8 @@ export const refuelingAbroadFormSchema = z
     purchasePriceIndex: z.number().optional().nullable(),
     salePriceIndex: z.number().optional().nullable(),
 
-    purchasePriceUsd: z.string().optional().nullable().describe("Цена покупки (USD)"),
-    salePriceUsd: z.string().optional().nullable().describe("Цена продажи (USD)"),
+    purchasePriceUsd: z.string().optional().nullable().describe("Цена покупки (USD/т)"),
+    salePriceUsd: z.string().optional().nullable().describe("Цена продажи (USD/т)"),
 
     purchaseExchangeRateId: z.string().optional().nullable(),
     manualPurchaseExchangeRate: z.string().optional().nullable().describe("Курс покупки (ручной)"),

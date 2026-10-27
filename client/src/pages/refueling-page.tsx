@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Maximize2 } from "lucide-react";
-import type { AircraftRefueling } from "@shared/schema";
 import { EQUIPMENT_TYPE } from "@shared/constants";
 import type { EquipmentType } from "@shared/constants";
+import type { RefuelingApi } from "./refueling/types";
 import { AddRefuelingDialog } from "./refueling/components/add-refueling-dialog";
 import { RefuelingTable } from "./refueling/components/refueling-table";
 import { useAuth } from "@/hooks/use-auth";
@@ -17,7 +17,7 @@ interface RefuelingPageProps {
 }
 
 export default function RefuelingPage({ equipmentType = EQUIPMENT_TYPE.COMMON }: RefuelingPageProps) {
-  const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
+  const [editingRefueling, setEditingRefueling] = useState<RefuelingApi | null>(null);
   const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -36,13 +36,13 @@ export default function RefuelingPage({ equipmentType = EQUIPMENT_TYPE.COMMON }:
     setIsDialogOpen(true);
   };
 
-  const handleEditRefueling = (refueling: AircraftRefueling) => {
+  const handleEditRefueling = (refueling: RefuelingApi) => {
     setEditingRefueling(refueling);
     setIsCopy(false);
     setIsDialogOpen(true);
   };
 
-  const handleCopyRefueling = (refueling: AircraftRefueling) => {
+  const handleCopyRefueling = (refueling: RefuelingApi) => {
     setEditingRefueling(refueling);
     setIsCopy(true);
     setIsDialogOpen(true);

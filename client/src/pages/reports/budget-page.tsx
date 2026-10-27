@@ -13,12 +13,12 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { Pencil, Trash2, Plus, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { formatTonnes, kilogramsToTonnes, tonnesToKilograms } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 interface BudgetEntry {
   id: string;
   budgetMonth: string;
-  salesVolume?: string;
+  salesVolumeTonnes?: number | null;
   salesRevenue?: string;
   marginality?: string;
   operatingExpenses?: string;
@@ -39,7 +39,7 @@ export default function BudgetPage() {
   const [editingEntry, setEditingEntry] = useState<BudgetEntry | null>(null);
   const [formData, setFormData] = useState({
     budgetMonth: "",
-    salesVolume: "",
+    salesVolumeTonnes: "",
     salesRevenue: "",
     marginality: "",
     operatingExpenses: "",
@@ -139,7 +139,7 @@ export default function BudgetPage() {
   const resetForm = () => {
     setFormData({
       budgetMonth: "",
-      salesVolume: "",
+      salesVolumeTonnes: "",
       salesRevenue: "",
       marginality: "",
       operatingExpenses: "",
@@ -181,9 +181,9 @@ export default function BudgetPage() {
     const totalExp = operating + personnel + logistics + other;
     const revenue = parseFloat(formData.salesRevenue || "0");
     const netProf = revenue - totalExp;
-    const salesVolumeTonnes = formData.salesVolume.trim() === ""
+    const salesVolumeTonnes = formData.salesVolumeTonnes.trim() === ""
       ? null
-      : Number(formData.salesVolume);
+      : Number(formData.salesVolumeTonnes);
     if (salesVolumeTonnes !== null && (!Number.isFinite(salesVolumeTonnes) || salesVolumeTonnes < 0)) {
       showError("Объем продаж должен быть задан в тоннах и не может быть отрицательным");
       return;
@@ -191,7 +191,7 @@ export default function BudgetPage() {
 
     const dataToSubmit = {
       ...formData,
-      salesVolume: salesVolumeTonnes === null ? "" : String(tonnesToKilograms(salesVolumeTonnes)),
+      salesVolumeTonnes,
       totalExpenses: totalExp.toString(),
       netProfit: netProf.toString(),
     };
@@ -207,8 +207,8 @@ export default function BudgetPage() {
     setEditingEntry(entry);
     setFormData({
       budgetMonth: entry.budgetMonth.substring(0, 7),
-      salesVolume: entry.salesVolume
-        ? kilogramsToTonnes(Number(entry.salesVolume)).toFixed(5)
+      salesVolumeTonnes: entry.salesVolumeTonnes !== null && entry.salesVolumeTonnes !== undefined
+        ? Number(entry.salesVolumeTonnes).toFixed(5)
         : "",
       salesRevenue: entry.salesRevenue || "",
       marginality: entry.marginality || "",
@@ -267,8 +267,8 @@ export default function BudgetPage() {
                     <Input
                       type="number"
                       step="0.00001"
-                      value={formData.salesVolume}
-                      onChange={(e) => setFormData({ ...formData, salesVolume: e.target.value })}
+                      value={formData.salesVolumeTonnes}
+                      onChange={(e) => setFormData({ ...formData, salesVolumeTonnes: e.target.value })}
                       readOnly
                       className="bg-muted"
                     />
@@ -431,8 +431,8 @@ export default function BudgetPage() {
                         {format(new Date(entry.budgetMonth), "LLLL yyyy", { locale: ru })}
                       </TableCell>
                       <TableCell className="text-right">
-                        {entry.salesVolume
-                          ? `${formatTonnes(kilogramsToTonnes(Number(entry.salesVolume)))} т`
+                        {entry.salesVolumeTonnes !== null && entry.salesVolumeTonnes !== undefined
+                          ? `${formatTonnes(entry.salesVolumeTonnes)} т`
                           : "-"}
                       </TableCell>
                       <TableCell className="text-right">

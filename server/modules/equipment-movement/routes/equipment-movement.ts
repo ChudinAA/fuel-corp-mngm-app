@@ -6,6 +6,11 @@ import { z } from "zod";
 import { auditLog } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
+import {
+  equipmentMovementResultToApi,
+  EquipmentMovementApiInputError,
+  toLegacyEquipmentMovementInput,
+} from "../equipment-movement-api-adapters";
 
 async function validateNomenclature(data: { productType: string; nomenclatureId?: string | null }, required: boolean) {
   if (!data.nomenclatureId) {
@@ -54,7 +59,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
         filters,
         allowedWarehouseIds,
       );
-      res.json(result);
+      res.json(equipmentMovementResultToApi(result));
     }
   );
 
@@ -65,7 +70,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
     async (req, res) => {
       const item = await (storage as any).equipmentMovement.getMovement(req.params.id);
       if (!item) return res.status(404).json({ message: "Запись не найдена" });
-      res.json(item);
+       res.json(equipmentMovementResultToApi(item));
     }
   );
 
@@ -109,20 +114,38 @@ export function registerEquipmentMovementRoutes(app: Express) {
           }
         }
 
+        const normalized = toLegacyEquipmentMovementInput(body);
         const data = insertEquipmentMovementSchema.parse({
-          ...body,
-          totalCost: body.totalCost?.toString(),
-          costPerKg: body.costPerKg?.toString(),
-          quantityLiters: body.quantityLiters != null ? String(body.quantityLiters) : null,
-          density: body.density != null ? String(body.density) : null,
+          ...normalized,
+          quantityKg:
+            normalized.quantityKg == null
+              ? undefined
+              : String(normalized.quantityKg),
+          totalCost:
+            normalized.totalCost == null
+              ? normalized.totalCost
+              : String(normalized.totalCost),
+          costPerKg:
+            normalized.costPerKg == null
+              ? normalized.costPerKg
+              : String(normalized.costPerKg),
+          quantityLiters:
+            normalized.quantityLiters != null
+              ? String(normalized.quantityLiters)
+              : null,
+          density:
+            normalized.density != null ? String(normalized.density) : null,
           createdById: req.session.userId,
         });
         const nomenclatureError = await validateNomenclature(data, !data.isDraft);
         if (nomenclatureError) return res.status(400).json({ message: nomenclatureError });
         const record = await (storage as any).equipmentMovement.createMovement(data);
         SSEService.notifyEntityChanged("equipment-movement", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(record);
+        res.status(201).json(equipmentMovementResultToApi(record));
       } catch (error) {
+        if (error instanceof EquipmentMovementApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors[0].message });
         res.status(500).json({ message: "Ошибка сервера" });
       }
@@ -170,12 +193,27 @@ export function registerEquipmentMovementRoutes(app: Express) {
           }
         }
 
+        const normalized = toLegacyEquipmentMovementInput(body);
         const data = insertEquipmentMovementSchema.parse({
-          ...body,
-          totalCost: body.totalCost?.toString(),
-          costPerKg: body.costPerKg?.toString(),
-          quantityLiters: body.quantityLiters != null ? String(body.quantityLiters) : null,
-          density: body.density != null ? String(body.density) : null,
+          ...normalized,
+          quantityKg:
+            normalized.quantityKg == null
+              ? undefined
+              : String(normalized.quantityKg),
+          totalCost:
+            normalized.totalCost == null
+              ? normalized.totalCost
+              : String(normalized.totalCost),
+          costPerKg:
+            normalized.costPerKg == null
+              ? normalized.costPerKg
+              : String(normalized.costPerKg),
+          quantityLiters:
+            normalized.quantityLiters != null
+              ? String(normalized.quantityLiters)
+              : null,
+          density:
+            normalized.density != null ? String(normalized.density) : null,
           updatedById: req.session.userId,
         });
         const current = await (storage as any).equipmentMovement.getMovement(req.params.id);
@@ -189,8 +227,11 @@ export function registerEquipmentMovementRoutes(app: Express) {
         const item = await (storage as any).equipmentMovement.updateMovement(req.params.id, data);
         if (!item) return res.status(404).json({ message: "Запись не найдена" });
         SSEService.notifyEntityChanged("equipment-movement", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(item);
+        res.json(equipmentMovementResultToApi(item));
       } catch (error) {
+        if (error instanceof EquipmentMovementApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors[0].message });
         res.status(500).json({ message: "Ошибка сервера" });
       }

@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Price } from "@shared/schema";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 export function usePriceSelection() {
   const { toast } = useToast();
@@ -28,7 +29,7 @@ export function usePriceSelection() {
       const isAmountLimit = (price as any).limitType === "amount";
       const description = isAmountLimit
         ? `Общая сумма: ${data.totalAmount} ₽`
-        : `Общий объем: ${data.totalVolume} кг`;
+        : `Общий объём: ${formatTonnes(kilogramsToTonnes(Number(data.totalVolume || 0)))} т`;
       toast({ title: "Выборка рассчитана", description });
       setCalculatingPriceId(null);
     },

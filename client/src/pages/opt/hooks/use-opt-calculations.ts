@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import type { Price, Warehouse, DeliveryCost, Base, Supplier } from "@shared/schema";
+import type { Price, Warehouse, Base, Supplier } from "@shared/schema";
+import type { DeliveryCostApiRecord } from "@/pages/delivery/types";
 import { DELIVERY_ENTITY_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
@@ -29,7 +30,7 @@ interface UseOptCalculationsProps {
   salePrices: Price[];
   selectedPurchasePriceId: string;
   selectedSalePriceId: string;
-  deliveryCosts: DeliveryCost[] | undefined;
+  deliveryCosts: DeliveryCostApiRecord[] | undefined;
   carrierId: string;
   deliveryLocationId: string;
   isEditing: boolean;
@@ -186,7 +187,7 @@ export function useOptCalculations({
         return matchesCarrier && matchesDestination && matchesSource && dc.isActive;
       });
 
-      if (cost?.costPerKg) {
+      if (cost?.costPerTonne) {
         return cost;
       }
     }
@@ -202,7 +203,7 @@ export function useOptCalculations({
         dc.toEntityId === customerBasisId
       );
 
-      if (cost?.costPerKg) {
+      if (cost?.costPerTonne) {
         return cost;
       }
     }
@@ -218,7 +219,7 @@ export function useOptCalculations({
         dc.toEntityId === customerBasisId
       );
 
-      if (cost?.costPerKg) {
+      if (cost?.costPerTonne) {
         return cost;
       }
     }
@@ -237,9 +238,7 @@ export function useOptCalculations({
     noDeliveryRequired
       ? 0
       : matchedDeliveryCost && finalTonnes > 0
-        ? pricePerKilogramToPerTonne(
-            parseFloat(matchedDeliveryCost.costPerKg),
-          ) * finalTonnes
+        ? Number(matchedDeliveryCost.costPerTonne) * finalTonnes
         : null;
 
   const purchaseAmount =
@@ -290,8 +289,8 @@ export function useOptCalculations({
   // Логика проверки объема по договору
   const contractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
-    currentQuantityKg: finalKg,
-    initialQuantityKg: initialQuantityKg,
+    currentQuantityTonnes: finalTonnes,
+    initialQuantityTonnes: initialQuantityKg / 1_000,
     mode: "opt",
     currentDealAmount: saleAmount ?? 0,
     initialDealAmount:
@@ -301,8 +300,8 @@ export function useOptCalculations({
   // Логика проверки объема по договору поставщика
   const supplierContractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
-    currentQuantityKg: finalKg,
-    initialQuantityKg: initialQuantityKg,
+    currentQuantityTonnes: finalTonnes,
+    initialQuantityTonnes: initialQuantityKg / 1_000,
     mode: "opt",
     currentDealAmount: purchaseAmount ?? 0,
     initialDealAmount:

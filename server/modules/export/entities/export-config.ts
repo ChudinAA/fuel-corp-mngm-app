@@ -23,7 +23,8 @@ export interface ColumnConfig {
   exportable: boolean;
   requiredPermission?: string; // Необходимое разрешение для экспорта
   sensitive?: boolean; // Чувствительные данные
-  format?: (value: any) => string; // Функция форматирования
+  format?: (value: any, row?: any) => any; // Функция форматирования значения с контекстом строки
+  numberFormat?: string; // Формат числа Excel, например 5 знаков массы или 2 знака цены
 }
 
 export interface ModuleExportConfig {

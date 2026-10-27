@@ -7,6 +7,21 @@ import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { IBudgetStorage } from "./types";
 
+function legacyDealMassKilogramsSql(
+  quantityKg: unknown,
+  quantityLiters: unknown,
+  density: unknown,
+) {
+  return sql`
+    CASE
+      WHEN CAST(COALESCE(${quantityLiters}, '0') AS NUMERIC) > 0
+        AND CAST(COALESCE(${density}, '0') AS NUMERIC) > 0
+      THEN CAST(${quantityLiters} AS NUMERIC) * CAST(${density} AS NUMERIC)
+      ELSE CAST(${quantityKg} AS NUMERIC)
+    END
+  `;
+}
+
 export class BudgetStorage implements IBudgetStorage {
   async getBudgetEntry(id: string): Promise<BudgetIncomeExpense | undefined> {
     return db.query.budgetIncomeExpense.findFirst({
@@ -195,7 +210,7 @@ export class BudgetStorage implements IBudgetStorage {
         COALESCE(SUM(monthly_sales.profit), 0)::text AS total_profit
       FROM (
         SELECT
-          CAST(${opt.quantityKg} AS NUMERIC) AS volume_kg,
+          ${legacyDealMassKilogramsSql(opt.quantityKg, opt.quantityLiters, opt.density)} AS volume_kg,
           CAST(${opt.saleAmount} AS NUMERIC) AS revenue,
           CAST(${opt.profit} AS NUMERIC) AS profit
         FROM ${opt}
@@ -204,7 +219,7 @@ export class BudgetStorage implements IBudgetStorage {
           AND ${opt.deletedAt} IS NULL
         UNION ALL
         SELECT
-          CAST(${aircraftRefueling.quantityKg} AS NUMERIC) AS volume_kg,
+          ${legacyDealMassKilogramsSql(aircraftRefueling.quantityKg, aircraftRefueling.quantityLiters, aircraftRefueling.density)} AS volume_kg,
           CAST(${aircraftRefueling.saleAmount} AS NUMERIC) AS revenue,
           CAST(${aircraftRefueling.profit} AS NUMERIC) AS profit
         FROM ${aircraftRefueling}

@@ -14,31 +14,39 @@ import { FileText, Download, TrendingUp, DollarSign, Package, FileCheck, Truck, 
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
+import {
+  formatManagementReportMassTonnes,
+  getManagementReportMassTonnes,
+} from "./management-report-unit-utils";
 
 interface ManagementReportData {
   salesMetrics: {
     optSales: {
-      totalVolume: string;
+      totalVolume?: string;
+      totalVolumeTonnes?: string;
       totalRevenue: string;
       totalProfit: string;
       marginality: string;
     };
     refuelingSales: {
-      totalVolume: string;
+      totalVolume?: string;
+      totalVolumeTonnes?: string;
       totalRevenue: string;
       totalProfit: string;
       marginality: string;
     };
     combined: {
-      totalVolume: string;
+      totalVolume?: string;
+      totalVolumeTonnes?: string;
       totalRevenue: string;
       totalProfit: string;
       marginality: string;
     };
   };
   warehouseMetrics: {
-    totalBalance: string;
+    totalBalance?: string;
+    totalBalanceTonnes?: string;
     totalValue: string;
     movementsCount: number;
     exchangesCount: number;
@@ -52,8 +60,11 @@ interface ManagementReportData {
   govContractsMetrics: {
     activeContracts: number;
     totalContractValue: string;
-    completedVolume: string;
-    remainingVolume: string;
+    completedAmount?: string;
+    remainingAmount?: string;
+    plannedVolumeTonnes?: string;
+    actualVolumeTonnes?: string;
+    remainingVolumeTonnes?: string;
   };
   logisticsMetrics: {
     totalDeliveries: number;
@@ -75,8 +86,6 @@ interface ManagementReport {
 }
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
-const formatLegacyKilogramsAsTonnes = (value: string | number | null | undefined) =>
-  formatTonnes(kilogramsToTonnes(Number(value || 0)));
 
 export default function ManagementReportPage() {
   const { toast } = useToast();
@@ -169,13 +178,19 @@ export default function ManagementReportPage() {
   const salesChartData = reportData ? [
     {
       name: "ОПТ",
-      volume: parseFloat(reportData.salesMetrics.optSales.totalVolume),
+      volume: getManagementReportMassTonnes(
+        reportData.salesMetrics.optSales.totalVolumeTonnes,
+        reportData.salesMetrics.optSales.totalVolume,
+      ),
       revenue: parseFloat(reportData.salesMetrics.optSales.totalRevenue),
       profit: parseFloat(reportData.salesMetrics.optSales.totalProfit),
     },
     {
       name: "ЗВС",
-      volume: parseFloat(reportData.salesMetrics.refuelingSales.totalVolume),
+      volume: getManagementReportMassTonnes(
+        reportData.salesMetrics.refuelingSales.totalVolumeTonnes,
+        reportData.salesMetrics.refuelingSales.totalVolume,
+      ),
       revenue: parseFloat(reportData.salesMetrics.refuelingSales.totalRevenue),
       profit: parseFloat(reportData.salesMetrics.refuelingSales.totalProfit),
     },
@@ -185,6 +200,13 @@ export default function ManagementReportPage() {
     { name: "Доходы", value: parseFloat(reportData.financialMetrics.totalCashflow) },
     { name: "Расходы", value: parseFloat(reportData.financialMetrics.totalExpenses) },
   ] : [];
+  const hasCurrentContractBreakdown = Boolean(
+    reportData?.govContractsMetrics?.completedAmount !== undefined &&
+    reportData?.govContractsMetrics?.remainingAmount !== undefined &&
+    reportData?.govContractsMetrics?.plannedVolumeTonnes !== undefined &&
+    reportData?.govContractsMetrics?.actualVolumeTonnes !== undefined &&
+    reportData?.govContractsMetrics?.remainingVolumeTonnes !== undefined
+  );
 
   return (
     <div className="container mx-auto py-6">
@@ -332,7 +354,10 @@ export default function ManagementReportPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {formatLegacyKilogramsAsTonnes(reportData.warehouseMetrics.totalBalance)} т
+                  {formatManagementReportMassTonnes(
+                    reportData.warehouseMetrics.totalBalanceTonnes,
+                    reportData.warehouseMetrics.totalBalance,
+                  )} т
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Стоимость: {parseFloat(reportData.warehouseMetrics.totalValue).toLocaleString()} ₽
@@ -426,7 +451,10 @@ export default function ManagementReportPage() {
                     <TableRow>
                       <TableCell className="font-medium">ОПТ</TableCell>
                       <TableCell className="text-right">
-                        {formatLegacyKilogramsAsTonnes(reportData.salesMetrics.optSales.totalVolume)}
+                        {formatManagementReportMassTonnes(
+                          reportData.salesMetrics.optSales.totalVolumeTonnes,
+                          reportData.salesMetrics.optSales.totalVolume,
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {parseFloat(reportData.salesMetrics.optSales.totalRevenue).toLocaleString()}
@@ -441,7 +469,10 @@ export default function ManagementReportPage() {
                     <TableRow>
                       <TableCell className="font-medium">ЗВС</TableCell>
                       <TableCell className="text-right">
-                        {formatLegacyKilogramsAsTonnes(reportData.salesMetrics.refuelingSales.totalVolume)}
+                        {formatManagementReportMassTonnes(
+                          reportData.salesMetrics.refuelingSales.totalVolumeTonnes,
+                          reportData.salesMetrics.refuelingSales.totalVolume,
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {parseFloat(reportData.salesMetrics.refuelingSales.totalRevenue).toLocaleString()}
@@ -456,7 +487,10 @@ export default function ManagementReportPage() {
                     <TableRow className="font-semibold">
                       <TableCell>Итого</TableCell>
                       <TableCell className="text-right">
-                        {formatLegacyKilogramsAsTonnes(reportData.salesMetrics.combined.totalVolume)}
+                        {formatManagementReportMassTonnes(
+                          reportData.salesMetrics.combined.totalVolumeTonnes,
+                          reportData.salesMetrics.combined.totalVolume,
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         {parseFloat(reportData.salesMetrics.combined.totalRevenue).toLocaleString()}
@@ -489,7 +523,10 @@ export default function ManagementReportPage() {
                     <TableRow>
                       <TableCell className="font-medium">Общий остаток</TableCell>
                       <TableCell className="text-right">
-                        {formatLegacyKilogramsAsTonnes(reportData.warehouseMetrics.totalBalance)} т
+                        {formatManagementReportMassTonnes(
+                          reportData.warehouseMetrics.totalBalanceTonnes,
+                          reportData.warehouseMetrics.totalBalance,
+                        )} т
                       </TableCell>
                     </TableRow>
                     <TableRow>
@@ -567,29 +604,62 @@ export default function ManagementReportPage() {
                     <TableRow>
                       <TableCell className="font-medium">Активных контрактов</TableCell>
                       <TableCell className="text-right">
-                        {reportData.govContractsMetrics.activeContracts}
+                        {reportData.govContractsMetrics?.activeContracts ?? 0}
                       </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Общая стоимость</TableCell>
                       <TableCell className="text-right">
-                        {parseFloat(reportData.govContractsMetrics.totalContractValue).toLocaleString()} ₽
+                        {parseFloat(reportData.govContractsMetrics?.totalContractValue || "0").toLocaleString("ru-RU")} ₽
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell className="font-medium">Выполнено</TableCell>
+                      <TableCell className="font-medium">Выполнено по сумме</TableCell>
                       <TableCell className="text-right">
-                        {parseFloat(reportData.govContractsMetrics.completedVolume).toLocaleString()} ₽
+                        {reportData.govContractsMetrics?.completedAmount !== undefined
+                          ? `${parseFloat(reportData.govContractsMetrics.completedAmount).toLocaleString("ru-RU")} ₽`
+                          : "—"}
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell className="font-medium">Остаток</TableCell>
+                      <TableCell className="font-medium">Остаток суммы</TableCell>
                       <TableCell className="text-right">
-                        {parseFloat(reportData.govContractsMetrics.remainingVolume).toLocaleString()} ₽
+                        {reportData.govContractsMetrics?.remainingAmount !== undefined
+                          ? `${parseFloat(reportData.govContractsMetrics.remainingAmount).toLocaleString("ru-RU")} ₽`
+                          : "—"}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Плановый объём</TableCell>
+                      <TableCell className="text-right">
+                        {reportData.govContractsMetrics?.plannedVolumeTonnes !== undefined
+                          ? `${formatTonnes(reportData.govContractsMetrics.plannedVolumeTonnes)} т`
+                          : "—"}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Фактический объём</TableCell>
+                      <TableCell className="text-right">
+                        {reportData.govContractsMetrics?.actualVolumeTonnes !== undefined
+                          ? `${formatTonnes(reportData.govContractsMetrics.actualVolumeTonnes)} т`
+                          : "—"}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Остаток объёма</TableCell>
+                      <TableCell className="text-right">
+                        {reportData.govContractsMetrics?.remainingVolumeTonnes !== undefined
+                          ? `${formatTonnes(reportData.govContractsMetrics.remainingVolumeTonnes)} т`
+                          : "—"}
                       </TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
+                {!hasCurrentContractBreakdown && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Сохранённый отчёт старого формата. Перегенерируйте его, чтобы получить раздельные суммы и объёмы.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -6,6 +6,11 @@ import { z } from "zod";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
+import {
+  MovementApiInputError,
+  movementResultToApi,
+  toLegacyMovementInput,
+} from "../movement-api-adapters";
 
 export function registerMovementRoutes(app: Express) {
   app.get(
@@ -41,7 +46,7 @@ export function registerMovementRoutes(app: Express) {
         search,
         filters,
       );
-      res.json(result);
+      res.json(movementResultToApi(result));
     },
   );
 
@@ -55,7 +60,7 @@ export function registerMovementRoutes(app: Express) {
       if (!item) {
         return res.status(404).json({ message: "Перемещение не найдено" });
       }
-      res.json(item);
+      res.json(movementResultToApi(item));
     },
   );
 
@@ -70,14 +75,17 @@ export function registerMovementRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
+        const normalized = toLegacyMovementInput(
+          req.body as Record<string, unknown>,
+        );
         const data = insertMovementSchema.parse({
-          ...req.body,
+          ...normalized,
           createdById: req.session.userId,
         });
 
         const quantityKgValue = data.quantityKg;
         if (quantityKgValue === null || quantityKgValue === undefined) {
-          throw new Error("Количество (кг) обязательно");
+          throw new Error("Количество (т) обязательно");
         }
 
         // Преобразуем числовые поля в строки для БД
@@ -120,8 +128,11 @@ export function registerMovementRoutes(app: Express) {
 
         const movementRecord = await storage.movement.createMovement(dbData);
         SSEService.notifyEntityChanged("movement", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(movementRecord);
+        res.status(201).json(movementResultToApi(movementRecord));
       } catch (error) {
+        if (error instanceof MovementApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }
@@ -147,48 +158,54 @@ export function registerMovementRoutes(app: Express) {
       try {
         const id = req.params.id;
 
+        const normalized = toLegacyMovementInput(
+          req.body as Record<string, unknown>,
+        );
+
         // Преобразуем числовые поля в строки для БД
         const dbData = {
-          ...req.body,
-          quantityKg: req.body.quantityKg
-            ? req.body.quantityKg.toString()
-            : undefined,
+          ...normalized,
+          quantityKg:
+            normalized.quantityKg !== null &&
+            normalized.quantityKg !== undefined
+              ? String(normalized.quantityKg)
+              : undefined,
           quantityLiters:
-            req.body.quantityLiters !== null &&
-            req.body.quantityLiters !== undefined
-              ? req.body.quantityLiters.toString()
+            normalized.quantityLiters !== null &&
+            normalized.quantityLiters !== undefined
+              ? normalized.quantityLiters.toString()
               : null,
           density:
-            req.body.density !== null && req.body.density !== undefined
-              ? req.body.density.toString()
+            normalized.density !== null && normalized.density !== undefined
+              ? String(normalized.density)
               : null,
           purchasePrice:
-            req.body.purchasePrice !== null &&
-            req.body.purchasePrice !== undefined
-              ? req.body.purchasePrice.toString()
+            normalized.purchasePrice !== null &&
+            normalized.purchasePrice !== undefined
+              ? String(normalized.purchasePrice)
               : null,
           deliveryPrice:
-            req.body.deliveryPrice !== null &&
-            req.body.deliveryPrice !== undefined
-              ? req.body.deliveryPrice.toString()
+            normalized.deliveryPrice !== null &&
+            normalized.deliveryPrice !== undefined
+              ? String(normalized.deliveryPrice)
               : null,
           deliveryCost:
-            req.body.deliveryCost !== null &&
-            req.body.deliveryCost !== undefined
-              ? req.body.deliveryCost.toString()
+            normalized.deliveryCost !== null &&
+            normalized.deliveryCost !== undefined
+              ? String(normalized.deliveryCost)
               : null,
           warehouseServicesCost:
-            req.body.warehouseServicesCost !== null &&
-            req.body.warehouseServicesCost !== undefined
-              ? req.body.warehouseServicesCost.toString()
+            normalized.warehouseServicesCost !== null &&
+            normalized.warehouseServicesCost !== undefined
+              ? String(normalized.warehouseServicesCost)
               : null,
           totalCost:
-            req.body.totalCost !== null && req.body.totalCost !== undefined
-              ? req.body.totalCost.toString()
+            normalized.totalCost !== null && normalized.totalCost !== undefined
+              ? String(normalized.totalCost)
               : null,
           costPerKg:
-            req.body.costPerKg !== null && req.body.costPerKg !== undefined
-              ? req.body.costPerKg.toString()
+            normalized.costPerKg !== null && normalized.costPerKg !== undefined
+              ? String(normalized.costPerKg)
               : null,
           updatedById: req.session.userId,
         };
@@ -198,8 +215,11 @@ export function registerMovementRoutes(app: Express) {
           return res.status(404).json({ message: "Перемещение не найдено" });
         }
         SSEService.notifyEntityChanged("movement", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(item);
+        res.json(movementResultToApi(item));
       } catch (error) {
+        if (error instanceof MovementApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         console.error("Error updating movement:", error);
         res.status(500).json({ message: "Ошибка обновления перемещения" });
       }

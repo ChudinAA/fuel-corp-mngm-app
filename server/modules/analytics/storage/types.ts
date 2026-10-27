@@ -14,11 +14,11 @@ export interface AnalyticsData {
 export interface AnalyticsSummary {
   totalRevenue: number;
   totalProfit: number;
-  totalVolume: number;
+  totalVolumeTonnes: number;
   averageMargin: number;
-  topSuppliers: Array<{ name: string; volume: number; revenue: number }>;
-  topBuyers: Array<{ name: string; volume: number; revenue: number }>;
-  productTypeDistribution: Array<{ type: string; volume: number; percentage: number }>;
+  topSuppliers: Array<{ name: string; volumeTonnes: number; revenue: number }>;
+  topBuyers: Array<{ name: string; volumeTonnes: number; revenue: number }>;
+  productTypeDistribution: Array<{ type: string; volumeTonnes: number; percentage: number }>;
 }
 
 export interface IAnalyticsStorage {

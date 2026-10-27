@@ -55,7 +55,7 @@ import {
 } from "./deal-chain";
 import { computeBankCommission } from "./deal-chain/types";
 import { formatCurrency, formatNumber, formatPrice } from "../utils";
-import { formatPricePerTonne, formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatPricePerTonne, formatTonnes } from "@shared/units";
 import { calculateRefuelingPricePerTonne } from "../unit-calculations";
 
 function formatRefuelingPriceOption(
@@ -250,15 +250,14 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         ) as "liters" | "tonnes",
         quantityLiters: editData.quantityLiters?.toString() || "",
         density: editData.density?.toString() || "0.8",
-        quantityTonnes: editData.quantityKg
-          ? kilogramsToTonnes(
-              Number.parseFloat(editData.quantityKg.toString()),
-            ).toString()
+        quantityTonnes: editData.quantityTonnes != null
+          ? String(editData.quantityTonnes)
           : "",
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
-        purchasePriceUsd: editData.purchasePriceUsd || "",
-        salePriceUsd: editData.salePriceUsd || "",
+        purchasePriceUsd:
+          editData.purchasePriceUsdPerTonne?.toString() || "",
+        salePriceUsd: editData.salePriceUsdPerTonne?.toString() || "",
         purchaseExchangeRateId: editData.purchaseExchangeRateId || "",
         manualPurchaseExchangeRate:
           editData.purchaseExchangeRateValue?.toString() || "",
@@ -385,15 +384,13 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
           : "tonnes",
       quantityLiters: editData?.quantityLiters?.toString() || "",
       density: editData?.density?.toString() || "0.8",
-      quantityTonnes: editData?.quantityKg
-        ? kilogramsToTonnes(
-            Number.parseFloat(editData.quantityKg.toString()),
-          ).toString()
+      quantityTonnes: editData?.quantityTonnes != null
+        ? String(editData.quantityTonnes)
         : "",
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
-      purchasePriceUsd: editData?.purchasePriceUsd || "",
-      salePriceUsd: editData?.salePriceUsd || "",
+      purchasePriceUsd: editData?.purchasePriceUsdPerTonne?.toString() || "",
+      salePriceUsd: editData?.salePriceUsdPerTonne?.toString() || "",
       purchaseExchangeRateId:
         editData?.purchaseExchangeRateId || latestUsdRate?.id || "",
       manualPurchaseExchangeRate:
@@ -578,12 +575,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     selectedSalePriceId,
     productType: watchedValues.productType || "",
     chainItems,
-    initialQuantityForContract:
+    initialQuantityTonnes:
       isEditing && !editData.isDraft
-        ? editData?.inputMode === "liters" ||
-          Number.parseFloat(editData?.quantityLiters || "0") > 0
-          ? Number.parseFloat(editData?.quantityLiters || "0")
-          : Number.parseFloat(editData?.quantityKg || "0")
+        ? Number(editData?.quantityTonnes ?? 0)
         : 0,
     initialPurchaseAmountUsd:
       isEditing && !editData.isDraft
@@ -697,7 +691,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
             ? parseFloat(data.quantityLiters)
             : null,
         density: data.density ? parseFloat(data.density) : null,
-        quantityKg: calculations.finalKg || 0,
+        quantityTonnes: calculations.finalTonnes || 0,
         purchasePriceId: purchasePriceId || null,
         purchasePriceIndex:
           purchasePriceIndex !== undefined ? purchasePriceIndex : null,
@@ -710,15 +704,15 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         saleExchangeRateId: data.saleExchangeRateId || null,
         saleExchangeRateValue: saleExchangeRate || null,
         saleExchangeRateDate: data.manualSaleExchangeRateDate || null,
-        purchasePriceUsd: calculations.purchasePrice || null,
-        purchasePriceRub:
-          calculations.purchasePrice && purchaseExchangeRate
-            ? calculations.purchasePrice * purchaseExchangeRate
+        purchasePriceUsdPerTonne: calculations.purchasePricePerTonne ?? null,
+        purchasePriceRubPerTonne:
+          calculations.purchasePricePerTonne !== null && purchaseExchangeRate
+            ? calculations.purchasePricePerTonne * purchaseExchangeRate
             : null,
-        salePriceUsd: calculations.salePrice || null,
-        salePriceRub:
-          calculations.salePrice && saleExchangeRate
-            ? calculations.salePrice * saleExchangeRate
+        salePriceUsdPerTonne: calculations.salePricePerTonne ?? null,
+        salePriceRubPerTonne:
+          calculations.salePricePerTonne !== null && saleExchangeRate
+            ? calculations.salePricePerTonne * saleExchangeRate
             : null,
         purchaseAmountUsd: calculations.purchaseAmountUsd || null,
         saleAmountUsd: calculations.saleAmountUsd || null,
@@ -730,7 +724,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         bankCommissionRub: calculations.totalBankCommissionRub,
         notes: data.notes || null,
         isApproxVolume: data.isApproxVolume || false,
-        inputMode: data.inputMode === "liters" ? "liters" : "kg",
+        inputMode: data.inputMode,
         isDraft: data.isDraft,
       };
 

@@ -6,6 +6,7 @@ import { AuditService, AuditContext } from "./audit-service";
 import { storage } from "../../../storage/index";
 import { warehouseTransactions, warehouses } from "@shared/schema";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import { formatTonnes, legacyDealMassToTonnes } from "@shared/units";
 
 export interface RollbackOptions {
   auditLogId: string;
@@ -258,8 +259,12 @@ export class RollbackService {
                     : deal.productType === "service"
                       ? "Услуга"
                       : deal.productType;
-              const quantity = Number(deal.quantityKg || 0);
-              return `${product}${quantity ? ` — ${quantity} кг` : ""}`;
+              const quantityTonnes = legacyDealMassToTonnes(
+                deal.quantityKg,
+                deal.quantityLiters,
+                deal.density,
+              );
+              return `${product}${quantityTonnes ? ` — ${formatTonnes(quantityTonnes)} т` : ""}`;
             })
             .join(", ");
           const restoredAt = new Date().toISOString();

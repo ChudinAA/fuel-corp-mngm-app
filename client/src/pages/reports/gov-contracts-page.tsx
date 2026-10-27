@@ -15,7 +15,7 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { Pencil, Trash2, Plus, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { formatTonnes, kilogramsToTonnes, tonnesToKilograms } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 interface Customer {
   id: string;
@@ -35,8 +35,8 @@ interface GovernmentContract {
   currentAmount?: string;
   remainingAmount?: string;
   productType?: string;
-  plannedVolume?: string;
-  actualVolume?: string;
+  plannedVolumeTonnes?: number | null;
+  actualVolumeTonnes?: number | null;
   status: string;
   notes?: string;
   createdAt: string;
@@ -57,7 +57,7 @@ export default function GovContractsPage() {
     endDate: "",
     totalAmount: "",
     productType: "",
-    plannedVolume: "",
+    plannedVolumeTonnes: "",
     status: "active",
     notes: "",
   });
@@ -159,7 +159,7 @@ export default function GovContractsPage() {
       endDate: "",
       totalAmount: "",
       productType: "",
-      plannedVolume: "",
+      plannedVolumeTonnes: "",
       status: "active",
       notes: "",
     });
@@ -168,16 +168,16 @@ export default function GovContractsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const plannedVolumeTonnes = formData.plannedVolume.trim() === ""
+    const plannedVolumeTonnes = formData.plannedVolumeTonnes.trim() === ""
       ? null
-      : Number(formData.plannedVolume);
+      : Number(formData.plannedVolumeTonnes);
     if (plannedVolumeTonnes !== null && (!Number.isFinite(plannedVolumeTonnes) || plannedVolumeTonnes < 0)) {
       showError("Введите плановый объем в тоннах, не меньше нуля");
       return;
     }
     const payload = {
       ...formData,
-      plannedVolume: plannedVolumeTonnes === null ? "" : String(tonnesToKilograms(plannedVolumeTonnes)),
+      plannedVolumeTonnes,
     };
     if (editingContract) {
       updateMutation.mutate({ id: editingContract.id, data: payload });
@@ -197,8 +197,8 @@ export default function GovContractsPage() {
       endDate: contract.endDate.substring(0, 10),
       totalAmount: contract.totalAmount || "",
       productType: contract.productType || "",
-      plannedVolume: contract.plannedVolume
-        ? kilogramsToTonnes(Number(contract.plannedVolume)).toFixed(5)
+      plannedVolumeTonnes: contract.plannedVolumeTonnes !== null && contract.plannedVolumeTonnes !== undefined
+        ? Number(contract.plannedVolumeTonnes).toFixed(5)
         : "",
       status: contract.status,
       notes: contract.notes || "",
@@ -364,8 +364,8 @@ export default function GovContractsPage() {
                   type="number"
                   min="0"
                   step="0.00001"
-                  value={formData.plannedVolume}
-                  onChange={(e) => setFormData({ ...formData, plannedVolume: e.target.value })}
+                  value={formData.plannedVolumeTonnes}
+                  onChange={(e) => setFormData({ ...formData, plannedVolumeTonnes: e.target.value })}
                 />
               </div>
 
@@ -443,13 +443,13 @@ export default function GovContractsPage() {
                         {contract.remainingAmount ? `${parseFloat(contract.remainingAmount).toLocaleString()} ₽` : "-"}
                       </TableCell>
                       <TableCell className="text-right">
-                        {contract.plannedVolume
-                          ? `${formatTonnes(kilogramsToTonnes(Number(contract.plannedVolume)))} т`
+                        {contract.plannedVolumeTonnes !== null && contract.plannedVolumeTonnes !== undefined
+                          ? `${formatTonnes(contract.plannedVolumeTonnes)} т`
                           : "-"}
                       </TableCell>
                       <TableCell className="text-right">
-                        {contract.actualVolume
-                          ? `${formatTonnes(kilogramsToTonnes(Number(contract.actualVolume)))} т`
+                        {contract.actualVolumeTonnes !== null && contract.actualVolumeTonnes !== undefined
+                          ? `${formatTonnes(contract.actualVolumeTonnes)} т`
                           : "-"}
                       </TableCell>
                       <TableCell className="text-right">

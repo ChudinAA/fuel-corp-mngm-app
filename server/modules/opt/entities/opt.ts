@@ -210,7 +210,7 @@ export const insertOptSchema = z
       if (data.quantityKg === undefined || data.quantityKg === null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Количество (кг) обязательно",
+          message: "Количество (т) обязательно",
           path: ["quantityKg"],
         });
       }

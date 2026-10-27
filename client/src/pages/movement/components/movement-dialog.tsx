@@ -121,7 +121,10 @@ export function MovementDialog({
         editMovement.fromWarehouseId
       ) {
         setInitialQuantityTonnes(
-          movementStoredKgToTonnes(editMovement.quantityKg) ?? 0,
+          editMovement.quantityTonnes !== null &&
+            editMovement.quantityTonnes !== undefined
+            ? Number(editMovement.quantityTonnes)
+            : movementStoredKgToTonnes(editMovement.quantityKg) ?? 0,
         );
       } else {
         setInitialQuantityTonnes(0);
@@ -151,12 +154,20 @@ export function MovementDialog({
         density: editMovement.density
           ? String(editMovement.density)
           : undefined,
-        quantityTonnes: editMovement.quantityKg
-          ? String(movementStoredKgToTonnes(editMovement.quantityKg) ?? "")
-          : undefined,
-        purchasePrice: editMovement.purchasePrice
-          ? String(editMovement.purchasePrice)
-          : "",
+        quantityTonnes:
+          editMovement.quantityTonnes !== null &&
+          editMovement.quantityTonnes !== undefined
+            ? String(editMovement.quantityTonnes)
+            : editMovement.quantityKg
+              ? String(movementStoredKgToTonnes(editMovement.quantityKg) ?? "")
+              : undefined,
+        purchasePrice:
+          editMovement.purchasePricePerTonne !== null &&
+          editMovement.purchasePricePerTonne !== undefined
+            ? String(editMovement.purchasePricePerTonne)
+            : editMovement.purchasePrice
+              ? String(Number(editMovement.purchasePrice) * 1_000)
+              : "",
         selectedPurchasePriceId: editMovement.purchasePriceId
           ? `${editMovement.purchasePriceId}-${editMovement.purchasePriceIndex || 0}`
           : "",
@@ -179,7 +190,10 @@ export function MovementDialog({
       setInputMode(resetValues.inputMode);
       setInitialQuantityTonnes(
         isEditing
-          ? movementStoredKgToTonnes(editMovement.quantityKg) ?? 0
+          ? editMovement.quantityTonnes !== null &&
+            editMovement.quantityTonnes !== undefined
+            ? Number(editMovement.quantityTonnes)
+            : movementStoredKgToTonnes(editMovement.quantityKg) ?? 0
           : 0,
       );
     } else {
@@ -268,8 +282,18 @@ export function MovementDialog({
     setSelectedPurchasePriceId,
     initialQuantityTonnes,
     initialPurchaseAmount: editMovement && !isCopy
-      ? parseFloat(editMovement.purchasePrice || "0") * parseFloat(editMovement.quantityKg || "0")
-      : 0,
+      ? editMovement.purchaseAmount !== null &&
+        editMovement.purchaseAmount !== undefined
+        ? Number(editMovement.purchaseAmount)
+        : editMovement.purchasePricePerTonne !== null &&
+        editMovement.purchasePricePerTonne !== undefined &&
+        editMovement.quantityTonnes !== null &&
+        editMovement.quantityTonnes !== undefined
+        ? Number(editMovement.purchasePricePerTonne) *
+          Number(editMovement.quantityTonnes)
+        : parseFloat(String(editMovement.purchasePrice || "0")) *
+          parseFloat(String(editMovement.quantityKg || "0"))
+          : 0,
   });
 
   const availableCarriers = useAvailableCarriers({
@@ -372,20 +396,20 @@ export function MovementDialog({
           ? parseFloat(data.quantityLiters)
           : null,
         density: data.density ? parseFloat(data.density) : null,
-        quantityKg: calculatedKg,
+        quantityTonnes: calculatedTonnes,
         inputMode: data.inputMode,
-        purchasePrice: purchasePricePerKg,
+        purchasePricePerTonne: purchasePrice,
         purchasePriceId: extractedPriceId || null,
         purchasePriceIndex: extractedPriceIndex ?? 0,
-        deliveryPrice:
+        deliveryPricePerTonne:
           deliveryCost > 0 && tonnesNum > 0
-            ? movementTonnesRateToLegacyKgRate(deliveryCost / tonnesNum)
+            ? deliveryCost / tonnesNum
             : null,
         deliveryCost: deliveryCost,
         storageCost: storageCost,
         warehouseServicesCost: warehouseServicesCost,
         totalCost: totalCost,
-        costPerKg: costPerKg,
+        costPerTonne: costPerTonne,
         notes: data.notes || null,
         isDraft: !!isDraft,
       };

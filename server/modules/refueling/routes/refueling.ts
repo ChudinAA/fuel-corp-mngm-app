@@ -11,15 +11,30 @@ import {
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { AuditService } from "../../audit/services/audit-service";
 import { SSEService } from "../../../services/sse-service";
+import { formatTonnes, legacyDealMassToTonnes } from "@shared/units";
+import {
+  refuelingDealToApi,
+  RefuelingApiInputError,
+  toLegacyRefuelingInput,
+} from "../refueling-api-adapters";
 
 const refuelingProductLabel = (type: string) =>
   type === "kerosene" ? "Керосин" : type === "pvkj" ? "ПВКЖ" : type === "service" ? "Услуга" : type;
 
-const getOrderProductSummary = (deals: Array<{ productType: string; quantityKg?: unknown }>) =>
+const getOrderProductSummary = (deals: Array<{
+  productType: string;
+  quantityKg?: unknown;
+  quantityLiters?: unknown;
+  density?: unknown;
+}>) =>
   deals
     .map((deal) => {
-      const quantity = Number(deal.quantityKg || 0);
-      return `${refuelingProductLabel(deal.productType)}${quantity ? ` — ${quantity} кг` : ""}`;
+      const quantityTonnes = legacyDealMassToTonnes(
+        deal.quantityKg as number | string | null | undefined,
+        deal.quantityLiters as number | string | null | undefined,
+        deal.density as number | string | null | undefined,
+      );
+      return `${refuelingProductLabel(deal.productType)}${quantityTonnes ? ` — ${formatTonnes(quantityTonnes)} т` : ""}`;
     })
     .join(", ");
 
@@ -66,7 +81,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           filters,
           allowedWarehouseIds,
         );
-        res.json(result);
+        res.json({ ...result, data: result.data.map(refuelingDealToApi) });
       } catch (error) {
         console.error("Error loading aircraft refueling list:", error);
         res.status(500).json({
@@ -99,8 +114,8 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const { priceId } = req.params;
-        const usedVolume = await storage.aircraftRefueling.getUsedVolumeByPrice(priceId);
-        res.json({ usedVolume });
+        const volume = await storage.aircraftRefueling.getUsedVolumeByPrice(priceId);
+        res.json(volume);
       } catch (error) {
         console.error("Error getting used volume:", error);
         res.status(500).json({ message: "Ошибка получения использованного объема" });
@@ -134,7 +149,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
       if (!item) {
         return res.status(404).json({ message: "Заправка не найдена" });
       }
-      res.json(item);
+      res.json(refuelingDealToApi(item));
     }
   );
 
@@ -148,7 +163,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         if (!deals.length) {
           return res.status(404).json({ message: "Заказ заправки не найден" });
         }
-        res.json(deals);
+        res.json(deals.map(refuelingDealToApi));
       } catch (error) {
         console.error("Error fetching refueling order:", error);
         res.status(500).json({ message: "Ошибка загрузки заказа заправки" });
@@ -161,9 +176,16 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     requireAuth,
     async (req, res) => {
       try {
-        const isDuplicate = await storage.aircraftRefueling.checkDuplicate(req.body);
+        const isDuplicate = await storage.aircraftRefueling.checkDuplicate(
+          toLegacyRefuelingInput(req.body) as Parameters<
+            typeof storage.aircraftRefueling.checkDuplicate
+          >[0],
+        );
         res.json({ isDuplicate });
       } catch (error) {
+        if (error instanceof RefuelingApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         console.error("Error checking duplicate refueling:", error);
         res.status(500).json({ message: "Ошибка проверки дубликата" });
       }
@@ -187,8 +209,8 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         }
 
         const data = insertAircraftRefuelingSchema.parse({
-          ...req.body,
-            createdById: String(req.session.userId),
+          ...toLegacyRefuelingInput(req.body),
+          createdById: String(req.session.userId),
         });
         const item = await storage.aircraftRefueling.createRefueling(data);
         await AuditService.log({
@@ -200,8 +222,11 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           extraMeta: { orderProducts: getOrderProductSummary([item]) },
         });
         SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(item);
+        res.status(201).json(refuelingDealToApi(item));
       } catch (error: any) {
+        if (error instanceof RefuelingApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }
@@ -218,7 +243,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const requestSchema = z.object({
-          deals: z.array(insertAircraftRefuelingSchema).min(1).max(3),
+          deals: z.array(z.record(z.any())).min(1).max(3),
         }).superRefine(({ deals }, context) => {
           const types = deals.map((deal) => deal.productType || "");
           if (
@@ -251,7 +276,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
 
         const validatedDeals = deals.map((deal) =>
           insertAircraftRefuelingSchema.parse({
-            ...deal,
+            ...toLegacyRefuelingInput(deal),
             createdById: userId,
           }),
         );
@@ -279,8 +304,11 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           "refueling",
           SSEService.extractClientId(req.headers["x-client-id"]),
         );
-        res.status(201).json(created);
+        res.status(201).json(created.map(refuelingDealToApi));
       } catch (error: any) {
+        if (error instanceof RefuelingApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }
@@ -318,15 +346,18 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         }
 
         const item = await storage.aircraftRefueling.updateRefueling(id, {
-          ...req.body,
+          ...toLegacyRefuelingInput(req.body),
           updatedById: req.session.userId,
         });
         if (!item) {
           return res.status(404).json({ message: "Заправка не найдена" });
         }
         SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(item);
+        res.json(refuelingDealToApi(item));
       } catch (error) {
+        if (error instanceof RefuelingApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         console.error("Error updating refueling:", error);
         res.status(500).json({ message: "Ошибка обновления заправки" });
       }
@@ -340,7 +371,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const requestSchema = z.object({
-          deals: z.array(insertAircraftRefuelingSchema).min(1).max(3),
+          deals: z.array(z.record(z.any())).min(1).max(3),
         }).superRefine(({ deals }, context) => {
           const types = deals.map((deal) => deal.productType || "");
           if (
@@ -368,7 +399,10 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           }
         }
         const validatedDeals = deals.map((deal) =>
-          insertAircraftRefuelingSchema.parse({ ...deal, updatedById: userId }),
+          insertAircraftRefuelingSchema.parse({
+            ...toLegacyRefuelingInput(deal),
+            updatedById: userId,
+          }),
         );
         const { oldDeals, deals: savedDeals } =
           await storage.aircraftRefueling.updateRefuelingOrder(
@@ -409,8 +443,11 @@ export function registerRefuelingOperationsRoutes(app: Express) {
             ),
         ]);
         SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(savedDeals);
+        res.json(savedDeals.map(refuelingDealToApi));
       } catch (error: unknown) {
+        if (error instanceof RefuelingApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }

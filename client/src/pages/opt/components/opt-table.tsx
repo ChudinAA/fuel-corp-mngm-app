@@ -63,8 +63,6 @@ import { useFilterReferenceData } from "@/hooks/use-filter-reference-data";
 import {
   formatPricePerTonne,
   formatTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 
 interface OptTableProps {
@@ -84,12 +82,12 @@ interface OptDealActionsProps {
 
 function effectivePricePerTonne(
   amount: string | number | null | undefined,
-  legacyPricePerKilogram: string | number | null | undefined,
-  quantityKg: string | number | null | undefined,
+  pricePerTonne: string | number | null | undefined,
+  quantityTonnes: string | number | null | undefined,
 ): number | null {
   const amountValue = amount === null || amount === undefined ? null : Number(amount);
   const quantityValue =
-    quantityKg === null || quantityKg === undefined ? null : Number(quantityKg);
+    quantityTonnes === null || quantityTonnes === undefined ? null : Number(quantityTonnes);
   if (
     amountValue !== null &&
     Number.isFinite(amountValue) &&
@@ -97,15 +95,15 @@ function effectivePricePerTonne(
     Number.isFinite(quantityValue) &&
     quantityValue > 0
   ) {
-    return amountValue / (quantityValue / 1000);
+    return amountValue / quantityValue;
   }
 
-  const legacyPrice =
-    legacyPricePerKilogram === null || legacyPricePerKilogram === undefined
+  const rate =
+    pricePerTonne === null || pricePerTonne === undefined
       ? null
-      : Number(legacyPricePerKilogram);
-  return legacyPrice !== null && Number.isFinite(legacyPrice)
-    ? pricePerKilogramToPerTonne(legacyPrice)
+      : Number(pricePerTonne);
+  return rate !== null && Number.isFinite(rate)
+    ? rate
     : null;
 }
 
@@ -509,7 +507,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                 <TableCell className="py-1 px-1">
                   <StatCell
                     values={dealsToDisplay.map((d: any) =>
-                      kilogramsToTonnes(Number(d.quantityKg || 0)),
+                      Number(d.quantityTonnes || 0),
                     )}
                     formatFn={(v) => formatTonnes(Number(v) || 0)}
                   />
@@ -648,7 +646,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                         <TooltipTrigger asChild>
                           <span className={cn(deal.isApproxVolume && "approx-volume-animated cursor-help")}>
                             {formatTonnes(
-                              kilogramsToTonnes(Number(deal.quantityKg || 0)),
+                              Number(deal.quantityTonnes || 0),
                             )}
                           </span>
                         </TooltipTrigger>
@@ -664,14 +662,14 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                     <div className="flex items-center justify-end gap-1">
                       {effectivePricePerTonne(
                         deal.purchaseAmount,
-                        deal.purchasePrice,
-                        deal.quantityKg,
+                        deal.purchasePricePerTonne,
+                        deal.quantityTonnes,
                       ) !== null
                         ? formatPricePerTonne(
                             effectivePricePerTonne(
                               deal.purchaseAmount,
-                              deal.purchasePrice,
-                              deal.quantityKg,
+                              deal.purchasePricePerTonne,
+                              deal.quantityTonnes,
                             )!,
                           )
                         : "-"}
@@ -693,14 +691,14 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   <TableCell className="text-right text-xs py-1.5 px-1">
                     {effectivePricePerTonne(
                       deal.saleAmount,
-                      deal.salePrice,
-                      deal.quantityKg,
+                      deal.salePricePerTonne,
+                      deal.quantityTonnes,
                     ) !== null
                       ? formatPricePerTonne(
                           effectivePricePerTonne(
                             deal.saleAmount,
-                            deal.salePrice,
-                            deal.quantityKg,
+                            deal.salePricePerTonne,
+                            deal.quantityTonnes,
                           )!,
                         )
                       : "-"}

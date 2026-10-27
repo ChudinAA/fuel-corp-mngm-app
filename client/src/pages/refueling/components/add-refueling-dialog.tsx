@@ -25,7 +25,7 @@ import type { AddRefuelingDialogProps } from "../types";
 import { EQUIPMENT_TYPE } from "@shared/constants";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { apiRequest } from "@/lib/queryClient";
-import type { AircraftRefueling } from "@shared/schema";
+import type { RefuelingApi } from "../types";
 import { PRODUCT_TYPE } from "@shared/constants";
 
 export function AddRefuelingDialog({
@@ -38,7 +38,7 @@ export function AddRefuelingDialog({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<RefuelingFormHandle>(null);
   const { showError, ErrorModalComponent } = useErrorModal();
-  const orderQuery = useQuery<AircraftRefueling[]>({
+  const orderQuery = useQuery<RefuelingApi[]>({
     queryKey: ["/api/refueling/order", editRefueling?.id],
     queryFn: async () => {
       const response = await apiRequest("GET", `/api/refueling/order/${editRefueling!.id}`);
@@ -49,7 +49,7 @@ export function AddRefuelingDialog({
   });
   const [orderSnapshot, setOrderSnapshot] = useState<{
     id: string;
-    deals: AircraftRefueling[];
+    deals: RefuelingApi[];
   } | null>(null);
   useEffect(() => {
     if (!isOpen || !editRefueling?.id || isCopy) {

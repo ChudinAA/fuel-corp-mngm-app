@@ -5,6 +5,29 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 
 export function registerReportsRoutes(app: Express) {
+  app.get(
+    "/api/reports/daily-opt",
+    requireAuth,
+    requirePermission("reports", "view"),
+    async (req, res) => {
+      try {
+        const date = req.query.date;
+        if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          return res.status(400).json({ message: "Укажите дату в формате ГГГГ-ММ-ДД" });
+        }
+        const parsedDate = new Date(`${date}T00:00:00.000Z`);
+        if (Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
+          return res.status(400).json({ message: "Укажите дату в формате ГГГГ-ММ-ДД" });
+        }
+
+        res.json(await storage.reports.getDailyOptDeals(date));
+      } catch (error) {
+        console.error("Error fetching daily OPT report:", error);
+        res.status(500).json({ message: "Ошибка получения дневного отчета ОПТ" });
+      }
+    },
+  );
+
   // Get saved reports
   app.get(
     "/api/reports/saved",

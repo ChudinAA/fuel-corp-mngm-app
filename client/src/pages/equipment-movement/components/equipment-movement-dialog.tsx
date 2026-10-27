@@ -146,9 +146,13 @@ export function EquipmentMovementDialog({
             : "tonnes",
         quantityLiters: editMovement.quantityLiters?.toString() || "",
         density: editMovement.density?.toString() || "",
-        quantityTonnes: editMovement.quantityKg
-          ? String(equipmentMovementLegacyKgToTonnes(editMovement.quantityKg))
-          : "",
+        quantityTonnes:
+          editMovement.quantityTonnes !== null &&
+          editMovement.quantityTonnes !== undefined
+            ? String(editMovement.quantityTonnes)
+            : editMovement.quantityKg
+              ? String(equipmentMovementLegacyKgToTonnes(editMovement.quantityKg))
+              : "",
         notes: editMovement.notes || "",
         isDraft: editMovement.isDraft || false,
       };
@@ -202,7 +206,10 @@ export function EquipmentMovementDialog({
 
   const initialQuantityTonnes =
     isEditing || isCopy
-      ? equipmentMovementLegacyKgToTonnes(editMovement?.quantityKg || 0) ?? 0
+      ? editMovement?.quantityTonnes !== null &&
+        editMovement?.quantityTonnes !== undefined
+        ? Number(editMovement.quantityTonnes)
+        : equipmentMovementLegacyKgToTonnes(editMovement?.quantityKg || 0) ?? 0
       : 0;
 
   const likBalance = useLikBalance({
@@ -230,11 +237,11 @@ export function EquipmentMovementDialog({
         ...data,
         nomenclatureId: data.nomenclatureId || null,
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
-        quantityKg: calculatedKg?.toString() || "0",
+        quantityTonnes: tonnesNum,
         quantityLiters: data.quantityLiters ? data.quantityLiters : null,
         density: data.density ? data.density : null,
         totalCost: purchaseAmount,
-        costPerKg: averageCostPerKg,
+        costPerTonne: averageCostPerKg * 1_000,
         isDraft: !!isDraft,
       };
       const res = await apiRequest(

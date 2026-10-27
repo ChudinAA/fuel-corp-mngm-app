@@ -31,6 +31,31 @@ export function litresAndDensityToTonnes(
   return (litres * densityKilogramsPerLitre) / KILOGRAMS_PER_TON;
 }
 
+/**
+ * Resolves a deal's mass from legacy fields without changing stored data.
+ * Prefer litres × deal density when both are valid; otherwise use kilograms.
+ */
+export function legacyDealMassToTonnes(
+  kilograms: number | string | null | undefined,
+  litres: number | string | null | undefined,
+  densityKilogramsPerLitre: number | string | null | undefined,
+): number | null {
+  const parseOptionalFinite = (value: number | string | null | undefined) => {
+    if (value === null || value === undefined || value === "") return null;
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const volume = parseOptionalFinite(litres);
+  const density = parseOptionalFinite(densityKilogramsPerLitre);
+  if (volume !== null && volume > 0 && density !== null && density > 0) {
+    return litresAndDensityToTonnes(volume, density);
+  }
+
+  const massKg = parseOptionalFinite(kilograms);
+  return massKg === null ? null : kilogramsToTonnes(massKg);
+}
+
 /** Converts a unit price in currency/kg to currency/tonne. */
 export function pricePerKilogramToPerTonne(pricePerKilogram: number): number {
   return assertFinite(pricePerKilogram, "pricePerKilogram") * KILOGRAMS_PER_TON;

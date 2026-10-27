@@ -27,6 +27,12 @@ import {
   COUNTERPARTY_TYPE,
   PRODUCT_TYPE,
 } from "@shared/constants";
+import {
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+  pricePerTonneToPerKilogram,
+  tonnesToKilograms,
+} from "@shared/units";
 import { priceFormSchema } from "../schemas";
 import type { PriceFormData, PriceDialogProps } from "../types";
 import { useDateCheck } from "../hooks/use-date-check";
@@ -99,12 +105,18 @@ export function AddPriceDialog({
     prevEditPriceRef.current = editPrice;
 
     if (editPrice) {
+      const editPriceUnit = editPrice.priceUnit === "liter" ? "liter" : "kg";
       let parsedPriceValues = [{ price: "" }];
       if (editPrice.priceValues && editPrice.priceValues.length > 0) {
         try {
           parsedPriceValues = editPrice.priceValues.map((pv: string) => {
             const parsed = JSON.parse(pv);
-            return { price: String(parsed.price || "") };
+            const storedPrice = Number(parsed.price);
+            if (!Number.isFinite(storedPrice)) return { price: "" };
+            const displayPrice = editPriceUnit === "kg"
+              ? pricePerKilogramToPerTonne(storedPrice)
+              : storedPrice;
+            return { price: displayPrice.toFixed(2) };
           });
         } catch (e) {
           console.error("Failed to parse priceValues:", e);
@@ -127,13 +139,15 @@ export function AddPriceDialog({
         currency: editPrice.currency || "RUB",
         currencyId: editPrice.currencyId || undefined,
         limitType: ((editPrice as any).limitType as "volume" | "amount") || "volume",
-        volume: editPrice.volume || "",
+        volume: editPrice.volume
+          ? kilogramsToTonnes(Number(editPrice.volume)).toFixed(5)
+          : "",
         maxDealAmount: (editPrice as any).maxDealAmount || "",
         priceValues: parsedPriceValues,
         contractNumber: editPrice.contractNumber || "",
         contractAppendix: (editPrice as any).contractAppendix || "",
         notes: editPrice.notes || "",
-        priceUnit: (editPrice.priceUnit as "kg" | "liter") || "kg",
+        priceUnit: editPriceUnit,
         contractLimitEnabled: (editPrice as any).contractLimitEnabled !== false,
       } as PriceFormData);
       setOpen(true);
@@ -396,9 +410,19 @@ export function AddPriceDialog({
         currency: data.currency,
         currencyId: data.currencyId || null,
         limitType: data.limitType || "volume",
-        volume: (!data.contractLimitEnabled || data.limitType === "amount") ? null : (data.volume || null),
+        volume: (!data.contractLimitEnabled || data.limitType === "amount")
+          ? null
+          : data.volume
+            ? String(tonnesToKilograms(Number(data.volume)))
+            : null,
         maxDealAmount: (!data.contractLimitEnabled || data.limitType !== "amount") ? null : (data.maxDealAmount || null),
-        priceValues: data.priceValues,
+        priceValues: data.priceValues.map((value) => ({
+          price: String(
+            data.priceUnit === "kg"
+              ? pricePerTonneToPerKilogram(Number(value.price))
+              : Number(value.price),
+          ),
+        })),
         dateFrom: format(data.dateFrom, "yyyy-MM-dd"),
         dateTo: format(data.dateTo, "yyyy-MM-dd"),
         contractNumber: data.contractNumber || null,

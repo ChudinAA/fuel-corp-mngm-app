@@ -1,18 +1,33 @@
 import type { RefuelingAbroad } from "@shared/schema";
 
+export type RefuelingAbroadApi = Omit<
+  RefuelingAbroad,
+  | "quantityKg"
+  | "purchasePriceUsd"
+  | "purchasePriceRub"
+  | "salePriceUsd"
+  | "salePriceRub"
+> & {
+  quantityTonnes: number | null;
+  purchasePriceUsdPerTonne: number | null;
+  purchasePriceRubPerTonne: number | null;
+  salePriceUsdPerTonne: number | null;
+  salePriceRubPerTonne: number | null;
+};
+
 export interface RefuelingAbroadFormProps {
   onSuccess?: () => void;
-  editData?: (RefuelingAbroad & { originalId?: string }) | null;
+  editData?: (RefuelingAbroadApi & { originalId?: string }) | null;
 }
 
 export interface AddRefuelingAbroadDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  editRefueling: RefuelingAbroad | null;
+  editRefueling: RefuelingAbroadApi | null;
   isCopy?: boolean;
 }
 
-export interface RefuelingAbroadExtended extends RefuelingAbroad {
+export interface RefuelingAbroadExtended extends RefuelingAbroadApi {
   supplier?: {
     id: string;
     name: string;

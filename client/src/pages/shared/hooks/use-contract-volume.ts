@@ -1,25 +1,42 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Price } from "@shared/schema";
-import { formatTonnes } from "@shared/units";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 interface UseContractVolumeProps {
   priceId: string | null;
-  currentQuantityKg: number;
-  initialQuantityKg: number;
+  currentQuantityTonnes: number;
+  initialQuantityTonnes: number;
   mode: "opt" | "refueling" | "refueling-abroad";
   currentDealAmount?: number;
   initialDealAmount?: number;
-  displayUnit?: "kg" | "tonnes" | "liters";
+}
+
+export function calculateRemainingContractTonnes({
+  totalVolumeKilograms,
+  usedVolumeTonnes,
+  initialQuantityTonnes,
+  currentQuantityTonnes,
+}: {
+  totalVolumeKilograms: number;
+  usedVolumeTonnes: number;
+  initialQuantityTonnes: number;
+  currentQuantityTonnes: number;
+}): number {
+  return (
+    kilogramsToTonnes(totalVolumeKilograms) -
+    usedVolumeTonnes +
+    initialQuantityTonnes -
+    currentQuantityTonnes
+  );
 }
 
 export function useContractVolume({
   priceId,
-  currentQuantityKg,
-  initialQuantityKg,
+  currentQuantityTonnes,
+  initialQuantityTonnes,
   mode,
   currentDealAmount = 0,
   initialDealAmount = 0,
-  displayUnit = "kg",
 }: UseContractVolumeProps) {
   const { data: price, isLoading: isLoadingPrice } = useQuery<Price>({
     queryKey: ["/api/prices", priceId],
@@ -27,7 +44,8 @@ export function useContractVolume({
   });
 
   const { data: usedData, isLoading: isLoadingUsed } = useQuery<{
-    usedVolume: number;
+    usedVolumeTonnes?: number;
+    usedVolume?: number;
   }>({
     queryKey: [`/api/${mode}/contract-used`, priceId],
     enabled: !!priceId && (price as any)?.limitType !== "amount",
@@ -40,16 +58,7 @@ export function useContractVolume({
     enabled: !!priceId && (price as any)?.limitType === "amount",
   });
 
-  const formatVolume = (value: number) => {
-    if (displayUnit === "tonnes") {
-      return `${formatTonnes(value / 1_000)} т`;
-    }
-    const formatted = new Intl.NumberFormat("ru-RU", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-    return `${formatted} ${displayUnit === "liters" ? "л" : "кг"}`;
-  };
+  const formatVolume = (value: number) => `${formatTonnes(value)} т`;
 
   if (!priceId) {
     return { remaining: 0, status: "ok" as const, message: "—" };
@@ -100,16 +109,46 @@ export function useContractVolume({
       }
     }
 
-    const totalVolume = parseFloat(price.volume || "0");
+    // The UI and API express contract mass in tonnes; the stored price volume
+    // remains kg until the database cutover.
+    const totalVolumeKilograms = Number.parseFloat(price.volume || "0");
+    const totalVolumeTonnes = kilogramsToTonnes(totalVolumeKilograms);
 
-    if (totalVolume <= 0) {
+    if (totalVolumeTonnes <= 0) {
       return { remaining: 0, status: "ok" as const, message: "Безлимит" };
     }
 
-    const usedVolume = usedData?.usedVolume || 0;
+    const apiUsedVolumeTonnes = usedData?.usedVolumeTonnes;
+    let usedVolumeTonnes: number;
+    if (
+      typeof apiUsedVolumeTonnes === "number" &&
+      Number.isFinite(apiUsedVolumeTonnes)
+    ) {
+      usedVolumeTonnes = apiUsedVolumeTonnes;
+    } else if (
+      typeof usedData?.usedVolume === "number" &&
+      Number.isFinite(usedData.usedVolume) &&
+      (mode === "opt" || (price as any).priceUnit !== "liter")
+    ) {
+      // Older OPT responses used kg. Older domestic/foreign responses could
+      // use liters, which cannot safely be converted without deal densities.
+      usedVolumeTonnes = kilogramsToTonnes(usedData.usedVolume);
+    } else {
+      return {
+        remaining: 0,
+        status: "error" as const,
+        message: "Не удалось получить использованный объём в тоннах",
+      };
+    }
 
-    const remaining =
-      totalVolume - usedVolume + (initialQuantityKg - currentQuantityKg);
+    const availableBeforeCurrent =
+      totalVolumeTonnes - usedVolumeTonnes + initialQuantityTonnes;
+    const remaining = calculateRemainingContractTonnes({
+      totalVolumeKilograms,
+      usedVolumeTonnes,
+      initialQuantityTonnes,
+      currentQuantityTonnes,
+    });
 
     if (remaining >= 0) {
       return {
@@ -121,7 +160,7 @@ export function useContractVolume({
       return {
         remaining,
         status: "error" as const,
-        message: `Превышен! Остаток: ${formatVolume(totalVolume - usedVolume + initialQuantityKg)}`,
+          message: `Превышен! Остаток: ${formatVolume(availableBeforeCurrent)}`,
       };
     }
   } catch (e) {

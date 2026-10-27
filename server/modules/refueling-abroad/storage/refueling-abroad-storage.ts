@@ -955,19 +955,26 @@ export class RefuelingAbroadStorage {
     return result;
   }
 
-  async getUsedVolumeByPrice(priceId: string): Promise<number> {
+  async getUsedVolumeByPrice(
+    priceId: string,
+  ): Promise<{ usedVolumeTonnes: number; usedVolume: number }> {
     const price = await db.query.prices.findFirst({
       where: eq(prices.id, priceId),
       columns: { priceUnit: true },
     });
-    const quantityColumn =
-      price?.priceUnit === "liter"
-        ? refuelingAbroad.quantityLiters
-        : refuelingAbroad.quantityKg;
 
     const [result] = await db
       .select({
-        total: sql<string>`COALESCE(SUM(${quantityColumn}), 0)`,
+        totalMassKg: sql<string>`COALESCE(SUM(
+          CASE
+            WHEN ${refuelingAbroad.quantityLiters} > 0
+              AND ${refuelingAbroad.density} > 0
+            THEN ${refuelingAbroad.quantityLiters} * ${refuelingAbroad.density}
+            ELSE ${refuelingAbroad.quantityKg}
+          END
+        ), 0)`,
+        storedMassKg: sql<string>`COALESCE(SUM(${refuelingAbroad.quantityKg}), 0)`,
+        totalLiters: sql<string>`COALESCE(SUM(${refuelingAbroad.quantityLiters}), 0)`,
       })
       .from(refuelingAbroad)
       .where(
@@ -980,7 +987,14 @@ export class RefuelingAbroadStorage {
           eq(refuelingAbroad.isDraft, false),
         ),
       );
-    return parseFloat(result?.total || "0");
+    const totalMassKg = Number.parseFloat(result?.totalMassKg || "0");
+    const storedMassKg = Number.parseFloat(result?.storedMassKg || "0");
+    const totalLiters = Number.parseFloat(result?.totalLiters || "0");
+    return {
+      usedVolumeTonnes: totalMassKg / 1_000,
+      // Keep the old response unit for clients not yet migrated.
+      usedVolume: price?.priceUnit === "liter" ? totalLiters : storedMassKg,
+    };
   }
 
   /** Поиск уникальных значений по колонке для серверного фильтра */

@@ -34,10 +34,7 @@ import { format, isSameDay, parseISO, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import {
-  formatPricePerTonne,
-  pricePerKilogramToPerTonne,
-} from "@shared/units";
+import { formatPricePerTonne } from "@shared/units";
 import {
   AlertTriangle,
   Clock,
@@ -278,11 +275,9 @@ function TariffMatchPanel({
                   {dc.transitDays != null && (
                     <span>{dc.transitDays} сут.</span>
                   )}
-                  {dc.costPerKg && (
+                  {dc.costPerTonne && (
                     <span className="tabular-nums">
-                      {formatPricePerTonne(
-                        pricePerKilogramToPerTonne(Number(dc.costPerKg)),
-                      )} ₽/т
+                      {formatPricePerTonne(Number(dc.costPerTonne))} ₽/т
                     </span>
                   )}
                 </div>

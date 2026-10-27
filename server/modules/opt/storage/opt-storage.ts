@@ -364,10 +364,19 @@ export class OptStorage {
     return true;
   }
 
-  async getUsedVolumeByPrice(priceId: string): Promise<number> {
+  async getUsedVolumeByPrice(
+    priceId: string,
+  ): Promise<{ usedVolumeTonnes: number; usedVolume: number }> {
     const [optVolume] = await db
       .select({
-        total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
+        totalMassKg: sql<string>`COALESCE(SUM(
+          CASE
+            WHEN ${opt.quantityLiters} > 0 AND ${opt.density} > 0
+            THEN ${opt.quantityLiters} * ${opt.density}
+            ELSE ${opt.quantityKg}
+          END
+        ), 0)`,
+        storedMassKg: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
       })
       .from(opt)
       .where(
@@ -380,17 +389,31 @@ export class OptStorage {
 
     const [movementVolume] = await db
       .select({
-        total: sql<string>`COALESCE(SUM(${movement.quantityKg}), 0)`,
+        totalMassKg: sql<string>`COALESCE(SUM(
+          CASE
+            WHEN ${movement.quantityLiters} > 0 AND ${movement.density} > 0
+            THEN ${movement.quantityLiters} * ${movement.density}
+            ELSE ${movement.quantityKg}
+          END
+        ), 0)`,
+        storedMassKg: sql<string>`COALESCE(SUM(${movement.quantityKg}), 0)`,
       })
       .from(movement)
       .where(
         and(eq(movement.purchasePriceId, priceId), isNull(movement.deletedAt)),
       );
 
-    const total =
-      parseFloat(optVolume.total || "0") +
-      parseFloat(movementVolume.total || "0");
-    return total;
+    const totalMassKg =
+      Number.parseFloat(optVolume.totalMassKg || "0") +
+      Number.parseFloat(movementVolume.totalMassKg || "0");
+    const storedMassKg =
+      Number.parseFloat(optVolume.storedMassKg || "0") +
+      Number.parseFloat(movementVolume.storedMassKg || "0");
+    return {
+      usedVolumeTonnes: totalMassKg / 1_000,
+      // Preserve the previous kg value for any legacy consumers.
+      usedVolume: storedMassKg,
+    };
   }
 
   async getUsedAmountByPrice(priceId: string): Promise<number> {

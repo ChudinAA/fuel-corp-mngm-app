@@ -294,7 +294,7 @@ export function useMovementCalculations({
         dc.toEntityId === toWarehouse.id,
     );
 
-    if (deliveryCostRecord && deliveryCostRecord.costPerKg) {
+    if (deliveryCostRecord && deliveryCostRecord.costPerTonne) {
       return deliveryCostRecord;
     }
 
@@ -313,7 +313,7 @@ export function useMovementCalculations({
           dc.toEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
           dc.toEntityId === toWarehouse.id,
       );
-      if (basisRecord && basisRecord.costPerKg) {
+      if (basisRecord && basisRecord.costPerTonne) {
         return basisRecord;
       }
     }
@@ -332,9 +332,7 @@ export function useMovementCalculations({
   ]);
   const deliveryCost =
     matchedDeliveryCost && tonnesNum > 0
-      ? pricePerKilogramToPerTonne(
-          Number.parseFloat(matchedDeliveryCost.costPerKg),
-        ) * tonnesNum
+      ? Number.parseFloat(String(matchedDeliveryCost.costPerTonne)) * tonnesNum
       : 0;
 
   const purchasePriceId = priceId;
@@ -342,8 +340,8 @@ export function useMovementCalculations({
 
   const supplierContractVolumeStatus = useContractVolume({
     priceId: priceId || null,
-    currentQuantityKg: kgNum,
-    initialQuantityKg: movementTonnesToLegacyKg(initialQuantityTonnes),
+    currentQuantityTonnes: tonnesNum,
+    initialQuantityTonnes,
     mode: "opt",
     currentDealAmount: purchaseAmount,
     initialDealAmount: initialPurchaseAmount,

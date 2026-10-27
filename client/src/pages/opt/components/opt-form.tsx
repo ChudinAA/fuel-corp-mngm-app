@@ -31,10 +31,10 @@ import type {
   Base,
   Customer,
   Warehouse,
-  DeliveryCost,
   LogisticsCarrier,
   LogisticsDeliveryLocation,
 } from "@shared/schema";
+import type { DeliveryCostApiRecord } from "@/pages/delivery/types";
 import { OptMainFields } from "./opt-main-fields";
 import { OptPricingSection } from "./opt-pricing-section";
 import { SpecialConditionsBanner } from "@/components/special-conditions-banner";
@@ -158,7 +158,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       queryKey: ["/api/logistics/delivery-locations"],
     });
 
-    const { data: deliveryCosts } = useQuery<DeliveryCost[]>({
+    const { data: deliveryCosts } = useQuery<DeliveryCostApiRecord[]>({
       queryKey: ["/api/delivery-costs"],
     });
 
@@ -216,8 +216,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       finalKg,
       purchasePricePerTonne,
       salePricePerTonne,
-      purchasePricePerKilogram,
-      salePricePerKilogram,
       purchasePriceRequiresDensity,
       priceRequiresDensity,
       deliveryCost,
@@ -226,7 +224,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       saleAmount,
       profit,
       otherServiceFee,
-      deliveryTariffPerKilogram,
       deliveryTariffPerTonne,
       contractVolumeStatus,
       supplierContractVolumeStatus,
@@ -274,7 +271,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         basisId: watchBasisId,
         customerBasisId: watchCustomerBasisId,
         deliveryLocationId: watchDeliveryLocationId,
-        quantityKg: finalKg,
+        quantityTonnes: finalTonnes,
       }),
     });
 
@@ -417,9 +414,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           nomenclatureId: (editData as any).nomenclatureId || "",
           quantityLiters: editData.quantityLiters?.toString() || "",
           density: editData.density?.toString() || "",
-          quantityTonnes: optLegacyKilogramsToTonnes(
-            parseFloat(editData.quantityKg || "0"),
-          ).toFixed(5),
+          quantityTonnes: Number(editData.quantityTonnes || 0).toFixed(5),
           carrierId: editData.carrierId || "",
           deliveryLocationId: editData.deliveryLocationId || "",
           notes: editData.notes || "",
@@ -444,7 +439,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         setSelectedSalePriceId(salePriceCompositeId);
         setInitialQuantityKg(
           isEditing && !editData.isDraft
-            ? parseFloat(editData.quantityKg || "0")
+            ? optTonnesToLegacyKilograms(Number(editData.quantityTonnes || 0))
             : 0,
         );
 
@@ -496,25 +491,25 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           dealDate: data.dealDate
             ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
             : null,
-          quantityKg: finalKg,
+          quantityTonnes: finalTonnes,
           quantityLiters: data.quantityLiters
             ? parseFloat(data.quantityLiters)
             : null,
           density: data.density ? parseFloat(data.density) : null,
-          purchasePrice: purchasePricePerKilogram,
+          purchasePricePerTonne,
           purchasePriceId: purchasePriceId || null,
           contractNumber:
             purchasePrices.find((price) => price.id === purchasePriceId)?.contractNumber ||
             salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
           purchasePriceIndex:
             purchasePriceIndex !== undefined ? purchasePriceIndex : null,
-          salePrice: salePricePerKilogram,
+          salePricePerTonne,
           salePriceId: salePriceId || null,
           salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
           purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
           saleAmount: saleAmount !== null ? saleAmount : null,
           deliveryCost: noDeliveryRequired ? 0 : (deliveryCost !== null ? deliveryCost : null),
-          deliveryTariff: noDeliveryRequired ? 0 : deliveryTariffPerKilogram,
+          deliveryTariffPerTonne: noDeliveryRequired ? 0 : deliveryTariffPerTonne,
           profit: profit !== null ? profit : null,
         };
         const res = await apiRequest("POST", "/api/opt", payload);
@@ -619,12 +614,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           (data.inputMode === "liters"
             ? sameNumber(data.quantityLiters, existingDeal.quantityLiters) &&
               sameNumber(data.density, existingDeal.density)
-            : sameNumber(
-                data.quantityTonnes,
-                optLegacyKilogramsToTonnes(
-                  parseFloat(existingDeal.quantityKg || "0"),
-                ).toFixed(5),
-              ));
+            : sameNumber(data.quantityTonnes, existingDeal.quantityTonnes));
         const existingWarehouseId =
           isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null;
         const preserveHistoricalAmounts =
@@ -673,25 +663,25 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           dealDate: data.dealDate
             ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
             : null,
-          quantityKg: preserveHistoricalAmounts
-            ? Number(existingDeal!.quantityKg)
-            : finalKg,
+          quantityTonnes: preserveHistoricalAmounts
+            ? Number(existingDeal!.quantityTonnes)
+            : finalTonnes,
           quantityLiters: data.quantityLiters
             ? parseFloat(data.quantityLiters)
             : null,
           density: data.density ? parseFloat(data.density) : null,
-          purchasePrice: preserveHistoricalAmounts
-            ? preservedValue(existingDeal!.purchasePrice)
-            : purchasePricePerKilogram,
+          purchasePricePerTonne: preserveHistoricalAmounts
+            ? preservedValue(existingDeal!.purchasePricePerTonne)
+            : purchasePricePerTonne,
           purchasePriceId: purchasePriceId || null,
           contractNumber:
             purchasePrices.find((price) => price.id === purchasePriceId)?.contractNumber ||
             salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
           purchasePriceIndex:
             purchasePriceIndex !== undefined ? purchasePriceIndex : null,
-          salePrice: preserveHistoricalAmounts
-            ? preservedValue(existingDeal!.salePrice)
-            : salePricePerKilogram,
+          salePricePerTonne: preserveHistoricalAmounts
+            ? preservedValue(existingDeal!.salePricePerTonne)
+            : salePricePerTonne,
           salePriceId: salePriceId || null,
           salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
           purchaseAmount: preserveHistoricalAmounts
@@ -705,11 +695,11 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
             : noDeliveryRequired
               ? 0
               : deliveryCost,
-          deliveryTariff: preserveHistoricalAmounts
-            ? preservedValue(existingDeal!.deliveryTariff)
+          deliveryTariffPerTonne: preserveHistoricalAmounts
+            ? preservedValue(existingDeal!.deliveryTariffPerTonne)
             : noDeliveryRequired
               ? 0
-              : deliveryTariffPerKilogram,
+              : deliveryTariffPerTonne,
           profit: preserveHistoricalAmounts
             ? preservedValue(existingDeal!.profit)
             : profit,

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { RefuelingAbroad } from "@shared/schema";
 import { RefuelingAbroadTable } from "./components/refueling-abroad-table";
 import { AddRefuelingAbroadDialog } from "./components/add-refueling-abroad-dialog";
+import type { RefuelingAbroadApi } from "./types";
 
 export default function RefuelingAbroadPage() {
-  const [editingRefueling, setEditingRefueling] = useState<RefuelingAbroad | null>(null);
+  const [editingRefueling, setEditingRefueling] = useState<RefuelingAbroadApi | null>(null);
   const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -21,13 +21,13 @@ export default function RefuelingAbroadPage() {
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (item: RefuelingAbroad) => {
+  const handleEdit = (item: RefuelingAbroadApi) => {
     setEditingRefueling(item);
     setIsCopy(false);
     setIsDialogOpen(true);
   };
 
-  const handleCopy = (item: RefuelingAbroad) => {
+  const handleCopy = (item: RefuelingAbroadApi) => {
     setEditingRefueling(item);
     setIsCopy(true);
     setIsDialogOpen(true);

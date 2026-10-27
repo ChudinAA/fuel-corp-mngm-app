@@ -1,7 +1,22 @@
 
-import type { Movement, Warehouse } from "@shared/schema";
+import type { Movement as DatabaseMovement, Warehouse } from "@shared/schema";
 
 export type InputMode = "liters" | "tonnes";
+
+export type MovementApiRecord = Omit<
+  DatabaseMovement,
+  "quantityKg" | "purchasePrice" | "deliveryPrice" | "costPerKg"
+> & {
+  quantityTonnes: number | string | null;
+  purchaseAmount: number | string | null;
+  purchasePricePerTonne: number | string | null;
+  deliveryPricePerTonne: number | string | null;
+  costPerTonne: number | string | null;
+  quantityKg?: number | string | null;
+  purchasePrice?: number | string | null;
+  deliveryPrice?: number | string | null;
+  costPerKg?: number | string | null;
+};
 
 export interface MovementDialogProps {
   warehouses: Warehouse[];
@@ -12,16 +27,16 @@ export interface MovementDialogProps {
   drivers: any[];
   prices: any[];
   deliveryCosts: any[];
-  editMovement: Movement | null;
+  editMovement: MovementApiRecord | null;
   isCopy?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export interface MovementTableProps {
-  data: Movement[];
+  data: MovementApiRecord[];
   isLoading: boolean;
-  onEdit: (movement: Movement) => void;
+  onEdit: (movement: MovementApiRecord) => void;
   onDelete: (id: string) => void;
   isDeleting: boolean;
 }

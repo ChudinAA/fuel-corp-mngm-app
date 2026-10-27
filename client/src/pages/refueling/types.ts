@@ -1,17 +1,27 @@
 
 import type { AircraftRefueling } from "@shared/schema";
 
+export type RefuelingApi = Omit<
+  AircraftRefueling,
+  "quantityKg" | "purchasePrice" | "salePrice" | "agentFeeRate"
+> & {
+  quantityTonnes: number | null;
+  purchasePricePerTonne: number | null;
+  salePricePerTonne: number | null;
+  agentFeeRatePerTonne: number | null;
+};
+
 export interface RefuelingFormProps {
   onSuccess?: () => void;
-  editData?: AircraftRefueling | null;
-  editDeals?: AircraftRefueling[];
+  editData?: RefuelingApi | null;
+  editDeals?: RefuelingApi[];
   equipmentType?: string;
 }
 
 export interface AddRefuelingDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  editRefueling: AircraftRefueling | null;
+  editRefueling: RefuelingApi | null;
   isCopy?: boolean;
   equipmentType?: string;
 }
@@ -24,7 +34,7 @@ export interface CalculatedFieldProps {
   isLoading?: boolean;
 }
 
-export interface RefuelingDealExtended extends AircraftRefueling {
+export interface RefuelingDealExtended extends RefuelingApi {
   supplier?: {
     id: string;
     name: string;

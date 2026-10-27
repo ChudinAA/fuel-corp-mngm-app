@@ -1,6 +1,11 @@
 
 import { z } from "zod";
 import { DELIVERY_ENTITY_TYPE } from "@shared/constants";
+import type { DeliveryCost } from "@shared/schema";
+
+export type DeliveryCostApiRecord = Omit<DeliveryCost, "costPerKg"> & {
+  costPerTonne: number | string | null;
+};
 
 export const deliveryCostFormSchema = z.object({
   carrierId: z.string().min(1, "Выберите перевозчика"),

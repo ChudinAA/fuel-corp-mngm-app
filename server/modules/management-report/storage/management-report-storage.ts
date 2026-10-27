@@ -93,10 +93,27 @@ export class ManagementReportStorage implements IManagementReportStorage {
   }
 
   async generateManagementReportData(periodStart: string, periodEnd: string): Promise<ManagementReportData> {
+    const optMassKilograms = sql`
+      CASE
+        WHEN CAST(COALESCE(${opt.quantityLiters}, '0') AS NUMERIC) > 0
+          AND CAST(COALESCE(${opt.density}, '0') AS NUMERIC) > 0
+        THEN CAST(${opt.quantityLiters} AS NUMERIC) * CAST(${opt.density} AS NUMERIC)
+        ELSE CAST(${opt.quantityKg} AS NUMERIC)
+      END
+    `;
+    const refuelingMassKilograms = sql`
+      CASE
+        WHEN CAST(COALESCE(${aircraftRefueling.quantityLiters}, '0') AS NUMERIC) > 0
+          AND CAST(COALESCE(${aircraftRefueling.density}, '0') AS NUMERIC) > 0
+        THEN CAST(${aircraftRefueling.quantityLiters} AS NUMERIC) * CAST(${aircraftRefueling.density} AS NUMERIC)
+        ELSE CAST(${aircraftRefueling.quantityKg} AS NUMERIC)
+      END
+    `;
+
     // Метрики продаж ОПТ
     const [optMetrics] = await db
       .select({
-        totalVolume: sql<string>`COALESCE(SUM(CAST(${opt.quantityKg} AS NUMERIC)), 0)`,
+        totalVolumeTonnes: sql<string>`COALESCE(SUM(${optMassKilograms}) / 1000, 0)::text`,
         totalRevenue: sql<string>`COALESCE(SUM(CAST(${opt.saleAmount} AS NUMERIC)), 0)`,
         totalProfit: sql<string>`COALESCE(SUM(CAST(${opt.profit} AS NUMERIC)), 0)`,
       })
@@ -116,7 +133,7 @@ export class ManagementReportStorage implements IManagementReportStorage {
     // Метрики продаж ЗВС
     const [refuelingMetrics] = await db
       .select({
-        totalVolume: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.quantityKg} AS NUMERIC)), 0)`,
+        totalVolumeTonnes: sql<string>`COALESCE(SUM(${refuelingMassKilograms}) / 1000, 0)::text`,
         totalRevenue: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
         totalProfit: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.profit} AS NUMERIC)), 0)`,
       })
@@ -135,8 +152,8 @@ export class ManagementReportStorage implements IManagementReportStorage {
 
     // Комбинированные метрики продаж
     const combinedVolume = (
-      parseFloat(optMetrics?.totalVolume || "0") + 
-      parseFloat(refuelingMetrics?.totalVolume || "0")
+      parseFloat(optMetrics?.totalVolumeTonnes || "0") +
+      parseFloat(refuelingMetrics?.totalVolumeTonnes || "0")
     ).toString();
 
     const combinedRevenue = (
@@ -156,7 +173,7 @@ export class ManagementReportStorage implements IManagementReportStorage {
     // Метрики складов
     const [warehouseMetrics] = await db
       .select({
-        totalBalance: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantity} AS NUMERIC)), 0)`,
+        totalBalanceTonnes: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantity} AS NUMERIC)) / 1000, 0)::text`,
         totalValue: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantity} AS NUMERIC) * CAST(${warehouseTransactions.price} AS NUMERIC)), 0)`,
       })
       .from(warehouseTransactions)
@@ -225,8 +242,20 @@ export class ManagementReportStorage implements IManagementReportStorage {
     const [govContractsMetrics] = await db
       .select({
         activeCount: sql<number>`CAST(COUNT(*) AS INTEGER)`,
-        totalValue: sql<string>`COALESCE(SUM(CAST(${governmentContracts.totalAmount} AS NUMERIC)), 0)`,
-        completedVolume: sql<string>`COALESCE(SUM(CAST(${governmentContracts.actualVolume} AS NUMERIC)), 0)`,
+        totalValue: sql<string>`COALESCE(SUM(COALESCE(CAST(NULLIF(${governmentContracts.totalAmount}, '') AS NUMERIC), 0)), 0)::text`,
+        completedAmount: sql<string>`COALESCE(SUM(COALESCE(CAST(NULLIF(${governmentContracts.currentAmount}, '') AS NUMERIC), 0)), 0)::text`,
+        remainingAmount: sql<string>`COALESCE(SUM(GREATEST(
+          COALESCE(CAST(NULLIF(${governmentContracts.totalAmount}, '') AS NUMERIC), 0) -
+          COALESCE(CAST(NULLIF(${governmentContracts.currentAmount}, '') AS NUMERIC), 0),
+          0
+        )), 0)::text`,
+        plannedVolumeTonnes: sql<string>`COALESCE(SUM(COALESCE(CAST(NULLIF(${governmentContracts.plannedVolume}, '') AS NUMERIC), 0) / 1000), 0)::text`,
+        actualVolumeTonnes: sql<string>`COALESCE(SUM(COALESCE(CAST(NULLIF(${governmentContracts.actualVolume}, '') AS NUMERIC), 0) / 1000), 0)::text`,
+        remainingVolumeTonnes: sql<string>`COALESCE(SUM(GREATEST(
+          COALESCE(CAST(NULLIF(${governmentContracts.plannedVolume}, '') AS NUMERIC), 0) -
+          COALESCE(CAST(NULLIF(${governmentContracts.actualVolume}, '') AS NUMERIC), 0),
+          0
+        ) / 1000), 0)::text`,
       })
       .from(governmentContracts)
       .where(
@@ -235,11 +264,6 @@ export class ManagementReportStorage implements IManagementReportStorage {
           isNull(governmentContracts.deletedAt)
         )
       );
-
-    const remainingVolume = (
-      parseFloat(govContractsMetrics?.totalValue || "0") - 
-      parseFloat(govContractsMetrics?.completedVolume || "0")
-    ).toString();
 
     // Метрики логистики (на основе настроенных тарифов)
     const [logisticsMetrics] = await db
@@ -261,26 +285,26 @@ export class ManagementReportStorage implements IManagementReportStorage {
     return {
       salesMetrics: {
         optSales: {
-          totalVolume: optMetrics?.totalVolume || "0",
+          totalVolumeTonnes: optMetrics?.totalVolumeTonnes || "0",
           totalRevenue: optMetrics?.totalRevenue || "0",
           totalProfit: optMetrics?.totalProfit || "0",
           marginality: optMarginality,
         },
         refuelingSales: {
-          totalVolume: refuelingMetrics?.totalVolume || "0",
+          totalVolumeTonnes: refuelingMetrics?.totalVolumeTonnes || "0",
           totalRevenue: refuelingMetrics?.totalRevenue || "0",
           totalProfit: refuelingMetrics?.totalProfit || "0",
           marginality: refuelingMarginality,
         },
         combined: {
-          totalVolume: combinedVolume,
+          totalVolumeTonnes: combinedVolume,
           totalRevenue: combinedRevenue,
           totalProfit: combinedProfit,
           marginality: combinedMarginality,
         },
       },
       warehouseMetrics: {
-        totalBalance: warehouseMetrics?.totalBalance || "0",
+        totalBalanceTonnes: warehouseMetrics?.totalBalanceTonnes || "0",
         totalValue: warehouseMetrics?.totalValue || "0",
         movementsCount: movementsCount?.count || 0,
         exchangesCount: exchangesCount?.count || 0,
@@ -294,8 +318,11 @@ export class ManagementReportStorage implements IManagementReportStorage {
       govContractsMetrics: {
         activeContracts: govContractsMetrics?.activeCount || 0,
         totalContractValue: govContractsMetrics?.totalValue || "0",
-        completedVolume: govContractsMetrics?.completedVolume || "0",
-        remainingVolume: remainingVolume,
+        completedAmount: govContractsMetrics?.completedAmount || "0",
+        remainingAmount: govContractsMetrics?.remainingAmount || "0",
+        plannedVolumeTonnes: govContractsMetrics?.plannedVolumeTonnes || "0",
+        actualVolumeTonnes: govContractsMetrics?.actualVolumeTonnes || "0",
+        remainingVolumeTonnes: govContractsMetrics?.remainingVolumeTonnes || "0",
       },
       logisticsMetrics: {
         totalDeliveries: logisticsMetrics?.totalCount || 0,

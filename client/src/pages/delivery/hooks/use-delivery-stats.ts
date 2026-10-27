@@ -1,12 +1,13 @@
 
-import type { DeliveryCost } from "@shared/schema";
-import { pricePerKilogramToPerTonne } from "@shared/units";
+import type { DeliveryCostApiRecord } from "../types";
 
-export function useDeliveryStats(deliveryCosts: DeliveryCost[] | undefined) {
+export function useDeliveryStats(
+  deliveryCosts: DeliveryCostApiRecord[] | undefined,
+) {
   const averageCostPerTonne = deliveryCosts && deliveryCosts.length > 0
     ? deliveryCosts.reduce(
         (sum, cost) =>
-          sum + pricePerKilogramToPerTonne(Number(cost.costPerKg)),
+          sum + Number(cost.costPerTonne),
         0,
       ) / deliveryCosts.length
     : 0;

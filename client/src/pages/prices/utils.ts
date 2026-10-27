@@ -2,6 +2,7 @@
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { PRODUCT_TYPE } from "@shared/constants";
+import { formatPricePerTonne, pricePerKilogramToPerTonne } from "@shared/units";
 
 export const formatNumber = (value: string | number | null) => {
   if (value === null) return "—";
@@ -27,17 +28,25 @@ export const formatDate = (dateStr: string | null) => {
   return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
 };
 
-export const getPriceDisplay = (priceValues: string[] | null, symbol: string) => {
+export const getPriceDisplay = (
+  priceValues: string[] | null,
+  symbol: string,
+  priceUnit: "kg" | "liter" = "kg",
+) => {
   if (!priceValues || priceValues.length === 0) return "—";
   try {
     const prices = priceValues.map(pv => {
       const parsed = JSON.parse(pv);
-      return parsed.price;
+      const storedPrice = Number(parsed.price);
+      if (!Number.isFinite(storedPrice)) throw new TypeError("Invalid stored price");
+      return priceUnit === "liter"
+        ? storedPrice
+        : pricePerKilogramToPerTonne(storedPrice);
     });
     if (prices.length === 1) {
-      return `${formatNumber(prices[0])} ${symbol}`;
+      return `${formatPricePerTonne(prices[0])} ${symbol}`;
     }
-    return prices.map(p => `${formatNumber(p)} ${symbol}`).join(", ");
+    return prices.map(p => `${formatPricePerTonne(p)} ${symbol}`).join(", ");
   } catch {
     return "—";
   }

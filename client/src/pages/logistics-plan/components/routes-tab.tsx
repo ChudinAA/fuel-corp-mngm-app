@@ -46,7 +46,6 @@ import { RouteEditDialog } from "./route-edit-dialog";
 import { cn } from "@/lib/utils";
 import {
   formatPricePerTonne,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 
 interface RoutesTabProps {
@@ -232,9 +231,9 @@ function CarrierRatesCell({
   starovoitovCarrier: any;
   carrierById: Map<string, any>;
 }) {
-  const formatRate = (rate: string | null | undefined) =>
+  const formatRate = (rate: string | number | null | undefined) =>
     rate != null
-      ? formatPricePerTonne(pricePerKilogramToPerTonne(Number(rate)))
+      ? formatPricePerTonne(Number(rate))
       : "0,00";
 
   const items: React.ReactNode[] = [];
@@ -271,7 +270,7 @@ function CarrierRatesCell({
             <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5">
               {abbr}
             </span>
-            <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(r.costPerKg)} ₽/т</span>
+            <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(r.costPerTonne)} ₽/т</span>
           </div>
         </TooltipTrigger>
         <TooltipContent>
@@ -381,10 +380,10 @@ export function RoutesTab({ periodFrom, periodTo }: RoutesTabProps) {
   groupedByRoute.forEach((group) => {
     const base = group[0];
     const aviaserviceRate = aviaserviceCarrier
-      ? group.find((r: any) => r.carrierId === aviaserviceCarrier.id)?.costPerKg
+      ? group.find((r: any) => r.carrierId === aviaserviceCarrier.id)?.costPerTonne
       : null;
     const starovoitovRate = starovoitovCarrier
-      ? group.find((r: any) => r.carrierId === starovoitovCarrier.id)?.costPerKg
+      ? group.find((r: any) => r.carrierId === starovoitovCarrier.id)?.costPerTonne
       : null;
     const otherCarriers = group.filter(
       (r: any) =>

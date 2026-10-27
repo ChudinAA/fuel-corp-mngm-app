@@ -6,6 +6,11 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
+import {
+  TransportationApiInputError,
+  toLegacyTransportationInput,
+  transportationResultToApi,
+} from "../transportation-api-adapters";
 
 export function registerTransportationRoutes(app: Express) {
   app.get(
@@ -37,7 +42,7 @@ export function registerTransportationRoutes(app: Express) {
         search,
         filters,
       );
-      res.json(result);
+      res.json(transportationResultToApi(result));
     },
   );
 
@@ -51,7 +56,7 @@ export function registerTransportationRoutes(app: Express) {
       if (!item) {
         return res.status(404).json({ message: "Сделка не найдена" });
       }
-      res.json(item);
+      res.json(transportationResultToApi(item));
     },
   );
 
@@ -60,9 +65,17 @@ export function registerTransportationRoutes(app: Express) {
     requireAuth,
     async (req, res) => {
       try {
-        const isDuplicate = await (storage as any).transportation.checkDuplicate(req.body);
+        const normalized = toLegacyTransportationInput(
+          req.body as Record<string, unknown>,
+        );
+        const isDuplicate = await (storage as any).transportation.checkDuplicate(
+          normalized,
+        );
         res.json({ isDuplicate });
       } catch (error) {
+        if (error instanceof TransportationApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         console.error("Error checking duplicate transportation deal:", error);
         res.status(500).json({ message: "Ошибка проверки дубликата" });
       }
@@ -80,14 +93,20 @@ export function registerTransportationRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
+        const normalized = toLegacyTransportationInput(
+          req.body as Record<string, unknown>,
+        );
         const data = insertTransportationSchema.parse({
-          ...req.body,
+          ...normalized,
           createdById: req.session.userId,
         });
         const item = await (storage as any).transportation.createTransportation(data);
         SSEService.notifyEntityChanged("transportation", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(item);
+        res.status(201).json(transportationResultToApi(item));
       } catch (error) {
+        if (error instanceof TransportationApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) {
           console.error("Validation error:", error.errors);
           return res
@@ -121,16 +140,22 @@ export function registerTransportationRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
+        const normalized = toLegacyTransportationInput(
+          req.body as Record<string, unknown>,
+        );
         const item = await (storage as any).transportation.updateTransportation(id, {
-          ...req.body,
+          ...normalized,
           updatedById: req.session.userId,
         });
         if (!item) {
           return res.status(404).json({ message: "Сделка не найдена" });
         }
         SSEService.notifyEntityChanged("transportation", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(item);
+        res.json(transportationResultToApi(item));
       } catch (error) {
+        if (error instanceof TransportationApiInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         res.status(500).json({ message: "Ошибка обновления сделки" });
       }
     },

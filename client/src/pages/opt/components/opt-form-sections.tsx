@@ -35,11 +35,11 @@ import { formatCurrency } from "../utils";
 import type { OptFormData } from "../schemas";
 import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
+import type { DeliveryCostApiRecord } from "@/pages/delivery/types";
 import { useAuth } from "@/hooks/use-auth";
 import {
   formatPricePerTonne,
   formatTonnes,
-  kilogramsToTonnes,
   pricePerKilogramToPerTonne,
 } from "@shared/units";
 import {
@@ -184,7 +184,7 @@ interface LogisticsSectionProps {
   deliveryLocations?: LogisticsDeliveryLocation[];
   bases?: Base[];
   deliveryCost: number | null;
-  matchedDeliveryCost?: import("@shared/schema").DeliveryCost | null;
+  matchedDeliveryCost?: DeliveryCostApiRecord | null;
   deliveryError?: string | null;
   autoTariffType?: "base_to_base" | "warehouse_to_base" | "via_location";
   noDeliveryRequired: boolean;
@@ -553,14 +553,14 @@ export function PricingSection({
             />
           )}
           <CalculatedField
-            label="Количество закупки"
-            value={formatTonnes(kilogramsToTonnes(purchaseAmount))}
-            suffix=" т"
+            label="Сумма закупки"
+            value={formatCurrency(purchaseAmount)}
+            suffix=" ₽"
           />
           <CalculatedField
-            label="Количество продажи"
-            value={formatTonnes(kilogramsToTonnes(saleAmount))}
-            suffix=" т"
+            label="Сумма продажи"
+            value={formatCurrency(saleAmount)}
+            suffix=" ₽"
           />
           <CalculatedField
             label="Тариф доставки"

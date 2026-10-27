@@ -10,6 +10,13 @@
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getFieldLabel, hasFieldLabel, hasZodRegistryLabel, FIELD_LABELS } from "./field-labels";
+import {
+  formatPricePerTonne,
+  formatTonnes,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+  pricePerLitreToPerTonne,
+} from "@shared/units";
 // Инициализация реестра форм-схем — регистрирует Zod .describe() как метки полей.
 // Этот side-effect import достаточно выполнить один раз при загрузке audit-helpers.
 import "./form-schema-registry";
@@ -144,7 +151,7 @@ const ENUM_MAP: Record<string, Record<string, string>> = {
     tzk_to_storage: "ТЗК → Склад",
     tzk_to_tzk: "ТЗК → ТЗК",
   },
-  inputMode: { kg: "по кг", liters: "по литрам", liter: "по литрам" },
+  inputMode: { kg: "по массе", tonnes: "по массе", ton: "по массе", liters: "по литрам", liter: "по литрам" },
   equipmentType: { common: "ОП", lik: "ЛИК", pvkj: "ПВКЖ" },
   productTypeFull: {
     kerosene: "Керосин", diesel: "Дизельное топливо", pvkj: "ПВКЖ",
@@ -153,7 +160,7 @@ const ENUM_MAP: Record<string, Record<string, string>> = {
     storage: "Хранение",
   },
   otherServiceType: {
-    fixed: "Фиксированная", per_kg: "За кг", per_liter: "За литр", per_ton: "За тонну",
+    fixed: "Фиксированная", per_kg: "За тонну", per_liter: "За литр", per_ton: "За тонну", royalty_per_ton: "Роялти за тонну",
   },
   counterpartyType: {
     supplier: "Поставщик", customer: "Покупатель",
@@ -178,7 +185,7 @@ const ENUM_MAP: Record<string, Record<string, string>> = {
     withdrawal: "Списание", transfer: "Перемещение",
   },
   limitType: { volume: "По объёму", amount: "По сумме", none: "Без ограничений" },
-  priceUnit: { per_kg: "За кг", per_liter: "За литр", per_ton: "За тонну" },
+  priceUnit: { kg: "За тонну", liter: "За литр", per_kg: "За тонну", per_liter: "За литр", per_ton: "За тонну" },
   baseType: {
     wholesale: "Опт", refueling: "Заправки", abroad: "Зарубеж", lik: "ЛИК",
   },
@@ -244,9 +251,111 @@ export function areApproxEqual(a: unknown, b: unknown): boolean {
 export function formatValue(
   value: unknown,
   fieldName?: string,
-  entityMeta?: Record<string, string> | null
+  entityMeta?: Record<string, string> | null,
+  unitContext?: Record<string, unknown> | null,
 ): string {
   if (value === null || value === undefined || value === "") return "—";
+
+  if (fieldName === "priceValues") {
+    try {
+      let values: unknown[];
+      if (Array.isArray(value)) {
+        values = value;
+      } else if (typeof value === "string") {
+        try {
+          const parsed = JSON.parse(value);
+          values = Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          // Older audit snapshots store prices as a comma-separated string.
+          values = value.split(/,\s*/).filter(Boolean);
+        }
+      } else {
+        values = [];
+      }
+      if (!Array.isArray(values) || values.length === 0) return "—";
+      return values.map((entry) => {
+        const parsed = typeof entry === "string" ? JSON.parse(entry) : entry;
+        const storedPrice = Number(
+          parsed && typeof parsed === "object" ? parsed.price : parsed,
+        );
+        if (!Number.isFinite(storedPrice)) return "—";
+        const displayPrice = unitContext?.priceUnit === "liter" ||
+          unitContext?.priceUnit === "per_liter"
+          ? storedPrice
+          : pricePerKilogramToPerTonne(storedPrice);
+        return formatPricePerTonne(displayPrice);
+      }).join(", ");
+    } catch {
+      return "—";
+    }
+  }
+
+  if (fieldName === "services" && typeof value === "string") {
+    return value.replace(
+      /(-?\d+(?:\.\d+)?)\s*\(за кг\)/gi,
+      (_match, rawRate: string) =>
+        `${formatPricePerTonne(pricePerKilogramToPerTonne(Number(rawRate)))} (за т)`,
+    );
+  }
+
+  if (
+    fieldName === "basisPrices" &&
+    typeof value === "string" &&
+    !value.includes("₽/т")
+  ) {
+    return value.replace(
+      /(сервис|пвкж|агент):\s*(-?\d+(?:\.\d+)?)/gi,
+      (_match, label: string, rawRate: string) =>
+        `${label}: ${formatPricePerTonne(pricePerKilogramToPerTonne(Number(rawRate)))} ₽/т`,
+    );
+  }
+
+  const numericValue = typeof value === "number"
+    ? value
+    : typeof value === "string" && value.trim() !== ""
+      ? Number(value)
+      : Number.NaN;
+  if (Number.isFinite(numericValue)) {
+    if (
+      fieldName === "purchasePriceUsd" ||
+      fieldName === "purchasePriceRub" ||
+      fieldName === "salePriceUsd" ||
+      fieldName === "salePriceRub"
+    ) {
+      const density = Number(unitContext?.density);
+      const pricePerTonne =
+        unitContext?.inputMode === "liters" &&
+        Number.isFinite(density) &&
+        density > 0
+          ? pricePerLitreToPerTonne(numericValue, density)
+          : pricePerKilogramToPerTonne(numericValue);
+      return formatPricePerTonne(pricePerTonne);
+    }
+    if (fieldName === "quantityKg") {
+      return formatTonnes(kilogramsToTonnes(numericValue));
+    }
+    if (fieldName === "quantityTonnes") {
+      return formatTonnes(numericValue);
+    }
+    if (
+      fieldName === "purchasePricePerTonne" ||
+      fieldName === "salePricePerTonne" ||
+      fieldName === "purchasePriceUsdPerTonne" ||
+      fieldName === "purchasePriceRubPerTonne" ||
+      fieldName === "salePriceUsdPerTonne" ||
+      fieldName === "salePriceRubPerTonne" ||
+      fieldName === "deliveryTariffPerTonne" ||
+      fieldName === "agentFeeRatePerTonne"
+    ) {
+      return formatPricePerTonne(numericValue);
+    }
+    if (fieldName === "costPerKg" || fieldName === "agentFeeRate") {
+      return formatPricePerTonne(pricePerKilogramToPerTonne(numericValue));
+    }
+    if (fieldName === "otherServiceValue" && unitContext?.otherServiceType === "per_kg") {
+      return formatPricePerTonne(pricePerKilogramToPerTonne(numericValue));
+    }
+  }
 
   // UUID → пробуем найти имя в entityMeta (ключ — сам UUID), иначе "задано"
   if (isUUID(value)) {
@@ -463,12 +572,12 @@ function shortDate(v: unknown): string | null {
   return null;
 }
 
-/** Форматирует количество (кг или л) для краткого отображения */
+/** Форматирует массу или объём в литрах для краткого отображения */
 function qtyLabel(kg: unknown, liters: unknown): string {
   const kgN = normalizeNum(kg);
   const lN = normalizeNum(liters);
   if (kgN && kgN > 0)
-    return kgN.toLocaleString("ru-RU", { maximumFractionDigits: 0 }) + " кг";
+    return `${formatTonnes(kilogramsToTonnes(kgN))} т`;
   if (lN && lN > 0)
     return lN.toLocaleString("ru-RU", { maximumFractionDigits: 0 }) + " л";
   return "";
@@ -580,11 +689,11 @@ export function getEntitySummary(
       const from = resolveName(data.fromEquipmentId);
       const to = resolveName(data.toEquipmentId);
       const fromTo = from && to ? `${from} → ${to}` : from || to || null;
-      // Используем quantityKg (кг) — основная единица для перемещений ОП
+      // Старые аудиторские записи хранят массу в кг; показываем её в тоннах.
       const kgQty = data.quantityKg ? normalizeNum(data.quantityKg) : null;
       const lQty = data.quantityLiters ? normalizeNum(data.quantityLiters) : null;
       const qtyStr = kgQty
-        ? `${kgQty.toLocaleString("ru-RU")} кг`
+        ? `${formatTonnes(kilogramsToTonnes(kgQty))} т`
         : lQty
         ? `${lQty.toLocaleString("ru-RU")} л`
         : null;

@@ -9,7 +9,9 @@ export interface IOptStorage {
   createOpt(data: InsertOpt): Promise<Opt>;
   updateOpt(id: string, data: Partial<InsertOpt>): Promise<Opt | undefined>;
   deleteOpt(id: string): Promise<boolean>;
-  getUsedVolumeByPrice(priceId: string): Promise<number>;
+  getUsedVolumeByPrice(
+    priceId: string,
+  ): Promise<{ usedVolumeTonnes: number; usedVolume: number }>;
   getUsedAmountByPrice(priceId: string): Promise<number>;
   checkDuplicate(data: {
     dealDate: string;

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 interface DailyOptReportProps {
   date: string;
@@ -12,20 +12,19 @@ interface DailyOptReportProps {
 
 export function DailyOptReport({ date }: DailyOptReportProps) {
   const { data: optDeals, isLoading } = useQuery({
-    queryKey: ["/api/opt", { date }],
+    queryKey: ["/api/reports/daily-opt", { date }],
     queryFn: async () => {
-      const response = await fetch(`/api/opt?date=${date}`);
+      const response = await fetch(`/api/reports/daily-opt?date=${date}`);
       if (!response.ok) throw new Error("Failed to fetch OPT deals");
       return response.json();
     },
   });
 
-  const filteredDeals = optDeals?.data?.filter((deal: any) => 
-    deal.dealDate?.startsWith(date)
-  ) || [];
+  const filteredDeals = optDeals || [];
 
-  const totalQuantityTonnes = filteredDeals.reduce((sum: number, deal: any) =>
-    sum + kilogramsToTonnes(parseFloat(deal.quantityKg) || 0), 0
+  const totalQuantityTonnes = filteredDeals.reduce(
+    (sum: number, deal: any) => sum + Number(deal.quantityTonnes || 0),
+    0,
   );
   const totalPurchase = filteredDeals.reduce((sum: number, deal: any) => 
     sum + (parseFloat(deal.purchaseAmount) || 0), 0
@@ -107,7 +106,7 @@ export function DailyOptReport({ date }: DailyOptReportProps) {
                       <TableCell>{deal.buyer?.name || '-'}</TableCell>
                       <TableCell>{deal.basis || '-'}</TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatTonnes(kilogramsToTonnes(parseFloat(deal.quantityKg || "0")))}
+                        {formatTonnes(Number(deal.quantityTonnes || 0))}
                       </TableCell>
                       <TableCell className="text-right">
                         {parseFloat(deal.purchaseAmount || 0).toLocaleString('ru-RU')} ₽

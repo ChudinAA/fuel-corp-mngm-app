@@ -10,6 +10,10 @@ import {
   nomenclatureTypes,
   unitsOfMeasure,
 } from "@shared/schema";
+import {
+  formatPricePerTonne,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 
 export interface AuditContext {
   userId?: string;
@@ -220,15 +224,37 @@ export class AuditService {
         } catch { /* ignore */ }
       }
       const prices: string[] = [];
+      const displayLegacyRate = (value: unknown) => {
+        const amount = Number(value);
+        return Number.isFinite(amount)
+          ? formatPricePerTonne(pricePerKilogramToPerTonne(amount))
+          : String(value);
+      };
       if (bp.servicePrice != null && bp.servicePrice !== 0 && bp.servicePrice !== '0')
-        prices.push(`сервис: ${bp.servicePrice}`);
+        prices.push(`сервис: ${displayLegacyRate(bp.servicePrice)} ₽/т`);
       if (bp.pvkjPrice != null && bp.pvkjPrice !== 0 && bp.pvkjPrice !== '0')
-        prices.push(`ПВКЖ: ${bp.pvkjPrice}`);
+        prices.push(`ПВКЖ: ${displayLegacyRate(bp.pvkjPrice)} ₽/т`);
       if (bp.agentFee != null && bp.agentFee !== 0 && bp.agentFee !== '0')
-        prices.push(`агент: ${bp.agentFee}`);
+        prices.push(`агент: ${displayLegacyRate(bp.agentFee)} ₽/т`);
       if (bp.otherServiceValue != null && bp.otherServiceValue !== 0 && bp.otherServiceValue !== '0') {
         const label = bp.otherServiceName || 'прочее';
-        prices.push(`${label}: ${bp.otherServiceValue}`);
+        const serviceType = String(bp.otherServiceType || "");
+        const amount = Number(bp.otherServiceValue);
+        const value = Number.isFinite(amount)
+          ? formatPricePerTonne(
+              serviceType === "per_kg"
+                ? pricePerKilogramToPerTonne(amount)
+                : amount,
+            )
+          : String(bp.otherServiceValue);
+        const unit = serviceType === "per_kg" || serviceType === "per_ton" || serviceType === "royalty_per_ton"
+          ? " ₽/т"
+          : serviceType === "per_liter"
+            ? " ₽/л"
+            : serviceType === "percent_of_amount"
+              ? "%"
+              : " ₽";
+        prices.push(`${label}: ${value}${unit}`);
       }
       if (prices.length > 0 || basisName !== '?') {
         parts.push(`${basisName}${prices.length ? ': ' + prices.join(', ') : ''}`);
@@ -363,7 +389,7 @@ export class AuditService {
         if (key === 'services') {
           const typeLabels: Record<string, string> = {
             fixed: 'фикс.',
-            per_kg: 'за кг',
+            per_kg: 'за т',
             per_liter: 'за л',
             per_ton: 'за т',
             royalty_per_ton: 'роялти/т',
@@ -374,7 +400,15 @@ export class AuditService {
             .map((s) => {
               const name = s.serviceName ? `${s.serviceName}: ` : '';
               const type = typeLabels[s.serviceType] || s.serviceType;
-              return `${name}${s.serviceValue} (${type})`;
+              const rawRate = Number(s.serviceValue);
+              const displayedValue = Number.isFinite(rawRate)
+                ? formatPricePerTonne(
+                    s.serviceType === "per_kg"
+                      ? pricePerKilogramToPerTonne(rawRate)
+                      : rawRate,
+                  )
+                : String(s.serviceValue);
+              return `${name}${displayedValue} (${type})`;
             }).join('; ');
           if (formatted) normalized[key] = formatted;
         }

@@ -32,8 +32,7 @@ interface UseRefuelingCalculationsProps {
   selectedSupplier: Supplier | undefined;
   productType: string;
   isEditing: boolean;
-  initialQuantityKg?: number;
-  initialQuantityLiters?: number;
+  initialQuantityTonnes?: number;
   initialPurchaseAmount?: number;
   initialSaleAmount?: number;
   initialWarehouseBalance: number;
@@ -66,8 +65,7 @@ export function useRefuelingCalculations({
   selectedSupplier,
   productType,
   isEditing,
-  initialQuantityKg = 0,
-  initialQuantityLiters = 0,
+  initialQuantityTonnes = 0,
   initialPurchaseAmount = 0,
   initialSaleAmount = 0,
   initialWarehouseBalance,
@@ -86,15 +84,10 @@ export function useRefuelingCalculations({
     calculateRefuelingMassTonnes(inputMode, quantityInput, density) ?? 0;
   const finalKg = refuelingTonnesToLegacyKg(finalTonnes);
   const calculatedKg = finalTonnes > 0 ? String(finalKg) : "";
-  const initialQuantityTonnes = kilogramsToTonnes(
-    Math.max(0, Number.isFinite(initialQuantityKg) ? initialQuantityKg : 0),
+  const normalizedInitialQuantityTonnes = Math.max(
+    0,
+    Number.isFinite(initialQuantityTonnes) ? initialQuantityTonnes : 0,
   );
-  const currentContractQuantity =
-    inputMode === "liters"
-      ? Number.parseFloat(quantityLiters || "0") || 0
-      : finalKg;
-  const initialContractQuantity =
-    inputMode === "liters" ? initialQuantityLiters : initialQuantityKg;
 
   const isLikMode = equipmentType === EQUIPMENT_TYPE.LIK;
 
@@ -399,23 +392,21 @@ export function useRefuelingCalculations({
   // Логика проверки объема по договору
   const contractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
-    currentQuantityKg: currentContractQuantity,
-    initialQuantityKg: initialContractQuantity,
+    currentQuantityTonnes: finalTonnes,
+    initialQuantityTonnes: normalizedInitialQuantityTonnes,
     mode: "refueling",
     currentDealAmount: saleAmount ?? 0,
     initialDealAmount: initialSaleAmount,
-    displayUnit: inputMode === "liters" ? "liters" : "tonnes",
   });
 
   // Логика проверки объема по договору поставщика
   const supplierContractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
-    currentQuantityKg: currentContractQuantity,
-    initialQuantityKg: initialContractQuantity,
+    currentQuantityTonnes: finalTonnes,
+    initialQuantityTonnes: normalizedInitialQuantityTonnes,
     mode: "refueling",
     currentDealAmount: purchaseAmount ?? 0,
     initialDealAmount: initialPurchaseAmount,
-    displayUnit: inputMode === "liters" ? "liters" : "tonnes",
   });
 
   return {

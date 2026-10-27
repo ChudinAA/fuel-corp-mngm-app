@@ -6,7 +6,25 @@ import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { movement } from "../../movement/entities/movement";
 import { exchangeDeals } from "../../exchange-deals/entities/exchange-deals";
+import { legacyDealMassToTonnes } from "@shared/units";
 import type { SavedReport, InsertSavedReport, IReportsStorage } from "./types";
+
+function dealWithTonnes<T extends {
+  quantityKg: number | string | null;
+  quantityLiters?: number | string | null;
+  density?: number | string | null;
+}>(deal: T) {
+  const { quantityKg, ...fields } = deal;
+  const quantityTonnes = legacyDealMassToTonnes(
+    quantityKg,
+    deal.quantityLiters,
+    deal.density,
+  );
+  if (quantityTonnes === null) {
+    throw new TypeError("Report deal mass must be available to convert to tonnes");
+  }
+  return { ...fields, quantityTonnes };
+}
 
 export class ReportsStorage implements IReportsStorage {
   async getSavedReport(id: string): Promise<SavedReport | undefined> {
@@ -83,51 +101,88 @@ export class ReportsStorage implements IReportsStorage {
     return true;
   }
 
+  async getDailyOptDeals(date: string) {
+    const deals = await db.query.opt.findMany({
+      where: and(
+        sql`${opt.dealDate}::date = ${date}::date`,
+        isNull(opt.deletedAt),
+      ),
+      with: {
+        supplier: { columns: { name: true } },
+        buyer: { columns: { name: true } },
+      },
+      orderBy: [desc(opt.dealDate)],
+    });
+
+    return deals.map((deal) => ({
+      id: deal.id,
+      dealDate: deal.dealDate,
+      supplier: deal.supplier ? { name: deal.supplier.name } : null,
+      buyer: deal.buyer ? { name: deal.buyer.name } : null,
+      basis: deal.basis,
+      quantityTonnes:
+        legacyDealMassToTonnes(
+          deal.quantityKg,
+          deal.quantityLiters,
+          deal.density,
+        ) ?? 0,
+      purchaseAmount: deal.purchaseAmount,
+      saleAmount: deal.saleAmount,
+      profit: deal.profit,
+    }));
+  }
+
   async generateCustomPeriodReport(startDate: string, endDate: string, reportTypes: string[]): Promise<any> {
     const results: any = {};
 
     for (const reportType of reportTypes) {
       switch (reportType) {
         case "opt":
-          results.opt = await db.query.opt.findMany({
-            where: and(
-              gte(opt.dealDate, startDate),
-              lte(opt.dealDate, endDate),
-              isNull(opt.deletedAt)
-            ),
-            with: {
-              buyer: true,
-              basis: true,
-              warehouse: true,
-            },
-          });
+          results.opt = (
+            await db.query.opt.findMany({
+              where: and(
+                gte(opt.dealDate, startDate),
+                lte(opt.dealDate, endDate),
+                isNull(opt.deletedAt),
+              ),
+              with: {
+                buyer: true,
+                basis: true,
+                warehouse: true,
+              },
+            })
+          ).map(dealWithTonnes);
           break;
         case "refueling":
-          results.refueling = await db.query.aircraftRefueling.findMany({
-            where: and(
-              gte(aircraftRefueling.refuelingDate, startDate),
-              lte(aircraftRefueling.refuelingDate, endDate),
-              isNull(aircraftRefueling.deletedAt)
-            ),
-            with: {
-              basis: true,
-              warehouse: true,
-            },
-          });
+          results.refueling = (
+            await db.query.aircraftRefueling.findMany({
+              where: and(
+                gte(aircraftRefueling.refuelingDate, startDate),
+                lte(aircraftRefueling.refuelingDate, endDate),
+                isNull(aircraftRefueling.deletedAt),
+              ),
+              with: {
+                basis: true,
+                warehouse: true,
+              },
+            })
+          ).map(dealWithTonnes);
           break;
         case "movement":
-          results.movement = await db.query.movement.findMany({
-            where: and(
-              gte(movement.movementDate, startDate),
-              lte(movement.movementDate, endDate),
-              isNull(movement.deletedAt)
-            ),
-            with: {
-              fromWarehouse: true,
-              toWarehouse: true,
-              carrier: true,
-            },
-          });
+          results.movement = (
+            await db.query.movement.findMany({
+              where: and(
+                gte(movement.movementDate, startDate),
+                lte(movement.movementDate, endDate),
+                isNull(movement.deletedAt),
+              ),
+              with: {
+                fromWarehouse: true,
+                toWarehouse: true,
+                carrier: true,
+              },
+            })
+          ).map(dealWithTonnes);
           break;
         case "exchange":
           results.exchange = await db.query.exchangeDeals.findMany({

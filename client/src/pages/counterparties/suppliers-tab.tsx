@@ -28,6 +28,7 @@ import {
   EntityAction,
 } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
+import { formatPricePerTonne, pricePerKilogramToPerTonne } from "@shared/units";
 import {
   Tooltip,
   TooltipContent,
@@ -240,22 +241,26 @@ export function SuppliersTab() {
                                       <div className="flex flex-wrap gap-2 pl-1">
                                         {bp.servicePrice && (
                                           <span className="text-blue-600 dark:text-blue-400">
-                                            Услуга: {parseFloat(bp.servicePrice)} ₽/кг
+                                            Услуга: {formatPricePerTonne(pricePerKilogramToPerTonne(Number(bp.servicePrice)))} ₽/т
                                           </span>
                                         )}
                                         {bp.pvkjPrice && (
                                           <span className="text-purple-600 dark:text-purple-400">
-                                            ПВКЖ: {parseFloat(bp.pvkjPrice)} ₽/кг
+                                            ПВКЖ: {formatPricePerTonne(pricePerKilogramToPerTonne(Number(bp.pvkjPrice)))} ₽/т
                                           </span>
                                         )}
                                         {bp.agentFee && (
                                           <span className="text-amber-600 dark:text-amber-400">
-                                            Агентские: {parseFloat(bp.agentFee)} ₽/кг
+                                            Агентские: {formatPricePerTonne(pricePerKilogramToPerTonne(Number(bp.agentFee)))} ₽/т
                                           </span>
                                         )}
                                         {otherServiceLabel && bp.otherServiceValue && (
                                           <span className="text-green-600 dark:text-green-400">
-                                            {otherServiceLabel}: {parseFloat(bp.otherServiceValue)}{bp.otherServiceType === "percent_of_amount" ? "%" : " ₽"}
+                                            {otherServiceLabel}: {bp.otherServiceType === "percent_of_amount"
+                                              ? `${formatPricePerTonne(Number(bp.otherServiceValue))}%`
+                                              : bp.otherServiceType === "royalty_per_ton"
+                                                ? `${formatPricePerTonne(Number(bp.otherServiceValue))} ₽/т`
+                                                : `${formatPricePerTonne(Number(bp.otherServiceValue))} ₽`}
                                             {bp.otherServiceType === "fixed" && (bp as any).otherServiceQuantity && parseFloat((bp as any).otherServiceQuantity) > 1
                                               ? ` × ${parseFloat((bp as any).otherServiceQuantity)} шт.`
                                               : ""}

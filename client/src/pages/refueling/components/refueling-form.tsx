@@ -17,7 +17,7 @@ import {
   EQUIPMENT_TYPE,
 } from "@shared/constants";
 import { format } from "date-fns";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
@@ -87,7 +87,7 @@ export const RefuelingForm = forwardRef<
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-  const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
+  const [initialQuantityTonnes, setInitialQuantityTonnes] = useState<number>(0);
   const [initialWarehouseBalance, setInitialWarehouseBalance] =
     useState<number>(0); // State for initial balance
   const [isDataInitialized, setIsDataInitialized] = useState(false);
@@ -140,9 +140,10 @@ export const RefuelingForm = forwardRef<
             : "tonnes",
         quantityLiters: deal.quantityLiters?.toString() || "",
         density: deal.density?.toString() || "0.8",
-        quantityTonnes: deal.quantityKg
-          ? kilogramsToTonnes(Number.parseFloat(deal.quantityKg.toString())).toString()
-          : "",
+        quantityTonnes:
+          deal.quantityTonnes === null || deal.quantityTonnes === undefined
+            ? ""
+            : String(deal.quantityTonnes),
       };
     });
     setAdditionalProducts(products);
@@ -169,11 +170,11 @@ export const RefuelingForm = forwardRef<
           : "tonnes",
       quantityLiters: editData?.quantityLiters?.toString() || "",
       density: editData?.density?.toString() || "",
-      quantityTonnes: editData?.quantityKg
-        ? kilogramsToTonnes(
-            Number.parseFloat(editData.quantityKg.toString()),
-          ).toString()
-        : "",
+      quantityTonnes:
+        editData?.quantityTonnes === null ||
+        editData?.quantityTonnes === undefined
+          ? ""
+          : String(editData.quantityTonnes),
       notes: editData?.notes || "",
       isApproxVolume: editData?.isApproxVolume || false,
       isPlannedDeal: editData?.isPlannedDeal || false,
@@ -218,7 +219,7 @@ export const RefuelingForm = forwardRef<
           refuelingDate: values.refuelingDate
             ? format(values.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
             : null,
-          quantityKg: calculatedKg ? Number.parseFloat(calculatedKg) : null,
+          quantityTonnes: finalTonnes,
           quantityLiters: values.quantityLiters ? Number.parseFloat(values.quantityLiters) : null,
           density: values.density ? Number.parseFloat(values.density) : null,
           aircraftNumber: values.aircraftNumber || null,
@@ -233,16 +234,16 @@ export const RefuelingForm = forwardRef<
         const mainPayload = {
           ...commonPayload,
           productType: values.productType,
-          purchasePrice: purchasePrice ?? null,
+          purchasePricePerTonne,
           purchasePriceId: purchasePriceId || null,
           purchasePriceIndex: purchasePriceIndex ?? null,
-          salePrice: salePrice ?? null,
+          salePricePerTonne,
           salePriceId: salePriceId || null,
           salePriceIndex: salePriceIndex ?? null,
           purchaseAmount: purchaseAmount ?? null,
           saleAmount: saleAmount ?? null,
           agentFee: agentFee ?? null,
-          agentFeeRate: agentFeeRate || null,
+          agentFeeRatePerTonne,
           isAgentFeeEnabled,
           otherServiceFee: otherServiceFee || null,
           otherServiceName: otherServiceName || null,
@@ -293,16 +294,16 @@ export const RefuelingForm = forwardRef<
         const mainPayload = {
           ...commonPayload,
           productType: values.productType,
-          purchasePrice: purchasePrice !== null ? purchasePrice : null,
+          purchasePricePerTonne,
           purchasePriceId: purchasePriceId || null,
           purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
-          salePrice: salePrice !== null ? salePrice : null,
+          salePricePerTonne,
           salePriceId: salePriceId || null,
           salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
           purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
           saleAmount: saleAmount !== null ? saleAmount : null,
           agentFee: agentFee !== null ? agentFee : null,
-          agentFeeRate: agentFeeRate || null,
+          agentFeeRatePerTonne,
           isAgentFeeEnabled,
           otherServiceFee: otherServiceFee || null,
           otherServiceName: otherServiceName || null,
@@ -357,11 +358,10 @@ export const RefuelingForm = forwardRef<
                 : "tonnes",
             quantityLiters: deal.quantityLiters?.toString() || "",
             density: deal.density?.toString() || "0.8",
-            quantityTonnes: deal.quantityKg
-              ? kilogramsToTonnes(
-                  Number.parseFloat(deal.quantityKg.toString()),
-                ).toString()
-              : "",
+            quantityTonnes:
+              deal.quantityTonnes === null || deal.quantityTonnes === undefined
+                ? ""
+                : String(deal.quantityTonnes),
           },
         }))) || !isPrimaryProductIncluded;
     },
@@ -466,11 +466,7 @@ export const RefuelingForm = forwardRef<
     selectedSupplier,
     productType: watchProductType,
     isEditing,
-    initialQuantityKg,
-    initialQuantityLiters:
-      isEditing && !editData?.isDraft
-        ? Number.parseFloat(editData?.quantityLiters || "0")
-        : 0,
+    initialQuantityTonnes,
     initialPurchaseAmount:
       isEditing && !editData?.isDraft
         ? Number.parseFloat(editData?.purchaseAmount || "0")
@@ -507,7 +503,7 @@ export const RefuelingForm = forwardRef<
       productType: watchProductType,
       basisId: watchBasisId,
       customerBasisId: watchCustomerBasisId,
-      quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
+      quantityTonnes: finalTonnes,
     }),
   });
 
@@ -612,7 +608,7 @@ export const RefuelingForm = forwardRef<
             watchProductType === PRODUCT_TYPE.PVKJ
               ? parseFloat(warehouse.pvkjBalance || "0")
               : parseFloat(warehouse.currentBalance || "0");
-          const dealQuantity = parseFloat(editData.quantityKg || "0"); // Assuming quantityKg is the relevant quantity for balance adjustment
+          const dealQuantity = Number(editData.quantityTonnes || 0) * 1000;
           setInitialWarehouseBalance(currentBalance + dealQuantity);
         }
       }
@@ -639,11 +635,10 @@ export const RefuelingForm = forwardRef<
             : "tonnes") as RefuelingFormData["inputMode"],
         quantityLiters: editData.quantityLiters?.toString() || "",
         density: editData.density?.toString() || "",
-        quantityTonnes: editData.quantityKg
-          ? kilogramsToTonnes(
-              Number.parseFloat(editData.quantityKg.toString()),
-            ).toString()
-          : "",
+        quantityTonnes:
+          editData.quantityTonnes === null || editData.quantityTonnes === undefined
+            ? ""
+            : String(editData.quantityTonnes),
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
         isPlannedDeal: editData.isPlannedDeal || false,
@@ -664,9 +659,9 @@ export const RefuelingForm = forwardRef<
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
-      setInitialQuantityKg(
+      setInitialQuantityTonnes(
         isEditing && !editData.isDraft
-          ? parseFloat(editData.quantityKg || "0")
+          ? Number(editData.quantityTonnes || 0)
           : 0,
       );
 
@@ -737,22 +732,22 @@ export const RefuelingForm = forwardRef<
         refuelingDate: data.refuelingDate
           ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
-        quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+        quantityTonnes: finalTonnes,
         quantityLiters: data.quantityLiters
           ? parseFloat(data.quantityLiters)
           : null,
         density: data.density ? parseFloat(data.density) : null,
-        purchasePrice: purchasePrice !== null ? purchasePrice : null,
+        purchasePricePerTonne,
         purchasePriceId: purchasePriceId || null,
         purchasePriceIndex:
           purchasePriceIndex !== undefined ? purchasePriceIndex : null,
-        salePrice: salePrice !== null ? salePrice : null,
+        salePricePerTonne,
         salePriceId: salePriceId || null,
         salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
         purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
         saleAmount: saleAmount !== null ? saleAmount : null,
         agentFee: agentFee !== null ? agentFee : null,
-        agentFeeRate: agentFeeRate || null,
+        agentFeeRatePerTonne,
         isAgentFeeEnabled: isAgentFeeEnabled,
         otherServiceFee: otherServiceFee || null,
         otherServiceName: otherServiceName || null,
@@ -839,22 +834,22 @@ export const RefuelingForm = forwardRef<
         refuelingDate: data.refuelingDate
           ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
-        quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+        quantityTonnes: finalTonnes,
         quantityLiters: data.quantityLiters
           ? parseFloat(data.quantityLiters)
           : null,
         density: data.density ? parseFloat(data.density) : null,
-        purchasePrice: purchasePrice !== null ? purchasePrice : null,
+        purchasePricePerTonne,
         purchasePriceId: purchasePriceId || null,
         purchasePriceIndex:
           purchasePriceIndex !== undefined ? purchasePriceIndex : null,
-        salePrice: salePrice !== null ? salePrice : null,
+        salePricePerTonne,
         salePriceId: salePriceId || null,
         salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
         purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
         saleAmount: saleAmount !== null ? saleAmount : null,
         agentFee: agentFee !== null ? agentFee : null,
-        agentFeeRate: agentFeeRate || null,
+        agentFeeRatePerTonne,
         isAgentFeeEnabled: isAgentFeeEnabled,
         otherServiceFee: otherServiceFee || null,
         otherServiceName: otherServiceName || null,
@@ -947,7 +942,7 @@ export const RefuelingForm = forwardRef<
     refuelingDate: data.refuelingDate
       ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
       : null,
-    quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+    quantityTonnes: finalTonnes,
     quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
     density: data.density ? parseFloat(data.density) : null,
     aircraftNumber: data.aircraftNumber || null,
@@ -1276,19 +1271,19 @@ export const RefuelingForm = forwardRef<
       isPriceRecharge: data.isPriceRecharge || false,
       isPvkjRecharge: data.isPvkjRecharge || false,
       setSalePriceZero: data.setSalePriceZero || false,
-      purchasePrice: purchasePrice !== null ? purchasePrice : null,
+      purchasePricePerTonne,
       purchasePriceId: purchasePriceId || null,
       contractNumber:
         purchasePrices.find((price) => price.id === purchasePriceId)?.contractNumber ||
         salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
       purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
-      salePrice: salePrice !== null ? salePrice : null,
+      salePricePerTonne,
       salePriceId: salePriceId || null,
       salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
       purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
       saleAmount: saleAmount !== null ? saleAmount : null,
       agentFee: agentFee !== null ? agentFee : null,
-      agentFeeRate: agentFeeRate || null,
+      agentFeeRatePerTonne,
       isAgentFeeEnabled,
       otherServiceFee: otherServiceFee || null,
       otherServiceName: otherServiceName || null,

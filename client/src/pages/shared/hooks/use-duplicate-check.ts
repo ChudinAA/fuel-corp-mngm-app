@@ -12,7 +12,8 @@ export interface DuplicateCheckConfig {
     basisId?: string | null;
     customerBasisId?: string | null;
     deliveryLocationId?: string | null;
-    quantityKg: number;
+    quantityKg?: number;
+    quantityTonnes?: number;
   };
 }
 
@@ -31,16 +32,18 @@ export function useDuplicateCheck({ type, getFields }: DuplicateCheckConfig) {
       productType: fields.productType,
       basisId: fields.basisId,
       customerBasisId: fields.customerBasisId,
-      quantityKg: fields.quantityKg,
     };
 
     if (type === "opt") {
+      payload.quantityTonnes = fields.quantityTonnes;
       payload.dealDate = fields.date ? format(fields.date, "yyyy-MM-dd") : null;
       payload.deliveryLocationId = fields.deliveryLocationId;
     } else if (type === "transportation") {
+      payload.quantityTonnes = fields.quantityTonnes;
       payload.dealDate = fields.date ? format(fields.date, "yyyy-MM-dd") : null;
       payload.deliveryLocationId = fields.deliveryLocationId;
     } else {
+      payload.quantityKg = fields.quantityKg;
       payload.refuelingDate = fields.date ? format(fields.date, "yyyy-MM-dd") : null;
     }
 

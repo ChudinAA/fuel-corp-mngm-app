@@ -9,19 +9,19 @@ export interface ManagementReportData {
   // Продажи
   salesMetrics: {
     optSales: {
-      totalVolume: string;
+      totalVolumeTonnes: string;
       totalRevenue: string;
       totalProfit: string;
       marginality: string;
     };
     refuelingSales: {
-      totalVolume: string;
+      totalVolumeTonnes: string;
       totalRevenue: string;
       totalProfit: string;
       marginality: string;
     };
     combined: {
-      totalVolume: string;
+      totalVolumeTonnes: string;
       totalRevenue: string;
       totalProfit: string;
       marginality: string;
@@ -30,7 +30,7 @@ export interface ManagementReportData {
   
   // Складские операции
   warehouseMetrics: {
-    totalBalance: string;
+    totalBalanceTonnes: string;
     totalValue: string;
     movementsCount: number;
     exchangesCount: number;
@@ -48,8 +48,11 @@ export interface ManagementReportData {
   govContractsMetrics: {
     activeContracts: number;
     totalContractValue: string;
-    completedVolume: string;
-    remainingVolume: string;
+    completedAmount: string;
+    remainingAmount: string;
+    plannedVolumeTonnes: string;
+    actualVolumeTonnes: string;
+    remainingVolumeTonnes: string;
   };
   
   // Логистика

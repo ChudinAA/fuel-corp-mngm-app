@@ -20,20 +20,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Truck, Pencil, Trash2, Droplets, Fuel, Warehouse, MapPin, Check, X } from "lucide-react";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
-import type { DeliveryCost } from "@shared/schema";
+import type { DeliveryCostApiRecord } from "../types";
 import { formatNumber } from "../utils";
 import { BASE_TYPE, DELIVERY_ENTITY_TYPE } from "@shared/constants";
 import { cn } from "@/lib/utils";
 import {
   formatPricePerTonne,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 
 interface DeliveryTableProps {
-  costs: DeliveryCost[];
+  costs: DeliveryCostApiRecord[];
   isLoading: boolean;
   getCarrierName: (carrierId: string) => string;
-  onEdit: (cost: DeliveryCost) => void;
+  onEdit: (cost: DeliveryCostApiRecord) => void;
   bases?: any[];
 }
 
@@ -206,7 +205,8 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
   const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [costToDelete, setCostToDelete] = useState<DeliveryCost | null>(null);
+  const [costToDelete, setCostToDelete] =
+    useState<DeliveryCostApiRecord | null>(null);
 
   const getEntityIcon = (entityType: string, entityId: string) => {
     switch (entityType) {
@@ -323,9 +323,7 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                     </TooltipProvider>
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
-                    {formatPricePerTonne(
-                      pricePerKilogramToPerTonne(Number(cost.costPerKg)),
-                    )}{" "}
+                    {formatPricePerTonne(Number(cost.costPerTonne))}{" "}
                     ₽/т
                   </TableCell>
                   <TableCell className="text-right tabular-nums">

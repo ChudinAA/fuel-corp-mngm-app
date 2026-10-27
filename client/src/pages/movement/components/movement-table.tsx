@@ -368,17 +368,28 @@ export function MovementTable({
                     }
                   }
                   const quantityKg = parseFloat(item.quantityKg || "0");
+                  const quantityTonnes =
+                    item.quantityTonnes !== null &&
+                    item.quantityTonnes !== undefined
+                      ? Number(item.quantityTonnes)
+                      : kilogramsToTonnes(quantityKg);
                   const purchasePrice = item.purchasePrice
                     ? parseFloat(item.purchasePrice)
                     : null;
-                  const purchaseAmount =
-                    purchasePrice && quantityKg > 0
-                      ? purchasePrice * quantityKg
-                      : 0;
                   const purchasePricePerTonne =
-                    purchasePrice === null
-                      ? null
-                      : pricePerKilogramToPerTonne(purchasePrice);
+                    item.purchasePricePerTonne !== null &&
+                    item.purchasePricePerTonne !== undefined
+                      ? Number(item.purchasePricePerTonne)
+                      : purchasePrice === null
+                        ? null
+                        : pricePerKilogramToPerTonne(purchasePrice);
+                  const purchaseAmount =
+                    item.purchaseAmount !== null &&
+                    item.purchaseAmount !== undefined
+                      ? Number(item.purchaseAmount)
+                      : purchasePrice !== null && quantityKg > 0
+                        ? purchasePrice * quantityKg
+                        : 0;
                   const deliveryCost = item.deliveryCost
                     ? parseFloat(item.deliveryCost)
                     : 0;
@@ -389,7 +400,11 @@ export function MovementTable({
                   const costPerKg = item.costPerKg
                     ? parseFloat(item.costPerKg)
                     : 0;
-                  const costPerTonne = pricePerKilogramToPerTonne(costPerKg);
+                  const costPerTonne =
+                    item.costPerTonne !== null &&
+                    item.costPerTonne !== undefined
+                      ? Number(item.costPerTonne)
+                      : pricePerKilogramToPerTonne(costPerKg);
                   const serviceTypes: Array<{ serviceType: string; serviceValue: string }> =
                     item.warehouseServiceTypes || [];
                   _rows.push((
@@ -461,7 +476,7 @@ export function MovementTable({
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-medium text-xs py-1.5 px-1">
-                      {formatTonnes(kilogramsToTonnes(quantityKg))}
+                      {formatTonnes(quantityTonnes)}
                     </TableCell>
                     <TableCell className="text-right font-bold text-xs py-1.5 px-1">
                       {purchasePricePerTonne !== null
