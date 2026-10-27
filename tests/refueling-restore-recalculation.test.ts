@@ -102,10 +102,11 @@ test("restoring an older refueling movement recalculates both fuel products in s
             AND column_name = 'refueling_order_id'
         ) AS is_fuel_equipment_schema
     `);
-    if (!schemaResult.rows[0]?.is_fuel_equipment_schema) {
-      t.skip("The configured database has not been migrated to the fuel-equipment schema.");
-      return;
-    }
+    assert.equal(
+      schemaResult.rows[0]?.is_fuel_equipment_schema,
+      true,
+      "The test database must have the current fuel-equipment schema. Run `npm run test:restore-stock` to prepare it.",
+    );
 
     await db.transaction(async (tx) => {
       const [supplier] = await tx
