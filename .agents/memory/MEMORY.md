@@ -14,3 +14,4 @@
 - [SSE real-time updates](sse-realtime-updates.md) — entity_changed SSE event covers all transactional entities; clientId header filters initiator; 30s polling fallback; onerror must NOT close EventSource.
 - [Contracts and nomenclature compatibility](contracts-nomenclature-compatibility.md) — product types differ from integration kinds; preserve historical mappings and shared dialog mechanics.
 - [Browser verification constraints](browser-verification.md) — Chromium includes non-page targets; verify the app target and active dialogs before trusting UI test results.
+- [Stock-test database isolation](stock-test-database-isolation.md) — stock tests need a unique temporary database because Drizzle tables use the default `public` schema.
