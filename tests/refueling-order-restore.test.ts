@@ -19,6 +19,7 @@ import {
   AUDIT_OPERATIONS,
   auditLog,
 } from "../server/modules/audit/entities/audit";
+import { AuditService } from "../server/modules/audit/services/audit-service";
 import { RollbackService } from "../server/modules/audit/services/rollback-service";
 
 after(async () => {
@@ -302,6 +303,184 @@ test("rolling back a deleted multi-product refueling order restores original row
     if (customerId) {
       await db.delete(customers).where(sql`${customers.id} = ${customerId}`);
     }
+  }
+});
+
+test("an audit-write failure rolls back the entire refueling order restoration", async (t) => {
+  const schemaResult = await db.execute(sql`
+    SELECT
+      to_regclass('aircraft_refueling') IS NOT NULL
+        AND to_regclass('warehouse_transactions') IS NOT NULL
+        AND to_regclass('equipment_transactions') IS NOT NULL
+        AND to_regclass('audit_log') IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name = 'aircraft_refueling'
+            AND column_name = 'refueling_order_id'
+        ) AS has_refueling_order_schema
+  `);
+  if (!schemaResult.rows[0]?.has_refueling_order_schema) {
+    t.skip("The configured database has not been migrated to the refueling-order schema.");
+    return;
+  }
+
+  const storage = new AircraftRefuelingStorage();
+  let supplierId: string | undefined;
+  let customerId: string | undefined;
+  let warehouseId: string | undefined;
+  let equipmentId: string | undefined;
+  let dealIds: string[] = [];
+  let warehouseTransactionIds: string[] = [];
+  let equipmentTransactionIds: string[] = [];
+  let auditEntryIds: string[] = [];
+  const originalAuditLog = AuditService.log;
+
+  try {
+    const [supplier] = await db
+      .insert(suppliers)
+      .values({ name: `restore-audit-failure-supplier-${crypto.randomUUID()}` })
+      .returning();
+    supplierId = supplier.id;
+
+    const [customer] = await db
+      .insert(customers)
+      .values({
+        name: `restore-audit-failure-customer-${crypto.randomUUID()}`,
+        module: "refueling",
+      })
+      .returning();
+    customerId = customer.id;
+
+    const [warehouse] = await db
+      .insert(warehouses)
+      .values({
+        name: `restore-audit-failure-warehouse-${crypto.randomUUID()}`,
+        currentBalance: "100",
+        averageCost: "10",
+      })
+      .returning();
+    warehouseId = warehouse.id;
+
+    const [equipment] = await db
+      .insert(equipments)
+      .values({
+        name: `restore-audit-failure-equipment-${crypto.randomUUID()}`,
+        pvkjBalance: "60",
+        pvkjAverageCost: "12",
+      })
+      .returning();
+    equipmentId = equipment.id;
+
+    const createdDeals = await storage.createRefuelings([
+      {
+        refuelingDate: new Date().toISOString(),
+        productType: PRODUCT_TYPE.KEROSENE,
+        supplierId,
+        buyerId: customerId,
+        warehouseId,
+        quantityKg: 12,
+        purchasePrice: 10,
+        purchaseAmount: 120,
+        salePrice: 15,
+        saleAmount: 180,
+        isDraft: false,
+      } as any,
+      {
+        refuelingDate: new Date().toISOString(),
+        productType: PRODUCT_TYPE.PVKJ,
+        supplierId,
+        buyerId: customerId,
+        equipmentId,
+        quantityKg: 7,
+        purchasePrice: 12,
+        purchaseAmount: 84,
+        salePrice: 18,
+        saleAmount: 126,
+        isDraft: false,
+      } as any,
+    ]);
+    dealIds = createdDeals.map((deal) => deal.id);
+    warehouseTransactionIds = createdDeals
+      .map((deal) => deal.transactionId)
+      .filter((id): id is string => Boolean(id));
+    equipmentTransactionIds = createdDeals
+      .map((deal) => deal.equipmentTransactionId)
+      .filter((id): id is string => Boolean(id));
+
+    const deletedDeals = await storage.deleteRefuelingOrder(createdDeals[0].id);
+    const auditEntries = await db
+      .insert(auditLog)
+      .values(
+        deletedDeals.map((deal) => ({
+          entityType: "aircraft_refueling",
+          entityId: deal.id,
+          operation: AUDIT_OPERATIONS.DELETE,
+          oldData: deal,
+        })),
+      )
+      .returning();
+    auditEntryIds = auditEntries.map((entry) => entry.id);
+
+    (AuditService as any).log = async () => {
+      throw new Error("simulated audit write failure");
+    };
+    const rollback = await RollbackService.rollback({
+      auditLogId: auditEntries[0].id,
+      context: { userName: "restore-audit-failure-test" },
+    });
+    assert.equal(rollback.success, false);
+    assert.match(rollback.message, /simulated audit write failure/);
+
+    const [remainingDeals, warehouseMovements, equipmentMovements, rollbackEntries, restoreEntries] =
+      await Promise.all([
+        db.select().from(aircraftRefueling).where(inArray(aircraftRefueling.id, dealIds)),
+        db.select().from(warehouseTransactions).where(inArray(warehouseTransactions.id, warehouseTransactionIds)),
+        db.select().from(equipmentTransactions).where(inArray(equipmentTransactions.id, equipmentTransactionIds)),
+        db.select().from(auditLog).where(inArray(auditLog.id, auditEntryIds)),
+        db
+          .select()
+          .from(auditLog)
+          .where(
+            and(
+              eq(auditLog.entityType, "aircraft_refueling"),
+              eq(auditLog.operation, AUDIT_OPERATIONS.RESTORE),
+              inArray(auditLog.entityId, dealIds),
+            ),
+          ),
+      ]);
+
+    assert.ok(remainingDeals.every((deal) => deal.deletedAt), "all deal rows should remain deleted");
+    assert.ok(warehouseMovements.every((movement) => movement.deletedAt), "warehouse movements should remain deleted");
+    assert.ok(equipmentMovements.every((movement) => movement.deletedAt), "equipment movements should remain deleted");
+    assert.ok(rollbackEntries.every((entry) => !entry.rolledBackAt), "rollback markers should remain unchanged");
+    assert.equal(restoreEntries.length, 0, "a failed restore audit entry should not be recorded");
+
+    const [unchangedWarehouse, unchangedEquipment] = await Promise.all([
+      db.query.warehouses.findFirst({ where: eq(warehouses.id, warehouseId) }),
+      db.query.equipments.findFirst({ where: eq(equipments.id, equipmentId) }),
+    ]);
+    assert.equal(Number(unchangedWarehouse?.currentBalance), 100);
+    assert.equal(Number(unchangedEquipment?.pvkjBalance), 60);
+  } finally {
+    AuditService.log = originalAuditLog;
+    if (auditEntryIds.length) {
+      await db.delete(auditLog).where(inArray(auditLog.id, auditEntryIds));
+    }
+    if (dealIds.length) {
+      await db.delete(aircraftRefueling).where(inArray(aircraftRefueling.id, dealIds));
+    }
+    if (warehouseTransactionIds.length) {
+      await db.delete(warehouseTransactions).where(inArray(warehouseTransactions.id, warehouseTransactionIds));
+    }
+    if (equipmentTransactionIds.length) {
+      await db.delete(equipmentTransactions).where(inArray(equipmentTransactions.id, equipmentTransactionIds));
+    }
+    if (warehouseId) await db.delete(warehouses).where(eq(warehouses.id, warehouseId));
+    if (equipmentId) await db.delete(equipments).where(eq(equipments.id, equipmentId));
+    if (supplierId) await db.delete(suppliers).where(eq(suppliers.id, supplierId));
+    if (customerId) await db.delete(customers).where(eq(customers.id, customerId));
   }
 });
 

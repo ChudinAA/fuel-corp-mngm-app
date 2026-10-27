@@ -58,7 +58,11 @@ export class RollbackService {
       const result = await this.performRollback(auditEntry, context);
 
       // If rollback was successful, mark the audit entry as rolled back
-      if (result.success) {
+      if (
+        result.success &&
+        !(auditEntry.entityType === "aircraft_refueling" &&
+          auditEntry.operation === AUDIT_OPERATIONS.DELETE)
+      ) {
         await db.update(auditLog)
           .set({
             rolledBackAt: new Date().toISOString(),
@@ -237,53 +241,65 @@ export class RollbackService {
       }
 
       if (entityType === "aircraft_refueling") {
-        const restoredDeals =
-          await storage.aircraftRefueling.restoreRefuelingOrder(entityId, context.userId);
-        const restoredDealIds = restoredDeals.map((deal) => deal.id);
-        const productSummary = restoredDeals
-          .map((deal) => {
-            const product =
-              deal.productType === "kerosene"
-                ? "Керосин"
-                : deal.productType === "pvkj"
-                  ? "ПВКЖ"
-                  : deal.productType === "service"
-                    ? "Услуга"
-                    : deal.productType;
-            const quantity = Number(deal.quantityKg || 0);
-            return `${product}${quantity ? ` — ${quantity} кг` : ""}`;
-          })
-          .join(", ");
-        const restoredAt = new Date().toISOString();
+        const { restoredDeals, productSummary } = await db.transaction(async (tx) => {
+          const restoredDeals =
+            await storage.aircraftRefueling.restoreRefuelingOrder(
+              entityId,
+              context.userId,
+              tx,
+            );
+          const restoredDealIds = restoredDeals.map((deal) => deal.id);
+          const productSummary = restoredDeals
+            .map((deal) => {
+              const product =
+                deal.productType === "kerosene"
+                  ? "Керосин"
+                  : deal.productType === "pvkj"
+                    ? "ПВКЖ"
+                    : deal.productType === "service"
+                      ? "Услуга"
+                      : deal.productType;
+              const quantity = Number(deal.quantityKg || 0);
+              return `${product}${quantity ? ` — ${quantity} кг` : ""}`;
+            })
+            .join(", ");
+          const restoredAt = new Date().toISOString();
 
-        // A single click restores the whole order, so every matching deletion
-        // entry must become unavailable for rollback as well.
-        await db
-          .update(auditLog)
-          .set({
-            rolledBackAt: restoredAt,
-            rolledBackById: context.userId,
-          })
-          .where(
-            and(
-              eq(auditLog.entityType, entityType),
-              eq(auditLog.operation, AUDIT_OPERATIONS.DELETE),
-              isNull(auditLog.rolledBackAt),
-              inArray(auditLog.entityId, restoredDealIds),
-            ),
+          // The order's rows, rollback markers, and restore entry must commit
+          // together. Any failed audit write aborts the stock restoration too.
+          await tx
+            .update(auditLog)
+            .set({
+              rolledBackAt: restoredAt,
+              rolledBackById: context.userId,
+            })
+            .where(
+              and(
+                eq(auditLog.entityType, entityType),
+                eq(auditLog.operation, AUDIT_OPERATIONS.DELETE),
+                isNull(auditLog.rolledBackAt),
+                inArray(auditLog.entityId, restoredDealIds),
+              ),
+            );
+
+          await AuditService.log(
+            {
+              entityType,
+              entityId,
+              operation: AUDIT_OPERATIONS.RESTORE,
+              oldData: null,
+              newData: restoredDeals[0],
+              context: {
+                ...context,
+                userName: `${context.userName} (откат удаления заказа)`,
+              },
+              extraMeta: { orderProducts: productSummary },
+            },
+            tx,
+            true,
           );
 
-        await AuditService.log({
-          entityType,
-          entityId,
-          operation: AUDIT_OPERATIONS.RESTORE,
-          oldData: null,
-          newData: restoredDeals[0],
-          context: {
-            ...context,
-            userName: `${context.userName} (откат удаления заказа)`,
-          },
-          extraMeta: { orderProducts: productSummary },
+          return { restoredDeals, productSummary };
         });
 
         return {

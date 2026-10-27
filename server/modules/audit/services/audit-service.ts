@@ -240,7 +240,11 @@ export class AuditService {
   /**
    * Log an audit entry
    */
-  static async log(options: AuditOptions): Promise<void> {
+  static async log(
+    options: AuditOptions,
+    executor: any = db,
+    throwOnError = false,
+  ): Promise<void> {
     const {
       entityType,
       entityId,
@@ -282,7 +286,7 @@ export class AuditService {
         ? { ...resolvedMeta, ...options.extraMeta }
         : resolvedMeta;
 
-      await db.insert(auditLog).values({
+      await executor.insert(auditLog).values({
         entityType,
         entityId,
         operation,
@@ -303,7 +307,7 @@ export class AuditService {
 
       // If this is a DELETE operation, mark all previous audit entries for this entity
       if (operation === AUDIT_OPERATIONS.DELETE) {
-        await db.update(auditLog)
+        await executor.update(auditLog)
           .set({ entityDeleted: new Date().toISOString() })
           .where(
             and(
@@ -316,7 +320,7 @@ export class AuditService {
 
       // If this is a RESTORE operation, clear entityDeleted from previous entries
       if (operation === AUDIT_OPERATIONS.RESTORE) {
-        await db.update(auditLog)
+        await executor.update(auditLog)
           .set({ entityDeleted: null })
           .where(
             and(
@@ -328,7 +332,8 @@ export class AuditService {
       }
     } catch (error) {
       console.error('Error logging audit entry:', error);
-      // Don't throw - audit logging should not break the main operation
+      // Audit logging is best-effort by default; transactional callers can require propagation.
+      if (throwOnError) throw error;
     }
   }
 

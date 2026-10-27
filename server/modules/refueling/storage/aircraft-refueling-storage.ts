@@ -551,7 +551,7 @@ export class AircraftRefuelingStorage {
           ),
         );
       if (!anchor) return [];
-      const deals = await tx
+      const deals: AircraftRefueling[] = await tx
         .select()
         .from(aircraftRefueling)
         .where(
@@ -920,8 +920,9 @@ export class AircraftRefuelingStorage {
   async restoreRefuelingOrder(
     anchorId: string,
     userId?: string,
+    transaction?: any,
   ): Promise<AircraftRefueling[]> {
-    return db.transaction(async (tx) => {
+    const restore = async (tx: any) => {
       const [anchor] = await tx
         .select()
         .from(aircraftRefueling)
@@ -1017,7 +1018,9 @@ export class AircraftRefuelingStorage {
         deletedAt: null,
         deletedById: null,
       }));
-    });
+    };
+
+    return transaction ? restore(transaction) : db.transaction(restore);
   }
 
   async getAllAircraftRefuelings(): Promise<any[]> {
