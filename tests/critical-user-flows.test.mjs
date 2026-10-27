@@ -57,15 +57,20 @@ async function getInventory(warehouseId, equipmentId) {
 }
 
 async function latestAuditId(entityType, entityId, operation = "DELETE") {
-  const result = await pool.query(
-    `SELECT id FROM audit_log
-     WHERE entity_type = $1 AND entity_id = $2 AND operation = $3
-     ORDER BY created_at DESC, id DESC
-     LIMIT 1`,
-    [entityType, entityId, operation],
-  );
-  assert.ok(result.rows[0]?.id, `audit row exists for ${entityType}:${entityId}`);
-  return result.rows[0].id;
+  // Middleware audit writes finish asynchronously after the HTTP response.
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const result = await pool.query(
+      `SELECT id FROM audit_log
+       WHERE entity_type = $1 AND entity_id = $2 AND operation = $3
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1`,
+      [entityType, entityId, operation],
+    );
+    if (result.rows[0]?.id) return result.rows[0].id;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  assert.fail(`Timed out waiting for ${operation} audit row for ${entityType}:${entityId}`);
 }
 
 async function waitForCompletedQueue(table, ownerColumn, ownerId, productType) {
