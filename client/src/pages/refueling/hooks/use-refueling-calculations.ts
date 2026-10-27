@@ -7,7 +7,7 @@ import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 import { useEquipmentBalance } from "@/hooks/use-equipment-balance";
-import { formatNumber } from "../utils";
+import { formatNumber, normalizeCurrencyForDisplay } from "../utils";
 
 interface UseRefuelingCalculationsProps {
   inputMode: "liters" | "kg";
@@ -248,10 +248,12 @@ export function useRefuelingCalculations({
           : 0)
       : null;
 
-  const profit =
+  const rawProfit =
     purchaseAmount !== null && saleAmount !== null
       ? saleAmount - purchaseAmount - effectiveAgentFee - effectiveOtherServiceFee
       : null;
+  const profit =
+    rawProfit === null ? null : normalizeCurrencyForDisplay(rawProfit, 2);
 
   const getWarehouseStatus = (): {
     status: "ok" | "warning" | "error";

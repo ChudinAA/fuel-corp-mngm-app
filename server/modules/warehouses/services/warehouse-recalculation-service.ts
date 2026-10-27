@@ -819,7 +819,8 @@ export class WarehouseRecalculationService {
           (isRechargeActive
             ? effectiveAgentFee + effectiveOtherServiceFee
             : 0);
-        const profit = saleAmount - purchaseAmount - effectiveAgentFee - effectiveOtherServiceFee;
+        const rawProfit = saleAmount - purchaseAmount - effectiveAgentFee - effectiveOtherServiceFee;
+        const profit = Math.round(Math.abs(rawProfit) * 100) === 0 ? 0 : rawProfit;
 
         console.log("        Заправка до обновления:", {
           purchasePrice: refuel.purchasePrice,

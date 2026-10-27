@@ -115,6 +115,7 @@ export function ProductVolumeSection({
               label="КГ (расчет)"
               value={calculatedKg > 0 ? formatNumber(calculatedKg) : "—"}
               suffix={calculatedKg > 0 ? " кг" : ""}
+              alignWithInputs
             />
           ) : (
             <div className="space-y-2">

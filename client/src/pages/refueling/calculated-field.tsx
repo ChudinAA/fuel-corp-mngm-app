@@ -9,6 +9,7 @@ interface CalculatedFieldProps {
   status?: "ok" | "error" | "warning";
   suffix?: string;
   isLoading?: boolean;
+  alignWithInputs?: boolean;
 }
 
 export function CalculatedField({ 
@@ -16,7 +17,8 @@ export function CalculatedField({
   value, 
   status,
   suffix = "",
-  isLoading = false
+  isLoading = false,
+  alignWithInputs = false,
 }: CalculatedFieldProps) {
   const statusColors = {
     ok: "text-green-600 dark:text-green-400",
@@ -31,8 +33,12 @@ export function CalculatedField({
   };
 
   return (
-    <div className="space-y-1 flex-1">
-      <Label className="text-xs text-muted-foreground flex h-4 items-center gap-1 leading-4">
+    <div className={`${alignWithInputs ? "space-y-2" : "space-y-1"} flex-1`}>
+      <Label
+        className={`text-xs text-muted-foreground flex items-center gap-1 ${
+          alignWithInputs ? "h-5 leading-5" : "h-4 leading-4"
+        }`}
+      >
         <Calculator className="h-3 w-3" />
         {label}
       </Label>

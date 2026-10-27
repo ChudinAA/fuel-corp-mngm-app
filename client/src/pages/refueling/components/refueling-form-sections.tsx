@@ -112,6 +112,7 @@ export function VolumeInputSection({
                 watchLiters && parseFloat(calculatedKg) > 0 ? formatNumber(calculatedKg) : "—"
               }
               suffix={watchLiters && parseFloat(calculatedKg) > 0 ? " кг" : ""}
+              alignWithInputs
             />
           ) : (
             <FormField
