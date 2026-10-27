@@ -139,10 +139,8 @@ export class RollbackService {
         };
       }
 
-      // Soft delete using storage methods (with related entities cleanup)
-      await this.deleteEntity(entityType, entityId, context.userId);
-
-      // Log the rollback as a DELETE operation
+      // Write the rollback history first. If this fails, leave the entity and
+      // original audit entry untouched rather than reporting a partial rollback.
       await AuditService.log({
         entityType,
         entityId,
@@ -153,7 +151,10 @@ export class RollbackService {
           ...context,
           userName: `${context.userName} (откат создания)`,
         },
-      });
+      }, db, true);
+
+      // Soft delete using storage methods (with related entities cleanup)
+      await this.deleteEntity(entityType, entityId, context.userId);
 
       return {
         success: true,
@@ -190,10 +191,8 @@ export class RollbackService {
       // Normalize oldData: convert empty strings to null for UUID fields
       const normalizedOldData = this.normalizeData(oldData);
 
-      // Update entity with old data
-      await this.updateEntity(entityType, entityId, normalizedOldData, context.userId);
-
-      // Log the rollback as an UPDATE operation
+      // Write the rollback history first. If this fails, leave the entity and
+      // original audit entry untouched rather than reporting a partial rollback.
       await AuditService.log({
         entityType,
         entityId,
@@ -204,7 +203,10 @@ export class RollbackService {
           ...context,
           userName: `${context.userName} (откат изменения)`,
         },
-      });
+      }, db, true);
+
+      // Update entity with old data
+      await this.updateEntity(entityType, entityId, normalizedOldData, context.userId);
 
       return {
         success: true,
