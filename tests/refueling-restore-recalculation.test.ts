@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, pool } from "../server/db";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "../shared/constants";
 import { aircraftRefueling } from "../server/modules/refueling/entities/refueling";
@@ -31,7 +31,7 @@ const testDates = {
   laterSale: "2026-01-04T10:00:00.000Z",
   warehouseTransfer: "2026-01-05T10:00:00.000Z",
   equipmentTransfer: "2026-01-06T10:00:00.000Z",
-  downstreamSale: "2026-01-07T10:00:00.000Z",
+  downstreamSale: "2026-01-06T10:00:00.000Z",
 };
 
 const refuelingFeeScenarios = [
@@ -613,6 +613,56 @@ test("restoring an older refueling movement recalculates both fuel products in s
             equipmentTransactionId: downstreamEquipmentRefuelingTransaction.id,
           })
           .where(eq(aircraftRefueling.id, downstreamEquipmentRefueling.id));
+
+        // Force the simultaneous transfer receipt to sort later by creation
+        // time. The stock recalculation must still process it before the sale.
+        const [refuelingTx] = await tx
+          .select({
+            createdAt: equipmentTransactions.createdAt,
+            transactionDate: equipmentTransactions.transactionDate,
+          })
+          .from(equipmentTransactions)
+          .where(eq(equipmentTransactions.id, downstreamEquipmentRefuelingTransaction.id));
+        assert.ok(refuelingTx, "downstream equipment refueling transaction must exist");
+        assert.ok(refuelingTx.transactionDate, "equipment refueling must have a business timestamp");
+        assert.equal(
+          new Date(refuelingTx.transactionDate).getTime(),
+          new Date(testDates.downstreamSale).getTime(),
+          "equipment refueling must use the transfer's business timestamp",
+        );
+        const [sameTimeTransferIn] = await tx
+          .update(equipmentTransactions)
+          .set({
+            createdAt: new Date(
+              new Date(refuelingTx.createdAt).getTime() + 1_000,
+            ).toISOString(),
+          })
+          .where(
+            and(
+              eq(equipmentTransactions.sourceId, equipmentTransfer.id),
+              eq(equipmentTransactions.equipmentId, receivingEquipment.id),
+              eq(equipmentTransactions.transactionType, TRANSACTION_TYPE.TRANSFER_IN),
+            ),
+          )
+          .returning({
+            createdAt: equipmentTransactions.createdAt,
+            transactionDate: equipmentTransactions.transactionDate,
+          });
+        assert.ok(sameTimeTransferIn, "same-time transfer receipt must exist");
+        assert.ok(
+          sameTimeTransferIn.transactionDate,
+          "equipment transfer receipt must have a business timestamp",
+        );
+        assert.equal(
+          new Date(sameTimeTransferIn.transactionDate).getTime(),
+          new Date(testDates.downstreamSale).getTime(),
+          "equipment transfer receipt and refueling must share the business timestamp",
+        );
+        assert.ok(
+          new Date(sameTimeTransferIn.createdAt).getTime() >
+            new Date(refuelingTx.createdAt).getTime(),
+          "the transfer receipt must have a later creation timestamp than the sale",
+        );
 
         // Restore the original refueling stock movements after the newer activity.
         await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(

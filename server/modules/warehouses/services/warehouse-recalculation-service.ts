@@ -142,6 +142,13 @@ export class WarehouseRecalculationService {
         asc(
           sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`,
         ),
+        // At the same business timestamp, apply stock checkpoints and inflows
+        // before outflows so a simultaneous transfer receipt can fund a sale.
+        asc(sql`CASE
+          WHEN ${warehouseTransactions.transactionType} = ${TRANSACTION_TYPE.INVENTORY} THEN 0
+          WHEN ${warehouseTransactions.transactionType} IN (${TRANSACTION_TYPE.RECEIPT}, ${TRANSACTION_TYPE.TRANSFER_IN}) THEN 1
+          ELSE 2
+        END`),
         asc(warehouseTransactions.createdAt),
         asc(warehouseTransactions.id),
       );

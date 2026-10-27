@@ -113,6 +113,13 @@ export class EquipmentRecalculationService {
         asc(
           sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt})`,
         ),
+        // At the same business timestamp, apply stock checkpoints and inflows
+        // before outflows so a simultaneous transfer receipt can fund a sale.
+        asc(sql`CASE
+          WHEN ${equipmentTransactions.transactionType} = ${TRANSACTION_TYPE.INVENTORY} THEN 0
+          WHEN ${equipmentTransactions.transactionType} IN (${TRANSACTION_TYPE.RECEIPT}, ${TRANSACTION_TYPE.TRANSFER_IN}) THEN 1
+          ELSE 2
+        END`),
         asc(equipmentTransactions.createdAt),
         asc(equipmentTransactions.id),
       );
