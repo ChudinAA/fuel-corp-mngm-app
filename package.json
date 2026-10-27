@@ -9,7 +9,8 @@
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "test:refueling-order": "node --import tsx --test client/src/pages/refueling/components/refueling-order-mutation.test.ts",
-    "test:restore-stock": "node scripts/test-restore-stock.mjs",
+    "test:restore-stock": "npm run test:restore-stock-guards && node scripts/test-restore-stock.mjs",
+    "test:restore-stock-guards": "node --test tests/test-restore-stock-runner.test.mjs",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
