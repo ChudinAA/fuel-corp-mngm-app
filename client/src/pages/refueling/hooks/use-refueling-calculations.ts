@@ -175,8 +175,11 @@ export function useRefuelingCalculations({
 
   const purchaseAmount =
     purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
-  const saleAmount =
+  const baseSaleAmount =
     salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
+  const isRechargeActive =
+    (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) ||
+    (isPvkjRecharge && productType === PRODUCT_TYPE.PVKJ);
 
   // agentFeeRate — ставка ₽/кг из настроек базиса (для отображения и сохранения в сделку)
   const agentFeeRate = useMemo(() => {
@@ -226,17 +229,24 @@ export function useRefuelingCalculations({
     const val = parseFloat(otherServiceBasisData.otherServiceValue!);
     if (isNaN(val) || val <= 0) return 0;
     if (otherServiceBasisData.otherServiceType === "royalty_per_ton") return finalKg > 0 ? val * (finalKg / 1000) : 0;
-    if (otherServiceBasisData.otherServiceType === "percent_of_amount") return (saleAmount !== null && saleAmount > 0) ? saleAmount * val / 100 : 0;
+    if (otherServiceBasisData.otherServiceType === "percent_of_amount") return (baseSaleAmount !== null && baseSaleAmount > 0) ? baseSaleAmount * val / 100 : 0;
     if (otherServiceBasisData.otherServiceType === "fixed") {
       const qty = otherServiceQuantity ? parseFloat(otherServiceQuantity) : 1;
       return val * (isNaN(qty) || qty <= 0 ? 1 : qty);
     }
     return 0;
-  }, [otherServiceBasisData, otherServiceQuantity, finalKg, saleAmount]);
+  }, [otherServiceBasisData, otherServiceQuantity, finalKg, baseSaleAmount]);
 
   // Эффективные суммы с учётом чекбоксов включения
   const effectiveAgentFee = isAgentFeeEnabled ? agentFee : 0;
   const effectiveOtherServiceFee = isOtherServiceEnabled ? otherServiceFee : 0;
+  const saleAmount =
+    baseSaleAmount !== null
+      ? baseSaleAmount +
+        (isRechargeActive
+          ? effectiveAgentFee + effectiveOtherServiceFee
+          : 0)
+      : null;
 
   const profit =
     purchaseAmount !== null && saleAmount !== null
@@ -337,6 +347,7 @@ export function useRefuelingCalculations({
     salePrice,
     purchaseAmount,
     saleAmount,
+    isRechargeActive,
     agentFee,
     agentFeeRate,
     otherServiceFee,

@@ -212,6 +212,7 @@ export const AdditionalProductSection = forwardRef<
       salePrice,
       purchaseAmount,
       saleAmount,
+      isRechargeActive,
       agentFee,
       agentFeeRate,
       otherServiceFee,
@@ -286,6 +287,10 @@ export const AdditionalProductSection = forwardRef<
 
     const productLabel =
       PRODUCT_TYPES.find((p) => p.value === productType)?.label ?? productType;
+    const rechargedFeeLabels = [
+      isAgentFeeEnabled && agentFee > 0 ? "агентское вознаграждение" : null,
+      isOtherServiceEnabled && otherServiceFee > 0 ? "прочие услуги" : null,
+    ].filter((label): label is string => Boolean(label));
 
     useImperativeHandle(ref, () => ({
       getPayload: (): AdditionalProductPayload => {
@@ -300,16 +305,15 @@ export const AdditionalProductSection = forwardRef<
         return {
           productType,
           nomenclatureId: nomenclatureId || null,
-          inputMode:
-            productType === PRODUCT_TYPE.PVKJ
-              ? volume.inputMode
-              : "kg",
+          inputMode: productType === PRODUCT_TYPE.SERVICE ? "kg" : volume.inputMode,
           quantityLiters:
-            productType === PRODUCT_TYPE.PVKJ && volume.inputMode === "liters" && volume.quantityLiters
+            productType !== PRODUCT_TYPE.SERVICE &&
+            volume.inputMode === "liters" &&
+            volume.quantityLiters
             ? Number.parseFloat(volume.quantityLiters)
             : null,
           density:
-            productType === PRODUCT_TYPE.PVKJ &&
+            productType !== PRODUCT_TYPE.SERVICE &&
             volume.inputMode === "liters" &&
             volume.density
               ? Number.parseFloat(volume.density)
@@ -398,7 +402,7 @@ export const AdditionalProductSection = forwardRef<
             productLabel={productLabel}
             value={volume}
             onChange={onVolumeChange}
-            kgOnly={productType !== PRODUCT_TYPE.PVKJ}
+            kgOnly={productType === PRODUCT_TYPE.SERVICE}
           />
           <div className="space-y-2">
             <label className="text-sm font-medium">Номенклатура</label>
@@ -679,11 +683,18 @@ export const AdditionalProductSection = forwardRef<
               </div>
             )}
 
-            <CalculatedField
-              label="Сумма продажи"
-              value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
-              status={saleAmount !== null ? "ok" : "error"}
-            />
+            <div className="space-y-1">
+              <CalculatedField
+                label="Сумма продажи"
+                value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
+                status={saleAmount !== null ? "ok" : "error"}
+              />
+              {isRechargeActive && rechargedFeeLabels.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  В сумму включены перевыставленные расходы: {rechargedFeeLabels.join(", ")}.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Agent fee */}

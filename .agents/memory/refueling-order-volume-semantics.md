@@ -3,8 +3,8 @@ name: Refueling order volume rules
 description: Product-specific volume entry and service-volume rules for multi-product refueling orders.
 ---
 
-For a multi-product aircraft refueling order, kerosene volume is entered in kilograms only. PVKJ starts with the kerosene volume as a convenience, but its liters/density or kilogram quantity is then independent and may be manually recalculated. A refueling service uses kilograms equal to the sum of kerosene and PVKJ; with only one liquid it follows that liquid. Users may override the service quantity, and a later liquid-volume change recalculates it.
+For multi-product aircraft refueling orders, both kerosene and PVKJ support liters/density or kilograms; newly added liquid products default to liters/density and retain independent volumes. Only the service uses kilograms, initially equal to the sum of liquid-product kilograms (or the sole liquid's volume), with manual override until a liquid volume changes.
 
-**Why:** The service charge applies to all liquids delivered, while PVKJ is normally calculated separately from kerosene and should not be silently forced to the same amount.
+**Why:** Kerosene and PVKJ require flexible unit entry; the service charge applies to all liquids delivered and should be based on their combined kilograms.
 
-**How to apply:** Keep these rules in the unified multi-product order flow. Preserve the existing single-product flow until a second product is added.
+**How to apply:** Keep the liquid-product unit switch visible and default it to liters/density when adding a product. Keep only service volume kilograms-only. Preserve the legacy single-product flow.

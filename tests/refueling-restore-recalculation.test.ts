@@ -1170,6 +1170,68 @@ test("refueling recalculation excludes disabled fees from profit", async () => {
   }
 });
 
+test("recharged PVKJ carries enabled fees into sale amount and keeps zero profit after cost recalculation", async () => {
+  for (const scenario of refuelingFeeScenarios) {
+    let updatedRefueling: Record<string, unknown> | undefined;
+    const refuelingId = `recharged-pvkj-${scenario.label}`;
+    const tx = {
+      query: {
+        aircraftRefueling: {
+          findFirst: async () => ({
+            id: refuelingId,
+            productType: PRODUCT_TYPE.PVKJ,
+            quantityKg: "10",
+            salePrice: "10",
+            isPvkjRecharge: true,
+            isPriceRecharge: false,
+            agentFee: "5",
+            isAgentFeeEnabled: scenario.agentFeeEnabled,
+            otherServiceFee: "3",
+            isOtherServiceEnabled: scenario.otherServiceEnabled,
+          }),
+        },
+      },
+      update: () => ({
+        set: (values: Record<string, unknown>) => ({
+          where: async () => {
+            updatedRefueling = values;
+          },
+        }),
+      }),
+    };
+
+    await WarehouseRecalculationService.updateRelatedDeal(
+      tx,
+      SOURCE_TYPE.REFUELING,
+      refuelingId,
+      11.666667,
+    );
+
+    const hasAgentFee = scenario.agentFeeEnabled !== false;
+    const hasOtherServiceFee = scenario.otherServiceEnabled !== false;
+    const expectedSaleAmount =
+      Number((10 * 11.666667).toFixed(2)) +
+      (hasAgentFee ? 5 : 0) +
+      (hasOtherServiceFee ? 3 : 0);
+
+    assert.equal(
+      Number(updatedRefueling?.salePrice),
+      11.666667,
+      `${scenario.label} sale price follows recalculated cost`,
+    );
+    assert.equal(
+      Number(updatedRefueling?.saleAmount),
+      expectedSaleAmount,
+      `${scenario.label} sale amount includes only enabled fees`,
+    );
+    assert.equal(
+      Number(updatedRefueling?.profit),
+      0,
+      `${scenario.label} recharged deal keeps zero profit`,
+    );
+  }
+});
+
 test("late refueling recalculation uses the latest saved fee amounts", async () => {
   const scenarios = [
     { label: "agent fee changed", agentFee: "9", otherServiceFee: "3", expectedProfit: 71.33 },

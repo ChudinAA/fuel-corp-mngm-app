@@ -22,7 +22,7 @@ profit = saleAmount - purchaseAmount
          - (isOtherServiceEnabled ? otherServiceFee : 0)
 ```
 
-Recharge flags control the sale price only. Agent and other-service fees remain independently selectable and, when enabled, are included in profit calculations.
+For regular deals, enabled fees reduce profit but do not change the sale amount. When a service/PVKJ recharge flag is active, enabled agent and other-service fees are added to saleAmount as buyer surcharges and are also deducted in the profit formula, leaving the base recharged margin at zero.
 
 ## State management (client)
 
@@ -37,12 +37,14 @@ Recharge flags control the sale price only. Agent and other-service fees remain 
 - Uses stored `agentFee` total (not rate × new qty — qty doesn't change in auto-recalc)
 - Uses stored `otherServiceFee` total
 - Respects `isAgentFeeEnabled !== false` and `isOtherServiceEnabled !== false` (null → true)
+- For PVKJ recharge, advances salePrice with recalculated purchase cost and stores saleAmount as purchase amount plus enabled fees
 
-**Why:** Auto-recalc only changes `purchasePrice` (avg cost), not quantity. Fees don't need recomputing — the stored totals are already correct.
+**Why:** Auto-recalc changes average cost, and a recharged product must continue passing that cost through to the buyer while preserving zero margin. Fee totals remain stored per deal and are reused.
 
 ## Display (pricing section)
 
 `refueling-pricing-section.tsx` shows bordered boxes (not Alert) with:
-- Checkbox (disabled when isRechargeActive)
+- Independently selectable checkboxes, including during recharge
 - Agent fee: "X.X ₽/кг = Y ₽" with strikethrough when disabled
 - Other service: "TypeLabel · Name · × N шт." with amount, strikethrough when disabled
+- When enabled fees are recharged, note below sale amount identifies the included surcharges

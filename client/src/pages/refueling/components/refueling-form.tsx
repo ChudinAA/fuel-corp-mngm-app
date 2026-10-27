@@ -409,6 +409,7 @@ export const RefuelingForm = forwardRef<
     salePrice,
     purchaseAmount,
     saleAmount,
+    isRechargeActive,
     agentFee,
     agentFeeRate,
     otherServiceFee,
@@ -1021,17 +1022,30 @@ export const RefuelingForm = forwardRef<
         ? Number.parseFloat(watchKg || "0")
         : Number.parseFloat(watchLiters || "0") *
           Number.parseFloat(watchDensity || "0.8");
-    const initialVolume: RefuelingVolume = {
-      inputMode: watchInputMode || inputMode,
-      quantityLiters: watchLiters || "",
-      density: watchDensity || "0.8",
-      quantityKg: Number.isFinite(currentKg) ? String(currentKg) : "",
-    };
-    if (
-      watchProductType === PRODUCT_TYPE.KEROSENE ||
-      watchProductType === PRODUCT_TYPE.SERVICE
-    ) {
-      initialVolume.inputMode = "kg";
+    const densityValue = Number.parseFloat(watchDensity || "0.8");
+    const safeDensity =
+      Number.isFinite(densityValue) && densityValue > 0 ? densityValue : 0.8;
+    const normalizedKg = Number.isFinite(currentKg) ? currentKg : 0;
+    const initialVolume: RefuelingVolume =
+      productType === PRODUCT_TYPE.SERVICE
+        ? {
+            inputMode: "kg",
+            quantityLiters: "",
+            density: String(safeDensity),
+            quantityKg: normalizedKg > 0 ? String(normalizedKg) : "",
+          }
+        : {
+            inputMode: "liters",
+            quantityLiters:
+              watchInputMode === "liters"
+                ? watchLiters || ""
+                : normalizedKg > 0
+                  ? String(normalizedKg / safeDensity)
+                  : "",
+            density: String(safeDensity),
+            quantityKg: normalizedKg > 0 ? String(normalizedKg) : "",
+          };
+    if (isPrimaryProductIncluded && watchProductType === PRODUCT_TYPE.SERVICE) {
       form.setValue("inputMode", "kg", { shouldDirty: true });
       form.setValue("quantityLiters", "", { shouldDirty: true });
       form.setValue("density", "", { shouldDirty: true });
@@ -1334,19 +1348,13 @@ export const RefuelingForm = forwardRef<
                 form.setValue("quantityKg", volume.quantityKg, {
                   shouldDirty: true,
                 });
-                if (
-                  watchProductType === PRODUCT_TYPE.KEROSENE ||
-                  watchProductType === PRODUCT_TYPE.SERVICE
-                ) {
+                if (watchProductType === PRODUCT_TYPE.SERVICE) {
                   form.setValue("quantityLiters", "");
                   form.setValue("density", "");
                 }
                 setInputMode(volume.inputMode);
               }}
-              kgOnly={
-                watchProductType === PRODUCT_TYPE.KEROSENE ||
-                watchProductType === PRODUCT_TYPE.SERVICE
-              }
+              kgOnly={watchProductType === PRODUCT_TYPE.SERVICE}
             />
           ) : (
             <VolumeInputSection
@@ -1369,6 +1377,7 @@ export const RefuelingForm = forwardRef<
             salePrice={salePrice}
             purchaseAmount={purchaseAmount}
             saleAmount={saleAmount}
+            isRechargeActive={isRechargeActive}
             profit={profit}
             agentFee={agentFee}
             agentFeeRate={agentFeeRate}

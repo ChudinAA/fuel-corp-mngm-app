@@ -46,6 +46,7 @@ interface RefuelingPricingSectionProps {
   purchaseAmount: number | null;
   saleAmount: number | null;
   profit: number | null;
+  isRechargeActive?: boolean;
   agentFee: number;
   /** Ставка агентского вознаграждения ₽/кг (для отображения) */
   agentFeeRate?: number;
@@ -91,6 +92,7 @@ export function RefuelingPricingSection({
   purchaseAmount,
   saleAmount,
   profit,
+  isRechargeActive = false,
   agentFee,
   agentFeeRate = 0,
   otherServiceFee = 0,
@@ -115,6 +117,10 @@ export function RefuelingPricingSection({
   const watchBuyerId = form.watch("buyerId");
   const watchBasisId = form.watch("basisId");
   const watchBasis = form.watch("basis");
+  const rechargedFeeLabels = [
+    isAgentFeeEnabled && agentFee > 0 ? "агентское вознаграждение" : null,
+    isOtherServiceEnabled && otherServiceFee > 0 ? "прочие услуги" : null,
+  ].filter((label): label is string => Boolean(label));
 
   const basisServicePrice = selectedSupplier?.basisPrices?.find(
     (bp) => bp.basisId === watchBasisId
@@ -509,11 +515,18 @@ export function RefuelingPricingSection({
           </div>
         )}
 
-        <CalculatedField
-          label="Сумма продажи"
-          value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
-          status={saleAmount !== null ? "ok" : "error"}
-        />
+        <div className="space-y-1">
+          <CalculatedField
+            label="Сумма продажи"
+            value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
+            status={saleAmount !== null ? "ok" : "error"}
+          />
+          {isRechargeActive && rechargedFeeLabels.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              В сумму включены перевыставленные расходы: {rechargedFeeLabels.join(", ")}.
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Агентское вознаграждение */}

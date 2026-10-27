@@ -1,4 +1,4 @@
-- [Post-merge DB migration](post-merge-db.md) — post-merge.sh runs drizzle-kit push --force; schema column additions (e.g. entity_meta) must be in the script or cause 500 on first request.
+- [Post-merge DB migration](post-merge-db.md) — drizzle-kit push may exit at an interactive unique-constraint prompt without applying later columns; inspect output and verify schema.
 - [Logistics auto-assign engine](logistics-auto-assign.md) — sync now runs full auto-assignment; calendar was always empty before; re-sync deletes auto routes then regenerates.
 - [Logistics plan bug fixes & features](logistics-plan-summary.md) — summary panel field fixes, route-plan-dialog rewrite (entity selects+tariff search), scenario filter fixes, extra drivers with schedule, transitDays/priority in tariff form.
 - [Neon serverless array binding](neon-array-binding.md) — never bind a JS array as a single SQL param with raw `= ANY(${arr})`; use Drizzle's `inArray()` instead.
@@ -6,9 +6,9 @@
 - [Planning periodFrom timestamp fix](planning-periodfrom.md) — DB stores periodFrom as full timestamp; compare with .slice(0,10) to match date-only strings.
 - [Planning basisId migration](planning-basis-migration.md) — basisId added to plan_entries and planning_resources; drizzle-kit push is interactive, apply via executeSql instead.
 - [Extra drivers multi-driver](extra-drivers.md) — logistics_unit_extra_drivers table; API at /transport-units/:id/extra-drivers and /extra-drivers/:id; enriched in GET transport-units response.
-- [Refueling service fees](refueling-service-fees.md) — 7 new cols in aircraft_refueling for agentFeeRate, otherServiceFee (name/type/qty), enabled flags; profit formula and recalc logic.
+- [Refueling service fees](refueling-service-fees.md) — recharge adds enabled fees to sale amount while preserving zero profit; recalculation must retain the surcharge.
 - [Equipment transfer cost cascades](equipment-transfer-cost-cascades.md) — upstream recalculation may update movement cost before its source transaction row; receiving assets must use the movement as cost source.
-- [Refueling order volume rules](refueling-order-volume-semantics.md) — independent PVKJ quantity; service volume follows total liquid kg, with manual override.
+- [Refueling order volume rules](refueling-order-volume-semantics.md) — kerosene/PVKJ keep independent unit switches; service is kg-only and follows the total liquid volume.
 - [Audit panel improvements](audit-panel-improvements.md) — panel width 2xl; equipmentType hidden; service/agent/storage product labels; entityMeta summaries for all entities; backfill endpoint + UI button; П6 intermediaries/banks audit; warehouse baseIds/services visible; prices priceValues visible; advances audit hidden.
 - [Audit double-normalization fix](audit-double-normalization.md) — root cause: middleware called normalizeAuditData before AuditService.log which also normalizes; arrays (services, baseIds, priceValues) were destroyed; fix: pass raw data to AuditService.log.
 - [SSE real-time updates](sse-realtime-updates.md) — entity_changed SSE event covers all transactional entities; clientId header filters initiator; 30s polling fallback; onerror must NOT close EventSource.

@@ -809,7 +809,16 @@ export class WarehouseRecalculationService {
         const otherServiceEnabled = refuel.isOtherServiceEnabled !== false; // null/undefined → включено
         const effectiveOtherServiceFee = otherServiceEnabled ? parseFloat((refuel as any).otherServiceFee || "0") : 0;
         const purchaseAmount = quantityKg * newAverageCost;
-        const saleAmount = quantityKg * salePrice;
+        const isRechargeActive =
+          (refuel.isPriceRecharge && refuel.productType === PRODUCT_TYPE.SERVICE) ||
+          (refuel.isPvkjRecharge && refuel.productType === PRODUCT_TYPE.PVKJ);
+        const effectiveSalePrice = isRechargeActive ? newAverageCost : salePrice;
+        const baseSaleAmount = quantityKg * effectiveSalePrice;
+        const saleAmount =
+          baseSaleAmount +
+          (isRechargeActive
+            ? effectiveAgentFee + effectiveOtherServiceFee
+            : 0);
         const profit = saleAmount - purchaseAmount - effectiveAgentFee - effectiveOtherServiceFee;
 
         console.log("        Заправка до обновления:", {
@@ -829,6 +838,12 @@ export class WarehouseRecalculationService {
           .set({
             purchasePrice: newAverageCost.toFixed(6),
             purchaseAmount: purchaseAmount.toFixed(2),
+            ...(isRechargeActive
+              ? {
+                  salePrice: effectiveSalePrice.toFixed(6),
+                  saleAmount: saleAmount.toFixed(2),
+                }
+              : {}),
             profit: profit.toFixed(2),
             purchasePriceModified: true,
             updatedAt: sql`NOW()`,
