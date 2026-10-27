@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { STORAGE_CARD_TRANSACTION_TYPE } from "@shared/constants";
+import { formatPricePerTonne, formatTonnes } from "@shared/units";
 
 interface StorageCardDetailsDialogProps {
   card: any;
@@ -83,6 +84,15 @@ export function StorageCardDetailsDialog({
       maximumFractionDigits: 4,
       minimumFractionDigits: 2,
     }).format(parseFloat(value || "0"));
+
+  const formatSupplierPrice = () => {
+    if (!card.latestPrice) return "—";
+    if (card.latestPrice.priceUnit === "liter") {
+      return `${formatNumber(card.latestPrice.price)} ${card.currencySymbol}/л`;
+    }
+    if (card.latestPrice.pricePerTonne == null) return "—";
+    return `${formatPricePerTonne(card.latestPrice.pricePerTonne)} ${card.currencySymbol}/т`;
+  };
 
   const balance = parseFloat(card.currentBalance || "0");
   const isNegative = balance < 0;
@@ -152,12 +162,14 @@ export function StorageCardDetailsDialog({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Цена за кг
+                  {card.latestPrice?.priceUnit === "liter"
+                    ? "Цена за литр"
+                    : "Цена за тонну"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-xl font-semibold">
-                  {formatNumber(card.latestPrice?.price || 0)} {card.currencySymbol}
+                  {formatSupplierPrice()}
                 </p>
               </CardContent>
             </Card>
@@ -172,7 +184,7 @@ export function StorageCardDetailsDialog({
                     Ср. взв. курс
                   </div>
                 ) : (
-                  "Рассчитано кг"
+                  "Эквивалентный объём"
                 )}
               </CardTitle>
             </CardHeader>
@@ -184,9 +196,19 @@ export function StorageCardDetailsDialog({
                     : "—"}
                 </p>
               ) : (
-                <p className="text-xl font-semibold">
-                  {formatNumber(card.kgAmount)} кг
-                </p>
+                <>
+                  <p className="text-xl font-semibold">
+                    {card.tonnesAmount == null
+                      ? "—"
+                      : `${formatTonnes(card.tonnesAmount)} т`}
+                  </p>
+                  {card.latestPrice?.priceUnit === "liter" &&
+                    card.tonnesAmount == null && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Для пересчёта цены за литр нужна плотность сделки.
+                      </p>
+                    )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -215,8 +237,8 @@ export function StorageCardDetailsDialog({
                   )}
                   {!isBuyer && (
                     <>
-                      <TableHead className="text-right">Цена</TableHead>
-                      <TableHead className="text-right">Кол-во (кг)</TableHead>
+                      <TableHead className="text-right">Цена (USD/т)</TableHead>
+                      <TableHead className="text-right">Масса (т)</TableHead>
                     </>
                   )}
                   <TableHead className="text-right">Баланс после</TableHead>
@@ -225,8 +247,14 @@ export function StorageCardDetailsDialog({
               <TableBody>
                 {transactions.map((tx) => {
                   const txAmount = parseFloat(tx.quantity || "0");
-                  const txPrice = parseFloat(tx.price || "0");
-                  const kg = txPrice > 0 ? txAmount / txPrice : 0;
+                  const pricePerTonne =
+                    tx.pricePerTonne == null
+                      ? null
+                      : Number(tx.pricePerTonne);
+                  const massTonnes =
+                    tx.massEquivalentTonnes == null
+                      ? null
+                      : Number(tx.massEquivalentTonnes);
                   const isIncome =
                     tx.transactionType === STORAGE_CARD_TRANSACTION_TYPE.INCOME;
                   const hasLocal =
@@ -303,10 +331,14 @@ export function StorageCardDetailsDialog({
                       {!isBuyer && (
                         <>
                           <TableCell className="text-right text-xs">
-                            {formatNumber(txPrice)} {card.currencySymbol}
+                            {pricePerTonne == null
+                              ? "—"
+                              : `${formatPricePerTonne(pricePerTonne)} ${card.currencySymbol}/т`}
                           </TableCell>
                           <TableCell className="text-right text-xs font-semibold">
-                            {formatNumber(kg)} кг
+                            {massTonnes == null
+                              ? "—"
+                              : `${formatTonnes(massTonnes)} т`}
                           </TableCell>
                         </>
                       )}

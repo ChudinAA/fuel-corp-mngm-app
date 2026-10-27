@@ -1,0 +1,81 @@
+import {
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+  pricePerLitreToPerTonne,
+} from "@shared/units";
+
+export type RefuelingInputMode = "liters" | "tonnes";
+
+function parseUnitValue(value: number | string | null | undefined): number | null {
+  const parsed = typeof value === "number" ? value : Number.parseFloat(value ?? "");
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function calculateRefuelingMassTonnes(
+  inputMode: RefuelingInputMode,
+  quantity: number | string | null | undefined,
+  densityKilogramsPerLitre?: number | string | null,
+): number | null {
+  const amount = parseUnitValue(quantity);
+  if (amount === null || amount < 0) return null;
+  if (inputMode === "tonnes") return amount;
+  if (amount === 0) return 0;
+
+  const density = parseUnitValue(densityKilogramsPerLitre);
+  if (density === null || density <= 0) return null;
+  return kilogramsToTonnes(amount * density);
+}
+
+export function calculateRefuelingPricePerTonne(
+  sourcePrice: number | string | null | undefined,
+  inputMode: RefuelingInputMode,
+  densityKilogramsPerLitre?: number | string | null,
+): number | null {
+  const price = parseUnitValue(sourcePrice);
+  if (price === null || price < 0) return null;
+  if (inputMode === "tonnes") {
+    return pricePerKilogramToPerTonne(price);
+  }
+
+  const density = parseUnitValue(densityKilogramsPerLitre);
+  if (density === null || density <= 0) return null;
+  return pricePerLitreToPerTonne(price, density);
+}
+
+export function calculateRefuelingAmount(
+  pricePerTonne: number | null,
+  quantityTonnes: number | null,
+): number | null {
+  if (
+    pricePerTonne === null ||
+    quantityTonnes === null ||
+    !Number.isFinite(pricePerTonne) ||
+    !Number.isFinite(quantityTonnes) ||
+    pricePerTonne < 0 ||
+    quantityTonnes < 0
+  ) {
+    return null;
+  }
+  return pricePerTonne * quantityTonnes;
+}
+
+export function calculateStoredRefuelingMassTonnes(
+  inputMode: string | null | undefined,
+  quantityKg: number | string | null | undefined,
+  quantityLiters: number | string | null | undefined,
+  densityKilogramsPerLitre?: number | string | null,
+): number | null {
+  const liters = parseUnitValue(quantityLiters);
+  if (inputMode === "liters" || (liters !== null && liters > 0)) {
+    return calculateRefuelingMassTonnes(
+      "liters",
+      quantityLiters,
+      densityKilogramsPerLitre,
+    );
+  }
+
+  const kilograms = parseUnitValue(quantityKg);
+  return kilograms === null || kilograms < 0
+    ? null
+    : kilogramsToTonnes(kilograms);
+}

@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { evaluateCommissionFormula } from "../utils";
-import { useQuantityCalculation } from "@/pages/shared/hooks/use-quantity-calculation";
 import { Price } from "@shared/schema";
 import { usePriceExtraction } from "@/pages/shared/hooks/use-price-extraction";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
@@ -11,12 +10,18 @@ import {
   computeBankCommission,
   computeIntermediaryCommission,
 } from "../components/deal-chain/types";
+import {
+  calculateRefuelingAmount,
+  calculateRefuelingMassTonnes,
+  calculateRefuelingPricePerTonne,
+} from "../unit-calculations";
+import { tonnesToKilograms } from "@shared/units";
 
 interface UseRefuelingAbroadCalculationsProps {
-  inputMode: "liters" | "kg";
+  inputMode: "liters" | "tonnes";
   quantityLiters: string;
   density: string;
-  quantityKg: string;
+  quantityTonnes: string;
   purchaseExchangeRate: number;
   saleExchangeRate: number;
   purchasePrices: Price[];
@@ -25,14 +30,16 @@ interface UseRefuelingAbroadCalculationsProps {
   selectedSalePriceId: string;
   productType: string;
   chainItems: ChainItem[];
-  initialQuantityKg?: number;
+  initialQuantityForContract?: number;
+  initialPurchaseAmountUsd?: number;
+  initialSaleAmountUsd?: number;
 }
 
 export function useRefuelingAbroadCalculations({
   inputMode,
   quantityLiters,
   density,
-  quantityKg,
+  quantityTonnes,
   purchaseExchangeRate,
   saleExchangeRate,
   salePrices,
@@ -41,15 +48,21 @@ export function useRefuelingAbroadCalculations({
   selectedSalePriceId,
   productType,
   chainItems,
-  initialQuantityKg = 0,
+  initialQuantityForContract = 0,
+  initialPurchaseAmountUsd = 0,
+  initialSaleAmountUsd = 0,
 }: UseRefuelingAbroadCalculationsProps) {
-  const { calculatedKg, finalKg } = useQuantityCalculation({
-    inputMode,
-    quantityLiters,
-    density,
-    quantityKg,
-    isAbroad: true,
-  });
+  const finalTonnes =
+    calculateRefuelingMassTonnes(
+      inputMode,
+      inputMode === "liters" ? quantityLiters : quantityTonnes,
+      density,
+    ) ?? 0;
+  const finalKg = tonnesToKilograms(finalTonnes);
+  const contractQuantity =
+    inputMode === "liters"
+      ? Number.parseFloat(quantityLiters || "0")
+      : finalKg;
 
   const {
     purchasePrice: extractedPurchasePrice,
@@ -73,15 +86,33 @@ export function useRefuelingAbroadCalculations({
     return extractedSalePrice;
   }, [extractedSalePrice]);
 
+  const purchasePricePerTonne = useMemo(
+    () =>
+      purchasePrice === null
+        ? null
+        : calculateRefuelingPricePerTonne(
+            purchasePrice,
+            inputMode,
+            density,
+          ),
+    [purchasePrice, inputMode, density],
+  );
+
+  const salePricePerTonne = useMemo(
+    () =>
+      salePrice === null
+        ? null
+        : calculateRefuelingPricePerTonne(salePrice, inputMode, density),
+    [salePrice, inputMode, density],
+  );
+
   const purchaseAmountUsd = useMemo(() => {
-    return purchasePrice !== null && finalKg > 0
-      ? purchasePrice * finalKg
-      : null;
-  }, [purchasePrice, finalKg]);
+    return calculateRefuelingAmount(purchasePricePerTonne, finalTonnes);
+  }, [purchasePricePerTonne, finalTonnes]);
 
   const saleAmountUsd = useMemo(() => {
-    return salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
-  }, [salePrice, finalKg]);
+    return calculateRefuelingAmount(salePricePerTonne, finalTonnes);
+  }, [salePricePerTonne, finalTonnes]);
 
   const totalIntermediaryCommissionUsd = useMemo(() => {
     const intermediaryChainItems = chainItems.filter(
@@ -94,11 +125,11 @@ export function useRefuelingAbroadCalculations({
           item.incomeType,
           item.rateValue,
           saleAmountUsd ?? 0,
-          finalKg,
+          finalTonnes,
         )
       );
     }, 0);
-  }, [chainItems, saleAmountUsd]);
+  }, [chainItems, saleAmountUsd, finalTonnes]);
 
   const totalBankCommissionUsd = useMemo(() => {
     const bankChainItems = chainItems.filter(

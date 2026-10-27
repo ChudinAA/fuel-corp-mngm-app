@@ -24,6 +24,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { formatPricePerTonne, formatTonnes } from "@shared/units";
 
 interface StorageCardItemProps {
   card: any;
@@ -53,6 +54,15 @@ export function StorageCardItem({
       maximumFractionDigits: 4,
       minimumFractionDigits: 2,
     }).format(value);
+
+  const formatSupplierPrice = () => {
+    if (!card.latestPrice) return "—";
+    if (card.latestPrice.priceUnit === "liter") {
+      return `${formatNumber(card.latestPrice.price)} ${card.currencySymbol}/л`;
+    }
+    if (card.latestPrice.pricePerTonne == null) return "—";
+    return `${formatPricePerTonne(card.latestPrice.pricePerTonne)} ${card.currencySymbol}/т`;
+  };
 
   const balance = parseFloat(card.currentBalance || "0");
   const isNegative = balance < 0;
@@ -135,7 +145,11 @@ export function StorageCardItem({
             {cardType === "supplier" && (
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Цена за кг</p>
+                  <p className="text-muted-foreground">
+                    {card.latestPrice?.priceUnit === "liter"
+                      ? "Цена за литр"
+                      : "Цена за тонну"}
+                  </p>
                   <p
                     className={
                       card.latestPrice?.isExpired
@@ -143,9 +157,7 @@ export function StorageCardItem({
                         : "font-medium"
                     }
                   >
-                    {card.latestPrice
-                      ? `${card.latestPrice.price} ${card.currencySymbol}`
-                      : "—"}
+                    {formatSupplierPrice()}
                   </p>
                 </div>
                 <div>
@@ -167,10 +179,20 @@ export function StorageCardItem({
 
             {cardType === "supplier" && (
               <div>
-                <p className="text-sm text-muted-foreground">Рассчитано кг</p>
-                <p className="text-lg font-semibold text-primary">
-                  {formatNumber(card.kgAmount)} кг
+                <p className="text-sm text-muted-foreground">
+                  Эквивалентный объём
                 </p>
+                <p className="text-lg font-semibold text-primary">
+                  {card.tonnesAmount == null
+                    ? "—"
+                    : `${formatTonnes(card.tonnesAmount)} т`}
+                </p>
+                {card.latestPrice?.priceUnit === "liter" &&
+                  card.tonnesAmount == null && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Для пересчёта цены за литр нужна плотность сделки.
+                    </p>
+                  )}
               </div>
             )}
 

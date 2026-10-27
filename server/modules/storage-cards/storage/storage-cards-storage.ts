@@ -1,4 +1,4 @@
-import { eq, desc, sql, isNull, and, or } from "drizzle-orm";
+import { eq, desc, sql, isNull, and, or, inArray } from "drizzle-orm";
 import { db } from "server/db";
 import {
   storageCardTransactions,
@@ -8,11 +8,25 @@ import {
   type InsertStorageCardTransaction,
 } from "../entities/storage-cards";
 
-import { prices, suppliers, storageCards, customers, currencies } from "@shared/schema";
+import {
+  prices,
+  suppliers,
+  storageCards,
+  customers,
+  currencies,
+  refuelingAbroad,
+} from "@shared/schema";
 import {
   COUNTERPARTY_ROLE,
+  SOURCE_TYPE,
   STORAGE_CARD_TRANSACTION_TYPE,
 } from "@shared/constants";
+import {
+  calculateDealMassTonnes,
+  calculateDealPricePerTonne,
+  calculateBalanceMassEquivalentTonnes,
+  priceToPerTonne,
+} from "./storage-card-mass";
 
 export class StorageCardsStorage {
   async getAdvanceCards(cardType?: "supplier" | "buyer"): Promise<any[]> {
@@ -46,7 +60,8 @@ export class StorageCardsStorage {
         return {
           ...card,
           latestPrice: null,
-          kgAmount: 0,
+          kgAmount: null,
+          tonnesAmount: null,
           weightedAverageRate: rate,
           localCurrencyBalance: localBalance,
         };
@@ -59,7 +74,8 @@ export class StorageCardsStorage {
           return {
             ...card,
             latestPrice: null,
-            kgAmount: 0,
+            kgAmount: null,
+            tonnesAmount: null,
             weightedAverageRate: parseFloat(card.weightedAverageRate || "0"),
           };
         }
@@ -74,7 +90,7 @@ export class StorageCardsStorage {
           orderBy: [desc(prices.dateTo)],
         });
 
-        let pricePerKg = 0;
+        let pricePerUnit = 0;
         if (
           latestPrice &&
           latestPrice.priceValues &&
@@ -82,29 +98,40 @@ export class StorageCardsStorage {
         ) {
           try {
             const priceObj = JSON.parse(latestPrice.priceValues[0]);
-            pricePerKg = parseFloat(priceObj.price || "0");
+            pricePerUnit = parseFloat(priceObj.price || "0");
           } catch (e) {
             console.error(
               "Error parsing price value:",
               latestPrice.priceValues[0],
             );
-            pricePerKg = parseFloat(latestPrice.priceValues[0] || "0");
+            pricePerUnit = parseFloat(latestPrice.priceValues[0] || "0");
           }
         }
 
+        const priceUnit = latestPrice?.priceUnit || "kg";
         const balance = parseFloat(card.currentBalance || "0");
-        const kgAmount = pricePerKg > 0 ? balance / pricePerKg : 0;
+        const tonnesAmount = calculateBalanceMassEquivalentTonnes(
+          balance,
+          pricePerUnit,
+          priceUnit,
+        );
+        const pricePerTonne = priceToPerTonne(pricePerUnit, priceUnit);
 
         return {
           ...card,
           latestPrice: latestPrice
             ? {
-                price: pricePerKg,
+                // Keep `price` in its stored source unit for older clients;
+                // new clients use the explicit unit and pricePerTonne fields.
+                price: pricePerUnit,
+                priceUnit,
+                pricePerTonne,
                 dateTo: latestPrice.dateTo,
                 isExpired: new Date(latestPrice.dateTo) < new Date(),
               }
             : null,
-          kgAmount,
+          kgAmount: tonnesAmount === null ? null : tonnesAmount * 1_000,
+          tonnesAmount,
           weightedAverageRate: parseFloat(card.weightedAverageRate || "0"),
         };
       }),
@@ -213,7 +240,53 @@ export class StorageCardsStorage {
       },
     } as any);
     const hasMore = rows.length > limit;
-    return { transactions: hasMore ? rows.slice(0, limit) : rows, hasMore };
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const refuelingIds = Array.from(
+      new Set(
+        pageRows
+          .filter(
+            (row) =>
+              row.sourceType === SOURCE_TYPE.REFUELING_ABROAD && row.sourceId,
+          )
+          .map((row) => row.sourceId as string),
+      ),
+    );
+    const linkedRefuelings =
+      refuelingIds.length > 0
+        ? await db.query.refuelingAbroad.findMany({
+            where: inArray(refuelingAbroad.id, refuelingIds),
+            columns: {
+              id: true,
+              quantityKg: true,
+              quantityLiters: true,
+              density: true,
+            },
+          })
+        : [];
+    const refuelingById = new Map(
+      linkedRefuelings.map((deal) => [deal.id, deal]),
+    );
+
+    const transactions = pageRows.map((row) => {
+      const deal = row.sourceId ? refuelingById.get(row.sourceId) : undefined;
+      if (!deal) {
+        return { ...row, massEquivalentTonnes: null, pricePerTonne: null };
+      }
+
+      const massEquivalentTonnes = calculateDealMassTonnes(
+        deal.quantityKg,
+        deal.quantityLiters,
+        deal.density,
+      );
+      const pricePerTonne = calculateDealPricePerTonne(
+        row.quantity,
+        massEquivalentTonnes,
+      );
+
+      return { ...row, massEquivalentTonnes, pricePerTonne };
+    });
+
+    return { transactions, hasMore };
   }
 
   async createTransaction(
