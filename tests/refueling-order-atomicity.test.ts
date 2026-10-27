@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
-import { inArray, or, sql } from "drizzle-orm";
+import { eq, inArray, or, sql } from "drizzle-orm";
 import { db, pool } from "../server/db";
 import { PRODUCT_TYPE } from "../shared/constants";
 import { aircraftRefueling } from "../server/modules/refueling/entities/refueling";
@@ -61,6 +61,7 @@ async function createFixture(
     isDraft?: boolean;
     createSecondWarehouse?: boolean;
     useEquipment?: boolean;
+    createSecondEquipment?: boolean;
   } = {},
 ): Promise<Fixture> {
   const [supplier] = await db
@@ -95,17 +96,22 @@ async function createFixture(
 
   try {
     if (options.useEquipment) {
-      const [equipment] = await db
+      const createdEquipments = await db
         .insert(equipments)
-        .values({
-          name: `refueling-atomicity-equipment-${crypto.randomUUID()}`,
-          currentBalance: "100",
-          averageCost: "10",
-          pvkjBalance: "100",
-          pvkjAverageCost: "10",
-        })
+        .values(
+          Array.from(
+            { length: options.createSecondEquipment ? 2 : 1 },
+            () => ({
+              name: `refueling-atomicity-equipment-${crypto.randomUUID()}`,
+              currentBalance: "100",
+              averageCost: "10",
+              pvkjBalance: "100",
+              pvkjAverageCost: "10",
+            }),
+          ),
+        )
         .returning();
-      equipmentIds.push(equipment.id);
+      equipmentIds.push(...createdEquipments.map((equipment) => equipment.id));
     }
 
     const storage = new AircraftRefuelingStorage();
@@ -362,6 +368,188 @@ test("refueling order edits and failures preserve deals, movements, and stock at
           .where(sql`${warehouseTransactions.id} = ${deal.transactionId}`);
         assert.equal(transaction.warehouseId, fixture.warehouseIds[1]);
       }
+    } finally {
+      await cleanupFixture(fixture);
+    }
+  });
+
+  await t.test("switches a multi-product order between warehouse and equipment sources", async () => {
+    const fixture = await createFixture(
+      [PRODUCT_TYPE.KEROSENE, PRODUCT_TYPE.PVKJ, PRODUCT_TYPE.SERVICE],
+      { useEquipment: true, createSecondEquipment: true },
+    );
+    try {
+      const initialEquipmentMovements = await db
+        .select()
+        .from(equipmentTransactions)
+        .where(inArray(equipmentTransactions.equipmentId, fixture.equipmentIds));
+      assert.equal(initialEquipmentMovements.length, 2);
+      const initialMovementByDeal = new Map(
+        fixture.deals
+          .filter((deal) => deal.productType !== PRODUCT_TYPE.SERVICE)
+          .map((deal) => [deal.id, deal.equipmentTransactionId]),
+      );
+
+      const updateSource = async (
+        warehouseId: string | null,
+        equipmentId: string | null,
+        quantityKg: number,
+        date: string,
+      ) => {
+        const currentDeals = await storage.getRefuelingOrder(fixture.deals[0].id);
+        return storage.updateRefuelingOrder(
+          fixture.deals[0].id,
+          currentDeals.map((deal) => ({
+            ...editDeal(deal, quantityKg, date),
+            warehouseId,
+            equipmentId,
+          })),
+        );
+      };
+
+      const assertMovementLinks = async (
+        deals: any[],
+        expectedSource: { warehouseId: string | null; equipmentId: string | null },
+        quantityKg: number,
+      ) => {
+        for (const deal of deals) {
+          assert.equal(deal.warehouseId, expectedSource.warehouseId);
+          assert.equal(deal.equipmentId, expectedSource.equipmentId);
+          if (deal.productType === PRODUCT_TYPE.SERVICE) {
+            assert.equal(deal.transactionId, null);
+            assert.equal(deal.equipmentTransactionId, null);
+            continue;
+          }
+
+          if (expectedSource.equipmentId) {
+            assert.equal(deal.transactionId, null);
+            assert.ok(deal.equipmentTransactionId);
+            const [movement] = await db
+              .select()
+              .from(equipmentTransactions)
+              .where(eq(equipmentTransactions.id, deal.equipmentTransactionId));
+            assert.ok(movement);
+            assert.equal(movement.equipmentId, expectedSource.equipmentId);
+            assert.equal(movement.sourceId, deal.id);
+            assert.equal(Number(movement.quantity), -quantityKg);
+            assert.equal(movement.deletedAt, null);
+          } else {
+            assert.equal(deal.equipmentTransactionId, null);
+            assert.ok(deal.transactionId);
+            const [movement] = await db
+              .select()
+              .from(warehouseTransactions)
+              .where(eq(warehouseTransactions.id, deal.transactionId));
+            assert.ok(movement);
+            assert.equal(movement.warehouseId, expectedSource.warehouseId);
+            assert.equal(movement.sourceId, deal.id);
+            assert.equal(Number(movement.quantity), -quantityKg);
+            assert.equal(movement.deletedAt, null);
+          }
+        }
+      };
+
+      const assertBalances = async (
+        expected: { warehouse: number; firstEquipment: number; secondEquipment: number },
+      ) => {
+        const [warehouse, firstEquipment, secondEquipment] = await Promise.all([
+          db.query.warehouses.findFirst({
+            where: sql`${warehouses.id} = ${fixture.warehouseIds[0]}`,
+          }),
+          db.query.equipments.findFirst({
+            where: sql`${equipments.id} = ${fixture.equipmentIds[0]}`,
+          }),
+          db.query.equipments.findFirst({
+            where: sql`${equipments.id} = ${fixture.equipmentIds[1]}`,
+          }),
+        ]);
+        assert.equal(Number(warehouse?.currentBalance), expected.warehouse);
+        assert.equal(Number(warehouse?.pvkjBalance), expected.warehouse);
+        assert.equal(Number(firstEquipment?.currentBalance), expected.firstEquipment);
+        assert.equal(Number(firstEquipment?.pvkjBalance), expected.firstEquipment);
+        assert.equal(Number(secondEquipment?.currentBalance), expected.secondEquipment);
+        assert.equal(Number(secondEquipment?.pvkjBalance), expected.secondEquipment);
+      };
+
+      const warehouseEdit = await updateSource(
+        fixture.warehouseIds[0],
+        null,
+        12,
+        "2026-10-23T10:00:00.000Z",
+      );
+      await assertMovementLinks(
+        warehouseEdit.deals,
+        { warehouseId: fixture.warehouseIds[0], equipmentId: null },
+        12,
+      );
+      const warehouseMovementIds = new Map(
+        warehouseEdit.deals
+          .filter((deal) => deal.productType !== PRODUCT_TYPE.SERVICE)
+          .map((deal) => [deal.id, deal.transactionId]),
+      );
+      for (const [dealId, movementId] of initialMovementByDeal) {
+        const [movement] = await db
+          .select()
+          .from(equipmentTransactions)
+          .where(eq(equipmentTransactions.id, movementId!));
+        assert.ok(movement.deletedAt, `old equipment movement for ${dealId} is reversed`);
+      }
+      await assertBalances({ warehouse: 88, firstEquipment: 100, secondEquipment: 100 });
+
+      const secondEquipmentEdit = await updateSource(
+        null,
+        fixture.equipmentIds[1],
+        14,
+        "2026-10-24T10:00:00.000Z",
+      );
+      await assertMovementLinks(
+        secondEquipmentEdit.deals,
+        { warehouseId: null, equipmentId: fixture.equipmentIds[1] },
+        14,
+      );
+      for (const movementId of warehouseMovementIds.values()) {
+        const [movement] = await db
+          .select()
+          .from(warehouseTransactions)
+          .where(eq(warehouseTransactions.id, movementId!));
+        assert.ok(movement.deletedAt, "old warehouse movement is reversed");
+      }
+      await assertBalances({ warehouse: 100, firstEquipment: 100, secondEquipment: 86 });
+
+      const firstEquipmentEdit = await updateSource(
+        null,
+        fixture.equipmentIds[0],
+        16,
+        "2026-10-25T10:00:00.000Z",
+      );
+      await assertMovementLinks(
+        firstEquipmentEdit.deals,
+        { warehouseId: null, equipmentId: fixture.equipmentIds[0] },
+        16,
+      );
+      for (const deal of secondEquipmentEdit.deals.filter(
+        (item) => item.productType !== PRODUCT_TYPE.SERVICE,
+      )) {
+        const [movement] = await db
+          .select()
+          .from(equipmentTransactions)
+          .where(eq(equipmentTransactions.id, deal.equipmentTransactionId));
+        assert.ok(movement.deletedAt, "old second-equipment movement is reversed");
+      }
+      await assertBalances({ warehouse: 100, firstEquipment: 84, secondEquipment: 100 });
+
+      const serviceId = firstEquipmentEdit.deals.find(
+        (deal) => deal.productType === PRODUCT_TYPE.SERVICE,
+      )!.id;
+      const snapshot = await readSnapshot(fixture);
+      assert.ok(
+        snapshot.transactions.every((movement) => movement.sourceId !== serviceId),
+        "service deal must not create a warehouse movement",
+      );
+      assert.ok(
+        snapshot.equipmentTransactions.every((movement) => movement.sourceId !== serviceId),
+        "service deal must not create an equipment movement",
+      );
     } finally {
       await cleanupFixture(fixture);
     }
