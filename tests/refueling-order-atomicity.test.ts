@@ -242,7 +242,7 @@ function editDeal(deal: any, quantityKg: number, refuelingDate: string, warehous
   };
 }
 
-test("refueling order edits and failures preserve deals, movements, and stock atomically", async (t) => {
+test("refueling order edits and failures preserve deals, movements, and stock atomically", async () => {
   const schemaResult = await db.execute(sql`
     SELECT
       to_regclass('aircraft_refueling') IS NOT NULL
@@ -255,10 +255,11 @@ test("refueling order edits and failures preserve deals, movements, and stock at
             AND column_name = 'refueling_order_id'
         ) AS has_refueling_order_schema
   `);
-  if (!schemaResult.rows[0]?.has_refueling_order_schema) {
-    t.skip("The configured database has not been migrated to the refueling-order schema.");
-    return;
-  }
+  assert.equal(
+    schemaResult.rows[0]?.has_refueling_order_schema,
+    true,
+    "The test database is missing the refueling-order schema prerequisites (`aircraft_refueling.refueling_order_id`, `warehouse_transactions`, and/or `equipment_transactions`). Run `npm run test:restore-stock` to prepare it.",
+  );
 
   const storage = new AircraftRefuelingStorage();
   const productSets = [

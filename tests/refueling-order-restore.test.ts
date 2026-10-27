@@ -26,7 +26,7 @@ after(async () => {
   await pool.end();
 });
 
-test("rolling back a deleted multi-product refueling order restores original rows and stock once", async (t) => {
+test("rolling back a deleted multi-product refueling order restores original rows and stock once", async () => {
   const schemaResult = await db.execute(sql`
     SELECT
       to_regclass('aircraft_refueling') IS NOT NULL
@@ -41,10 +41,11 @@ test("rolling back a deleted multi-product refueling order restores original row
             AND column_name = 'refueling_order_id'
         ) AS has_refueling_order_schema
   `);
-  if (!schemaResult.rows[0]?.has_refueling_order_schema) {
-    t.skip("The configured database has not been migrated to the refueling-order schema.");
-    return;
-  }
+  assert.equal(
+    schemaResult.rows[0]?.has_refueling_order_schema,
+    true,
+    "The test database is missing the refueling-order schema prerequisites (`aircraft_refueling.refueling_order_id`, `warehouse_transactions`, `equipment_transactions`, or `audit_log`). Run `npm run test:restore-stock` to prepare it.",
+  );
 
   const storage = new AircraftRefuelingStorage();
   let supplierId: string | undefined;
@@ -306,7 +307,7 @@ test("rolling back a deleted multi-product refueling order restores original row
   }
 });
 
-test("an audit-write failure rolls back the entire refueling order restoration", async (t) => {
+test("an audit-write failure rolls back the entire refueling order restoration", async () => {
   const schemaResult = await db.execute(sql`
     SELECT
       to_regclass('aircraft_refueling') IS NOT NULL
@@ -321,10 +322,11 @@ test("an audit-write failure rolls back the entire refueling order restoration",
             AND column_name = 'refueling_order_id'
         ) AS has_refueling_order_schema
   `);
-  if (!schemaResult.rows[0]?.has_refueling_order_schema) {
-    t.skip("The configured database has not been migrated to the refueling-order schema.");
-    return;
-  }
+  assert.equal(
+    schemaResult.rows[0]?.has_refueling_order_schema,
+    true,
+    "The test database is missing the refueling-order schema prerequisites (`aircraft_refueling.refueling_order_id`, `warehouse_transactions`, `equipment_transactions`, or `audit_log`). Run `npm run test:restore-stock` to prepare it.",
+  );
 
   const storage = new AircraftRefuelingStorage();
   let supplierId: string | undefined;
@@ -484,7 +486,7 @@ test("an audit-write failure rolls back the entire refueling order restoration",
   }
 });
 
-test("rolling back a legacy deleted single refueling restores only its original row and movement", async (t) => {
+test("rolling back a legacy deleted single refueling restores only its original row and movement", async () => {
   const schemaResult = await db.execute(sql`
     SELECT
       to_regclass('aircraft_refueling') IS NOT NULL
@@ -498,10 +500,11 @@ test("rolling back a legacy deleted single refueling restores only its original 
             AND column_name = 'refueling_order_id'
         ) AS has_refueling_order_schema
   `);
-  if (!schemaResult.rows[0]?.has_refueling_order_schema) {
-    t.skip("The configured database has not been migrated to the refueling-order schema.");
-    return;
-  }
+  assert.equal(
+    schemaResult.rows[0]?.has_refueling_order_schema,
+    true,
+    "The test database is missing the refueling-order schema prerequisites (`aircraft_refueling.refueling_order_id`, `warehouse_transactions`, or `audit_log`). Run `npm run test:restore-stock` to prepare it.",
+  );
 
   const storage = new AircraftRefuelingStorage();
   let supplierId: string | undefined;
@@ -705,7 +708,7 @@ test("rolling back a legacy deleted single refueling restores only its original 
   }
 });
 
-test("rolling back a legacy deleted equipment refueling restores its original movement and balance", async (t) => {
+test("rolling back a legacy deleted equipment refueling restores its original movement and balance", async () => {
   const schemaResult = await db.execute(sql`
     SELECT
       to_regclass('aircraft_refueling') IS NOT NULL
@@ -719,10 +722,11 @@ test("rolling back a legacy deleted equipment refueling restores its original mo
             AND column_name = 'refueling_order_id'
         ) AS has_refueling_order_schema
   `);
-  if (!schemaResult.rows[0]?.has_refueling_order_schema) {
-    t.skip("The configured database has not been migrated to the refueling-order schema.");
-    return;
-  }
+  assert.equal(
+    schemaResult.rows[0]?.has_refueling_order_schema,
+    true,
+    "The test database is missing the refueling-order schema prerequisites (`aircraft_refueling.refueling_order_id`, `equipment_transactions`, or `audit_log`). Run `npm run test:restore-stock` to prepare it.",
+  );
 
   const storage = new AircraftRefuelingStorage();
   let supplierId: string | undefined;
@@ -875,7 +879,7 @@ test("rolling back a legacy deleted equipment refueling restores its original mo
   }
 });
 
-test("rolling back a deleted order fails without restoring any item when a movement is missing", async (t) => {
+test("rolling back a deleted order fails without restoring any item when a movement is missing", async () => {
   const schemaResult = await db.execute(sql`
     SELECT
       to_regclass('aircraft_refueling') IS NOT NULL
@@ -890,10 +894,11 @@ test("rolling back a deleted order fails without restoring any item when a movem
             AND column_name = 'refueling_order_id'
         ) AS has_refueling_order_schema
   `);
-  if (!schemaResult.rows[0]?.has_refueling_order_schema) {
-    t.skip("The configured database has not been migrated to the refueling-order schema.");
-    return;
-  }
+  assert.equal(
+    schemaResult.rows[0]?.has_refueling_order_schema,
+    true,
+    "The test database is missing the refueling-order schema prerequisites (`aircraft_refueling.refueling_order_id`, `warehouse_transactions`, `equipment_transactions`, or `audit_log`). Run `npm run test:restore-stock` to prepare it.",
+  );
 
   let supplierId: string | undefined;
   let customerId: string | undefined;

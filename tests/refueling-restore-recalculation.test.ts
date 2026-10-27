@@ -79,7 +79,7 @@ const refuelingFeeScenarios = [
   },
 ] as const;
 
-test("restoring an older refueling movement recalculates both fuel products in storage and equipment", async (t) => {
+test("restoring an older refueling movement recalculates both fuel products in storage and equipment", async () => {
   const rollbackMarker = new Error("Rollback integration-test fixtures");
 
   try {
@@ -1622,7 +1622,7 @@ test("restoring an older sale preserves delivery and storage costs in shared war
 test(
   "warehouse recalculation terminates and updates costs across reverse transfers",
   { timeout: 30_000 },
-  async (t) => {
+  async () => {
     const rollbackMarker = new Error("Rollback integration-test fixtures");
     try {
       const schemaResult = await db.execute(sql`
@@ -1630,10 +1630,11 @@ test(
           to_regclass('movement') IS NOT NULL
             AND to_regclass('warehouse_transactions') IS NOT NULL AS has_warehouse_movement_schema
       `);
-      if (!schemaResult.rows[0]?.has_warehouse_movement_schema) {
-        t.skip("The configured database does not have the warehouse movement schema.");
-        return;
-      }
+      assert.equal(
+        schemaResult.rows[0]?.has_warehouse_movement_schema,
+        true,
+        "The test database is missing the `movement` and/or `warehouse_transactions` table required for warehouse movement restores. Run `npm run test:restore-stock` to prepare it.",
+      );
 
       await db.transaction(async (tx) => {
         const fixtureId = crypto.randomUUID();
@@ -2051,17 +2052,18 @@ test(
 test(
   "editing movement delivery and storage charges updates the receiving warehouse cost",
   { timeout: 30_000 },
-  async (t) => {
+  async () => {
     const schemaResult = await db.execute(sql`
       SELECT
         to_regclass('movement') IS NOT NULL
           AND to_regclass('warehouses') IS NOT NULL
           AND to_regclass('warehouse_transactions') IS NOT NULL AS has_movement_schema
     `);
-    if (!schemaResult.rows[0]?.has_movement_schema) {
-      t.skip("The configured database does not have the warehouse movement schema.");
-      return;
-    }
+    assert.equal(
+      schemaResult.rows[0]?.has_movement_schema,
+      true,
+      "The test database is missing the `movement`, `warehouses`, and/or `warehouse_transactions` table required for movement restore recalculation. Run `npm run test:restore-stock` to prepare it.",
+    );
 
     const fixtureId = crypto.randomUUID();
     let warehouseId: string | undefined;
