@@ -1,7 +1,18 @@
 import type { Express } from "express";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
-import { logAudit } from "../../audit/middleware/audit-middleware";
+import { auditLog } from "../../audit/middleware/audit-middleware";
+import { AUDIT_OPERATIONS, ENTITY_TYPES } from "../../audit/entities/audit";
 import { storage } from "../../../storage/index";
+
+function normalizeTransactionDate(data: any): any {
+  if (typeof data.transactionDate !== "string") return data;
+
+  const transactionDate = new Date(data.transactionDate);
+  if (Number.isNaN(transactionDate.getTime())) {
+    throw new Error("Некорректная дата денежной операции");
+  }
+  return { ...data, transactionDate };
+}
 
 export function registerCashflowRoutes(app: Express) {
   // Get all cashflow transactions
@@ -50,11 +61,16 @@ export function registerCashflowRoutes(app: Express) {
     "/api/cashflow",
     requireAuth,
     requirePermission("finance", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.CASHFLOW_TRANSACTION,
+      operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const userId = req.session.userId;
         const transaction = await storage.cashflow.createCashflowTransaction({
-          ...req.body,
+          ...normalizeTransactionDate(req.body),
           createdById: userId,
         });
         res.status(201).json(transaction);
@@ -69,15 +85,21 @@ export function registerCashflowRoutes(app: Express) {
     "/api/cashflow/:id",
     requireAuth,
     requirePermission("finance", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.CASHFLOW_TRANSACTION,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => storage.cashflow.getCashflowTransaction(req.params.id),
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const userId = req.session.userId;
         const updated = await storage.cashflow.updateCashflowTransaction(
           req.params.id,
-          {
+          normalizeTransactionDate({
             ...req.body,
             updatedById: userId,
-          },
+          }),
         );
         res.json(updated);
       } catch (error: any) {
@@ -91,6 +113,11 @@ export function registerCashflowRoutes(app: Express) {
     "/api/cashflow/:id",
     requireAuth,
     requirePermission("finance", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.CASHFLOW_TRANSACTION,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => storage.cashflow.getCashflowTransaction(req.params.id),
+    }),
     async (req, res) => {
       try {
         const userId = req.session.userId;

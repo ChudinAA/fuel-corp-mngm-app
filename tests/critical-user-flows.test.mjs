@@ -58,7 +58,7 @@ async function getInventory(warehouseId, equipmentId) {
 
 async function latestAuditId(entityType, entityId, operation = "DELETE") {
   // Middleware audit writes finish asynchronously after the HTTP response.
-  const deadline = Date.now() + 5_000;
+  const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
     const result = await pool.query(
       `SELECT id FROM audit_log
@@ -71,6 +71,54 @@ async function latestAuditId(entityType, entityId, operation = "DELETE") {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   assert.fail(`Timed out waiting for ${operation} audit row for ${entityType}:${entityId}`);
+}
+
+async function waitForAuditOperations(entityType, entityId, operations) {
+  const expected = new Set(operations);
+  const deadline = Date.now() + 10_000;
+  let found = new Set();
+  while (Date.now() < deadline) {
+    const result = await pool.query(
+      `SELECT operation FROM audit_log
+       WHERE entity_type = $1 AND entity_id = $2`,
+      [entityType, entityId],
+    );
+    found = new Set(result.rows.map((row) => row.operation));
+    if ([...expected].every((operation) => found.has(operation))) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  assert.fail(
+    `Audit history for ${entityType}:${entityId} is missing ${[...expected]
+      .filter((operation) => !found.has(operation))
+      .join(", ")}`,
+  );
+}
+
+async function getStock(table, id) {
+  assert.ok(
+    table === "warehouses" || table === "equipments",
+    `unsupported stock table: ${table}`,
+  );
+  const result = await pool.query(
+    `SELECT current_balance, average_cost FROM ${table} WHERE id = $1`,
+    [id],
+  );
+  assert.ok(result.rows[0], `${table} stock record exists`);
+  return {
+    quantity: Number(result.rows[0].current_balance),
+    averageCost: Number(result.rows[0].average_cost),
+  };
+}
+
+function assertStock(actual, quantity, averageCost, label) {
+  assert.ok(
+    Math.abs(actual.quantity - quantity) < 0.011,
+    `${label} quantity: expected ${quantity}, received ${actual.quantity}`,
+  );
+  assert.ok(
+    Math.abs(actual.averageCost - averageCost) < 0.011,
+    `${label} average cost: expected ${averageCost}, received ${actual.averageCost}`,
+  );
 }
 
 async function waitForCompletedQueue(table, ownerColumn, ownerId, productType) {
@@ -553,4 +601,534 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assert.ok(auditCounts.rows.some((row) => row.entity_type === "aircraft_refueling"));
   assert.ok(auditCounts.rows.some((row) => row.entity_type === "opt"));
+
+  // Internal warehouse transfers must keep both ledgers and weighted cost in sync,
+  // including when an existing transfer is edited to an earlier business date.
+  const transferWarehouse = (
+    await pool.query(
+      `INSERT INTO warehouses (name, current_balance, average_cost)
+       VALUES ('critical-flow-transfer-warehouse', 0, 0)
+       RETURNING id`,
+    )
+  ).rows[0];
+  const sourceBeforeTransfer = await getStock("warehouses", warehouse.id);
+  const transferCreated = await api("/api/movement", {
+    method: "POST",
+    expectedStatus: 201,
+    body: {
+      movementDate: "2026-10-26T08:00:00.000Z",
+      movementType: "internal",
+      productType: "kerosene",
+      fromWarehouseId: warehouse.id,
+      toWarehouseId: transferWarehouse.id,
+      quantityKg: 20,
+      purchasePrice: 10,
+      totalCost: 200,
+      costPerKg: 10,
+      isDraft: false,
+      notes: "critical flow warehouse transfer",
+    },
+  });
+  const transferId = transferCreated.id;
+  assert.ok(transferId, "warehouse transfer is created");
+  assertStock(
+    await getStock("warehouses", warehouse.id),
+    sourceBeforeTransfer.quantity - 20,
+    sourceBeforeTransfer.averageCost,
+    "warehouse transfer source after create",
+  );
+  assertStock(
+    await getStock("warehouses", transferWarehouse.id),
+    20,
+    10,
+    "warehouse transfer destination after create",
+  );
+
+  const transferUpdated = await api(`/api/movement/${transferId}`, {
+    method: "PATCH",
+    body: {
+      movementDate: "2026-10-05T08:00:00.000Z",
+      movementType: "internal",
+      productType: "kerosene",
+      fromWarehouseId: warehouse.id,
+      toWarehouseId: transferWarehouse.id,
+      quantityKg: 25,
+      totalCost: 250,
+      costPerKg: 10,
+      isDraft: false,
+      notes: "critical flow warehouse transfer edited retroactively",
+    },
+  });
+  assert.equal(transferUpdated.id, transferId);
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    warehouse.id,
+    "kerosene",
+  );
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    transferWarehouse.id,
+    "kerosene",
+  );
+  assertStock(
+    await getStock("warehouses", warehouse.id),
+    sourceBeforeTransfer.quantity - 25,
+    sourceBeforeTransfer.averageCost,
+    "warehouse transfer source after backdated edit",
+  );
+  assertStock(
+    await getStock("warehouses", transferWarehouse.id),
+    25,
+    10,
+    "warehouse transfer destination after backdated edit",
+  );
+  const activeWarehouseTransactions = await pool.query(
+    `SELECT transaction_type, quantity, sum, deleted_at
+     FROM warehouse_transactions
+     WHERE source_type = 'movement' AND source_id = $1
+     ORDER BY transaction_type`,
+    [transferId],
+  );
+  assert.equal(activeWarehouseTransactions.rows.length, 2);
+  assert.deepEqual(
+    activeWarehouseTransactions.rows.map((row) => row.transaction_type).sort(),
+    ["transfer_in", "transfer_out"],
+  );
+  assert.ok(
+    activeWarehouseTransactions.rows.every((row) => row.deleted_at === null),
+    "both active warehouse transactions remain linked to the transfer",
+  );
+  assert.deepEqual(
+    activeWarehouseTransactions.rows.map((row) => Number(row.quantity)).sort((a, b) => a - b),
+    [-25, 25],
+    "transfer source and destination quantities reconcile",
+  );
+  assert.ok(
+    Math.abs(Number(activeWarehouseTransactions.rows.find((row) => row.transaction_type === "transfer_in").sum) - 250) < 0.011,
+    "the destination movement retains the transferred acquisition cost",
+  );
+  await waitForAuditOperations("movement", transferId, ["CREATE", "UPDATE"]);
+  await api(`/api/movement/${transferId}`, { method: "DELETE" });
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    warehouse.id,
+    "kerosene",
+  );
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    transferWarehouse.id,
+    "kerosene",
+  );
+  assertStock(
+    await getStock("warehouses", warehouse.id),
+    sourceBeforeTransfer.quantity,
+    sourceBeforeTransfer.averageCost,
+    "warehouse transfer source after delete",
+  );
+  assertStock(
+    await getStock("warehouses", transferWarehouse.id),
+    0,
+    0,
+    "warehouse transfer destination after delete",
+  );
+  const deletedWarehouseTransactions = await pool.query(
+    `SELECT COUNT(*)::int AS count
+     FROM warehouse_transactions
+     WHERE source_type = 'movement' AND source_id = $1 AND deleted_at IS NOT NULL`,
+    [transferId],
+  );
+  assert.equal(
+    deletedWarehouseTransactions.rows[0].count,
+    2,
+    "deleting a transfer soft-deletes both inventory movements",
+  );
+  const transferDeleteAuditId = await latestAuditId("movement", transferId);
+  const restoredTransfer = await api(
+    `/api/audit/rollback/${transferDeleteAuditId}`,
+    { method: "POST", body: {} },
+  );
+  assert.equal(restoredTransfer.success, true);
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    warehouse.id,
+    "kerosene",
+  );
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    transferWarehouse.id,
+    "kerosene",
+  );
+  assertStock(
+    await getStock("warehouses", warehouse.id),
+    sourceBeforeTransfer.quantity - 25,
+    sourceBeforeTransfer.averageCost,
+    "warehouse transfer source after restore",
+  );
+  assertStock(
+    await getStock("warehouses", transferWarehouse.id),
+    25,
+    10,
+    "warehouse transfer destination after restore",
+  );
+  const restoredWarehouseTransactions = await pool.query(
+    `SELECT COUNT(*)::int AS count
+     FROM warehouse_transactions
+     WHERE source_type = 'movement' AND source_id = $1 AND deleted_at IS NULL`,
+    [transferId],
+  );
+  assert.equal(
+    restoredWarehouseTransactions.rows[0].count,
+    2,
+    "restoring a transfer restores both inventory movements",
+  );
+  await waitForAuditOperations("movement", transferId, ["CREATE", "UPDATE", "DELETE", "RESTORE"]);
+
+  // A transfer between a warehouse and fuel equipment has the same lifecycle.
+  const transferEquipment = (
+    await pool.query(
+      `INSERT INTO equipments (name, current_balance, average_cost)
+       VALUES ('critical-flow-transfer-equipment', 0, 0)
+       RETURNING id`,
+    )
+  ).rows[0];
+  const kilogramUnit = (
+    await pool.query(
+      `INSERT INTO units_of_measure (short_name, full_name)
+       VALUES ('kg-critical-flow', 'Kilogram critical flow')
+       RETURNING id`,
+    )
+  ).rows[0];
+  const keroseneNomenclature = (
+    await pool.query(
+      `INSERT INTO nomenclature (product_type, name, unit_id)
+       VALUES ('kerosene', 'critical-flow-kerosene', $1)
+       RETURNING id`,
+      [kilogramUnit.id],
+    )
+  ).rows[0];
+  const sourceBeforeEquipmentTransfer = await getStock("warehouses", warehouse.id);
+  const equipmentTransferCreated = await api("/api/equipment-movement", {
+    method: "POST",
+    expectedStatus: 201,
+    body: {
+      movementDate: "2026-10-26T09:00:00.000Z",
+      movementType: "storage_to_tzk",
+      productType: "kerosene",
+      nomenclatureId: keroseneNomenclature.id,
+      fromWarehouseId: warehouse.id,
+      toEquipmentId: transferEquipment.id,
+      quantityKg: "10",
+      totalCost: 100,
+      costPerKg: 10,
+      isDraft: false,
+      notes: "critical flow warehouse to equipment",
+    },
+  });
+  const equipmentTransferId = equipmentTransferCreated.id;
+  assert.ok(equipmentTransferId, "warehouse-to-equipment transfer is created");
+  assertStock(
+    await getStock("warehouses", warehouse.id),
+    sourceBeforeEquipmentTransfer.quantity - 10,
+    sourceBeforeEquipmentTransfer.averageCost,
+    "equipment transfer warehouse source after create",
+  );
+  assertStock(
+    await getStock("equipments", transferEquipment.id),
+    10,
+    10,
+    "equipment transfer destination after create",
+  );
+
+  await api(`/api/equipment-movement/${equipmentTransferId}`, {
+    method: "PATCH",
+    body: {
+      movementDate: "2026-10-06T09:00:00.000Z",
+      movementType: "storage_to_tzk",
+      productType: "kerosene",
+      nomenclatureId: keroseneNomenclature.id,
+      fromWarehouseId: warehouse.id,
+      toEquipmentId: transferEquipment.id,
+      quantityKg: "15",
+      totalCost: 150,
+      costPerKg: 10,
+      isDraft: false,
+      notes: "critical flow warehouse to equipment edited retroactively",
+    },
+  });
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    warehouse.id,
+    "kerosene",
+  );
+  assertStock(
+    await getStock("warehouses", warehouse.id),
+    sourceBeforeEquipmentTransfer.quantity - 15,
+    sourceBeforeEquipmentTransfer.averageCost,
+    "equipment transfer warehouse source after backdated edit",
+  );
+  assertStock(
+    await getStock("equipments", transferEquipment.id),
+    15,
+    10,
+    "equipment transfer destination after backdated edit",
+  );
+  const equipmentTransferRecord = await api(
+    `/api/equipment-movement/${equipmentTransferId}`,
+  );
+  const equipmentTransferWarehouseRow = await pool.query(
+    `SELECT transaction_type, quantity, deleted_at
+     FROM warehouse_transactions WHERE id = $1`,
+    [equipmentTransferRecord.sourceWarehouseTransactionId],
+  );
+  assert.equal(equipmentTransferWarehouseRow.rows.length, 1);
+  assert.equal(equipmentTransferWarehouseRow.rows[0].transaction_type, "transfer_out");
+  assert.equal(Number(equipmentTransferWarehouseRow.rows[0].quantity), -15);
+  assert.equal(
+    equipmentTransferWarehouseRow.rows[0].deleted_at,
+    null,
+    "the warehouse source movement remains active",
+  );
+  const equipmentTransferEquipmentRow = await pool.query(
+    `SELECT transaction_type, quantity, sum, deleted_at
+     FROM equipment_transactions WHERE id = $1`,
+    [equipmentTransferRecord.transactionId],
+  );
+  assert.equal(equipmentTransferEquipmentRow.rows.length, 1);
+  assert.equal(equipmentTransferEquipmentRow.rows[0].transaction_type, "transfer_in");
+  assert.equal(Number(equipmentTransferEquipmentRow.rows[0].quantity), 15);
+  assert.ok(
+    Math.abs(Number(equipmentTransferEquipmentRow.rows[0].sum) - 150) < 0.011,
+    "equipment receipt keeps the source transfer cost",
+  );
+  assert.equal(
+    equipmentTransferEquipmentRow.rows[0].deleted_at,
+    null,
+    "the equipment destination movement remains active",
+  );
+  const equipmentTransferDeleteAuditWait = waitForAuditOperations(
+    "equipment_movement",
+    equipmentTransferId,
+    ["CREATE", "UPDATE"],
+  );
+  await equipmentTransferDeleteAuditWait;
+  await api(`/api/equipment-movement/${equipmentTransferId}`, { method: "DELETE" });
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    warehouse.id,
+    "kerosene",
+  );
+  assertStock(
+    await getStock("warehouses", warehouse.id),
+    sourceBeforeEquipmentTransfer.quantity,
+    sourceBeforeEquipmentTransfer.averageCost,
+    "equipment transfer warehouse source after delete",
+  );
+  assertStock(
+    await getStock("equipments", transferEquipment.id),
+    0,
+    10,
+    "equipment transfer destination after delete",
+  );
+  const equipmentTransferDeleteAuditId = await latestAuditId(
+    "equipment_movement",
+    equipmentTransferId,
+  );
+  const restoredEquipmentTransfer = await api(
+    `/api/audit/rollback/${equipmentTransferDeleteAuditId}`,
+    { method: "POST", body: {} },
+  );
+  assert.equal(restoredEquipmentTransfer.success, true);
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    warehouse.id,
+    "kerosene",
+  );
+  assertStock(
+    await getStock("warehouses", warehouse.id),
+    sourceBeforeEquipmentTransfer.quantity - 15,
+    sourceBeforeEquipmentTransfer.averageCost,
+    "equipment transfer warehouse source after restore",
+  );
+  assertStock(
+    await getStock("equipments", transferEquipment.id),
+    15,
+    10,
+    "equipment transfer destination after restore",
+  );
+  await waitForAuditOperations(
+    "equipment_movement",
+    equipmentTransferId,
+    ["CREATE", "UPDATE", "DELETE", "RESTORE"],
+  );
+  const restoredEquipmentTransactions = await pool.query(
+    `SELECT COUNT(*)::int AS count
+     FROM equipment_transactions
+     WHERE source_type = 'movement' AND source_id = $1 AND deleted_at IS NULL`,
+    [equipmentTransferId],
+  );
+  assert.equal(
+    restoredEquipmentTransactions.rows[0].count,
+    1,
+    "restoring the equipment transfer restores its equipment ledger entry",
+  );
+
+  // Cashflow transactions are the monetary ledger: CRUD and audit rollback
+  // must preserve date-based totals and linked movement references.
+  const cashflowWindow = "/api/cashflow/summary?startDate=2026-10-01&endDate=2026-10-31";
+  const baselineCashflow = await api(cashflowWindow);
+  const summaryAmount = (summary, category) =>
+    Number(summary.find((row) => row.category === category)?.total || 0);
+  const baselineIncome = summaryAmount(baselineCashflow, "income");
+  const baselineExpense = summaryAmount(baselineCashflow, "expense");
+  const cashflowCreated = await api("/api/cashflow", {
+    method: "POST",
+    expectedStatus: 201,
+    body: {
+      transactionDate: "2026-10-26T10:00:00.000Z",
+      category: "income",
+      subcategory: "critical_flow",
+      amount: 1000,
+      currency: "RUB",
+      description: "critical-flow movement settlement",
+      counterparty: "critical-flow-counterparty",
+      paymentMethod: "bank_transfer",
+      referenceType: "movement",
+      referenceId: transferId,
+      isPlanned: false,
+    },
+  });
+  const cashflowId = cashflowCreated.id;
+  assert.ok(cashflowId, "cashflow transaction is created");
+  assert.equal(summaryAmount(await api(cashflowWindow), "income"), baselineIncome + 1000);
+  const cashflowReference = await pool.query(
+    `SELECT reference_type, reference_id FROM cashflow_transactions WHERE id = $1`,
+    [cashflowId],
+  );
+  assert.equal(cashflowReference.rows[0]?.reference_type, "movement");
+  assert.equal(cashflowReference.rows[0]?.reference_id, transferId);
+
+  const cashflowUpdated = await api(`/api/cashflow/${cashflowId}`, {
+    method: "PATCH",
+    body: {
+      transactionDate: "2026-10-10T10:00:00.000Z",
+      category: "expense",
+      amount: 275,
+      description: "critical-flow movement settlement corrected retroactively",
+    },
+  });
+  assert.equal(Number(cashflowUpdated.amount), 275);
+  assert.equal(
+    new Date(cashflowUpdated.transactionDate).toISOString().slice(0, 10),
+    "2026-10-10",
+  );
+  const updatedCashflowSummary = await api(cashflowWindow);
+  assert.equal(summaryAmount(updatedCashflowSummary, "income"), baselineIncome);
+  assert.equal(summaryAmount(updatedCashflowSummary, "expense"), baselineExpense + 275);
+  await waitForAuditOperations(
+    "cashflow_transactions",
+    cashflowId,
+    ["CREATE", "UPDATE"],
+  );
+
+  await api(`/api/cashflow/${cashflowId}`, { method: "DELETE" });
+  const deletedCashflow = await pool.query(
+    `SELECT deleted_at FROM cashflow_transactions WHERE id = $1`,
+    [cashflowId],
+  );
+  assert.ok(deletedCashflow.rows[0]?.deleted_at, "cashflow transaction is soft-deleted");
+  const deletedCashflowSummary = await api(cashflowWindow);
+  assert.equal(summaryAmount(deletedCashflowSummary, "income"), baselineIncome);
+  assert.equal(summaryAmount(deletedCashflowSummary, "expense"), baselineExpense);
+  const cashflowDeleteAuditId = await latestAuditId(
+    "cashflow_transactions",
+    cashflowId,
+  );
+  const restoredCashflow = await api(
+    `/api/audit/rollback/${cashflowDeleteAuditId}`,
+    { method: "POST", body: {} },
+  );
+  assert.equal(restoredCashflow.success, true);
+  const restoredCashflowRow = await pool.query(
+    `SELECT deleted_at, amount, category, transaction_date
+     FROM cashflow_transactions WHERE id = $1`,
+    [cashflowId],
+  );
+  assert.equal(restoredCashflowRow.rows[0]?.deleted_at, null);
+  assert.equal(Number(restoredCashflowRow.rows[0]?.amount), 275);
+  assert.equal(restoredCashflowRow.rows[0]?.category, "expense");
+  assert.equal(
+    new Date(restoredCashflowRow.rows[0]?.transaction_date).toISOString().slice(0, 10),
+    "2026-10-10",
+  );
+  const restoredCashflowSummary = await api(cashflowWindow);
+  assert.equal(summaryAmount(restoredCashflowSummary, "income"), baselineIncome);
+  assert.equal(summaryAmount(restoredCashflowSummary, "expense"), baselineExpense + 275);
+  await waitForAuditOperations(
+    "cashflow_transactions",
+    cashflowId,
+    ["CREATE", "UPDATE", "DELETE", "RESTORE"],
+  );
+
+  // Exchange advance card movements must change the balance and restore it
+  // correctly when a transaction is removed.
+  const advanceCardCreated = await api("/api/exchange-advances", {
+    method: "POST",
+    expectedStatus: 201,
+    body: { sellerId: supplier.id, notes: "critical-flow advance card" },
+  });
+  assert.ok(advanceCardCreated.id, "exchange advance card is created");
+  const advanceTxn = await api(
+    `/api/exchange-advances/${advanceCardCreated.id}/transactions`,
+    {
+      method: "POST",
+      expectedStatus: 201,
+      body: {
+        transactionType: "income",
+        amount: 450,
+        transactionDate: "2026-10-09T12:00:00.000Z",
+        description: "critical-flow advance funding",
+      },
+    },
+  );
+  assert.equal(Number(advanceTxn.balanceBefore), 0);
+  assert.equal(Number(advanceTxn.balanceAfter), 450);
+  const advanceCardAfterCredit = await api(
+    `/api/exchange-advances/${advanceCardCreated.id}`,
+  );
+  assert.equal(Number(advanceCardAfterCredit.currentBalance), 450);
+  const advanceTransactions = await api(
+    `/api/exchange-advances/${advanceCardCreated.id}/transactions`,
+  );
+  assert.equal(advanceTransactions.total, 1);
+  assert.equal(advanceTransactions.data[0]?.id, advanceTxn.id);
+  await api(`/api/exchange-advances/transactions/${advanceTxn.id}`, {
+    method: "DELETE",
+  });
+  const advanceCardAfterDelete = await api(
+    `/api/exchange-advances/${advanceCardCreated.id}`,
+  );
+  assert.equal(
+    Number(advanceCardAfterDelete.currentBalance),
+    0,
+    "deleting the advance transaction restores its prior card balance",
+  );
+  const deletedAdvanceTxn = await pool.query(
+    `SELECT deleted_at FROM exchange_advance_transactions WHERE id = $1`,
+    [advanceTxn.id],
+  );
+  assert.ok(deletedAdvanceTxn.rows[0]?.deleted_at);
+  await waitForAuditOperations(
+    "exchange_advance_cards",
+    advanceCardCreated.id,
+    ["CREATE"],
+  );
 });
