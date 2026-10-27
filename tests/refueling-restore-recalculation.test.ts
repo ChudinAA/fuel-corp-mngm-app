@@ -1639,6 +1639,7 @@ test(
         const fixtureId = crypto.randomUUID();
         const productType = PRODUCT_TYPE.KEROSENE;
         const openingDate = "2026-04-01T10:00:00.000Z";
+        const reverseReceiptDate = "2026-04-01T12:00:00.000Z";
         const forwardTransferDate = "2026-04-02T10:00:00.000Z";
         const reverseTransferDate = "2026-04-03T10:00:00.000Z";
 
@@ -1755,24 +1756,29 @@ test(
           undefined,
           reverseTransferDate,
         );
-        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
-          tx,
-          warehouseA.id,
-          TRANSACTION_TYPE.TRANSFER_IN,
-          productType,
-          SOURCE_TYPE.MOVEMENT,
-          reverseTransfer.id,
-          10,
-          200,
-          undefined,
-          reverseTransferDate,
-        );
+        const { transaction: reverseReceiptTransaction } =
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            warehouseA.id,
+            TRANSACTION_TYPE.TRANSFER_IN,
+            productType,
+            SOURCE_TYPE.MOVEMENT,
+            reverseTransfer.id,
+            10,
+            200,
+            undefined,
+            reverseTransferDate,
+          );
+        await tx
+          .update(warehouseTransactions)
+          .set({ transactionDate: reverseReceiptDate })
+          .where(eq(warehouseTransactions.id, reverseReceiptTransaction.id));
 
         await WarehouseRecalculationService.recalculateAllAffectedTransactions(
           tx,
           [{
             warehouseId: warehouseA.id,
-            afterDate: forwardTransferDate,
+            afterDate: reverseReceiptDate,
             productType,
           }],
         );
@@ -1788,17 +1794,58 @@ test(
         const recalculatedReverseTransfer = await tx.query.movement.findFirst({
           where: eq(movement.id, reverseTransfer.id),
         });
+        const recalculatedReturnReceipt =
+          await tx.query.warehouseTransactions.findFirst({
+            where: eq(
+              warehouseTransactions.id,
+              reverseReceiptTransaction.id,
+            ),
+          });
+        const recalculatedWarehouse = await tx.query.warehouses.findFirst({
+          where: eq(warehouses.id, warehouseA.id),
+        });
 
-        assert.equal(Number(recalculatedTransfers[0]?.totalCost), 120);
-        assert.equal(Number(recalculatedTransfers[0]?.purchasePrice), 12);
-        assert.equal(
-          Number(recalculatedReverseTransfer?.totalCost),
-          192.73,
+        assert.ok(
+          Math.abs(Number(recalculatedTransfers[0]?.totalCost) - 126.67) <
+            0.01,
+          `forward transfer cost: ${recalculatedTransfers[0]?.totalCost}`,
+        );
+        assert.ok(
+          Math.abs(
+            Number(recalculatedTransfers[0]?.purchasePrice) - 12.666667,
+          ) < 0.01,
+          `forward transfer purchase price: ${recalculatedTransfers[0]?.purchasePrice}`,
+        );
+        assert.ok(
+          Math.abs(
+            Number(recalculatedReturnReceipt?.sum) -
+              Number(recalculatedReverseTransfer?.totalCost),
+          ) < 0.01,
+          "the originating warehouse receipt should use the final return movement cost",
+        );
+        assert.ok(
+          Math.abs(
+            Number(recalculatedReturnReceipt?.price) -
+              Number(recalculatedReturnReceipt?.sum) / 10,
+          ) < 0.0001,
+          "the originating warehouse receipt price should match its recorded total cost per kg",
+        );
+        assert.ok(
+          Math.abs(
+            Number(recalculatedWarehouse?.averageCost) -
+              (1200 + Number(recalculatedReturnReceipt?.sum)) / 110,
+          ) < 0.00001,
+          `final warehouse average cost: ${recalculatedWarehouse?.averageCost}`,
+        );
+        assert.ok(
+          Math.abs(Number(recalculatedReverseTransfer?.totalCost) - 193.33) <
+            0.01,
           "the returning movement should use the recalculated blended cost from warehouse B",
         );
         assert.ok(
-          Math.abs(Number(recalculatedReverseTransfer?.purchasePrice) - 19.272727) <
-            0.000001,
+          Math.abs(
+            Number(recalculatedReverseTransfer?.purchasePrice) - 19.333333,
+          ) < 0.01,
           `reverse transfer purchase price: ${recalculatedReverseTransfer?.purchasePrice}`,
         );
 

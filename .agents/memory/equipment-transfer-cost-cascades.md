@@ -14,3 +14,9 @@ For transactions with the same business timestamp, process inventory checkpoints
 **Why:** A refueling must use stock received at that same business time even if the transfer record was created later.
 
 **How to apply:** Keep the same tie policy in warehouse and equipment recalculation and cover it with a fixture where the incoming transfer has a later `createdAt` than the sale.
+
+Warehouse transfer cycles can update the cost of a receipt after its transaction was already processed. Defer recalculating active destination warehouses until the current cascade unwinds, then replay iteratively until the cycle stops changing rather than recursively re-entering an active warehouse.
+
+**Why:** A single deferred pass can still change an upstream transfer cost and make the return receipt stale again; the cyclic stock averages need to settle together.
+
+**How to apply:** For cycle fixes, test a receipt that is ordered before the transfer that changes its cost, assert the persisted receipt and final stock average, and keep a finite replay limit so a non-settling cycle fails clearly.

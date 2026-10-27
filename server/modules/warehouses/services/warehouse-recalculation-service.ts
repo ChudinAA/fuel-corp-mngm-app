@@ -12,7 +12,18 @@ import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentRecalculationService } from "server/modules/warehouses-equipment/services/equipment-recalculation-service";
 import { calculateStockMovement } from "./stock-transaction-calculations";
 
+type WarehouseCascade = {
+  warehouseId: string;
+  afterDate: string;
+  productType: string;
+};
+
 export class WarehouseRecalculationService {
+  private static deferredWarehouseCascades = new WeakMap<
+    Set<string>,
+    Map<string, WarehouseCascade>
+  >();
+
   static async recalculateAllAffectedTransactions(
     tx: any,
     affectedWarehouses: Array<{
@@ -34,6 +45,7 @@ export class WarehouseRecalculationService {
 
     const visited = visitedWarehouses || new Set<string>();
     const visitedEq = visitedEquipments || new Set<string>();
+    this.getDeferredWarehouseCascades(visited);
 
     for (let i = 0; i < affectedWarehouses.length; i++) {
       const { warehouseId, afterDate, productType } = affectedWarehouses[i];
@@ -66,7 +78,66 @@ export class WarehouseRecalculationService {
       console.log(`    ✓ Склад ${i + 1} пересчитан`);
     }
 
+    await this.flushDeferredWarehouseCascades(
+      tx,
+      updatedById,
+      visited,
+      visitedEq,
+    );
+
     console.log("\n  ✓ Все затронутые склады пересчитаны");
+  }
+
+  private static getDeferredWarehouseCascades(
+    visitedWarehouses: Set<string>,
+  ): Map<string, WarehouseCascade> {
+    let deferred = this.deferredWarehouseCascades.get(visitedWarehouses);
+    if (!deferred) {
+      deferred = new Map<string, WarehouseCascade>();
+      this.deferredWarehouseCascades.set(visitedWarehouses, deferred);
+    }
+    return deferred;
+  }
+
+  private static async flushDeferredWarehouseCascades(
+    tx: any,
+    updatedById: string | undefined,
+    visitedWarehouses: Set<string>,
+    visitedEquipments: Set<string>,
+  ) {
+    // A nested warehouse recalculation must not re-enter an active warehouse.
+    // Its caller will drain the deferred work after the active chain unwinds.
+    if (visitedWarehouses.size > 0) return;
+
+    const deferred = this.getDeferredWarehouseCascades(visitedWarehouses);
+    let replayCount = 0;
+    const maxReplays = 100;
+    while (deferred.size > 0) {
+      if (replayCount >= maxReplays) {
+        throw new Error(
+          `Warehouse transfer cycle did not stabilize after ${maxReplays} deferred recalculations`,
+        );
+      }
+
+      const [key, cascade] = deferred.entries().next().value as [
+        string,
+        WarehouseCascade,
+      ];
+      deferred.delete(key);
+      replayCount++;
+      console.log(
+        `\n    → Повторный пересчет склада после завершения цикла (${replayCount}): ${cascade.warehouseId}`,
+      );
+      await this.recalculateWarehouseChain(
+        tx,
+        cascade.warehouseId,
+        cascade.afterDate,
+        cascade.productType,
+        updatedById,
+        visitedWarehouses,
+        visitedEquipments,
+      );
+    }
   }
 
   private static async recalculateWarehouseChain(
@@ -540,14 +611,6 @@ export class WarehouseRecalculationService {
         })
         .where(eq(movement.id, movementId));
 
-      const cascadeKey = `${movementRecord.toWarehouseId}:${movementRecord.productType || "kerosene"}`;
-      if (visitedWarehouses.has(cascadeKey)) {
-        console.log(
-          `        Склад-получатель ${movementRecord.toWarehouseId} уже пересчитывается`,
-        );
-        return null;
-      }
-
       const destinationTransaction =
         await tx.query.warehouseTransactions.findFirst({
           where: and(
@@ -572,11 +635,28 @@ export class WarehouseRecalculationService {
         const txDate =
           destinationTransaction.transactionDate ||
           destinationTransaction.createdAt;
-        return {
+        const cascade = {
           warehouseId: movementRecord.toWarehouseId,
           afterDate: txDate,
           productType: movementRecord.productType || "kerosene",
         };
+        const cascadeKey = `${cascade.warehouseId}:${cascade.productType}`;
+        if (visitedWarehouses.has(cascadeKey)) {
+          console.log(
+            `        Склад-получатель ${cascade.warehouseId} уже пересчитывается, отложенный пересчет`,
+          );
+          const deferred = this.getDeferredWarehouseCascades(visitedWarehouses);
+          const pending = deferred.get(cascadeKey);
+          if (
+            !pending ||
+            new Date(cascade.afterDate).getTime() <
+              new Date(pending.afterDate).getTime()
+          ) {
+            deferred.set(cascadeKey, cascade);
+          }
+          return null;
+        }
+        return cascade;
       }
     }
 
