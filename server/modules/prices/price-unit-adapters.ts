@@ -22,6 +22,7 @@ const volumeInputSchema = z
 
 type LegacyPriceShape = {
   priceUnit?: string | null;
+  volumeUnit?: string | null;
   priceValues?: string[] | null;
   volume?: string | number | null;
   soldVolume?: string | number | null;
@@ -31,6 +32,25 @@ function numericOrNull(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeVolumeUnit(value: unknown): "kg" | "tonne" {
+  const unit = value ?? "kg";
+  if (unit === "kg" || unit === "tonne") return unit;
+  throw new TypeError(`Неизвестная единица массы лимита цены: ${unit}`);
+}
+
+export function kilogramsToPriceStoredVolume(
+  kilograms: number,
+  volumeUnit: unknown,
+): number {
+  if (!Number.isFinite(kilograms)) {
+    throw new TypeError("Некорректная масса использованного объёма");
+  }
+  const unit = normalizeVolumeUnit(volumeUnit);
+  return unit === "kg"
+    ? kilograms
+    : Number(kilogramsToTonnes(kilograms).toFixed(5));
 }
 
 function storedRateOrNull(value: string): number | null {
@@ -50,6 +70,7 @@ export function priceToApi<T extends LegacyPriceShape>(price: T) {
   }
   const unit = storedUnit === "liter" ? "liter" : "tonne";
   const storedAsKilograms = storedUnit === "kg";
+  const storedVolumeUnit = normalizeVolumeUnit(price.volumeUnit);
   const rates = (price.priceValues ?? []).map((value) => {
     const storedRate = storedRateOrNull(value);
     return storedRate === null || !storedAsKilograms
@@ -58,15 +79,20 @@ export function priceToApi<T extends LegacyPriceShape>(price: T) {
   });
   const volumeLimit = numericOrNull(price.volume);
   const volumeUsed = numericOrNull(price.soldVolume);
+  const volumeToTonnes = (value: number | null) =>
+    value === null || storedVolumeUnit === "tonne"
+      ? value
+      : kilogramsToTonnes(value);
 
   return {
     ...price,
+    volumeUnit: storedVolumeUnit,
     priceRate: { unit, values: rates },
     contractVolume: {
       limitUnit: "tonne",
-      limit: volumeLimit === null ? null : kilogramsToTonnes(volumeLimit),
+      limit: volumeToTonnes(volumeLimit),
       usedUnit: "tonne",
-      used: volumeUsed === null ? null : kilogramsToTonnes(volumeUsed),
+      used: volumeToTonnes(volumeUsed),
     },
   };
 }
@@ -148,8 +174,12 @@ export function priceWriteFromApi<T extends Record<string, unknown>>(
   const volume = hasContractVolume
     ? volumeInputSchema.parse(input.contractVolume)
     : undefined;
-  const { priceRate: _priceRate, contractVolume: _contractVolume, ...legacy } =
-    input;
+  const {
+    priceRate: _priceRate,
+    contractVolume: _contractVolume,
+    volumeUnit: _volumeUnit,
+    ...legacy
+  } = input;
   const massBased = rate.unit === "tonne";
   return {
     ...legacy,
@@ -161,6 +191,7 @@ export function priceWriteFromApi<T extends Record<string, unknown>>(
     ),
     ...(volume
       ? {
+            volumeUnit: "kg",
           volume:
             volume.limit === null
               ? null

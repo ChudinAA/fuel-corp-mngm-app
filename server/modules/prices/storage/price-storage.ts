@@ -12,6 +12,7 @@ import {
 import {
   COUNTERPARTY_TYPE,
 } from "@shared/constants";
+import { kilogramsToPriceStoredVolume } from "../price-unit-adapters";
 
 export class PriceStorage {
   async findActivePrices(filters: {
@@ -317,10 +318,14 @@ export class PriceStorage {
     }
 
     // Обновляем значения в базе данных
+    const soldVolume = kilogramsToPriceStoredVolume(
+      totalVolume,
+      price.volumeUnit,
+    );
     await db
       .update(prices)
       .set({
-        soldVolume: totalVolume.toString(),
+        soldVolume: soldVolume.toString(),
         soldAmount: totalAmount.toString(),
       })
       .where(eq(prices.id, priceId));

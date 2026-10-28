@@ -35,7 +35,7 @@ export const prices = pgTable(
     basisId: uuid("basis_id").references(() => bases.id),
     loadingBasisId: uuid("loading_basis_id").references(() => bases.id),
     priceValues: text("price_values").array(),
-    volume: decimal("volume", { precision: 15, scale: 2 }),
+    volume: decimal("volume", { precision: 18, scale: 5 }),
     limitType: text("limit_type").default("volume"),
     maxDealAmount: decimal("max_deal_amount", { precision: 15, scale: 2 }),
     dateFrom: date("date_from").notNull(),
@@ -44,9 +44,10 @@ export const prices = pgTable(
     contractId: uuid("contract_id").references(() => counterpartyContracts.id),
     contractAppendix: text("contract_appendix"),
     notes: text("notes"),
-    soldVolume: decimal("sold_volume", { precision: 15, scale: 2 }).default(
+    soldVolume: decimal("sold_volume", { precision: 18, scale: 5 }).default(
       "0",
     ),
+    volumeUnit: text("volume_unit").notNull().default("kg"),
     soldAmount: decimal("sold_amount", { precision: 15, scale: 2 }).default(
       "0",
     ),
@@ -122,6 +123,7 @@ export const pricesRelations = relations(prices, ({ many, one }) => ({
 
 export const insertPriceSchema = createInsertSchema(prices).omit({ id: true }).extend({
   priceUnit: z.enum(["kg", "liter"]).default("kg"),
+  volumeUnit: z.enum(["kg", "tonne"]).default("kg"),
   nomenclatureId: z.string().uuid().nullable().optional(),
   contractId: z.string().uuid().nullable().optional(),
 });

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import pg from "pg";
 import { withTemporaryPostgres } from "./lib/temporary-postgres.mjs";
@@ -66,8 +66,8 @@ const fields = [
 ];
 
 const conditionalFields = [
-  ["prices", "volume", "legacy kg volume limit when limit_type=volume; ignored for amount limits"],
-  ["prices", "sold_volume", "legacy kg consumed mass"],
+  ["prices", "volume", "contract mass limit only for limit_type=volume; unit is volume_unit"],
+  ["prices", "sold_volume", "consumed contract mass; unit is volume_unit"],
 ];
 
 const unmappedLegacyFields = [
@@ -326,6 +326,229 @@ async function rehearsePriceValues(client, rates) {
   };
 }
 
+async function rehearsePriceVolumes(client, columnMap) {
+  const hasVolume = columnMap.has("prices.volume");
+  const hasSoldVolume = columnMap.has("prices.sold_volume");
+  const hasLimitType = columnMap.has("prices.limit_type");
+  const hasVolumeUnit = columnMap.has("prices.volume_unit");
+  if (!hasVolume && !hasSoldVolume) {
+    return { skipped: true, reason: "contract mass columns missing" };
+  }
+
+  const unitExpression = hasVolumeUnit ? "volume_unit" : "'kg'::text";
+  await client.query(`
+    CREATE TEMP TABLE __price_volume_rehearsal (
+      source_field text NOT NULL,
+      source_unit text,
+      source_value numeric NOT NULL,
+      tonne_value numeric,
+      round_trip_value numeric
+    ) ON COMMIT DROP
+  `);
+
+  if (hasVolume && hasLimitType) {
+    await client.query(`
+      INSERT INTO __price_volume_rehearsal
+        (source_field, source_unit, source_value, tonne_value, round_trip_value)
+      SELECT
+        'volume',
+        ${unitExpression},
+        volume::numeric,
+        CASE
+          WHEN ${unitExpression} = 'kg' THEN volume::numeric / 1000
+          WHEN ${unitExpression} = 'tonne' THEN volume::numeric
+          ELSE NULL
+        END,
+        CASE
+          WHEN ${unitExpression} = 'kg' THEN (volume::numeric / 1000) * 1000
+          WHEN ${unitExpression} = 'tonne' THEN volume::numeric
+          ELSE NULL
+        END
+      FROM prices
+      WHERE volume IS NOT NULL
+        AND COALESCE(limit_type, 'volume') <> 'amount'
+    `);
+  }
+
+  if (hasSoldVolume) {
+    await client.query(`
+      INSERT INTO __price_volume_rehearsal
+        (source_field, source_unit, source_value, tonne_value, round_trip_value)
+      SELECT
+        'sold_volume',
+        ${unitExpression},
+        sold_volume::numeric,
+        CASE
+          WHEN ${unitExpression} = 'kg' THEN sold_volume::numeric / 1000
+          WHEN ${unitExpression} = 'tonne' THEN sold_volume::numeric
+          ELSE NULL
+        END,
+        CASE
+          WHEN ${unitExpression} = 'kg' THEN (sold_volume::numeric / 1000) * 1000
+          WHEN ${unitExpression} = 'tonne' THEN sold_volume::numeric
+          ELSE NULL
+        END
+      FROM prices
+      WHERE sold_volume IS NOT NULL
+    `);
+  }
+
+  let amountLimitVolumesIgnored = 0;
+  if (hasVolume && hasLimitType) {
+    const ignored = await client.query(`
+      SELECT COUNT(*)::bigint AS rows_total
+      FROM prices
+      WHERE COALESCE(limit_type, 'volume') = 'amount'
+        AND volume IS NOT NULL
+    `);
+    amountLimitVolumesIgnored = Number(ignored.rows[0].rows_total);
+  }
+
+  const result = await client.query(`
+    SELECT
+      COUNT(*)::bigint AS mass_values,
+      COUNT(*) FILTER (WHERE source_unit = 'kg')::bigint AS kg_values_converted,
+      COUNT(*) FILTER (WHERE source_unit = 'tonne')::bigint AS tonne_values_preserved,
+      COUNT(*) FILTER (
+        WHERE source_unit IS NULL OR source_unit NOT IN ('kg', 'tonne')
+      )::bigint AS unknown_unit_values,
+      COUNT(*) FILTER (
+        WHERE source_unit IN ('kg', 'tonne')
+          AND source_value <> round_trip_value
+      )::bigint AS round_trip_differences
+    FROM __price_volume_rehearsal
+  `);
+  const summary = result.rows[0];
+  if (
+    Number(summary.unknown_unit_values) !== 0
+    || Number(summary.round_trip_differences) !== 0
+  ) {
+    throw new Error("Contract-volume conversion rehearsal failed.");
+  }
+
+  return {
+    ...summary,
+    amountLimitVolumesIgnored,
+    volumeUnitColumnPresent: hasVolumeUnit,
+    missingVolumeUnitAssumption: hasVolumeUnit
+      ? null
+      : "Existing legacy contract mass is interpreted as kg.",
+  };
+}
+
+async function rehearsePriceVolumeSchemaMigration(client, columnMap) {
+  const requiredColumns = [
+    "id",
+    "volume",
+    "sold_volume",
+    "max_deal_amount",
+    "price_unit",
+    "price_values",
+  ];
+  if (!hasColumns(columnMap, "prices", requiredColumns)) {
+    return {
+      skipped: true,
+      reason: "required price columns missing",
+    };
+  }
+
+  const sourceSchema = ["volume", "sold_volume", "volume_unit"].map((column) => {
+    if (!columnMap.has(`prices.${column}`)) {
+      return { column, present: false };
+    }
+    const schema = columnMap.get(`prices.${column}`);
+    return {
+      column,
+      present: true,
+      data_type: schema.data_type,
+      numeric_precision: schema.numeric_precision,
+      numeric_scale: schema.numeric_scale,
+    };
+  });
+
+  const sourceVolumeUnit = columnMap.has("prices.volume_unit")
+    ? "volume_unit"
+    : "NULL::text";
+  await client.query(`
+    CREATE TEMP TABLE __price_schema_source AS
+    SELECT
+      id,
+      volume,
+      sold_volume,
+      max_deal_amount,
+      price_unit,
+      price_values,
+      ${sourceVolumeUnit} AS volume_unit
+    FROM prices
+  `);
+
+  const migrationSql = readFileSync(
+    resolve("migrations/0087_prices_mass_volume_unit.sql"),
+    "utf8",
+  );
+  await client.query(migrationSql);
+
+  const afterSchemaResult = await client.query(`
+    SELECT column_name, data_type, numeric_precision, numeric_scale
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'prices'
+      AND column_name IN ('volume', 'sold_volume', 'volume_unit')
+    ORDER BY column_name
+  `);
+  const afterSchema = afterSchemaResult.rows;
+
+  const comparison = await client.query(`
+    SELECT
+      (SELECT COUNT(*)::bigint FROM __price_schema_source) AS source_rows,
+      COUNT(*)::bigint AS price_rows,
+      COUNT(*) FILTER (
+        WHERE source.id IS NULL
+          OR prices.volume IS DISTINCT FROM source.volume
+          OR prices.sold_volume IS DISTINCT FROM source.sold_volume
+          OR prices.max_deal_amount IS DISTINCT FROM source.max_deal_amount
+          OR prices.price_unit IS DISTINCT FROM source.price_unit
+          OR prices.price_values IS DISTINCT FROM source.price_values
+          OR prices.volume_unit IS DISTINCT FROM COALESCE(source.volume_unit, 'kg')
+      )::bigint AS changed_value_rows,
+      COUNT(*) FILTER (
+        WHERE prices.volume_unit IS NULL
+          OR prices.volume_unit NOT IN ('kg', 'tonne')
+      )::bigint AS invalid_volume_units,
+      COUNT(*) FILTER (WHERE prices.volume_unit IS NULL)::bigint
+        AS null_volume_units
+    FROM prices
+    LEFT JOIN __price_schema_source AS source USING (id)
+  `);
+  const result = comparison.rows[0];
+  const volumeColumns = new Map(afterSchema.map((row) => [row.column_name, row]));
+  const targetPrecision = ["volume", "sold_volume"].every((column) => {
+    const schema = volumeColumns.get(column);
+    return schema?.data_type === "numeric"
+      && Number(schema.numeric_precision) === 18
+      && Number(schema.numeric_scale) === 5;
+  });
+  const volumeUnitColumn = volumeColumns.get("volume_unit");
+  if (
+    Number(result.source_rows) !== Number(result.price_rows)
+    || Number(result.changed_value_rows) !== 0
+    || Number(result.invalid_volume_units) !== 0
+    || Number(result.null_volume_units) !== 0
+    || !targetPrecision
+    || volumeUnitColumn?.data_type !== "text"
+  ) {
+    throw new Error("Price-volume schema migration rehearsal failed.");
+  }
+
+  return {
+    sourceSchema,
+    targetSchema: afterSchema,
+    ...result,
+    targetPrecision18_5: targetPrecision,
+    note: "existing prices remain unchanged and are explicitly marked as kg",
+  };
+}
+
 await withTemporaryPostgres(async ({ run, createDatabase }) => {
   const databaseEnvironment = await createDatabase("mass_unit_rehearsal");
   const isolatedDumpPath = resolve(dumpPath);
@@ -369,6 +592,7 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
     const priceUnitColumns = [
       "limit_type",
       "price_unit",
+      "volume_unit",
       "volume",
       "sold_volume",
       "max_deal_amount",
@@ -617,10 +841,14 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
     if (hasColumns(columnMap, "prices", [
       "limit_type", "price_unit", "volume", "sold_volume", "max_deal_amount",
     ])) {
+      const volumeUnitExpression = columnMap.has("prices.volume_unit")
+        ? "volume_unit"
+        : "'kg'::text";
       const result = await client.query(`
         SELECT
           limit_type,
           price_unit,
+          ${volumeUnitExpression} AS volume_unit,
           COUNT(*)::bigint AS price_rows,
           COUNT(*) FILTER (WHERE volume IS NOT NULL)::bigint AS rows_with_volume,
           MIN(volume)::text AS min_volume,
@@ -628,8 +856,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
           COUNT(*) FILTER (WHERE sold_volume IS NOT NULL)::bigint AS rows_with_sold_volume,
           COUNT(*) FILTER (WHERE max_deal_amount IS NOT NULL)::bigint AS rows_with_amount_limit
         FROM prices
-        GROUP BY limit_type, price_unit
-        ORDER BY limit_type, price_unit
+        GROUP BY limit_type, price_unit, ${volumeUnitExpression}
+        ORDER BY limit_type, price_unit, volume_unit
       `);
       priceUnits = result.rows;
     }
@@ -776,6 +1004,14 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         client,
         priceValues.rates,
       );
+      const priceVolumeRehearsal = await rehearsePriceVolumes(
+        client,
+        columnMap,
+      );
+      const priceVolumeSchemaMigration = await rehearsePriceVolumeSchemaMigration(
+        client,
+        columnMap,
+      );
 
       const afterFinancialTotals = await financialTotals(client, columnMap);
       const changedFinancialTotals = [];
@@ -792,6 +1028,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
       report.rehearsal = {
         convertedFields: rehearsal,
         priceValues: priceValueRehearsal,
+        priceVolumes: priceVolumeRehearsal,
+        priceVolumeSchemaMigration,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
         note: "Temporary columns and updates are rolled back after the checks.",
