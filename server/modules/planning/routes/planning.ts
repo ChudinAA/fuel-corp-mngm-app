@@ -19,6 +19,7 @@ import {
   bases,
   planEntries,
 } from "@shared/schema";
+import { normalizePlanningVolumeFields } from "../unit-calculations";
 
 // Auto-sync helper: if an active sync exists for the same month+scenario, refresh it
 async function autoResyncIfNeeded(entryDate: string, scenarioId?: string | null) {
@@ -107,6 +108,7 @@ export function registerPlanningRoutes(app: Express) {
         const body = req.body;
         const data = insertPlanEntrySchema.parse({
           ...body,
+          ...normalizePlanningVolumeFields(body),
           counterpartyId: body.counterpartyId || undefined,
           basisId: body.basisId || undefined,
           scenarioId: body.scenarioId || undefined,
@@ -267,6 +269,7 @@ export function registerPlanningRoutes(app: Express) {
       try {
         const data = insertFreeVolumeAllocationSchema.parse({
           ...req.body,
+          ...normalizePlanningVolumeFields(req.body),
           createdById: req.session.userId,
         });
         const created = await storage.planning.createFreeVolumeAllocation(data);
@@ -374,6 +377,7 @@ export function registerPlanningRoutes(app: Express) {
       try {
         const data = insertSupplierAllocatedVolumeSchema.parse({
           ...req.body,
+          ...normalizePlanningVolumeFields(req.body),
           createdById: String(req.session.userId),
         });
         const result = await storage.planning.upsertSupplierAllocatedVolume(data);
@@ -825,6 +829,7 @@ export function registerPlanningRoutes(app: Express) {
       try {
         const data = insertPlanningTopLevelVolumeSchema.parse({
           ...req.body,
+          ...normalizePlanningVolumeFields(req.body),
           counterpartyId: req.body.counterpartyId || undefined,
           scenarioId: req.body.scenarioId || undefined,
           createdById: String(req.session.userId),

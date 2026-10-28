@@ -1,5 +1,5 @@
 
-import { pgTable, uuid, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, numeric, timestamp, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -9,6 +9,7 @@ export const budgetIncomeExpense = pgTable("budget_income_expense", {
   id: uuid("id").defaultRandom().primaryKey(),
   budgetMonth: timestamp("budget_month", { mode: "string" }).notNull(),
   salesVolume: text("sales_volume"), // Объем продаж
+  salesVolumeTonnes: numeric("sales_volume_tonnes", { precision: 18, scale: 5 }),
   salesRevenue: text("sales_revenue"), // Выручка от продаж
   marginality: text("marginality"), // Маржинальность
   operatingExpenses: text("operating_expenses"), // Операционные расходы

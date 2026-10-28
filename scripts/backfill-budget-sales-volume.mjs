@@ -28,9 +28,9 @@ try {
         CASE
           WHEN CAST(COALESCE(quantity_liters, '0') AS NUMERIC) > 0
             AND CAST(COALESCE(density, '0') AS NUMERIC) > 0
-          THEN CAST(quantity_liters AS NUMERIC) * CAST(density AS NUMERIC)
-          ELSE CAST(quantity_kg AS NUMERIC)
-        END AS volume_kg
+          THEN CAST(quantity_liters AS NUMERIC) * CAST(density AS NUMERIC) / 1000
+          ELSE COALESCE(quantity_tonnes, CAST(quantity_kg AS NUMERIC) / 1000)
+        END AS volume_tonnes
       FROM opt
       WHERE deleted_at IS NULL
 
@@ -41,17 +41,16 @@ try {
         CASE
           WHEN CAST(COALESCE(quantity_liters, '0') AS NUMERIC) > 0
             AND CAST(COALESCE(density, '0') AS NUMERIC) > 0
-          THEN CAST(quantity_liters AS NUMERIC) * CAST(density AS NUMERIC)
-          ELSE CAST(quantity_kg AS NUMERIC)
-        END AS volume_kg
+          THEN CAST(quantity_liters AS NUMERIC) * CAST(density AS NUMERIC) / 1000
+          ELSE COALESCE(quantity_tonnes, CAST(quantity_kg AS NUMERIC) / 1000)
+        END AS volume_tonnes
       FROM aircraft_refueling
       WHERE deleted_at IS NULL
     ),
     monthly_sales AS (
       SELECT
         month_start,
-        COALESCE(SUM(volume_kg), 0) AS total_volume_kg,
-        COALESCE(SUM(volume_kg) / 1000, 0) AS total_volume_tonnes
+        ROUND(COALESCE(SUM(volume_tonnes), 0), 5) AS total_volume_tonnes
       FROM source_sales
       GROUP BY month_start
     )
@@ -59,8 +58,8 @@ try {
       budget.id::text AS id,
       budget.budget_month::text AS budget_month,
       budget.sales_volume AS old_sales_volume,
-      COALESCE(monthly_sales.total_volume_kg, 0)::text AS new_sales_volume_kg,
-      COALESCE(monthly_sales.total_volume_tonnes, 0)::text AS new_sales_volume_tonnes
+      COALESCE(monthly_sales.total_volume_tonnes, 0)::text AS new_sales_volume_tonnes,
+      COALESCE(monthly_sales.total_volume_tonnes * 1000, 0)::text AS new_sales_volume_kg
     FROM budget_income_expense AS budget
     LEFT JOIN monthly_sales
       ON monthly_sales.month_start = date_trunc('month', budget.budget_month)
@@ -82,8 +81,8 @@ try {
           id: row.id,
           budgetMonth: row.budget_month,
           oldSalesVolume: row.old_sales_volume,
-          newSalesVolumeKg: row.new_sales_volume_kg,
           newSalesVolumeTonnes: row.new_sales_volume_tonnes,
+          newSalesVolumeKg: row.new_sales_volume_kg,
         })),
         null,
         2,
@@ -94,9 +93,10 @@ try {
     for (const row of rows) {
       await client.query(
         `UPDATE budget_income_expense
-         SET sales_volume = $1
-         WHERE id = $2 AND deleted_at IS NULL`,
-        [row.new_sales_volume_kg, row.id],
+         SET sales_volume = $1,
+             sales_volume_tonnes = $2
+         WHERE id = $3 AND deleted_at IS NULL`,
+        [row.new_sales_volume_kg, row.new_sales_volume_tonnes, row.id],
       );
     }
   }

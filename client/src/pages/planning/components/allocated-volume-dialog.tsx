@@ -23,6 +23,7 @@ interface SupplierAllocatedVolume {
   periodFrom: string;
   periodTo: string;
   volume: string;
+  volumeTonnes?: string | null;
 }
 
 interface AllocatedVolumeDialogProps {
@@ -97,7 +98,7 @@ export function AllocatedVolumeDialog({
         v.periodTo.slice(0, 10) === selectedMonthData?.to,
     );
     if (existing) {
-      setVolume(kgToTons(existing.volume));
+      setVolume(existing.volumeTonnes ?? kgToTons(existing.volume));
     } else {
       setVolume("");
     }
@@ -118,6 +119,7 @@ export function AllocatedVolumeDialog({
         periodFrom: selectedMonthData.from,
         periodTo: selectedMonthData.to,
         volume: tonsToKg(volume),
+        volumeTonnes: volume,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });
       queryClient.invalidateQueries({ queryKey: ["/api/planning/resources"] });

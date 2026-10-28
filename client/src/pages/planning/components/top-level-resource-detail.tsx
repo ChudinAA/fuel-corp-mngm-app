@@ -41,7 +41,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { fmtTons, kgToTons, tonsToKg } from "../utils/planning-utils";
+import { fmtTonnes, kgToTons, tonsToKg } from "../utils/planning-utils";
 import { FieldCommentPopover } from "./field-comment-popover";
 import type { PlanningPeriod } from "../planning-page";
 import { cn } from "@/lib/utils";
@@ -55,6 +55,7 @@ interface TopLevelVolume {
   periodTo: string;
   type: string;
   volume: string;
+  volumeTonnes?: string | null;
   counterpartyId?: string | null;
   counterpartyName?: string | null;
   notes?: string | null;
@@ -145,7 +146,7 @@ export function TopLevelResourceDetail({
     setForm({
       warehouseId: v.warehouseId,
       type: v.type as "income" | "expense",
-      volume: kgToTons(v.volume),
+      volume: v.volumeTonnes ?? kgToTons(v.volume),
       counterpartyId: v.counterpartyId || NONE_VALUE,
       notes: v.notes || "",
     });
@@ -163,6 +164,7 @@ export function TopLevelResourceDetail({
         periodTo: period.to.toISOString(),
         type: form.type,
         volume: volumeKg,
+        volumeTonnes: form.volume,
         counterpartyId:
           form.counterpartyId && form.counterpartyId !== NONE_VALUE
             ? form.counterpartyId
@@ -224,10 +226,16 @@ export function TopLevelResourceDetail({
 
   const totalIncome = volumes
     .filter((v) => v.type === "income")
-    .reduce((s, v) => s + parseFloat(v.volume || "0"), 0);
+    .reduce(
+      (s, v) => s + Number(v.volumeTonnes ?? kgToTons(v.volume)),
+      0,
+    );
   const totalExpense = volumes
     .filter((v) => v.type === "expense")
-    .reduce((s, v) => s + parseFloat(v.volume || "0"), 0);
+    .reduce(
+      (s, v) => s + Number(v.volumeTonnes ?? kgToTons(v.volume)),
+      0,
+    );
 
   return (
     <div className="space-y-3">
@@ -240,11 +248,11 @@ export function TopLevelResourceDetail({
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="gap-1 text-emerald-600 border-emerald-200">
             <ArrowDownToLine className="h-3 w-3" />
-            Приход: {fmtTons(totalIncome.toString())}
+            Приход: {fmtTonnes(totalIncome)}
           </Badge>
           <Badge variant="outline" className="gap-1 text-amber-600 border-amber-200">
             <ArrowUpFromLine className="h-3 w-3" />
-            Расход: {fmtTons(totalExpense.toString())}
+            Расход: {fmtTonnes(totalExpense)}
           </Badge>
           {canManage && (
             <Button size="sm" onClick={() => openAdd()} data-testid="button-add-top-level-volume">
@@ -266,11 +274,11 @@ export function TopLevelResourceDetail({
         <div className="space-y-2">
           {warehouseGroups.map(([whId, whData]) => {
             const whIncome = whData.income.reduce(
-              (s, v) => s + parseFloat(v.volume || "0"),
+              (s, v) => s + Number(v.volumeTonnes ?? kgToTons(v.volume)),
               0,
             );
             const whExpense = whData.expense.reduce(
-              (s, v) => s + parseFloat(v.volume || "0"),
+              (s, v) => s + Number(v.volumeTonnes ?? kgToTons(v.volume)),
               0,
             );
             return (
@@ -281,12 +289,12 @@ export function TopLevelResourceDetail({
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {whIncome > 0 && (
                       <span className="text-emerald-600 font-medium">
-                        ↓ {fmtTons(whIncome.toString())}
+                        ↓ {fmtTonnes(whIncome)}
                       </span>
                     )}
                     {whExpense > 0 && (
                       <span className="text-amber-600 font-medium">
-                        ↑ {fmtTons(whExpense.toString())}
+                        ↑ {fmtTonnes(whExpense)}
                       </span>
                     )}
                   </div>
@@ -302,7 +310,7 @@ export function TopLevelResourceDetail({
                         Поступления
                         {whIncome > 0 && (
                           <span className="ml-1 text-emerald-600 font-semibold tabular-nums">
-                            {fmtTons(whIncome.toString())}
+                            {fmtTonnes(whIncome)}
                           </span>
                         )}
                       </div>
@@ -340,7 +348,7 @@ export function TopLevelResourceDetail({
                         Расходы
                         {whExpense > 0 && (
                           <span className="ml-1 text-amber-600 font-semibold tabular-nums">
-                            {fmtTons(whExpense.toString())}
+                            {fmtTonnes(whExpense)}
                           </span>
                         )}
                       </div>
@@ -544,7 +552,7 @@ function VolumeEntry({
             isIncome ? "text-emerald-600" : "text-amber-600",
           )}
         >
-          {isIncome ? "+" : "−"}{fmtTons(entry.volume)}
+          {isIncome ? "+" : "−"}{fmtTonnes(entry.volumeTonnes ?? kgToTons(entry.volume))}
         </span>
         {entry.counterpartyName && (
           <span className="ml-1.5 text-xs text-muted-foreground truncate">

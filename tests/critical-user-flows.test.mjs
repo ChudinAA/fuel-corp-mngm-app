@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
+import { spawnSync } from "node:child_process";
 import pg from "pg";
 
 const { Pool } = pg;
@@ -544,6 +545,56 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
              '2026-10-01T00:00:00.000Z')`,
     [warehouse.id],
   );
+
+  const planningWarehouse = (
+    await pool.query(
+      `INSERT INTO warehouses
+         (name, current_balance, current_balance_tonnes, average_cost,
+          pvkj_balance, pvkj_balance_tonnes, pvkj_average_cost)
+       VALUES ('critical-flow-planning-warehouse', 0, 0, 0, 0, 0, 0)
+       RETURNING id`,
+    )
+  ).rows[0];
+  const planningEntry = await api("/api/planning/entries", {
+    method: "POST",
+    expectedStatus: 201,
+    body: {
+      warehouseId: planningWarehouse.id,
+      date: "2030-01-15T12:00:00.000Z",
+      type: "income",
+      volume: "123.45",
+    },
+  });
+  assert.equal(Number(planningEntry.volume), 123.45);
+  assert.equal(Number(planningEntry.volumeTonnes), 0.12345);
+  const kgOnlyPlanningEdit = await api(
+    `/api/planning/entries/${planningEntry.id}`,
+    {
+      method: "PATCH",
+      body: { volume: "234.56" },
+    },
+  );
+  assert.equal(Number(kgOnlyPlanningEdit.volume), 234.56);
+  assert.equal(Number(kgOnlyPlanningEdit.volumeTonnes), 0.23456);
+  const tonnePlanningEdit = await api(
+    `/api/planning/entries/${planningEntry.id}`,
+    {
+      method: "PATCH",
+      body: { volumeTonnes: "0.34567" },
+    },
+  );
+  assert.equal(Number(tonnePlanningEdit.volume), 345.67);
+  assert.equal(Number(tonnePlanningEdit.volumeTonnes), 0.34567);
+  const storedPlanningMass = await pool.query(
+    `SELECT volume, volume_tonnes, balance_after, balance_after_tonnes
+     FROM plan_entries WHERE id = $1`,
+    [planningEntry.id],
+  );
+  assert.equal(Number(storedPlanningMass.rows[0].volume), 345.67);
+  assert.equal(Number(storedPlanningMass.rows[0].volume_tonnes), 0.34567);
+  assert.equal(Number(storedPlanningMass.rows[0].balance_after), 345.67);
+  assert.equal(Number(storedPlanningMass.rows[0].balance_after_tonnes), 0.34567);
+
   await pool.query(
     `INSERT INTO equipment_transactions
        (equipment_id, transaction_type, product_type, quantity, quantity_tonnes,
@@ -1017,38 +1068,52 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(Number(budgetEntry.salesVolumeTonnes), 0.00001);
   assert.equal(budgetEntry.salesVolume, undefined);
   const storedBudgetBeforeAutofill = await pool.query(
-    "SELECT sales_volume, sales_revenue FROM budget_income_expense WHERE id = $1",
+    "SELECT sales_volume, sales_volume_tonnes, sales_revenue FROM budget_income_expense WHERE id = $1",
     [budgetEntry.id],
   );
   assert.equal(Number(storedBudgetBeforeAutofill.rows[0].sales_volume), 0.01);
+  assert.equal(Number(storedBudgetBeforeAutofill.rows[0].sales_volume_tonnes), 0.00001);
   assert.equal(Number(storedBudgetBeforeAutofill.rows[0].sales_revenue), 777);
   const listedBudgetEntries = await api("/api/budget");
   const listedBudgetEntry = listedBudgetEntries.find((entry) => entry.id === budgetEntry.id);
   assert.equal(Number(listedBudgetEntry.salesVolumeTonnes), 0.00001);
   assert.equal(listedBudgetEntry.salesVolume, undefined);
+  const updatedFromLegacyKilograms = await api(`/api/budget/${budgetEntry.id}`, {
+    method: "PATCH",
+    body: { salesVolume: "0.03" },
+  });
+  assert.equal(Number(updatedFromLegacyKilograms.salesVolumeTonnes), 0.00003);
   const updatedBudgetEntry = await api(`/api/budget/${budgetEntry.id}`, {
     method: "PATCH",
     body: { salesVolumeTonnes: 0.00002 },
   });
   assert.equal(Number(updatedBudgetEntry.salesVolumeTonnes), 0.00002);
   assert.equal(updatedBudgetEntry.salesVolume, undefined);
+  const storedBudgetAfterPatch = await pool.query(
+    "SELECT sales_volume, sales_volume_tonnes FROM budget_income_expense WHERE id = $1",
+    [budgetEntry.id],
+  );
+  assert.equal(Number(storedBudgetAfterPatch.rows[0].sales_volume), 0.02);
+  assert.equal(Number(storedBudgetAfterPatch.rows[0].sales_volume_tonnes), 0.00002);
 
   const budgetSalesRows = await pool.query(
-    `SELECT quantity_kg, quantity_liters, density FROM opt
+    `SELECT quantity_kg, quantity_tonnes, quantity_liters, density FROM opt
        WHERE deal_date >= '2026-10-01' AND deal_date < '2026-11-01'
          AND deleted_at IS NULL
      UNION ALL
-     SELECT quantity_kg, quantity_liters, density FROM aircraft_refueling
+     SELECT quantity_kg, quantity_tonnes, quantity_liters, density FROM aircraft_refueling
        WHERE refueling_date >= '2026-10-01' AND refueling_date < '2026-11-01'
          AND deleted_at IS NULL`,
   );
   const expectedBudgetVolumeTonnes = budgetSalesRows.rows.reduce((sum, deal) => {
     const litres = Number(deal.quantity_liters ?? 0);
     const density = Number(deal.density ?? 0);
-    const massKilograms = litres > 0 && density > 0
-      ? litres * density
-      : Number(deal.quantity_kg ?? 0);
-    return sum + massKilograms / 1000;
+    const massTonnes = litres > 0 && density > 0
+      ? (litres * density) / 1000
+      : deal.quantity_tonnes !== null
+        ? Number(deal.quantity_tonnes)
+        : Number(deal.quantity_kg ?? 0) / 1000;
+    return sum + massTonnes;
   }, 0);
 
   const budgetAutofill = await api(
@@ -1060,13 +1125,37 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assert.equal(budgetAutofill.salesVolume, undefined);
   const storedBudgetAfterAutofill = await pool.query(
-    "SELECT sales_volume, sales_revenue FROM budget_income_expense WHERE id = $1",
+    "SELECT sales_volume, sales_volume_tonnes, sales_revenue FROM budget_income_expense WHERE id = $1",
     [budgetEntry.id],
   );
   assert.ok(
     Math.abs(Number(storedBudgetAfterAutofill.rows[0].sales_volume) / 1000 - expectedBudgetVolumeTonnes) < 1e-9,
   );
+  assert.ok(
+    Math.abs(Number(storedBudgetAfterAutofill.rows[0].sales_volume_tonnes) - expectedBudgetVolumeTonnes) < 1e-9,
+  );
   assert.equal(Number(storedBudgetAfterAutofill.rows[0].sales_revenue), 777);
+
+  const budgetBackfillRun = spawnSync(
+    process.execPath,
+    ["scripts/backfill-budget-sales-volume.mjs", "--target=development", "--apply"],
+    { cwd: process.cwd(), env: process.env, encoding: "utf8" },
+  );
+  assert.equal(budgetBackfillRun.status, 0, budgetBackfillRun.stderr);
+  const budgetBackfillReport = JSON.parse(budgetBackfillRun.stdout);
+  assert.equal(budgetBackfillReport.activeBudgetRows, 1);
+  assert.equal(budgetBackfillReport.rowsRecalculated, 1);
+  const storedBudgetAfterBackfill = await pool.query(
+    "SELECT sales_volume, sales_volume_tonnes, sales_revenue FROM budget_income_expense WHERE id = $1",
+    [budgetEntry.id],
+  );
+  assert.ok(
+    Math.abs(Number(storedBudgetAfterBackfill.rows[0].sales_volume_tonnes) - expectedBudgetVolumeTonnes) < 1e-9,
+  );
+  assert.ok(
+    Math.abs(Number(storedBudgetAfterBackfill.rows[0].sales_volume) / 1000 - expectedBudgetVolumeTonnes) < 1e-9,
+  );
+  assert.equal(Number(storedBudgetAfterBackfill.rows[0].sales_revenue), 777);
 
   assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 967);
 

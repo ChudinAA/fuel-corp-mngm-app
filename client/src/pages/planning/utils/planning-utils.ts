@@ -1,6 +1,6 @@
 import { formatTonnes, kilogramsToTonnes, tonnesToKilograms } from "@shared/units";
 
-// Convert kg to tonnes for display
+// Compatibility adapter for older APIs that still return kg mirrors.
 export function kgToTons(kg: string | number | null | undefined): string {
   if (kg === null || kg === undefined || kg === "") return "0.00000";
   const val = parseFloat(String(kg));
@@ -8,7 +8,7 @@ export function kgToTons(kg: string | number | null | undefined): string {
   return kilogramsToTonnes(val).toFixed(5);
 }
 
-// Convert tonnes to kg for storage (DB stores kg)
+// Preserve the kg compatibility mirror while tonne fields are authoritative.
 export function tonsToKg(tons: string | number | null | undefined): string {
   if (tons === null || tons === undefined || tons === "") return "0";
   const val = parseFloat(String(tons));
@@ -24,9 +24,24 @@ export function fmtTons(kg: string | number | null | undefined): string {
   return `${formatTonnes(kilogramsToTonnes(val))} т`;
 }
 
+export function fmtTonnes(
+  tonnes: string | number | null | undefined,
+): string {
+  if (tonnes === null || tonnes === undefined || tonnes === "") return "—";
+  const val = Number(tonnes);
+  if (!Number.isFinite(val)) return "—";
+  return `${formatTonnes(val)} т`;
+}
+
 // Sum allocated volumes for months overlapping with a period
 export function sumAllocatedForPeriod(
-  allocations: { periodFrom: string; periodTo: string; volume: string; supplierId?: string }[],
+  allocations: {
+    periodFrom: string;
+    periodTo: string;
+    volume?: string;
+    volumeTonnes?: string;
+    supplierId?: string;
+  }[],
   periodFrom: Date,
   periodTo: Date,
   supplierId?: string,
@@ -38,7 +53,14 @@ export function sumAllocatedForPeriod(
       const at = new Date(a.periodTo);
       return af <= periodTo && at >= periodFrom;
     })
-    .reduce((sum, a) => sum + parseFloat(a.volume), 0);
+    .reduce(
+      (sum, a) =>
+        sum +
+        (a.volumeTonnes !== undefined
+          ? Number(a.volumeTonnes)
+          : kilogramsToTonnes(Number(a.volume || "0"))),
+      0,
+    );
 }
 
 // Get month start and end from a date string

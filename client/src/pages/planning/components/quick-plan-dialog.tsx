@@ -244,6 +244,7 @@ export function QuickPlanDialog({
           counterpartyId: e.counterpartyId || undefined,
           basisId: e.basisId && e.basisId !== NO_BASIS ? e.basisId : undefined,
           volume: tonsToKg(e.volume),
+          volumeTonnes: e.volume,
           notes: e.notes || undefined,
           isManualBalance: false,
           balanceAfter: null,

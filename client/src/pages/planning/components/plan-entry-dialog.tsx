@@ -50,8 +50,10 @@ export interface PlanEntryFormEntry {
   counterpartyId: string | null;
   basisId?: string | null;
   volume: string;
+  volumeTonnes?: string | null;
   isManualBalance: boolean | null;
   balanceAfter: string | null;
+  balanceAfterTonnes?: string | null;
   notes: string | null;
 }
 
@@ -135,7 +137,9 @@ export function PlanEntryDialog({
         type: entry?.type || defaultType || "income",
         counterpartyId: entry?.counterpartyId || "",
         basisId: entry?.basisId || "",
-        volume: entry ? kgToTons(entry.volume) : "",
+        volume: entry
+          ? entry.volumeTonnes ?? kgToTons(entry.volume)
+          : "",
         notes: entry?.notes || "",
       });
     }
@@ -159,6 +163,7 @@ export function PlanEntryDialog({
         counterpartyId: values.counterpartyId || null,
         basisId: values.basisId || null,
         volume: tonsToKg(values.volume),
+        volumeTonnes: values.volume,
         isManualBalance: false,
         balanceAfter: null,
       });

@@ -57,6 +57,9 @@ import {
   calculatePlanningBalanceChainInTonnes,
   calculateWarehouseSummaryTonnes,
   legacyKilogramsToTonnes,
+  normalizePlanningBalanceFields,
+  normalizePlanningVolumeFields,
+  planningVolumeTonnes,
   tonnesToLegacyKilograms,
 } from "../unit-calculations";
 
@@ -118,10 +121,21 @@ export class PlanningStorage implements IPlanningStorage {
         entry?.balanceAfter === null || entry?.balanceAfter === undefined
           ? Number.NaN
           : Number(entry.balanceAfter);
-      if (entry && existingBalance !== Number(result.balanceAfterKg)) {
+      const existingBalanceTonnes =
+        entry?.balanceAfterTonnes === null || entry?.balanceAfterTonnes === undefined
+          ? Number.NaN
+          : Number(entry.balanceAfterTonnes);
+      if (
+        entry &&
+        (existingBalance !== Number(result.balanceAfterKg) ||
+          existingBalanceTonnes !== Number(result.balanceAfterTonnes))
+      ) {
         await db
           .update(planEntries)
-          .set({ balanceAfter: result.balanceAfterKg })
+          .set({
+            balanceAfter: result.balanceAfterKg,
+            balanceAfterTonnes: result.balanceAfterTonnes,
+          })
           .where(eq(planEntries.id, result.id));
       }
     }
@@ -196,7 +210,14 @@ export class PlanningStorage implements IPlanningStorage {
   }
 
   async createPlanEntry(data: InsertPlanEntry): Promise<PlanEntry> {
-    const [created] = await db.insert(planEntries).values(data).returning();
+    const [created] = await db
+      .insert(planEntries)
+      .values({
+        ...data,
+        ...normalizePlanningVolumeFields(data),
+        ...normalizePlanningBalanceFields(data),
+      })
+      .returning();
     await this.recalculateWarehouseChain(created.warehouseId);
     const refreshed = await this.getPlanEntry(created.id);
     return refreshed!;
@@ -212,7 +233,13 @@ export class PlanningStorage implements IPlanningStorage {
 
     const [updated] = await db
       .update(planEntries)
-      .set({ ...data, updatedAt: sql`NOW()`, updatedById: userId })
+      .set({
+        ...data,
+        ...normalizePlanningVolumeFields(data, existing),
+        ...normalizePlanningBalanceFields(data, existing),
+        updatedAt: sql`NOW()`,
+        updatedById: userId,
+      })
       .where(eq(planEntries.id, id))
       .returning();
 
@@ -290,7 +317,7 @@ export class PlanningStorage implements IPlanningStorage {
   ): Promise<FreeVolumeAllocation> {
     const [created] = await db
       .insert(freeVolumeAllocations)
-      .values(data)
+      .values({ ...data, ...normalizePlanningVolumeFields(data) })
       .returning();
     return created;
   }
@@ -302,7 +329,12 @@ export class PlanningStorage implements IPlanningStorage {
   ): Promise<FreeVolumeAllocation | undefined> {
     const [updated] = await db
       .update(freeVolumeAllocations)
-      .set({ ...data, updatedAt: sql`NOW()`, updatedById: userId })
+      .set({
+        ...data,
+        ...normalizePlanningVolumeFields(data),
+        updatedAt: sql`NOW()`,
+        updatedById: userId,
+      })
       .where(eq(freeVolumeAllocations.id, id))
       .returning();
     return updated;
@@ -363,7 +395,8 @@ export class PlanningStorage implements IPlanningStorage {
       const [updated] = await db
         .update(supplierAllocatedVolumes)
         .set({
-          volume: data.volume,
+          ...data,
+          ...normalizePlanningVolumeFields(data, existing),
           updatedAt: sql`NOW()`,
           updatedById: data.createdById,
         })
@@ -374,7 +407,7 @@ export class PlanningStorage implements IPlanningStorage {
 
     const [created] = await db
       .insert(supplierAllocatedVolumes)
-      .values(data)
+      .values({ ...data, ...normalizePlanningVolumeFields(data) })
       .returning();
     return created;
   }
@@ -646,8 +679,11 @@ export class PlanningStorage implements IPlanningStorage {
           row: {
             date: dateKey,
             incomeActual: "0.00",
+            incomeActualTonnes: "0.00000",
             expenseActual: "0.00",
+            expenseActualTonnes: "0.00000",
             factBalanceAfter: t.balanceAfter || null,
+            factBalanceAfterTonnes: null,
             details: [],
           },
           incomeTonnes: 0,
@@ -666,6 +702,10 @@ export class PlanningStorage implements IPlanningStorage {
             ).toFixed(5));
       if (balanceAfterTonnes !== null) {
         entry.factBalanceAfter = balanceAfterTonnes;
+        entry.factBalanceAfterTonnes = balanceAfterTonnes;
+        entry.factBalanceAfter = tonnesToLegacyKilograms(
+          Number(balanceAfterTonnes),
+        );
       }
 
       const rawQty = Number.parseFloat(
@@ -730,9 +770,11 @@ export class PlanningStorage implements IPlanningStorage {
         sourceId: t.sourceId || "",
         label,
         quantity: tonnesToLegacyKilograms(quantityTonnes),
+        quantityTonnes: quantityTonnes.toFixed(5),
         date: dateKey,
         isExpense,
         balanceAfter: t.balanceAfter || null,
+        balanceAfterTonnes,
         counterpartyName,
       });
     }
@@ -741,7 +783,9 @@ export class PlanningStorage implements IPlanningStorage {
       ({ row, incomeTonnes, expenseTonnes }) => ({
         ...row,
         incomeActual: tonnesToLegacyKilograms(incomeTonnes),
+        incomeActualTonnes: incomeTonnes.toFixed(5),
         expenseActual: tonnesToLegacyKilograms(expenseTonnes),
+        expenseActualTonnes: expenseTonnes.toFixed(5),
       }),
     );
   }
@@ -796,13 +840,13 @@ export class PlanningStorage implements IPlanningStorage {
     let unassignedDemand = 0;
     for (const e of incomeEntries) {
       if (!e.counterpartyId) {
-        unassignedDemand += legacyKilogramsToTonnes(e.volume, "plan volume");
+        unassignedDemand += planningVolumeTonnes(e, "plan volume");
         continue;
       }
       demandBySupplier.set(
         e.counterpartyId,
         (demandBySupplier.get(e.counterpartyId) || 0) +
-          legacyKilogramsToTonnes(e.volume, "plan volume"),
+          planningVolumeTonnes(e, "plan volume"),
       );
     }
 
@@ -811,7 +855,7 @@ export class PlanningStorage implements IPlanningStorage {
         demandBySupplier.set(
           a.fromCounterpartyId,
           (demandBySupplier.get(a.fromCounterpartyId) || 0) +
-            legacyKilogramsToTonnes(a.volume, "allocation volume"),
+            planningVolumeTonnes(a, "allocation volume"),
         );
       }
     }
@@ -827,7 +871,7 @@ export class PlanningStorage implements IPlanningStorage {
         const cur = allocatedBySupplier.get(av.supplierId) || 0;
         allocatedBySupplier.set(
           av.supplierId,
-          cur + legacyKilogramsToTonnes(av.volume, "allocated volume"),
+          cur + planningVolumeTonnes(av, "allocated volume"),
         );
       }
     }
@@ -853,13 +897,13 @@ export class PlanningStorage implements IPlanningStorage {
         const cur = topLevelIncomeBySupplier.get(tlv.supplierId) || 0;
         topLevelIncomeBySupplier.set(
           tlv.supplierId,
-          cur + legacyKilogramsToTonnes(tlv.volume, "top-level volume"),
+          cur + planningVolumeTonnes(tlv, "top-level volume"),
         );
       } else {
         const cur = topLevelExpenseBySupplier.get(tlv.supplierId) || 0;
         topLevelExpenseBySupplier.set(
           tlv.supplierId,
-          cur + legacyKilogramsToTonnes(tlv.volume, "top-level volume"),
+          cur + planningVolumeTonnes(tlv, "top-level volume"),
         );
       }
     }
@@ -886,11 +930,19 @@ export class PlanningStorage implements IPlanningStorage {
         supplierId: res.supplierId,
         supplierName: res.supplierName,
         allocatedVolume,
+        allocatedVolumeTonnes: allocatedVolumeTonnes.toFixed(5),
         demand,
+        demandTonnes: demandTonnes.toFixed(5),
         balance,
+        balanceTonnes: (allocatedVolumeTonnes - demandTonnes).toFixed(5),
         topLevelVolume,
+        topLevelVolumeTonnes: (
+          topLevelIncomeTonnes + topLevelExpenseTonnes
+        ).toFixed(5),
         topLevelIncome,
+        topLevelIncomeTonnes: topLevelIncomeTonnes.toFixed(5),
         topLevelExpense,
+        topLevelExpenseTonnes: topLevelExpenseTonnes.toFixed(5),
       };
     });
 
@@ -899,11 +951,17 @@ export class PlanningStorage implements IPlanningStorage {
         supplierId: null as any,
         supplierName: "Не указан поставщик",
         allocatedVolume: "0.00",
+        allocatedVolumeTonnes: "0.00000",
         demand: tonnesToLegacyKilograms(unassignedDemand),
+        demandTonnes: unassignedDemand.toFixed(5),
         balance: tonnesToLegacyKilograms(-unassignedDemand),
+        balanceTonnes: (-unassignedDemand).toFixed(5),
         topLevelVolume: "0.00",
+        topLevelVolumeTonnes: "0.00000",
         topLevelIncome: "0.00",
+        topLevelIncomeTonnes: "0.00000",
         topLevelExpense: "0.00",
+        topLevelExpenseTonnes: "0.00000",
         isUnassigned: true,
       } as any);
     }
@@ -942,20 +1000,27 @@ export class PlanningStorage implements IPlanningStorage {
         .filter((e) => e.type === "income")
         .reduce(
           (sum, e) =>
-            sum + legacyKilogramsToTonnes(e.volume, "plan volume"),
+            sum + planningVolumeTonnes(e, "plan volume"),
           0,
         );
       const plannedExpense = whEntries
         .filter((e) => e.type === "expense")
         .reduce(
           (sum, e) =>
-            sum + legacyKilogramsToTonnes(e.volume, "plan volume"),
+            sum + planningVolumeTonnes(e, "plan volume"),
           0,
         );
       const lastEntry = whEntries[whEntries.length - 1];
-      const balancePlan = lastEntry
-        ? lastEntry.balanceAfter || "0"
-        : "0";
+      const balancePlanTonnes = lastEntry
+        ? lastEntry.balanceAfterTonnes ??
+          (lastEntry.balanceAfter === null
+            ? 0
+            : legacyKilogramsToTonnes(
+                lastEntry.balanceAfter,
+                "planned warehouse balance",
+              ))
+        : 0;
+      const balancePlan = tonnesToLegacyKilograms(Number(balancePlanTonnes));
       const balanceFactTonnes =
         wh.currentBalanceTonnes ??
         legacyKilogramsToTonnes(
@@ -969,7 +1034,7 @@ export class PlanningStorage implements IPlanningStorage {
       const tonneValues = calculateWarehouseSummaryTonnes(
         plannedIncome,
         plannedExpense,
-        balancePlan,
+        balancePlanTonnes,
         balanceFactTonnes,
       );
 
@@ -977,13 +1042,13 @@ export class PlanningStorage implements IPlanningStorage {
         warehouseId: wh.id,
         warehouseName: wh.name,
         plannedIncome: tonnesToLegacyKilograms(plannedIncome),
-        plannedIncomeTonnes: String(tonneValues.plannedIncomeTonnes),
+        plannedIncomeTonnes: tonneValues.plannedIncomeTonnes.toFixed(5),
         plannedExpense: tonnesToLegacyKilograms(plannedExpense),
-        plannedExpenseTonnes: String(tonneValues.plannedExpenseTonnes),
+        plannedExpenseTonnes: tonneValues.plannedExpenseTonnes.toFixed(5),
         balancePlan,
-        balancePlanTonnes: String(tonneValues.balancePlanTonnes),
+        balancePlanTonnes: tonneValues.balancePlanTonnes.toFixed(5),
         balanceFact,
-        balanceFactTonnes: String(tonneValues.balanceFactTonnes),
+        balanceFactTonnes: tonneValues.balanceFactTonnes.toFixed(5),
       });
     }
 
@@ -1017,7 +1082,7 @@ export class PlanningStorage implements IPlanningStorage {
       volumeByCustomer.set(
         e.counterpartyId,
         (volumeByCustomer.get(e.counterpartyId) || 0) +
-          legacyKilogramsToTonnes(e.volume, "plan volume"),
+          planningVolumeTonnes(e, "plan volume"),
       );
       if (!warehouseVolumeByCustomer.has(e.counterpartyId)) {
         warehouseVolumeByCustomer.set(e.counterpartyId, new Map());
@@ -1026,7 +1091,7 @@ export class PlanningStorage implements IPlanningStorage {
       whMap.set(
         e.warehouseId,
         (whMap.get(e.warehouseId) || 0) +
-          legacyKilogramsToTonnes(e.volume, "plan volume"),
+          planningVolumeTonnes(e, "plan volume"),
       );
     }
 
@@ -1059,11 +1124,13 @@ export class PlanningStorage implements IPlanningStorage {
         warehouseId: wid,
         warehouseName: warehouseNameMap.get(wid) || "—",
         volume: tonnesToLegacyKilograms(vol),
+        volumeTonnes: vol.toFixed(5),
       }));
       return {
         customerId,
         customerName: nameMap.get(customerId) || "—",
         volume: tonnesToLegacyKilograms(volume),
+        volumeTonnes: volume.toFixed(5),
         warehouses: whVolumes,
       };
     });
@@ -1223,7 +1290,10 @@ export class PlanningStorage implements IPlanningStorage {
   }
 
   async createTopLevelVolume(data: InsertPlanningTopLevelVolume): Promise<PlanningTopLevelVolume> {
-    const [created] = await db.insert(planningTopLevelVolumes).values(data).returning();
+    const [created] = await db
+      .insert(planningTopLevelVolumes)
+      .values({ ...data, ...normalizePlanningVolumeFields(data) })
+      .returning();
     return created;
   }
 
@@ -1234,7 +1304,12 @@ export class PlanningStorage implements IPlanningStorage {
   ): Promise<PlanningTopLevelVolume | undefined> {
     const [updated] = await db
       .update(planningTopLevelVolumes)
-      .set({ ...data, updatedAt: sql`NOW()`, updatedById: userId })
+      .set({
+        ...data,
+        ...normalizePlanningVolumeFields(data),
+        updatedAt: sql`NOW()`,
+        updatedById: userId,
+      })
       .where(eq(planningTopLevelVolumes.id, id))
       .returning();
     return updated;
@@ -1272,14 +1347,14 @@ export class PlanningStorage implements IPlanningStorage {
       .filter((r) => r.type === "income")
       .reduce(
         (sum, row) =>
-          sum + legacyKilogramsToTonnes(row.volume, "top-level volume"),
+          sum + planningVolumeTonnes(row, "top-level volume"),
         0,
       );
     const topLevelExpense = rows
       .filter((r) => r.type === "expense")
       .reduce(
         (sum, row) =>
-          sum + legacyKilogramsToTonnes(row.volume, "top-level volume"),
+          sum + planningVolumeTonnes(row, "top-level volume"),
         0,
       );
 
@@ -1287,7 +1362,9 @@ export class PlanningStorage implements IPlanningStorage {
       warehouseId,
       warehouseName: wh?.name || "—",
       topLevelIncome: tonnesToLegacyKilograms(topLevelIncome),
+      topLevelIncomeTonnes: topLevelIncome.toFixed(5),
       topLevelExpense: tonnesToLegacyKilograms(topLevelExpense),
+      topLevelExpenseTonnes: topLevelExpense.toFixed(5),
     };
   }
 

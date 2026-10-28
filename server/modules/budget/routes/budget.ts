@@ -19,27 +19,68 @@ function storedKilogramsToTonnes(value: string | null | undefined): number | nul
   return kilogramsToTonnes(kilograms);
 }
 
-function budgetEntryToApi<T extends { salesVolume?: string | null }>(entry: T) {
-  const { salesVolume, ...fields } = entry;
+function storedTonnesToApi(
+  tonnes: string | null | undefined,
+  legacyKilograms: string | null | undefined,
+): number | null {
+  if (tonnes == null || tonnes.trim() === "") {
+    return storedKilogramsToTonnes(legacyKilograms);
+  }
+  const parsedTonnes = Number(tonnes);
+  if (!Number.isFinite(parsedTonnes)) {
+    throw new TypeError("Budget sales volume must be a finite tonne value");
+  }
+  return parsedTonnes;
+}
+
+function budgetEntryToApi<T extends {
+  salesVolume?: string | null;
+  salesVolumeTonnes?: string | null;
+}>(entry: T) {
+  const { salesVolume, salesVolumeTonnes, ...fields } = entry;
   return {
     ...fields,
-    salesVolumeTonnes: storedKilogramsToTonnes(salesVolume),
+    salesVolumeTonnes: storedTonnesToApi(salesVolumeTonnes, salesVolume),
   };
 }
 
-function budgetInputToLegacy(data: Record<string, unknown>) {
-  const { salesVolumeTonnes, ...fields } = data;
-  if (salesVolumeTonnes === undefined) return fields;
-  if (salesVolumeTonnes === null || salesVolumeTonnes === "") {
-    return { ...fields, salesVolume: "" };
+function budgetInputToStored(data: Record<string, unknown>) {
+  const { salesVolumeTonnes, salesVolume, ...fields } = data;
+  if (salesVolumeTonnes !== undefined) {
+    if (salesVolumeTonnes === null || salesVolumeTonnes === "") {
+      return { ...fields, salesVolume: null, salesVolumeTonnes: null };
+    }
+
+    const rawTonnes = Number(salesVolumeTonnes);
+    if (!Number.isFinite(rawTonnes) || rawTonnes < 0) {
+      throw new InvalidBudgetVolumeError("Объем продаж должен быть неотрицательным значением в тоннах");
+    }
+
+    const tonnes = Number(rawTonnes.toFixed(5));
+    const kilograms = Number(tonnesToKilograms(tonnes).toFixed(2));
+    return {
+      ...fields,
+      salesVolume: String(kilograms),
+      salesVolumeTonnes: tonnes.toFixed(5),
+    };
   }
 
-  const tonnes = Number(salesVolumeTonnes);
-  if (!Number.isFinite(tonnes) || tonnes < 0) {
-    throw new InvalidBudgetVolumeError("Объем продаж должен быть неотрицательным значением в тоннах");
+  if (salesVolume === undefined) return fields;
+  if (salesVolume === null || String(salesVolume).trim() === "") {
+    return { ...fields, salesVolume: null, salesVolumeTonnes: null };
   }
 
-  return { ...fields, salesVolume: String(tonnesToKilograms(tonnes)) };
+  const rawKilograms = Number(salesVolume);
+  if (!Number.isFinite(rawKilograms) || rawKilograms < 0) {
+    throw new InvalidBudgetVolumeError("Объем продаж должен быть неотрицательным значением в кг");
+  }
+  const tonnes = Number((rawKilograms / 1000).toFixed(5));
+  const kilograms = Number(tonnesToKilograms(tonnes).toFixed(2));
+  return {
+    ...fields,
+    salesVolume: String(kilograms),
+    salesVolumeTonnes: tonnes.toFixed(5),
+  };
 }
 
 export function registerBudgetRoutes(app: Express) {
@@ -91,7 +132,7 @@ export function registerBudgetRoutes(app: Express) {
     async (req, res) => {
       try {
         const data = insertBudgetIncomeExpenseSchema.parse({
-          ...budgetInputToLegacy(req.body),
+          ...budgetInputToStored(req.body),
           createdById: req.session.userId,
         });
 
@@ -140,7 +181,7 @@ export function registerBudgetRoutes(app: Express) {
       try {
         const id = req.params.id;
         const entry = await storage.budget.updateBudgetEntry(id, {
-          ...budgetInputToLegacy(req.body),
+          ...budgetInputToStored(req.body),
           updatedById: req.session.userId,
         });
         if (!entry) {

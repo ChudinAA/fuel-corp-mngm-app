@@ -56,7 +56,9 @@ export const planEntries = pgTable(
     type: text("type").notNull(), // 'income' | 'expense'
     counterpartyId: uuid("counterparty_id"),
     volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
+    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }).notNull(),
     balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
+    balanceAfterTonnes: decimal("balance_after_tonnes", { precision: 18, scale: 5 }),
     isManualBalance: boolean("is_manual_balance").default(false),
     basisId: uuid("basis_id").references(() => bases.id),
     notes: text("notes"),
@@ -118,6 +120,7 @@ export const freeVolumeAllocations = pgTable(
     fromCounterpartyId: uuid("from_counterparty_id"),
     toCounterpartyId: uuid("to_counterparty_id"),
     volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
+    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }).notNull(),
     notes: text("notes"),
     scenarioId: uuid("scenario_id").references(() => planningScenarios.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -174,6 +177,7 @@ export const supplierAllocatedVolumes = pgTable(
     periodFrom: timestamp("period_from", { mode: "string" }).notNull(),
     periodTo: timestamp("period_to", { mode: "string" }).notNull(),
     volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
+    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }).notNull(),
     scenarioId: uuid("scenario_id").references(() => planningScenarios.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -331,6 +335,7 @@ export const planningTopLevelVolumes = pgTable(
     periodTo: timestamp("period_to", { mode: "string" }).notNull(),
     type: text("type").notNull(), // 'income' | 'expense'
     volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
+    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }).notNull(),
     counterpartyId: uuid("counterparty_id"),
     notes: text("notes"),
     scenarioId: uuid("scenario_id").references(() => planningScenarios.id),

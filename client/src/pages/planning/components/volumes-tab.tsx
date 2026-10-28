@@ -34,18 +34,24 @@ import { AllocatedVolumeDialog } from "./allocated-volume-dialog";
 import { FieldCommentPopover } from "./field-comment-popover";
 import { TopLevelResourceDetail } from "./top-level-resource-detail";
 import { WarehouseSupplyTagsBadges, WarehouseSupplyTagsDialog } from "./warehouse-supply-tags-dialog";
-import { fmtTons } from "../utils/planning-utils";
+import { fmtTons, fmtTonnes } from "../utils/planning-utils";
 import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 interface ResourceSummaryRow {
   supplierId: string | null;
   supplierName: string;
   allocatedVolume: string;
+  allocatedVolumeTonnes?: string;
   demand: string;
+  demandTonnes?: string;
   balance: string;
+  balanceTonnes?: string;
   topLevelVolume: string;
+  topLevelVolumeTonnes?: string;
   topLevelIncome: string;
+  topLevelIncomeTonnes?: string;
   topLevelExpense: string;
+  topLevelExpenseTonnes?: string;
   isUnassigned?: boolean;
 }
 
@@ -66,12 +72,14 @@ interface CustomerWarehouseVolume {
   warehouseId: string;
   warehouseName: string;
   volume: string;
+  volumeTonnes?: string;
 }
 
 interface CustomerSummaryRow {
   customerId: string;
   customerName: string;
   volume: string;
+  volumeTonnes?: string;
   warehouses: CustomerWarehouseVolume[];
 }
 
@@ -253,11 +261,30 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                     const allocatedKg = summary?.allocatedVolume || "0";
                     const demandKg = summary?.demand || "0";
                     const balanceKg = summary?.balance || "0";
-                    const topLevelIncome = summary?.topLevelIncome || "0";
-                    const topLevelExpense = summary?.topLevelExpense || "0";
-                    const balNum = parseFloat(balanceKg);
+                    const allocatedTonnes = summaryMassTonnes(
+                      summary?.allocatedVolumeTonnes,
+                      allocatedKg,
+                    );
+                    const demandTonnes = summaryMassTonnes(
+                      summary?.demandTonnes,
+                      demandKg,
+                    );
+                    const balanceTonnes = summaryMassTonnes(
+                      summary?.balanceTonnes,
+                      balanceKg,
+                    );
+                    const topLevelIncomeTonnes = summaryMassTonnes(
+                      summary?.topLevelIncomeTonnes,
+                      summary?.topLevelIncome || "0",
+                    );
+                    const topLevelExpenseTonnes = summaryMassTonnes(
+                      summary?.topLevelExpenseTonnes,
+                      summary?.topLevelExpense || "0",
+                    );
+                    const balNum = balanceTonnes;
                     const isExpanded = expandedTopLevel === res.supplierId;
-                    const hasTopLevel = parseFloat(topLevelIncome) > 0 || parseFloat(topLevelExpense) > 0;
+                    const hasTopLevel =
+                      topLevelIncomeTonnes > 0 || topLevelExpenseTonnes > 0;
 
                     return (
                       <>
@@ -286,9 +313,9 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                 }
                                 {hasTopLevel ? (
                                   <div className="flex items-center gap-1 text-sm">
-                                    <span className="text-emerald-600 tabular-nums">+{fmtTons(topLevelIncome)}</span>
+                                    <span className="text-emerald-600 tabular-nums">+{fmtTonnes(topLevelIncomeTonnes)}</span>
                                     <span className="text-muted-foreground">/</span>
-                                    <span className="text-amber-600 tabular-nums">-{fmtTons(topLevelExpense)}</span>
+                                    <span className="text-amber-600 tabular-nums">-{fmtTonnes(topLevelExpenseTonnes)}</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground text-xs">—</span>
@@ -304,7 +331,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                             ) : (
                               <div className="flex items-center gap-1.5">
                                 <span data-testid={`text-allocated-volume-${res.supplierId}`}>
-                                  {fmtTons(allocatedKg)}
+                                  {fmtTonnes(allocatedTonnes)}
                                 </span>
                                 {canAllocate && (
                                   <button
@@ -335,7 +362,14 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                           <TableCell>
                             <div className="flex items-center gap-1.5">
                               <span className={(res as any).isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : ""}>
-                                {fmtTons((res as any).isUnassigned ? (res as any).demand : demandKg)}
+                                {fmtTonnes(
+                                  (res as any).isUnassigned
+                                    ? summaryMassTonnes(
+                                        (res as any).demandTonnes,
+                                        (res as any).demand || "0",
+                                      )
+                                    : demandTonnes,
+                                )}
                               </span>
                               {!(res as any).isUnassigned && (
                                 <span onClick={(e) => e.stopPropagation()}>
@@ -363,8 +397,13 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                 data-testid={`text-balance-${res.supplierId ?? "unassigned"}`}
                               >
                                 {(res as any).isUnassigned
-                                  ? `−${fmtTons((res as any).demand)}`
-                                  : `${balNum > 0 ? "+" : ""}${fmtTons(balanceKg)}`}
+                                  ? `−${fmtTonnes(
+                                      summaryMassTonnes(
+                                        (res as any).demandTonnes,
+                                        (res as any).demand || "0",
+                                      ),
+                                    )}`
+                                  : `${balNum > 0 ? "+" : ""}${fmtTonnes(balanceTonnes)}`}
                               </span>
                               {!(res as any).isUnassigned && (
                                 <span onClick={(e) => e.stopPropagation()}>
@@ -447,12 +486,12 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                         <TableCell><span className="text-muted-foreground">—</span></TableCell>
                         <TableCell>
                           <span className="font-medium text-amber-700 dark:text-amber-400">
-                            {fmtTons(s.demand)}
+                            {fmtTonnes(summaryMassTonnes(s.demandTonnes, s.demand))}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span className="text-destructive font-medium">
-                            −{fmtTons(s.demand)}
+                            −{fmtTonnes(summaryMassTonnes(s.demandTonnes, s.demand))}
                           </span>
                         </TableCell>
                         <TableCell />
@@ -624,7 +663,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
-                            <span>{fmtTons(row.volume)}</span>
+                            <span>{formatSummaryMass(row.volumeTonnes, row.volume)}</span>
                             <span onClick={(e) => e.stopPropagation()}>
                               <FieldCommentPopover
                                 entityType="customer_plan"
@@ -657,7 +696,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                   <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                                   <span className="font-medium">{wh.warehouseName}</span>
                                   <Badge variant="secondary" className="text-xs">
-                                    {fmtTons(wh.volume)}
+                                    {formatSummaryMass(wh.volumeTonnes, wh.volume)}
                                   </Badge>
                                 </div>
                               ))}

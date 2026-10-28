@@ -91,6 +91,7 @@ export class BudgetStorage implements IBudgetStorage {
 
     await this.updateBudgetEntry(budgetId, {
       salesVolume: salesTotals.totalVolumeKg,
+      salesVolumeTonnes: salesTotals.totalVolumeTonnes,
       marginality,
     });
 
@@ -173,6 +174,7 @@ export class BudgetStorage implements IBudgetStorage {
     if (existing) {
       return this.updateBudgetEntry(existing.id, {
         salesVolume: salesTotals.totalVolumeKg,
+        salesVolumeTonnes: salesTotals.totalVolumeTonnes,
         salesRevenue: salesTotals.totalRevenue,
         marginality: marginality,
       });
@@ -189,33 +191,48 @@ export class BudgetStorage implements IBudgetStorage {
   }> {
     const { start, end } = getBudgetMonthRange(budgetMonth);
     const result = await db.execute(sql`
-      SELECT
-        COALESCE(SUM(monthly_sales.volume_tonnes) * 1000, 0)::text AS total_volume_kg,
-        COALESCE(SUM(monthly_sales.volume_tonnes), 0)::text AS total_volume_tonnes,
-        COALESCE(SUM(monthly_sales.revenue), 0)::text AS total_revenue,
-        COALESCE(SUM(monthly_sales.profit), 0)::text AS total_profit
-      FROM (
+      WITH monthly_sales AS (
         SELECT
-          ${optMassTonnesSql()} AS volume_tonnes,
+          CASE
+            WHEN CAST(COALESCE(${opt.quantityLiters}, '0') AS NUMERIC) > 0
+              AND CAST(COALESCE(${opt.density}, '0') AS NUMERIC) > 0
+            THEN CAST(${opt.quantityLiters} AS NUMERIC)
+              * CAST(${opt.density} AS NUMERIC) / 1000
+            ELSE ${optMassTonnesSql()}
+          END AS volume_tonnes,
           CAST(${opt.saleAmount} AS NUMERIC) AS revenue,
           CAST(${opt.profit} AS NUMERIC) AS profit
         FROM ${opt}
         WHERE ${opt.dealDate} >= ${start}::timestamp
           AND ${opt.dealDate} < ${end}::timestamp
           AND ${opt.deletedAt} IS NULL
+
         UNION ALL
+
         SELECT
-          COALESCE(
-            ${aircraftRefueling.quantityTonnes},
-            CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
-          ) AS volume_tonnes,
+          CASE
+            WHEN CAST(COALESCE(${aircraftRefueling.quantityLiters}, '0') AS NUMERIC) > 0
+              AND CAST(COALESCE(${aircraftRefueling.density}, '0') AS NUMERIC) > 0
+            THEN CAST(${aircraftRefueling.quantityLiters} AS NUMERIC)
+              * CAST(${aircraftRefueling.density} AS NUMERIC) / 1000
+            ELSE COALESCE(
+              ${aircraftRefueling.quantityTonnes},
+              CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
+            )
+          END AS volume_tonnes,
           CAST(${aircraftRefueling.saleAmount} AS NUMERIC) AS revenue,
           CAST(${aircraftRefueling.profit} AS NUMERIC) AS profit
         FROM ${aircraftRefueling}
         WHERE ${aircraftRefueling.refuelingDate} >= ${start}::timestamp
           AND ${aircraftRefueling.refuelingDate} < ${end}::timestamp
           AND ${aircraftRefueling.deletedAt} IS NULL
-      ) AS monthly_sales
+      )
+      SELECT
+        COALESCE(ROUND(SUM(monthly_sales.volume_tonnes), 5), 0)::text AS total_volume_tonnes,
+        COALESCE(ROUND(SUM(monthly_sales.volume_tonnes), 5) * 1000, 0)::text AS total_volume_kg,
+        COALESCE(SUM(monthly_sales.revenue), 0)::text AS total_revenue,
+        COALESCE(SUM(monthly_sales.profit), 0)::text AS total_profit
+      FROM monthly_sales
     `);
     const totals = result.rows?.[0] as {
       total_volume_kg?: string;

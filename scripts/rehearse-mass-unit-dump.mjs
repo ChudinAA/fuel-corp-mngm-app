@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import pg from "pg";
 import { withTemporaryPostgres } from "./lib/temporary-postgres.mjs";
@@ -70,10 +71,15 @@ const fields = [
   ["equipments", "pvkj_balance", "mass_kg"],
   ["equipments", "pvkj_balance_tonnes", "mass_tonne"],
   ["plan_entries", "volume", "mass_kg"],
+  ["plan_entries", "volume_tonnes", "mass_tonne"],
   ["plan_entries", "balance_after", "mass_kg"],
+  ["plan_entries", "balance_after_tonnes", "mass_tonne"],
   ["free_volume_allocations", "volume", "mass_kg"],
+  ["free_volume_allocations", "volume_tonnes", "mass_tonne"],
   ["supplier_allocated_volumes", "volume", "mass_kg"],
+  ["supplier_allocated_volumes", "volume_tonnes", "mass_tonne"],
   ["planning_top_level_volumes", "volume", "mass_kg"],
+  ["planning_top_level_volumes", "volume_tonnes", "mass_tonne"],
   ["logistics_vehicles", "capacity_kg", "mass_kg"],
   ["logistics_trailers", "capacity_kg", "mass_kg"],
   ["delivery_cost", "cost_per_kg", "rate_per_kg"],
@@ -2391,6 +2397,405 @@ async function rehearseRefuelingAbroadMassBackfill(client) {
   };
 }
 
+async function rehearsePlanningMassBackfill(client) {
+  const schema = await client.query(`
+    SELECT table_name, column_name, data_type, numeric_precision, numeric_scale, is_nullable
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name IN (
+        'plan_entries',
+        'free_volume_allocations',
+        'supplier_allocated_volumes',
+        'planning_top_level_volumes'
+      )
+  `);
+  const columns = new Set(
+    schema.rows.map((row) => `${row.table_name}.${row.column_name}`),
+  );
+  const legacyRequirements = [
+    "plan_entries.id",
+    "plan_entries.volume",
+    "plan_entries.balance_after",
+    "free_volume_allocations.id",
+    "free_volume_allocations.volume",
+    "supplier_allocated_volumes.id",
+    "supplier_allocated_volumes.volume",
+    "planning_top_level_volumes.id",
+    "planning_top_level_volumes.volume",
+  ];
+  const missingColumns = legacyRequirements.filter((column) => !columns.has(column));
+  if (missingColumns.length) return { skipped: true, missingColumns };
+
+  const savedField = (table, column, alias) =>
+    columns.has(`${table}.${column}`) ? `${alias}.${column}` : "NULL::numeric";
+  await client.query(`
+    CREATE TEMP TABLE __planning_mass_source AS
+    SELECT
+      'plan_entries'::text AS table_name,
+      pe.id,
+      to_jsonb(pe) AS original_row,
+      pe.volume AS volume_kg,
+      pe.balance_after AS balance_after_kg,
+      ${savedField("plan_entries", "volume_tonnes", "pe")} AS volume_tonnes,
+      ${savedField("plan_entries", "balance_after_tonnes", "pe")} AS balance_after_tonnes
+    FROM plan_entries pe
+    UNION ALL
+    SELECT
+      'free_volume_allocations',
+      fa.id,
+      to_jsonb(fa),
+      fa.volume,
+      NULL::numeric,
+      ${savedField("free_volume_allocations", "volume_tonnes", "fa")},
+      NULL::numeric
+    FROM free_volume_allocations fa
+    UNION ALL
+    SELECT
+      'supplier_allocated_volumes',
+      sa.id,
+      to_jsonb(sa),
+      sa.volume,
+      NULL::numeric,
+      ${savedField("supplier_allocated_volumes", "volume_tonnes", "sa")},
+      NULL::numeric
+    FROM supplier_allocated_volumes sa
+    UNION ALL
+    SELECT
+      'planning_top_level_volumes',
+      tl.id,
+      to_jsonb(tl),
+      tl.volume,
+      NULL::numeric,
+      ${savedField("planning_top_level_volumes", "volume_tonnes", "tl")},
+      NULL::numeric
+    FROM planning_top_level_volumes tl
+  `);
+
+  await client.query(`
+    CREATE TEMP TABLE __planning_mass_expected AS
+    SELECT
+      table_name,
+      id,
+      original_row,
+      volume_kg,
+      balance_after_kg,
+      COALESCE(volume_tonnes, ROUND(volume_kg::numeric / 1000, 5))
+        AS volume_tonnes,
+      CASE
+        WHEN table_name <> 'plan_entries' THEN NULL::numeric
+        WHEN balance_after_kg IS NULL THEN balance_after_tonnes
+        ELSE COALESCE(
+          balance_after_tonnes,
+          ROUND(balance_after_kg::numeric / 1000, 5)
+        )
+      END AS balance_after_tonnes
+    FROM __planning_mass_source
+  `);
+
+  await client.query(
+    readFileSync(resolve("migrations/0099_planning_mass_tonnes.sql"), "utf8"),
+  );
+
+  const [comparison, targetColumns] = await Promise.all([
+    client.query(`
+      WITH actual AS (
+        SELECT 'plan_entries'::text AS table_name, id, to_jsonb(pe) AS row_data,
+          volume_tonnes, balance_after_tonnes
+        FROM plan_entries pe
+        UNION ALL
+        SELECT 'free_volume_allocations', id, to_jsonb(fa),
+          volume_tonnes, NULL::numeric
+        FROM free_volume_allocations fa
+        UNION ALL
+        SELECT 'supplier_allocated_volumes', id, to_jsonb(sa),
+          volume_tonnes, NULL::numeric
+        FROM supplier_allocated_volumes sa
+        UNION ALL
+        SELECT 'planning_top_level_volumes', id, to_jsonb(tl),
+          volume_tonnes, NULL::numeric
+        FROM planning_top_level_volumes tl
+      )
+      SELECT
+        (SELECT COUNT(*)::bigint FROM __planning_mass_source) AS source_rows,
+        (SELECT COUNT(*)::bigint FROM actual) AS actual_rows,
+        COUNT(*) FILTER (
+          WHERE actual.id IS NULL
+            OR (actual.row_data - 'volume_tonnes' - 'balance_after_tonnes')
+               IS DISTINCT FROM
+               (expected.original_row - 'volume_tonnes' - 'balance_after_tonnes')
+            OR actual.volume_tonnes IS DISTINCT FROM expected.volume_tonnes
+            OR actual.balance_after_tonnes
+               IS DISTINCT FROM expected.balance_after_tonnes
+        )::bigint AS changed_value_rows,
+        COUNT(*) FILTER (
+          WHERE source.volume_tonnes IS NULL
+            AND expected.volume_tonnes IS NOT NULL
+        )::bigint AS volume_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.table_name = 'plan_entries'
+            AND source.balance_after_tonnes IS NULL
+            AND expected.balance_after_tonnes IS NOT NULL
+        )::bigint AS balance_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE expected.balance_after_tonnes IS NULL
+        )::bigint AS null_balance_rows_preserved
+      FROM __planning_mass_expected expected
+      LEFT JOIN __planning_mass_source source
+        ON source.table_name = expected.table_name AND source.id = expected.id
+      LEFT JOIN actual
+        ON actual.table_name = expected.table_name AND actual.id = expected.id
+    `),
+    client.query(`
+      SELECT table_name, column_name, data_type, numeric_precision, numeric_scale, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND (
+          (table_name = 'plan_entries'
+            AND column_name IN ('volume_tonnes', 'balance_after_tonnes'))
+          OR (table_name IN (
+            'free_volume_allocations',
+            'supplier_allocated_volumes',
+            'planning_top_level_volumes'
+          ) AND column_name = 'volume_tonnes')
+        )
+      ORDER BY table_name, column_name
+    `),
+  ]);
+
+  const targetFields = [
+    ["plan_entries", "volume_tonnes", 18, 5, "NO"],
+    ["plan_entries", "balance_after_tonnes", 18, 5, "YES"],
+    ["free_volume_allocations", "volume_tonnes", 18, 5, "NO"],
+    ["supplier_allocated_volumes", "volume_tonnes", 18, 5, "NO"],
+    ["planning_top_level_volumes", "volume_tonnes", 18, 5, "NO"],
+  ];
+  const typesAreValid =
+    targetColumns.rows.length === targetFields.length &&
+    targetFields.every(([table, column, precision, scale, nullable]) =>
+      targetColumns.rows.some(
+        (row) =>
+          row.table_name === table &&
+          row.column_name === column &&
+          row.data_type === "numeric" &&
+          Number(row.numeric_precision) === precision &&
+          Number(row.numeric_scale) === scale &&
+          row.is_nullable === nullable,
+      ),
+    );
+  const result = comparison.rows[0];
+  const passed =
+    Number(result.source_rows) === Number(result.actual_rows) &&
+    Number(result.changed_value_rows) === 0 &&
+    typesAreValid;
+  if (!passed) {
+    throw new Error(
+      `Planning mass rehearsal failed: ${JSON.stringify({
+        sourceRows: result.source_rows,
+        actualRows: result.actual_rows,
+        changedRows: result.changed_value_rows,
+        typesAreValid,
+      })}`,
+    );
+  }
+  return {
+    ...result,
+    passed,
+    typesAreValid,
+    targetColumns: targetColumns.rows,
+    note: "All planning rows, including soft-deleted and scenario rows, are preserved; tonnes come only from saved kg; planned balances keep nullability; original kg fields and all other row values remain unchanged",
+  };
+}
+
+async function rehearseBudgetSalesVolumeBackfill(client, databaseUrl) {
+  const existingTonneColumn = await client.query(`
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'budget_income_expense'
+        AND column_name = 'sales_volume_tonnes'
+    ) AS present
+  `);
+  const savedTonnes = existingTonneColumn.rows[0].present
+    ? "sales_volume_tonnes"
+    : "NULL::numeric";
+
+  await client.query(`
+    CREATE TEMP TABLE __budget_sales_volume_source AS
+    SELECT
+      id,
+      to_jsonb(budget) AS original_row,
+      sales_volume AS sales_volume_kg,
+      ${savedTonnes} AS sales_volume_tonnes,
+      deleted_at
+    FROM budget_income_expense AS budget
+  `);
+
+  await client.query(
+    readFileSync(resolve("migrations/0100_budget_sales_volume_tonnes.sql"), "utf8"),
+  );
+
+  const script = spawnSync(
+    process.execPath,
+    [
+      resolve("scripts/backfill-budget-sales-volume.mjs"),
+      "--target=development",
+      "--apply",
+    ],
+    {
+      env: {
+        ...process.env,
+        DATABASE_URL: databaseUrl,
+        NODE_ENV: "development",
+      },
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024,
+    },
+  );
+  if (script.error || script.status !== 0) {
+    throw new Error(
+      `BDR backfill rehearsal script failed: ${script.error?.message ?? script.stderr}`,
+    );
+  }
+  const scriptReport = JSON.parse(script.stdout);
+
+  const [comparison, targetColumn] = await Promise.all([
+    client.query(`
+      WITH source_sales AS (
+        SELECT
+          date_trunc('month', deal_date) AS month_start,
+          CASE
+            WHEN CAST(COALESCE(quantity_liters, '0') AS NUMERIC) > 0
+              AND CAST(COALESCE(density, '0') AS NUMERIC) > 0
+            THEN CAST(quantity_liters AS NUMERIC)
+              * CAST(density AS NUMERIC) / 1000
+            ELSE COALESCE(quantity_tonnes, CAST(quantity_kg AS NUMERIC) / 1000)
+          END AS volume_tonnes
+        FROM opt
+        WHERE deleted_at IS NULL
+
+        UNION ALL
+
+        SELECT
+          date_trunc('month', refueling_date) AS month_start,
+          CASE
+            WHEN CAST(COALESCE(quantity_liters, '0') AS NUMERIC) > 0
+              AND CAST(COALESCE(density, '0') AS NUMERIC) > 0
+            THEN CAST(quantity_liters AS NUMERIC)
+              * CAST(density AS NUMERIC) / 1000
+            ELSE COALESCE(quantity_tonnes, CAST(quantity_kg AS NUMERIC) / 1000)
+          END AS volume_tonnes
+        FROM aircraft_refueling
+        WHERE deleted_at IS NULL
+      ),
+      monthly_sales AS (
+        SELECT month_start,
+          ROUND(COALESCE(SUM(volume_tonnes), 0), 5) AS total_volume_tonnes
+        FROM source_sales
+        GROUP BY month_start
+      ),
+      expected AS (
+        SELECT
+          source.id,
+          CASE
+            WHEN source.deleted_at IS NULL
+              THEN COALESCE(monthly_sales.total_volume_tonnes, 0)
+            ELSE COALESCE(
+              source.sales_volume_tonnes,
+              CASE
+                WHEN source.sales_volume_kg IS NULL
+                  OR BTRIM(source.sales_volume_kg) = '' THEN NULL
+                ELSE ROUND(source.sales_volume_kg::numeric / 1000, 5)
+              END
+            )
+          END AS sales_volume_tonnes,
+          CASE
+            WHEN source.deleted_at IS NULL
+              THEN (COALESCE(monthly_sales.total_volume_tonnes, 0) * 1000)::text
+            ELSE source.sales_volume_kg
+          END AS sales_volume_kg
+        FROM __budget_sales_volume_source AS source
+        LEFT JOIN budget_income_expense AS budget
+          ON budget.id = source.id
+        LEFT JOIN monthly_sales
+          ON monthly_sales.month_start = date_trunc('month', budget.budget_month)
+      ),
+      actual AS (
+        SELECT id, to_jsonb(budget) AS row_data,
+          sales_volume, sales_volume_tonnes
+        FROM budget_income_expense AS budget
+      )
+      SELECT
+        (SELECT COUNT(*)::bigint FROM __budget_sales_volume_source) AS source_rows,
+        (SELECT COUNT(*)::bigint FROM actual) AS actual_rows,
+        COUNT(*) FILTER (
+          WHERE actual.id IS NULL
+            OR (actual.row_data - 'sales_volume' - 'sales_volume_tonnes')
+              IS DISTINCT FROM
+              (source.original_row - 'sales_volume' - 'sales_volume_tonnes')
+        )::bigint AS changed_non_volume_rows,
+        COUNT(*) FILTER (
+          WHERE actual.sales_volume_tonnes IS DISTINCT FROM expected.sales_volume_tonnes
+            OR actual.sales_volume IS DISTINCT FROM expected.sales_volume_kg
+        )::bigint AS volume_mismatches,
+        COUNT(*) FILTER (
+          WHERE source.sales_volume_tonnes IS NULL
+            AND expected.sales_volume_tonnes IS NOT NULL
+        )::bigint AS tonne_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.deleted_at IS NOT NULL
+        )::bigint AS soft_deleted_rows_preserved
+      FROM __budget_sales_volume_source AS source
+      LEFT JOIN expected ON expected.id = source.id
+      LEFT JOIN actual ON actual.id = source.id
+    `),
+    client.query(`
+      SELECT data_type, numeric_precision, numeric_scale, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'budget_income_expense'
+        AND column_name = 'sales_volume_tonnes'
+    `),
+  ]);
+
+  const column = targetColumn.rows[0];
+  const typesAreValid =
+    targetColumn.rows.length === 1
+    && column.data_type === "numeric"
+    && Number(column.numeric_precision) === 18
+    && Number(column.numeric_scale) === 5
+    && column.is_nullable === "YES";
+  const result = comparison.rows[0];
+  const passed =
+    Number(result.source_rows) === Number(result.actual_rows)
+    && Number(result.changed_non_volume_rows) === 0
+    && Number(result.volume_mismatches) === 0
+    && Number(scriptReport.activeBudgetRows)
+      === Number(result.source_rows) - Number(result.soft_deleted_rows_preserved)
+    && Number(scriptReport.rowsRecalculated) === Number(result.source_rows) - Number(result.soft_deleted_rows_preserved)
+    && typesAreValid;
+  if (!passed) {
+    throw new Error(
+      `BDR sales volume rehearsal failed: ${JSON.stringify({
+        sourceRows: result.source_rows,
+        actualRows: result.actual_rows,
+        changedNonVolumeRows: result.changed_non_volume_rows,
+        volumeMismatches: result.volume_mismatches,
+        scriptReport,
+        typesAreValid,
+      })}`,
+    );
+  }
+
+  return {
+    ...result,
+    ...scriptReport,
+    passed,
+    typesAreValid,
+    targetColumn: column,
+    note: "Legacy kg values are preserved for soft-deleted entries; active BDR rows are recalculated from non-deleted OPT and refueling deals, with money and other fields unchanged.",
+  };
+}
+
 await withTemporaryPostgres(async ({ run, createDatabase }) => {
   const databaseEnvironment = await createDatabase("mass_unit_rehearsal");
   const isolatedDumpPath = resolve(dumpPath);
@@ -2803,6 +3208,10 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
     const optMassBackfill = await rehearseOptMassBackfill(client);
     const refuelingAbroadMassBackfill =
       await rehearseRefuelingAbroadMassBackfill(client);
+    const planningMassBackfill =
+      await rehearsePlanningMassBackfill(client);
+    const budgetSalesVolumeBackfill =
+      await rehearseBudgetSalesVolumeBackfill(client, databaseEnvironment.DATABASE_URL);
 
     await client.query("BEGIN");
     try {
@@ -2904,6 +3313,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         refuelingMassBackfill,
         optMassBackfill,
         refuelingAbroadMassBackfill,
+        planningMassBackfill,
+        budgetSalesVolumeBackfill,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
         note: "Schema/backfill migrations run only on the disposable restored database; temporary rehearsal columns are rolled back.",

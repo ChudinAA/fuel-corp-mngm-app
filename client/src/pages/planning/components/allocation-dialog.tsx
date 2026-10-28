@@ -47,6 +47,7 @@ export interface AllocationFormEntry {
   fromCounterpartyId: string | null;
   toCounterpartyId: string | null;
   volume: string;
+  volumeTonnes?: string | null;
   notes: string | null;
   fromName?: string | null;
   toName?: string | null;
@@ -100,7 +101,9 @@ export function AllocationDialog({
         date: entry ? entry.date.slice(0, 10) : (defaultDate || format(new Date(), "yyyy-MM-dd")),
         fromCounterpartyId: entry?.fromCounterpartyId || "",
         toCounterpartyId: entry?.toCounterpartyId || "",
-        volume: entry ? kgToTons(entry.volume) : "",
+        volume: entry
+          ? entry.volumeTonnes ?? kgToTons(entry.volume)
+          : "",
         notes: entry?.notes || "",
       });
     }
@@ -112,6 +115,7 @@ export function AllocationDialog({
       await onSubmit({
         ...values,
         volume: tonsToKg(values.volume),
+        volumeTonnes: values.volume,
       });
       onOpenChange(false);
     } finally {
