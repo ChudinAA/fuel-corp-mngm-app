@@ -5,10 +5,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-} from "@shared/units";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
@@ -51,6 +47,10 @@ import { AddBaseDialog } from "../directories/bases-dialog";
 import { DateInput } from "@/components/ui/date-input";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
+import {
+  formTonnesRateToLegacyKilograms,
+  legacyKilogramRateToFormTonnes,
+} from "../shared/utils/basis-price-units";
 
 const supplierFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
@@ -85,18 +85,6 @@ type BasisPriceEntry = {
 };
 
 type SupplierFormData = z.infer<typeof supplierFormSchema>;
-
-function legacyKilogramRateToFormTonnes(value: string | number | null | undefined): string {
-  if (value == null || value === "") return "";
-  const rate = Number(value);
-  return Number.isFinite(rate) ? pricePerKilogramToPerTonne(rate).toFixed(2) : "";
-}
-
-function formTonnesRateToLegacyKilograms(value: string): string | null {
-  if (value === "") return null;
-  const rate = Number(value);
-  return Number.isFinite(rate) ? String(pricePerTonneToPerKilogram(rate)) : null;
-}
 
 interface AddSupplierDialogProps {
   bases: Base[];
@@ -197,11 +185,23 @@ export function AddSupplierDialog({
       );
       const basisPricesArray = filteredBaseIds.map((basisId) => {
         const entry = basisPricesMap[basisId] || defaultBasisPriceEntry();
+        const originalBasisPrice = (editItem as any)?.basisPrices?.find(
+          (price: any) => price.basisId === basisId,
+        );
         return {
           basisId,
-          servicePrice: formTonnesRateToLegacyKilograms(entry.servicePrice),
-          pvkjPrice: formTonnesRateToLegacyKilograms(entry.pvkjPrice),
-          agentFee: formTonnesRateToLegacyKilograms(entry.agentFee),
+          servicePrice: formTonnesRateToLegacyKilograms(
+            entry.servicePrice,
+            originalBasisPrice?.servicePrice,
+          ),
+          pvkjPrice: formTonnesRateToLegacyKilograms(
+            entry.pvkjPrice,
+            originalBasisPrice?.pvkjPrice,
+          ),
+          agentFee: formTonnesRateToLegacyKilograms(
+            entry.agentFee,
+            originalBasisPrice?.agentFee,
+          ),
           otherServiceType: entry.otherServiceType || null,
           otherServiceValue: entry.otherServiceValue ? entry.otherServiceValue : null,
           otherServiceName: entry.otherServiceName || null,

@@ -46,6 +46,10 @@ import type { Base } from "@shared/schema";
 import { BASE_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
+import {
+  formatLegacyKilogramRatePerTonne,
+  formatOtherBasisServiceValue,
+} from "@/pages/shared/utils/basis-price-units";
 
 interface SupplierInfo {
   id: string;
@@ -55,13 +59,6 @@ interface SupplierInfo {
   agentFee?: string | null;
   otherServiceType?: string | null;
   otherServiceValue?: string | null;
-}
-
-function formatPriceCompact(val: string | null | undefined): string {
-  if (!val) return "";
-  const n = parseFloat(val);
-  if (isNaN(n)) return "";
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 6 }).format(n);
 }
 
 export function BasesTab() {
@@ -242,19 +239,19 @@ export function BasesTab() {
                                   {(s.servicePrice || s.pvkjPrice || s.agentFee || s.otherServiceType) && (
                                     <span className="ml-2 text-xs text-muted-foreground">
                                       {s.servicePrice && (
-                                        <span>Услуга: {formatPriceCompact(s.servicePrice)}</span>
+                                        <span>Услуга: {formatLegacyKilogramRatePerTonne(s.servicePrice)} ₽/т</span>
                                       )}
                                       {s.servicePrice && s.pvkjPrice && <span> · </span>}
                                       {s.pvkjPrice && (
-                                        <span>ПВКЖ: {formatPriceCompact(s.pvkjPrice)}</span>
+                                        <span>ПВКЖ: {formatLegacyKilogramRatePerTonne(s.pvkjPrice)} ₽/т</span>
                                       )}
                                       {(s.servicePrice || s.pvkjPrice) && s.agentFee && <span> · </span>}
                                       {s.agentFee && (
-                                        <span>Агент.: {formatPriceCompact(s.agentFee)}</span>
+                                        <span>Агент.: {formatLegacyKilogramRatePerTonne(s.agentFee)} ₽/т</span>
                                       )}
                                       {(s.servicePrice || s.pvkjPrice || s.agentFee) && s.otherServiceType && <span> · </span>}
                                       {s.otherServiceType && s.otherServiceValue && (
-                                        <span>Прочие: {formatPriceCompact(s.otherServiceValue)}{s.otherServiceType === "percent_of_amount" ? "%" : " ₽"}</span>
+                                        <span>Прочие: {formatOtherBasisServiceValue(s.otherServiceValue, s.otherServiceType)}</span>
                                       )}
                                     </span>
                                   )}

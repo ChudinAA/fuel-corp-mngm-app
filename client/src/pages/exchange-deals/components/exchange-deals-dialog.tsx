@@ -532,14 +532,14 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
                 name="weightTon"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Вес, тн</FormLabel>
+                    <FormLabel>Вес, т</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         value={field.value ?? ""}
                         type="number"
-                        step="0.001"
-                        placeholder="0.000"
+                        step="0.00001"
+                        placeholder="0.00000"
                         data-testid="input-weight-ton"
                       />
                     </FormControl>
@@ -552,14 +552,14 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
                 name="actualWeightTon"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Вес фактический, тн</FormLabel>
+                    <FormLabel>Вес фактический, т</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         value={field.value ?? ""}
                         type="number"
-                        step="0.001"
-                        placeholder="0.000"
+                        step="0.00001"
+                        placeholder="0.00000"
                         data-testid="input-actual-weight-ton"
                       />
                     </FormControl>

@@ -23,10 +23,16 @@ import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useExchangeDealsTable } from "../hooks/use-exchange-deals-table";
+import { formatTonnes } from "@shared/units";
 
 function formatNum(val: string | number | null | undefined, decimals = 3) {
   if (!val || val === "0") return "—";
   return Number(val).toFixed(decimals);
+}
+
+function formatMassTonnes(val: string | number | null | undefined) {
+  if (val == null || val === "" || Number(val) === 0) return "—";
+  return formatTonnes(val);
 }
 
 function formatDate(val: string | null | undefined) {
@@ -476,10 +482,10 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                       {pricePerTon > 0 ? pricePerTon.toLocaleString("ru-RU") : "—"}
                     </TableCell>
                     <TableCell className="text-right text-[10px] py-1.5 px-1">
-                      {formatNum(deal.weightTon)}
+                      {formatMassTonnes(deal.weightTon)}
                     </TableCell>
                     <TableCell className="text-right text-[10px] py-1.5 px-1">
-                      {formatNum(deal.actualWeightTon)}
+                      {formatMassTonnes(deal.actualWeightTon)}
                     </TableCell>
                     <TableCell className="text-right text-[10px] py-1.5 px-1">
                       {formatCompact(purchaseAmount)}
