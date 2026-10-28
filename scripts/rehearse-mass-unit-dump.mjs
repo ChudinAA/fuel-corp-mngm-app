@@ -2181,6 +2181,216 @@ async function rehearseOptMassBackfill(client) {
   };
 }
 
+async function rehearseRefuelingAbroadMassBackfill(client) {
+  const schema = await client.query(`
+    SELECT column_name, data_type, numeric_precision, numeric_scale, is_nullable
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'refueling_abroad'
+  `);
+  const columns = new Map(schema.rows.map((row) => [row.column_name, row]));
+  const requiredColumns = [
+    "id",
+    "quantity_kg",
+    "input_mode",
+    "density",
+    "purchase_price_usd",
+    "purchase_price_rub",
+    "sale_price_usd",
+    "sale_price_rub",
+    "purchase_amount_usd",
+    "purchase_amount_rub",
+    "sale_amount_usd",
+    "sale_amount_rub",
+  ];
+  const missing = requiredColumns.filter((column) => !columns.has(column));
+  if (missing.length) return { skipped: true, missingColumns: missing };
+
+  const sourceColumn = (name) =>
+    columns.has(name) ? name : "NULL::numeric";
+  await client.query(`
+    CREATE TEMP TABLE __refueling_abroad_mass_source AS
+    SELECT
+      id,
+      to_jsonb(deal) AS original_row,
+      quantity_kg,
+      input_mode,
+      density,
+      purchase_price_usd,
+      purchase_price_rub,
+      sale_price_usd,
+      sale_price_rub,
+      purchase_amount_usd,
+      purchase_amount_rub,
+      sale_amount_usd,
+      sale_amount_rub,
+      ${sourceColumn("quantity_tonnes")} AS quantity_tonnes,
+      ${sourceColumn("purchase_price_usd_per_tonne")} AS purchase_price_usd_per_tonne,
+      ${sourceColumn("purchase_price_rub_per_tonne")} AS purchase_price_rub_per_tonne,
+      ${sourceColumn("sale_price_usd_per_tonne")} AS sale_price_usd_per_tonne,
+      ${sourceColumn("sale_price_rub_per_tonne")} AS sale_price_rub_per_tonne
+    FROM refueling_abroad AS deal
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __refueling_abroad_mass_expected AS
+    SELECT
+      id,
+      original_row,
+      quantity_kg,
+      COALESCE(quantity_tonnes, quantity_kg / 1000) AS quantity_tonnes,
+      COALESCE(
+        purchase_price_usd_per_tonne,
+        CASE
+          WHEN purchase_amount_usd IS NOT NULL AND quantity_kg > 0
+            THEN ROUND(purchase_amount_usd / (quantity_kg / 1000), 6)
+          WHEN purchase_price_usd IS NOT NULL AND input_mode = 'liters'
+            THEN ROUND(purchase_price_usd * 1000 / NULLIF(density, 0), 6)
+          WHEN purchase_price_usd IS NOT NULL
+            THEN ROUND(purchase_price_usd * 1000, 6)
+        END
+      ) AS purchase_price_usd_per_tonne,
+      COALESCE(
+        purchase_price_rub_per_tonne,
+        CASE
+          WHEN purchase_amount_rub IS NOT NULL AND quantity_kg > 0
+            THEN ROUND(purchase_amount_rub / (quantity_kg / 1000), 6)
+          WHEN purchase_price_rub IS NOT NULL AND input_mode = 'liters'
+            THEN ROUND(purchase_price_rub * 1000 / NULLIF(density, 0), 6)
+          WHEN purchase_price_rub IS NOT NULL
+            THEN ROUND(purchase_price_rub * 1000, 6)
+        END
+      ) AS purchase_price_rub_per_tonne,
+      COALESCE(
+        sale_price_usd_per_tonne,
+        CASE
+          WHEN sale_amount_usd IS NOT NULL AND quantity_kg > 0
+            THEN ROUND(sale_amount_usd / (quantity_kg / 1000), 6)
+          WHEN sale_price_usd IS NOT NULL AND input_mode = 'liters'
+            THEN ROUND(sale_price_usd * 1000 / NULLIF(density, 0), 6)
+          WHEN sale_price_usd IS NOT NULL
+            THEN ROUND(sale_price_usd * 1000, 6)
+        END
+      ) AS sale_price_usd_per_tonne,
+      COALESCE(
+        sale_price_rub_per_tonne,
+        CASE
+          WHEN sale_amount_rub IS NOT NULL AND quantity_kg > 0
+            THEN ROUND(sale_amount_rub / (quantity_kg / 1000), 6)
+          WHEN sale_price_rub IS NOT NULL AND input_mode = 'liters'
+            THEN ROUND(sale_price_rub * 1000 / NULLIF(density, 0), 6)
+          WHEN sale_price_rub IS NOT NULL
+            THEN ROUND(sale_price_rub * 1000, 6)
+        END
+      ) AS sale_price_rub_per_tonne
+    FROM __refueling_abroad_mass_source
+  `);
+
+  await client.query(
+    readFileSync(
+      resolve("migrations/0098_refueling_abroad_mass_tonnes.sql"),
+      "utf8",
+    ),
+  );
+
+  const [comparison, targetColumns] = await Promise.all([
+    client.query(`
+      SELECT
+        (SELECT COUNT(*)::bigint FROM __refueling_abroad_mass_source)
+          AS source_rows,
+        COUNT(*)::bigint AS actual_rows,
+        COUNT(*) FILTER (
+          WHERE expected.id IS NULL
+            OR (to_jsonb(actual)
+                - 'quantity_tonnes'
+                - 'purchase_price_usd_per_tonne'
+                - 'purchase_price_rub_per_tonne'
+                - 'sale_price_usd_per_tonne'
+                - 'sale_price_rub_per_tonne')
+               IS DISTINCT FROM
+               (source.original_row
+                - 'quantity_tonnes'
+                - 'purchase_price_usd_per_tonne'
+                - 'purchase_price_rub_per_tonne'
+                - 'sale_price_usd_per_tonne'
+                - 'sale_price_rub_per_tonne')
+            OR actual.quantity_tonnes IS DISTINCT FROM expected.quantity_tonnes
+            OR actual.purchase_price_usd_per_tonne
+               IS DISTINCT FROM expected.purchase_price_usd_per_tonne
+            OR actual.purchase_price_rub_per_tonne
+               IS DISTINCT FROM expected.purchase_price_rub_per_tonne
+            OR actual.sale_price_usd_per_tonne
+               IS DISTINCT FROM expected.sale_price_usd_per_tonne
+            OR actual.sale_price_rub_per_tonne
+               IS DISTINCT FROM expected.sale_price_rub_per_tonne
+        )::bigint AS changed_value_rows,
+        COUNT(*) FILTER (
+          WHERE source.quantity_tonnes IS NULL
+        )::bigint AS mass_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.purchase_price_usd_per_tonne IS NULL
+            AND expected.purchase_price_usd_per_tonne IS NOT NULL
+        )::bigint AS purchase_usd_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.purchase_price_rub_per_tonne IS NULL
+            AND expected.purchase_price_rub_per_tonne IS NOT NULL
+        )::bigint AS purchase_rub_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.sale_price_usd_per_tonne IS NULL
+            AND expected.sale_price_usd_per_tonne IS NOT NULL
+        )::bigint AS sale_usd_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.sale_price_rub_per_tonne IS NULL
+            AND expected.sale_price_rub_per_tonne IS NOT NULL
+        )::bigint AS sale_rub_rate_rows_backfilled
+      FROM refueling_abroad AS actual
+      LEFT JOIN __refueling_abroad_mass_expected AS expected USING (id)
+      LEFT JOIN __refueling_abroad_mass_source AS source USING (id)
+    `),
+    client.query(`
+      SELECT column_name, data_type, numeric_precision, numeric_scale, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'refueling_abroad'
+        AND column_name IN (
+          'quantity_tonnes',
+          'purchase_price_usd_per_tonne',
+          'purchase_price_rub_per_tonne',
+          'sale_price_usd_per_tonne',
+          'sale_price_rub_per_tonne'
+        )
+      ORDER BY column_name
+    `),
+  ]);
+  const targetFields = [
+    ["quantity_tonnes", 18, 5, "NO"],
+    ["purchase_price_usd_per_tonne", 22, 6, "YES"],
+    ["purchase_price_rub_per_tonne", 22, 6, "YES"],
+    ["sale_price_usd_per_tonne", 22, 6, "YES"],
+    ["sale_price_rub_per_tonne", 22, 6, "YES"],
+  ];
+  const typesAreValid =
+    targetColumns.rows.length === targetFields.length &&
+    targetFields.every(([name, precision, scale, nullable]) =>
+      targetColumns.rows.some(
+        (row) =>
+          row.column_name === name &&
+          row.data_type === "numeric" &&
+          Number(row.numeric_precision) === precision &&
+          Number(row.numeric_scale) === scale &&
+          row.is_nullable === nullable,
+      ),
+    );
+  const result = comparison.rows[0];
+  return {
+    ...result,
+    passed:
+      Number(result.source_rows) === Number(result.actual_rows) &&
+      Number(result.changed_value_rows) === 0 &&
+      typesAreValid,
+    typesAreValid,
+    targetColumns: targetColumns.rows,
+    note: "Historical mass uses saved kg; rates retain the current total/mass display when totals exist, otherwise per-litre rates use deal density; all saved amounts and other source fields remain unchanged",
+  };
+}
+
 await withTemporaryPostgres(async ({ run, createDatabase }) => {
   const databaseEnvironment = await createDatabase("mass_unit_rehearsal");
   const isolatedDumpPath = resolve(dumpPath);
@@ -2591,6 +2801,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
     const refuelingMassBackfill =
       await rehearseAircraftRefuelingMassBackfill(client);
     const optMassBackfill = await rehearseOptMassBackfill(client);
+    const refuelingAbroadMassBackfill =
+      await rehearseRefuelingAbroadMassBackfill(client);
 
     await client.query("BEGIN");
     try {
@@ -2691,6 +2903,7 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         transportationMassBackfill,
         refuelingMassBackfill,
         optMassBackfill,
+        refuelingAbroadMassBackfill,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
         note: "Schema/backfill migrations run only on the disposable restored database; temporary rehearsal columns are rolled back.",

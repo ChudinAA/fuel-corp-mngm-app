@@ -22,6 +22,7 @@ import { suppliers } from "../../suppliers/entities/suppliers";
 import { customers } from "../../customers/entities/customers";
 import { prices, storageCards, storageCardTransactions, bases } from "@shared/schema";
 import { SOURCE_TYPE, STORAGE_CARD_TRANSACTION_TYPE } from "@shared/constants";
+import { normalizeRefuelingAbroadUnitInput } from "../refueling-abroad-api-adapters";
 
 export interface IRefuelingAbroadStorage {
   getAll(
@@ -327,7 +328,11 @@ export class RefuelingAbroadStorage {
       const [created] = await tx
         .insert(refuelingAbroad)
         .values({
-          ...this.transformData(data),
+          ...this.transformData(
+            normalizeRefuelingAbroadUnitInput(
+              data as unknown as Record<string, unknown>,
+            ) as Partial<InsertRefuelingAbroad>,
+          ),
           createdById: userId,
         })
         .returning();
@@ -461,6 +466,11 @@ export class RefuelingAbroadStorage {
       if (!currentRefueling) {
         throw new Error("Deal not found");
       }
+
+      data = normalizeRefuelingAbroadUnitInput(
+        data as unknown as Record<string, unknown>,
+        currentRefueling as unknown as Record<string, unknown>,
+      ) as Partial<InsertRefuelingAbroad>;
 
       // Логика перехода из черновика в готовую заправку
       const transitioningFromDraft =
@@ -875,6 +885,10 @@ export class RefuelingAbroadStorage {
       result.quantityKg =
         data.quantityKg !== null ? String(data.quantityKg) : null;
     }
+    if (data.quantityTonnes !== undefined) {
+      result.quantityTonnes =
+        data.quantityTonnes !== null ? String(data.quantityTonnes) : null;
+    }
     if (data.exchangeRateValue !== undefined) {
       result.exchangeRateValue =
         data.exchangeRateValue !== null ? String(data.exchangeRateValue) : null;
@@ -895,17 +909,41 @@ export class RefuelingAbroadStorage {
       result.purchasePriceUsd =
         data.purchasePriceUsd !== null ? String(data.purchasePriceUsd) : null;
     }
+    if (data.purchasePriceUsdPerTonne !== undefined) {
+      result.purchasePriceUsdPerTonne =
+        data.purchasePriceUsdPerTonne !== null
+          ? String(data.purchasePriceUsdPerTonne)
+          : null;
+    }
     if (data.purchasePriceRub !== undefined) {
       result.purchasePriceRub =
         data.purchasePriceRub !== null ? String(data.purchasePriceRub) : null;
+    }
+    if (data.purchasePriceRubPerTonne !== undefined) {
+      result.purchasePriceRubPerTonne =
+        data.purchasePriceRubPerTonne !== null
+          ? String(data.purchasePriceRubPerTonne)
+          : null;
     }
     if (data.salePriceUsd !== undefined) {
       result.salePriceUsd =
         data.salePriceUsd !== null ? String(data.salePriceUsd) : null;
     }
+    if (data.salePriceUsdPerTonne !== undefined) {
+      result.salePriceUsdPerTonne =
+        data.salePriceUsdPerTonne !== null
+          ? String(data.salePriceUsdPerTonne)
+          : null;
+    }
     if (data.salePriceRub !== undefined) {
       result.salePriceRub =
         data.salePriceRub !== null ? String(data.salePriceRub) : null;
+    }
+    if (data.salePriceRubPerTonne !== undefined) {
+      result.salePriceRubPerTonne =
+        data.salePriceRubPerTonne !== null
+          ? String(data.salePriceRubPerTonne)
+          : null;
     }
     if (data.purchaseAmountUsd !== undefined) {
       result.purchaseAmountUsd =
@@ -965,13 +1003,11 @@ export class RefuelingAbroadStorage {
 
     const [result] = await db
       .select({
-        totalMassKg: sql<string>`COALESCE(SUM(
-          CASE
-            WHEN ${refuelingAbroad.quantityLiters} > 0
-              AND ${refuelingAbroad.density} > 0
-            THEN ${refuelingAbroad.quantityLiters} * ${refuelingAbroad.density}
-            ELSE ${refuelingAbroad.quantityKg}
-          END
+        totalMassTonnes: sql<string>`COALESCE(SUM(
+          COALESCE(
+            ${refuelingAbroad.quantityTonnes},
+            ${refuelingAbroad.quantityKg} / 1000
+          )
         ), 0)`,
         storedMassKg: sql<string>`COALESCE(SUM(${refuelingAbroad.quantityKg}), 0)`,
         totalLiters: sql<string>`COALESCE(SUM(${refuelingAbroad.quantityLiters}), 0)`,
@@ -987,11 +1023,11 @@ export class RefuelingAbroadStorage {
           eq(refuelingAbroad.isDraft, false),
         ),
       );
-    const totalMassKg = Number.parseFloat(result?.totalMassKg || "0");
+    const totalMassTonnes = Number.parseFloat(result?.totalMassTonnes || "0");
     const storedMassKg = Number.parseFloat(result?.storedMassKg || "0");
     const totalLiters = Number.parseFloat(result?.totalLiters || "0");
     return {
-      usedVolumeTonnes: totalMassKg / 1_000,
+      usedVolumeTonnes: totalMassTonnes,
       // Keep the old response unit for clients not yet migrated.
       usedVolume: price?.priceUnit === "liter" ? totalLiters : storedMassKg,
     };

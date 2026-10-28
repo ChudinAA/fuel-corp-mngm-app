@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   refuelingAbroadDealToApi,
-  refuelingAbroadInputUsesNormalizedRates,
   refuelingAbroadResultToApi,
+  normalizeRefuelingAbroadUnitInput,
   toLegacyRefuelingAbroadInput,
 } from "./refueling-abroad-api-adapters";
 
-test("foreign refueling API adapts tonnes and per-tonne currency rates to legacy storage", () => {
+test("foreign refueling input keeps explicit tonnes and per-tonne rates", () => {
   const input = {
     inputMode: "liters",
     quantityTonnes: 0.01234,
@@ -18,17 +18,99 @@ test("foreign refueling API adapts tonnes and per-tonne currency rates to legacy
     salePriceUsdPerTonne: 25000,
     salePriceRubPerTonne: 2000000,
   };
-  const legacy = toLegacyRefuelingAbroadInput(input);
+  const normalizedInput = toLegacyRefuelingAbroadInput(input);
+  assert.equal(normalizedInput.quantityTonnes, 0.01234);
+  assert.equal(normalizedInput.purchasePriceUsdPerTonne, 20000);
+  assert.equal(normalizedInput.purchasePriceRubPerTonne, 1600000);
+  assert.equal(normalizedInput.inputMode, "liters");
+  assert.equal("quantityKg" in normalizedInput, false);
+  assert.equal("purchasePriceUsd" in normalizedInput, false);
 
-  assert.equal(legacy.quantityKg, 12.34);
-  assert.equal(legacy.purchasePriceUsd, 20);
-  assert.equal(legacy.purchasePriceRub, 1600);
-  assert.equal(legacy.salePriceUsd, 25);
-  assert.equal(legacy.salePriceRub, 2000);
-  assert.equal(legacy.inputMode, "liters");
-  assert.equal(refuelingAbroadInputUsesNormalizedRates(input), true);
-  assert.equal("quantityTonnes" in legacy, false);
-  assert.equal("purchasePriceUsdPerTonne" in legacy, false);
+  const dualWritten = normalizeRefuelingAbroadUnitInput(normalizedInput);
+  assert.equal(dualWritten.quantityKg, 12.34);
+  assert.equal(dualWritten.purchasePriceUsd, 16);
+  assert.equal(dualWritten.purchasePriceRub, 1280);
+  assert.equal(dualWritten.salePriceUsd, 20);
+  assert.equal(dualWritten.salePriceRub, 1600);
+});
+
+test("legacy kilogram rates become per-tonne rates while preserving their source values", () => {
+  const normalized = normalizeRefuelingAbroadUnitInput({
+    inputMode: "kg",
+    quantityKg: 20,
+    density: 0.8,
+    purchasePriceUsd: 7,
+    purchasePriceRub: 560,
+    salePriceUsd: 9,
+    salePriceRub: 720,
+  });
+
+  assert.equal(normalized.quantityTonnes, 0.02);
+  assert.equal(normalized.purchasePriceUsdPerTonne, 7000);
+  assert.equal(normalized.purchasePriceRubPerTonne, 560000);
+  assert.equal(normalized.salePriceUsdPerTonne, 9000);
+  assert.equal(normalized.salePriceRubPerTonne, 720000);
+  assert.equal(normalized.purchasePriceUsd, 7);
+});
+
+test("legacy per-litre rates use the saved deal density, not its amount-to-mass ratio", () => {
+  const normalized = normalizeRefuelingAbroadUnitInput({
+    inputMode: "liters",
+    quantityKg: 8,
+    quantityLiters: 10,
+    density: 0.8,
+    purchasePriceUsd: 1,
+    purchaseAmountUsd: 20,
+  });
+
+  assert.equal(normalized.quantityTonnes, 0.008);
+  assert.equal(normalized.purchasePriceUsdPerTonne, 1250);
+  assert.equal(normalized.purchasePriceUsd, 1);
+  assert.equal(normalized.purchaseAmountUsd, 20);
+});
+
+test("an unchanged displayed per-tonne rate retains its saved precision", () => {
+  const normalized = normalizeRefuelingAbroadUnitInput(
+    {
+      inputMode: "tonnes",
+      quantityTonnes: 0.02,
+      purchasePriceUsdPerTonne: 1000.01,
+    },
+    {
+      inputMode: "tonnes",
+      quantityTonnes: "0.02000",
+      quantityKg: "20.00",
+      purchasePriceUsdPerTonne: "1000.006789",
+      purchasePriceUsd: "1.000007",
+      density: "0.8",
+    },
+  );
+
+  assert.equal(normalized.purchasePriceUsdPerTonne, 1000.006789);
+  assert.equal(normalized.purchasePriceUsd, 1.000007);
+});
+
+test("a legacy-only edit wins when the submitted tonne value is stale", () => {
+  const normalized = normalizeRefuelingAbroadUnitInput(
+    {
+      inputMode: "kg",
+      quantityTonnes: 0.02,
+      quantityKg: 22,
+      purchasePriceUsdPerTonne: 7000,
+      purchasePriceUsd: 8,
+    },
+    {
+      inputMode: "kg",
+      quantityTonnes: "0.02000",
+      quantityKg: "20.00",
+      purchasePriceUsdPerTonne: "7000.000000",
+      purchasePriceUsd: "7.000000",
+      density: "0.8",
+    },
+  );
+
+  assert.equal(normalized.quantityTonnes, 0.022);
+  assert.equal(normalized.purchasePriceUsdPerTonne, 8000);
 });
 
 test("saved totals become per-tonne foreign prices without changing totals", () => {
@@ -56,6 +138,23 @@ test("saved totals become per-tonne foreign prices without changing totals", () 
   assert.equal(apiDeal.purchaseAmountUsd, "200");
   assert.equal("quantityKg" in apiDeal, false);
   assert.equal("purchasePriceUsd" in apiDeal, false);
+});
+
+test("stored per-tonne rates take precedence over unchanged historical totals", () => {
+  const apiDeal = refuelingAbroadDealToApi({
+    quantityKg: "8",
+    quantityTonnes: "0.00800",
+    quantityLiters: "10",
+    density: "0.8",
+    inputMode: "liters",
+    purchaseAmountUsd: "20",
+    purchasePriceUsd: "1",
+    purchasePriceUsdPerTonne: "1250.000000",
+  });
+
+  assert.equal(apiDeal.purchasePriceUsdPerTonne, 1250);
+  assert.equal(apiDeal.purchaseAmountUsd, "20");
+  assert.equal(apiDeal.quantityTonnes, 0.008);
 });
 
 test("historical per-litre prices use the deal density when totals are absent", () => {

@@ -53,6 +53,7 @@ export const refuelingAbroad = pgTable(
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }),
+    quantityTonnes: decimal("quantity_tonnes", { precision: 18, scale: 5 }),
     inputMode: text("input_mode"),
     currency: text("currency").default("USD").notNull(),
     exchangeRateId: uuid("exchange_rate_id").references(() => exchangeRates.id),
@@ -83,14 +84,30 @@ export const refuelingAbroad = pgTable(
       precision: 15,
       scale: 6,
     }),
+    purchasePriceUsdPerTonne: decimal("purchase_price_usd_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
     purchasePriceRub: decimal("purchase_price_rub", {
       precision: 15,
+      scale: 6,
+    }),
+    purchasePriceRubPerTonne: decimal("purchase_price_rub_per_tonne", {
+      precision: 22,
       scale: 6,
     }),
     purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
     purchasePriceIndex: integer("purchase_price_index").default(0),
     salePriceUsd: decimal("sale_price_usd", { precision: 15, scale: 6 }),
+    salePriceUsdPerTonne: decimal("sale_price_usd_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
     salePriceRub: decimal("sale_price_rub", { precision: 15, scale: 6 }),
+    salePriceRubPerTonne: decimal("sale_price_rub_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
     salePriceId: uuid("sale_price_id").references(() => prices.id),
     salePriceIndex: integer("sale_price_index").default(0),
     purchaseAmountUsd: decimal("purchase_amount_usd", {
@@ -228,6 +245,7 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     quantityLiters: z.number().nullable().optional(),
     density: z.number().nullable().optional(),
     quantityKg: z.number().nullable().optional(),
+    quantityTonnes: z.number().nullable().optional(),
     inputMode: z.string().nullable().optional(),
     currency: z.string().default("USD"),
     exchangeRateId: z.string().nullable().optional(),
@@ -239,11 +257,15 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     saleExchangeRateDate: z.string().nullable().optional(),
     purchaseExchangeRateDate: z.string().nullable().optional(),
     purchasePriceUsd: z.number().nullable().optional(),
+    purchasePriceUsdPerTonne: z.number().nullable().optional(),
     purchasePriceRub: z.number().nullable().optional(),
+    purchasePriceRubPerTonne: z.number().nullable().optional(),
     purchasePriceId: z.string().nullable().optional(),
     purchasePriceIndex: z.number().nullable().optional(),
     salePriceUsd: z.number().nullable().optional(),
+    salePriceUsdPerTonne: z.number().nullable().optional(),
     salePriceRub: z.number().nullable().optional(),
+    salePriceRubPerTonne: z.number().nullable().optional(),
     salePriceId: z.string().nullable().optional(),
     salePriceIndex: z.number().nullable().optional(),
     purchaseAmountUsd: z.number().nullable().optional(),
@@ -313,11 +335,14 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
           path: ["buyerId"],
         });
       }
-      if (data.quantityKg === undefined || data.quantityKg === null) {
+      if (
+        (data.quantityTonnes === undefined || data.quantityTonnes === null) &&
+        (data.quantityKg === undefined || data.quantityKg === null)
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Масса обязательна",
-          path: ["quantityKg"],
+          path: ["quantityTonnes"],
         });
       }
     }

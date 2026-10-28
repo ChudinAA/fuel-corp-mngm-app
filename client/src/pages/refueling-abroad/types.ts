@@ -3,10 +3,15 @@ import type { RefuelingAbroad } from "@shared/schema";
 export type RefuelingAbroadApi = Omit<
   RefuelingAbroad,
   | "quantityKg"
+  | "quantityTonnes"
   | "purchasePriceUsd"
+  | "purchasePriceUsdPerTonne"
   | "purchasePriceRub"
+  | "purchasePriceRubPerTonne"
   | "salePriceUsd"
+  | "salePriceUsdPerTonne"
   | "salePriceRub"
+  | "salePriceRubPerTonne"
 > & {
   quantityTonnes: number | null;
   purchasePriceUsdPerTonne: number | null;

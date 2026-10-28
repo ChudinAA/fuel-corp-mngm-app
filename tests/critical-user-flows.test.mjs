@@ -325,14 +325,25 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(fetchedForeignDraft.quantityTonnes, 0.01234);
   assert.equal(fetchedForeignDraft.quantityKg, undefined);
   const storedForeignDraft = await pool.query(
-    `SELECT quantity_kg, input_mode, purchase_price_usd, purchase_price_rub
+    `SELECT quantity_kg, quantity_tonnes, input_mode,
+            purchase_price_usd, purchase_price_usd_per_tonne,
+            purchase_price_rub, purchase_price_rub_per_tonne
      FROM refueling_abroad WHERE id = $1`,
     [foreignDraft.id],
   );
   assert.equal(Number(storedForeignDraft.rows[0].quantity_kg), 12.34);
-  assert.equal(storedForeignDraft.rows[0].input_mode, "kg");
+  assert.equal(Number(storedForeignDraft.rows[0].quantity_tonnes), 0.01234);
+  assert.equal(storedForeignDraft.rows[0].input_mode, "tonnes");
   assert.equal(Number(storedForeignDraft.rows[0].purchase_price_usd), 20);
+  assert.equal(
+    Number(storedForeignDraft.rows[0].purchase_price_usd_per_tonne),
+    20000,
+  );
   assert.equal(Number(storedForeignDraft.rows[0].purchase_price_rub), 1600);
+  assert.equal(
+    Number(storedForeignDraft.rows[0].purchase_price_rub_per_tonne),
+    1600000,
+  );
 
   const supplier = (
     await pool.query(

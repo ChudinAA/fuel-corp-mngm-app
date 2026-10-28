@@ -17,7 +17,6 @@ import { formatTonnes, legacyDealMassToTonnes } from "@shared/units";
 import {
   RefuelingAbroadApiInputError,
   refuelingAbroadDealToApi,
-  refuelingAbroadInputUsesNormalizedRates,
   refuelingAbroadResultToApi,
   toLegacyRefuelingAbroadInput,
 } from "../refueling-abroad-api-adapters";
@@ -201,9 +200,6 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         const validatedData = insertRefuelingAbroadSchema.parse(
           toLegacyRefuelingAbroadInput(req.body),
         );
-        if (refuelingAbroadInputUsesNormalizedRates(req.body)) {
-          validatedData.inputMode = "kg";
-        }
         const userId = req.session.userId?.toString();
         const item = await refuelingAbroadStorage.create(validatedData, userId);
         SSEService.notifyEntityChanged("refueling-abroad", SSEService.extractClientId(req.headers["x-client-id"]));
@@ -264,9 +260,6 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         const validatedData = insertRefuelingAbroadSchema.parse(
           toLegacyRefuelingAbroadInput(req.body),
         );
-        if (refuelingAbroadInputUsesNormalizedRates(req.body)) {
-          validatedData.inputMode = "kg";
-        }
         const userId = req.session.userId?.toString();
         const item = await refuelingAbroadStorage.update(
           req.params.id,
