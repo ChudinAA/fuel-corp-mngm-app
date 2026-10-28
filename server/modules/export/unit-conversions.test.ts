@@ -50,6 +50,24 @@ test("deal exports show tonnes and derive per-tonne rates from saved totals", as
   assert.equal(sheet.getCell("C2").numFmt, "#,##0.00");
 });
 
+test("deal exports derive mass and per-tonne rates when legacy mass and rate are null", async () => {
+  const sheet = await exportSheet(
+    "transportation",
+    ["quantityKg", "salePrice", "saleAmount"],
+    [{
+      quantityKg: null,
+      quantityLiters: "1000",
+      density: "0.8000",
+      salePrice: null,
+      saleAmount: "500000",
+    }],
+  );
+
+  assert.equal(sheet.getCell("A2").value, 0.8);
+  assert.equal(sheet.getCell("B2").value, 625000);
+  assert.equal(sheet.getCell("C2").value, 500000);
+});
+
 test("warehouse export converts legacy balances and average rates", async () => {
   const sheet = await exportSheet(
     "warehouses",

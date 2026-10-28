@@ -166,9 +166,12 @@ export class ExcelService {
   }
 
   private formatValue(value: any, column: ColumnConfig, row?: any): any {
-    if (value === null || value === undefined) return "";
+    if (column.format) {
+      const formatted = column.format(value, row);
+      return formatted === null || formatted === undefined ? "" : formatted;
+    }
 
-    if (column.format) return column.format(value, row);
+    if (value === null || value === undefined) return "";
 
     switch (column.type) {
       case "date":
