@@ -2796,6 +2796,92 @@ async function rehearseBudgetSalesVolumeBackfill(client, databaseUrl) {
   };
 }
 
+async function rehearseDeliveryCostRateBackfill(client) {
+  const existingTonneColumn = await client.query(`
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'delivery_cost'
+        AND column_name = 'cost_per_tonne'
+    ) AS present
+  `);
+  const savedTonnes = existingTonneColumn.rows[0].present
+    ? "cost_per_tonne"
+    : "NULL::numeric";
+
+  await client.query(`
+    CREATE TEMP TABLE __delivery_cost_rate_source AS
+    SELECT
+      id,
+      to_jsonb(delivery) AS original_row,
+      cost_per_kg,
+      ${savedTonnes} AS cost_per_tonne
+    FROM delivery_cost AS delivery
+  `);
+  await client.query(
+    readFileSync(resolve("migrations/0101_delivery_cost_per_tonne.sql"), "utf8"),
+  );
+
+  const [comparison, targetColumn] = await Promise.all([
+    client.query(`
+      SELECT
+        (SELECT COUNT(*) FROM __delivery_cost_rate_source)::int AS source_rows,
+        (SELECT COUNT(*) FROM delivery_cost)::int AS actual_rows,
+        (SELECT COUNT(*) FROM delivery_cost WHERE cost_per_tonne IS NOT NULL)::int
+          AS tonne_rows,
+        (SELECT COUNT(*) FROM __delivery_cost_rate_source source
+         JOIN delivery_cost delivery USING (id)
+         WHERE delivery.cost_per_tonne IS DISTINCT FROM
+               ROUND(source.cost_per_kg * 1000, 6))::int AS rate_mismatches,
+        (SELECT COUNT(*) FROM __delivery_cost_rate_source source
+         JOIN delivery_cost delivery USING (id)
+         WHERE (to_jsonb(delivery) - 'cost_per_tonne')
+             IS DISTINCT FROM (source.original_row - 'cost_per_tonne'))::int
+          AS changed_legacy_rows,
+        (SELECT COUNT(*) FROM __delivery_cost_rate_source source
+         JOIN delivery_cost delivery USING (id)
+         WHERE source.cost_per_tonne IS NOT NULL
+           AND delivery.cost_per_tonne IS DISTINCT FROM source.cost_per_tonne)::int
+          AS changed_existing_tonne_rows
+    `),
+    client.query(`
+      SELECT data_type, numeric_precision, numeric_scale, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'delivery_cost'
+        AND column_name = 'cost_per_tonne'
+    `),
+  ]);
+
+  const result = {
+    ...comparison.rows[0],
+    targetColumn: targetColumn.rows[0] ?? null,
+  };
+  const targetIsValid =
+    result.targetColumn?.data_type === "numeric" &&
+    Number(result.targetColumn?.numeric_precision) === 22 &&
+    Number(result.targetColumn?.numeric_scale) === 6 &&
+    result.targetColumn?.is_nullable === "YES";
+  const passed =
+    Number(result.source_rows) === Number(result.actual_rows) &&
+    Number(result.tonne_rows) === Number(result.source_rows) &&
+    Number(result.rate_mismatches) === 0 &&
+    Number(result.changed_legacy_rows) === 0 &&
+    Number(result.changed_existing_tonne_rows) === 0 &&
+    targetIsValid;
+
+  if (!passed) {
+    throw new Error(
+      `Delivery tariff rate rehearsal failed: ${JSON.stringify({
+        ...result,
+        passed,
+      })}`,
+    );
+  }
+
+  return { ...result, passed, targetIsValid };
+}
+
 await withTemporaryPostgres(async ({ run, createDatabase }) => {
   const databaseEnvironment = await createDatabase("mass_unit_rehearsal");
   const isolatedDumpPath = resolve(dumpPath);
@@ -3212,6 +3298,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
       await rehearsePlanningMassBackfill(client);
     const budgetSalesVolumeBackfill =
       await rehearseBudgetSalesVolumeBackfill(client, databaseEnvironment.DATABASE_URL);
+    const deliveryCostRateBackfill =
+      await rehearseDeliveryCostRateBackfill(client);
 
     await client.query("BEGIN");
     try {
@@ -3315,6 +3403,7 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         refuelingAbroadMassBackfill,
         planningMassBackfill,
         budgetSalesVolumeBackfill,
+        deliveryCostRateBackfill,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
         note: "Schema/backfill migrations run only on the disposable restored database; temporary rehearsal columns are rolled back.",

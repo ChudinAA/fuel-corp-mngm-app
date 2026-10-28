@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { after, test } from "node:test";
 import { spawnSync } from "node:child_process";
 import pg from "pg";
@@ -297,6 +298,82 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     },
   });
   assert.equal(loggedIn.role?.name, "Админ");
+
+  let deliveryCarrierId;
+  let deliveryCostId;
+  try {
+    deliveryCarrierId = (
+      await pool.query(
+        `INSERT INTO logistics_carriers (name)
+         VALUES ($1)
+         RETURNING id`,
+        [`Critical delivery carrier ${randomUUID()}`],
+      )
+    ).rows[0].id;
+
+    const deliveryCost = await api("/api/delivery-costs", {
+      method: "POST",
+      expectedStatus: 201,
+      body: {
+        carrierId: deliveryCarrierId,
+        fromEntityType: "base",
+        fromEntityId: "00000000-0000-4000-8000-000000000001",
+        fromLocation: "Critical source",
+        toEntityType: "base",
+        toEntityId: "00000000-0000-4000-8000-000000000002",
+        toLocation: "Critical destination",
+        costPerTonne: 12345.67,
+      },
+    });
+    deliveryCostId = deliveryCost.id;
+    assert.equal(Number(deliveryCost.costPerTonne), 12345.67);
+    assert.equal(deliveryCost.costPerKg, undefined);
+
+    let storedDeliveryCost = await pool.query(
+      `SELECT cost_per_kg, cost_per_tonne
+       FROM delivery_cost WHERE id = $1`,
+      [deliveryCostId],
+    );
+    assert.equal(Number(storedDeliveryCost.rows[0].cost_per_kg), 12.34567);
+    assert.equal(Number(storedDeliveryCost.rows[0].cost_per_tonne), 12345.67);
+
+    const legacyEdit = await api(`/api/delivery-costs/${deliveryCostId}`, {
+      method: "PATCH",
+      body: { costPerKg: 0.2 },
+    });
+    assert.equal(Number(legacyEdit.costPerTonne), 200);
+
+    const tonneEdit = await api(`/api/delivery-costs/${deliveryCostId}`, {
+      method: "PATCH",
+      body: { costPerTonne: 250, costPerKg: 0.2 },
+    });
+    assert.equal(Number(tonneEdit.costPerTonne), 250);
+    assert.equal(tonneEdit.costPerKg, undefined);
+    storedDeliveryCost = await pool.query(
+      `SELECT cost_per_kg, cost_per_tonne
+       FROM delivery_cost WHERE id = $1`,
+      [deliveryCostId],
+    );
+    assert.equal(Number(storedDeliveryCost.rows[0].cost_per_kg), 0.25);
+    assert.equal(Number(storedDeliveryCost.rows[0].cost_per_tonne), 250);
+
+    const fetchedDeliveryCost = await api(
+      `/api/delivery-costs/${deliveryCostId}`,
+    );
+    assert.equal(Number(fetchedDeliveryCost.costPerTonne), 250);
+    assert.equal(fetchedDeliveryCost.costPerKg, undefined);
+  } finally {
+    if (deliveryCostId) {
+      await pool.query("DELETE FROM delivery_cost WHERE id = $1", [
+        deliveryCostId,
+      ]);
+    }
+    if (deliveryCarrierId) {
+      await pool.query("DELETE FROM logistics_carriers WHERE id = $1", [
+        deliveryCarrierId,
+      ]);
+    }
+  }
 
   const foreignDraft = await api("/api/refueling-abroad", {
     method: "POST",

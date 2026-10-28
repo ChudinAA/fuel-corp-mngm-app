@@ -18,45 +18,96 @@ function parseRate(value: unknown): number | null {
 
 export function toLegacyDeliveryCostInput(
   input: Record<string, unknown>,
-  current?: { costPerKg?: string | number | null } | null,
+  current?: {
+    costPerKg?: string | number | null;
+    costPerTonne?: string | number | null;
+  } | null,
 ): Record<string, unknown> {
   const legacy: Record<string, unknown> = { ...input };
+  const hasTonneRate = Object.prototype.hasOwnProperty.call(input, "costPerTonne");
+  const hasKilogramRate = Object.prototype.hasOwnProperty.call(input, "costPerKg");
+  const currentKilogramRate = parseRate(current?.costPerKg);
+  const currentTonneRate =
+    parseRate(current?.costPerTonne) ??
+    (currentKilogramRate === null
+      ? null
+      : pricePerKilogramToPerTonne(currentKilogramRate));
 
-  if (Object.prototype.hasOwnProperty.call(input, "costPerTonne")) {
+  if (hasTonneRate) {
     const rate = parseRate(input.costPerTonne);
     if (rate === null) {
       if (input.costPerTonne === "" || input.costPerTonne === undefined) {
         legacy.costPerKg = undefined;
+        legacy.costPerTonne = undefined;
       } else {
         throw new DeliveryApiInputError("Некорректная ставка за тонну");
       }
     } else if (rate < 0) {
       throw new DeliveryApiInputError("Ставка не может быть отрицательной");
     } else {
-      const currentRate = parseRate(current?.costPerKg);
+      const submittedKilogramRate = hasKilogramRate
+        ? parseRate(input.costPerKg)
+        : null;
+      if (hasKilogramRate && submittedKilogramRate === null) {
+        throw new DeliveryApiInputError("Некорректная ставка за килограмм");
+      }
+      const kilogramRateChanged =
+        hasKilogramRate &&
+        currentKilogramRate !== null &&
+        submittedKilogramRate !== currentKilogramRate;
       const unchangedAtDisplayPrecision =
-        currentRate !== null &&
+        currentTonneRate !== null &&
         Number(rate.toFixed(2)) ===
-          Number(pricePerKilogramToPerTonne(currentRate).toFixed(2));
-      legacy.costPerKg = unchangedAtDisplayPrecision
-        ? String(current!.costPerKg)
-        : pricePerTonneToPerKilogram(rate).toFixed(6);
+          Number(currentTonneRate.toFixed(2));
+      const useChangedKilogramValue =
+        kilogramRateChanged && unchangedAtDisplayPrecision;
+      const effectiveTonneRate = useChangedKilogramValue
+        ? pricePerKilogramToPerTonne(submittedKilogramRate!)
+        : unchangedAtDisplayPrecision
+          ? currentTonneRate
+          : rate;
+
+      legacy.costPerTonne =
+        unchangedAtDisplayPrecision && !useChangedKilogramValue && current?.costPerTonne != null
+          ? String(current.costPerTonne)
+          : String(effectiveTonneRate);
+      legacy.costPerKg =
+        unchangedAtDisplayPrecision && !useChangedKilogramValue && current?.costPerKg != null
+          ? String(current.costPerKg)
+          : pricePerTonneToPerKilogram(effectiveTonneRate).toFixed(6);
+    }
+  } else if (hasKilogramRate) {
+    const rate = parseRate(input.costPerKg);
+    if (rate === null) {
+      if (input.costPerKg === "" || input.costPerKg === undefined || input.costPerKg === null) {
+        legacy.costPerTonne = undefined;
+      } else {
+        throw new DeliveryApiInputError("Некорректная ставка за килограмм");
+      }
+    } else if (rate < 0) {
+      throw new DeliveryApiInputError("Ставка не может быть отрицательной");
+    } else {
+      legacy.costPerKg = String(input.costPerKg);
+      legacy.costPerTonne = String(pricePerKilogramToPerTonne(rate));
     }
   }
 
-  delete legacy.costPerTonne;
   return legacy;
 }
 
 export function deliveryCostToApi<T extends Record<string, any>>(
   cost: T,
 ): Omit<T, "costPerKg"> & { costPerTonne: number | null } {
-  const { costPerKg, ...rest } = cost;
-  const rate = parseRate(costPerKg);
+  const { costPerKg, costPerTonne, ...rest } = cost;
+  const rate =
+    parseRate(costPerTonne) ??
+    (() => {
+      const legacyRate = parseRate(costPerKg);
+      return legacyRate === null ? null : pricePerKilogramToPerTonne(legacyRate);
+    })();
   return {
     ...rest,
-    costPerTonne:
-      rate === null ? null : pricePerKilogramToPerTonne(rate),
+    costPerTonne: rate,
   } as Omit<T, "costPerKg"> & { costPerTonne: number | null };
 }
 

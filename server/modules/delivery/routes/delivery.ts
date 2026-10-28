@@ -130,6 +130,7 @@ export function registerDeliveryRoutes(app: Express) {
         const data = {
           ...rawData,
           costPerKg: rawData.costPerKg === "" ? undefined : rawData.costPerKg,
+          costPerTonne: rawData.costPerTonne === "" ? undefined : rawData.costPerTonne,
           distance: rawData.distance === "" ? null : rawData.distance,
         };
 
