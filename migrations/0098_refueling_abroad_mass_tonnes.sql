@@ -28,10 +28,12 @@ BEGIN
     SELECT 1
     FROM public.refueling_abroad
     WHERE input_mode = 'liters'
-      AND (purchase_price_usd IS NOT NULL
-        OR purchase_price_rub IS NOT NULL
-        OR sale_price_usd IS NOT NULL
-        OR sale_price_rub IS NOT NULL)
+      AND (
+        (purchase_price_usd IS NOT NULL AND purchase_amount_usd IS NULL)
+        OR (purchase_price_rub IS NOT NULL AND purchase_amount_rub IS NULL)
+        OR (sale_price_usd IS NOT NULL AND sale_amount_usd IS NULL)
+        OR (sale_price_rub IS NOT NULL AND sale_amount_rub IS NULL)
+      )
       AND (density IS NULL OR density <= 0)
   ) THEN
     RAISE EXCEPTION 'Cannot convert a per-litre foreign-refueling rate without positive deal density';
@@ -191,42 +193,42 @@ BEGIN
       (purchase_price_usd_per_tonne IS NOT NULL
         AND purchase_price_usd_per_tonne IS DISTINCT FROM
           CASE
+            WHEN purchase_amount_usd IS NOT NULL AND quantity_kg > 0
+              THEN ROUND(purchase_amount_usd / (quantity_kg / 1000), 6)
             WHEN purchase_price_usd IS NOT NULL AND input_mode = 'liters'
               THEN ROUND(purchase_price_usd * 1000 / NULLIF(density, 0), 6)
             WHEN purchase_price_usd IS NOT NULL
               THEN ROUND(purchase_price_usd * 1000, 6)
-            WHEN purchase_amount_usd IS NOT NULL AND quantity_kg > 0
-              THEN ROUND(purchase_amount_usd / (quantity_kg / 1000), 6)
           END)
       OR (purchase_price_rub_per_tonne IS NOT NULL
         AND purchase_price_rub_per_tonne IS DISTINCT FROM
           CASE
+            WHEN purchase_amount_rub IS NOT NULL AND quantity_kg > 0
+              THEN ROUND(purchase_amount_rub / (quantity_kg / 1000), 6)
             WHEN purchase_price_rub IS NOT NULL AND input_mode = 'liters'
               THEN ROUND(purchase_price_rub * 1000 / NULLIF(density, 0), 6)
             WHEN purchase_price_rub IS NOT NULL
               THEN ROUND(purchase_price_rub * 1000, 6)
-            WHEN purchase_amount_rub IS NOT NULL AND quantity_kg > 0
-              THEN ROUND(purchase_amount_rub / (quantity_kg / 1000), 6)
           END)
       OR (sale_price_usd_per_tonne IS NOT NULL
         AND sale_price_usd_per_tonne IS DISTINCT FROM
           CASE
+            WHEN sale_amount_usd IS NOT NULL AND quantity_kg > 0
+              THEN ROUND(sale_amount_usd / (quantity_kg / 1000), 6)
             WHEN sale_price_usd IS NOT NULL AND input_mode = 'liters'
               THEN ROUND(sale_price_usd * 1000 / NULLIF(density, 0), 6)
             WHEN sale_price_usd IS NOT NULL
               THEN ROUND(sale_price_usd * 1000, 6)
-            WHEN sale_amount_usd IS NOT NULL AND quantity_kg > 0
-              THEN ROUND(sale_amount_usd / (quantity_kg / 1000), 6)
           END)
       OR (sale_price_rub_per_tonne IS NOT NULL
         AND sale_price_rub_per_tonne IS DISTINCT FROM
           CASE
+            WHEN sale_amount_rub IS NOT NULL AND quantity_kg > 0
+              THEN ROUND(sale_amount_rub / (quantity_kg / 1000), 6)
             WHEN sale_price_rub IS NOT NULL AND input_mode = 'liters'
               THEN ROUND(sale_price_rub * 1000 / NULLIF(density, 0), 6)
             WHEN sale_price_rub IS NOT NULL
               THEN ROUND(sale_price_rub * 1000, 6)
-            WHEN sale_amount_rub IS NOT NULL AND quantity_kg > 0
-              THEN ROUND(sale_amount_rub / (quantity_kg / 1000), 6)
           END)
   ) THEN
     RAISE EXCEPTION 'Foreign-refueling per-tonne rate backfill verification failed';

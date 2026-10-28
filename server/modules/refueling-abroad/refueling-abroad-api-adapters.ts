@@ -191,13 +191,24 @@ export function normalizeRefuelingAbroadUnitInput(
       legacyRateChanged;
 
     if (hasLegacyRate && (!hasTonneRate || legacyOnlyChanged)) {
+      const inputModeChanged =
+        current !== undefined &&
+        current !== null &&
+        input.inputMode !== undefined &&
+        input.inputMode !== current.inputMode;
+      const inputDensity =
+        input.density === undefined ? null : finiteOrNull(input, "density");
+      const savedDensity = finiteOrNull(current ?? undefined, "density");
+      const densityChanged =
+        input.density !== undefined &&
+        !valuesEqualAtPrecision(inputDensity, savedDensity, 4);
       const unchangedLegacy =
         current !== undefined &&
         current !== null &&
         !legacyRateChanged &&
         savedTonneRate !== null &&
-        input.inputMode === undefined &&
-        input.density === undefined;
+        !inputModeChanged &&
+        !densityChanged;
       normalized[legacyField] = inputLegacyRate;
       normalized[tonneField] = unchangedLegacy
         ? savedTonneRate

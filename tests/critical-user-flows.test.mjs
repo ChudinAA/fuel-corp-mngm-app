@@ -438,8 +438,10 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   const foreignContractUsage = await api(
     `/api/refueling-abroad/contract-used/${contractPrice.id}`,
   );
+  // Historical mass follows the saved kg/tonne value, even when litres ×
+  // density differs; liters remain the compatibility value for liter tariffs.
   assert.ok(
-    Math.abs(Number(foreignContractUsage.usedVolumeTonnes) - 0.0124) <
+    Math.abs(Number(foreignContractUsage.usedVolumeTonnes) - 0.01234) <
       0.000001,
   );
   assert.equal(Number(foreignContractUsage.usedVolume), 15.5);

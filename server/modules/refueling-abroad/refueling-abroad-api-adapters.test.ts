@@ -53,7 +53,7 @@ test("legacy kilogram rates become per-tonne rates while preserving their source
   assert.equal(normalized.purchasePriceUsd, 7);
 });
 
-test("legacy per-litre rates use the saved deal density, not its amount-to-mass ratio", () => {
+test("legacy per-litre input converts rates by deal density and keeps amounts intact", () => {
   const normalized = normalizeRefuelingAbroadUnitInput({
     inputMode: "liters",
     quantityKg: 8,
