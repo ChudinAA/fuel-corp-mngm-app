@@ -19,3 +19,4 @@
 - [Заказы заправки: восстановление и E2E](refueling-order-restoration-e2e.md) — восстанавливать только строки, удалённые одной операцией; пересчёты тестировать с приходными движениями.
 - [Critical-flow recalculation waits](critical-flow-recalculation-waits.md) — stock-flow tests must wait for queued backdated recalculations before asserting final balances and cost.
 - [Mass units and precision](mass-unit-migration-policy.md) — use tonnes with five displayed decimals; tonne prices use two, and litre rates convert using deal density.
+- [Mass-unit DB target validation](mass-unit-db-target-validation.md) — verify the dump source matches the app's active DB URL before trusting migration profiles.
