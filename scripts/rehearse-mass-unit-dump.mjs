@@ -741,6 +741,85 @@ async function rehearsePriceMassBackfill(client) {
   };
 }
 
+async function rehearseKnownScalarPriceRateNormalization(client) {
+  await client.query(`
+    CREATE TEMP TABLE __known_scalar_price_rate_source AS
+    SELECT id, price_unit, price_values, to_jsonb(prices) AS original_row
+    FROM prices
+  `);
+  const candidates = await client.query(`
+    SELECT COUNT(*)::int AS rows
+    FROM __known_scalar_price_rate_source
+    WHERE price_unit = 'kg'
+      AND price_values IS NOT NULL
+      AND cardinality(price_values) = 1
+      AND btrim(price_values[1]) = '75'
+  `);
+  if (Number(candidates.rows[0].rows) !== 1) {
+    throw new Error(
+      `Expected exactly one approved scalar price row in rehearsal; found ${candidates.rows[0].rows}`,
+    );
+  }
+
+  await client.query(
+    readFileSync(
+      resolve("migrations/0103_normalize_known_scalar_price_rate.sql"),
+      "utf8",
+    ),
+  );
+  const comparison = await client.query(`
+    SELECT
+      (SELECT COUNT(*)::int FROM __known_scalar_price_rate_source) AS source_rows,
+      (SELECT COUNT(*)::int FROM prices) AS actual_rows,
+      (SELECT COUNT(*)::int
+       FROM __known_scalar_price_rate_source source
+       JOIN prices target USING (id)
+       WHERE source.price_unit = 'kg'
+         AND cardinality(source.price_values) = 1
+         AND btrim(source.price_values[1]) = '75'
+         AND target.price_unit = 'tonne'
+         AND cardinality(target.price_values) = 1
+         AND jsonb_typeof(target.price_values[1]::jsonb) = 'object'
+         AND target.price_values[1]::jsonb ->> 'price' = '75000')
+         AS normalized_rows,
+      (SELECT COUNT(*)::int
+       FROM __known_scalar_price_rate_source source
+       JOIN prices target USING (id)
+       WHERE NOT (
+         source.price_unit = 'kg'
+         AND cardinality(source.price_values) = 1
+         AND btrim(source.price_values[1]) = '75'
+       )
+         AND (target.price_unit IS DISTINCT FROM source.price_unit
+           OR target.price_values IS DISTINCT FROM source.price_values))
+         AS changed_other_rate_rows,
+      (SELECT COUNT(*)::int
+       FROM __known_scalar_price_rate_source source
+       JOIN prices target USING (id)
+       WHERE (to_jsonb(target) - 'price_unit' - 'price_values')
+         IS DISTINCT FROM
+         (source.original_row - 'price_unit' - 'price_values'))
+         AS changed_non_rate_rows
+  `);
+  const result = comparison.rows[0];
+  const passed =
+    Number(result.source_rows) === Number(result.actual_rows) &&
+    Number(result.normalized_rows) === 1 &&
+    Number(result.changed_other_rate_rows) === 0 &&
+    Number(result.changed_non_rate_rows) === 0;
+  if (!passed) {
+    throw new Error(
+      `Known scalar price rate rehearsal failed: ${JSON.stringify(result)}`,
+    );
+  }
+  return {
+    ...result,
+    candidate_rows: Number(candidates.rows[0].rows),
+    passed,
+    note: "Only the single approved raw numeric kg rate of 75 is wrapped as a standard price object and converted to 75000 per tonne.",
+  };
+}
+
 async function rehearseLogisticsCapacityBackfill(client) {
   const tables = ["logistics_vehicles", "logistics_trailers"];
   const schemaResult = await client.query(`
@@ -3409,6 +3488,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
     const priceVolumeSchemaMigration =
       await rehearsePriceVolumeSchemaMigration(client, columnMap);
     const priceMassBackfill = await rehearsePriceMassBackfill(client);
+    const knownScalarPriceRateNormalization =
+      await rehearseKnownScalarPriceRateNormalization(client);
     const logisticsCapacityBackfill =
       await rehearseLogisticsCapacityBackfill(client);
     const warehouseLimitBackfill =
@@ -3526,6 +3607,7 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         priceVolumes: priceVolumeRehearsal,
         priceVolumeSchemaMigration,
         priceMassBackfill,
+        knownScalarPriceRateNormalization,
         logisticsCapacityBackfill,
         warehouseLimitBackfill,
         warehouseStockMassBackfill,

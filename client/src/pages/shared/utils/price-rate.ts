@@ -62,9 +62,19 @@ export function getPriceRateOptions(price: Price): SelectedPriceRate[] {
 
   return (price.priceValues ?? []).map((legacyValue) => {
     try {
-      const parsed = JSON.parse(legacyValue) as { price?: unknown };
+      const parsed: unknown = JSON.parse(legacyValue);
+      const rawPrice =
+        typeof parsed === "number"
+          ? parsed
+          : parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? (parsed as { price?: unknown }).price
+            : null;
       const numericValue =
-        typeof parsed.price === "number" ? parsed.price : Number(parsed.price);
+        rawPrice == null
+          ? Number.NaN
+          : typeof rawPrice === "number"
+            ? rawPrice
+            : Number(rawPrice);
       return {
         value: Number.isFinite(numericValue) ? numericValue : null,
         unit: legacyPriceRateUnit(price),

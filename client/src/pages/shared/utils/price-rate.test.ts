@@ -53,6 +53,16 @@ test("legacy rates retain their stored kg or liter unit", () => {
   );
 });
 
+test("legacy numeric scalar rates remain readable in their stored unit", () => {
+  assert.deepEqual(
+    extractPriceRate(
+      [{ ...legacyPrice, priceValues: ["75"] }],
+      `${legacyPrice.id}-0`,
+    ),
+    { value: 75, unit: "kg" },
+  );
+});
+
 test("malformed API rates do not fall back to fabricated legacy values", () => {
   assert.deepEqual(
     extractPriceRate(

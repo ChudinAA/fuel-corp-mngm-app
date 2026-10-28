@@ -97,8 +97,17 @@ export class StorageCardsStorage {
           latestPrice.priceValues.length > 0
         ) {
           try {
-            const priceObj = JSON.parse(latestPrice.priceValues[0]);
-            pricePerUnit = parseFloat(priceObj.price || "0");
+            const parsedPrice: unknown = JSON.parse(latestPrice.priceValues[0]);
+            const rate =
+              typeof parsedPrice === "number"
+                ? parsedPrice
+                : parsedPrice &&
+                    typeof parsedPrice === "object" &&
+                    !Array.isArray(parsedPrice)
+                  ? (parsedPrice as { price?: unknown }).price
+                  : null;
+            pricePerUnit =
+              rate == null ? 0 : Number.isFinite(Number(rate)) ? Number(rate) : 0;
           } catch (e) {
             console.error(
               "Error parsing price value:",

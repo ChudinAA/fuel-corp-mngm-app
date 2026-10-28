@@ -88,9 +88,12 @@ export function kilogramsToPriceStoredVolume(
 
 function storedRateOrNull(value: string): number | null {
   try {
-    const parsed = JSON.parse(value) as { price?: unknown };
-    const price = numericOrNull(parsed?.price);
-    return price;
+    const parsed: unknown = JSON.parse(value);
+    if (typeof parsed === "number") return numericOrNull(parsed);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+    return numericOrNull((parsed as { price?: unknown }).price);
   } catch {
     return null;
   }

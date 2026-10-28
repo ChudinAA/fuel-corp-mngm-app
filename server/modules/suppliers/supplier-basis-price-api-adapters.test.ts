@@ -48,7 +48,7 @@ test("unchanged displayed tonne rates preserve both stored precisions", () => {
   assert.equal(normalized.servicePrice, "12.345679");
 });
 
-test("a tonne input stays authoritative when the kg mirror conflicts", () => {
+test("a high-precision tonne edit stays authoritative within the same display cent", () => {
   const normalized = normalizeSupplierBasisPriceRates(
     {
       pvkjPricePerTonne: "250.004",
@@ -62,6 +62,22 @@ test("a tonne input stays authoritative when the kg mirror conflicts", () => {
 
   assert.equal(normalized.pvkjPricePerTonne, "250.004000");
   assert.equal(normalized.pvkjPrice, "0.250004");
+});
+
+test("a kg-only edit wins when the tonne value is the unchanged display value", () => {
+  const normalized = normalizeSupplierBasisPriceRates(
+    {
+      agentFeePerTonne: "250.25",
+      agentFee: "0.300000",
+    },
+    {
+      agentFeePerTonne: "250.250000",
+      agentFee: "0.250250",
+    },
+  );
+
+  assert.equal(normalized.agentFeePerTonne, "300.000000");
+  assert.equal(normalized.agentFee, "0.300000");
 });
 
 test("a changed tonne rate wins over a stale legacy mirror", () => {

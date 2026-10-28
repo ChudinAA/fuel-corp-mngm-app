@@ -68,15 +68,27 @@ export function normalizeSupplierBasisPriceRates(
       const tonneUnchangedAtDisplayPrecision =
         currentTonne !== null &&
         sameAtDisplayPrecision(submittedTonne, currentTonne);
-      const legacyDoesNotConflict =
-        !hasLegacyValue ||
-        currentLegacy === null ||
-        submittedLegacy === currentLegacy;
+      // Forms round tonnes for display. Preserve exact saved precision on a
+      // no-op, but retain an old kg-only edit when the submitted tonne value
+      // is still the saved exact value or its two-decimal display.
+      const submittedTonneMatchesCurrent =
+        currentTonne !== null &&
+        (submittedTonne === currentTonne ||
+          submittedTonne === Number(currentTonne.toFixed(2)));
+      const legacyChanged =
+        hasLegacyValue &&
+        currentLegacy !== null &&
+        submittedLegacy !== null &&
+        submittedLegacy !== currentLegacy;
+      const legacyEditWins =
+        submittedTonneMatchesCurrent && legacyChanged;
       const preserveExistingPrecision =
-        tonneUnchangedAtDisplayPrecision && legacyDoesNotConflict;
-      const effectiveTonne = preserveExistingPrecision
-        ? currentTonne
-        : submittedTonne;
+        submittedTonneMatchesCurrent && !legacyEditWins;
+      const effectiveTonne = legacyEditWins
+        ? pricePerKilogramToPerTonne(submittedLegacy!)
+        : preserveExistingPrecision
+          ? currentTonne
+          : submittedTonne;
       const preserveStoredTonne =
         preserveExistingPrecision &&
         current?.[tonneKey] != null;
@@ -89,7 +101,9 @@ export function normalizeSupplierBasisPriceRates(
         : tonneColumnValue(effectiveTonne);
       normalized[legacyKey] = preserveStoredLegacy
         ? String(current![legacyKey])
-        : pricePerTonneToPerKilogram(effectiveTonne).toFixed(6);
+        : legacyEditWins
+          ? String(input[legacyKey])
+          : pricePerTonneToPerKilogram(effectiveTonne).toFixed(6);
     } else if (hasLegacyValue && submittedLegacy !== null) {
       normalized[legacyKey] = String(input[legacyKey]);
       normalized[tonneKey] = tonneColumnValue(

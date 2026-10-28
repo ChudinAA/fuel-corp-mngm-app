@@ -101,15 +101,27 @@ test("already tonne-denominated stored rates are not converted a second time", (
   });
 });
 
-test("raw numeric legacy price entries are marked unusable, not converted", () => {
+test("raw numeric legacy rates are converted using the declared kg unit", () => {
   const result = priceToApi({
     priceUnit: "kg",
-    priceValues: ["123.45"],
+    priceValues: ["75"],
   });
 
   assert.deepEqual(result.priceRate, {
     unit: "tonne",
-    values: [null],
+    values: [75000],
+  });
+});
+
+test("raw numeric tonne rates are not converted again", () => {
+  const result = priceToApi({
+    priceUnit: "tonne",
+    priceValues: ["75"],
+  });
+
+  assert.deepEqual(result.priceRate, {
+    unit: "tonne",
+    values: [75],
   });
 });
 
