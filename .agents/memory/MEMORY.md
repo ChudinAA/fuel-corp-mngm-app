@@ -20,4 +20,5 @@
 - [Critical-flow recalculation waits](critical-flow-recalculation-waits.md) — stock-flow tests must wait for queued backdated recalculations before asserting final balances and cost.
 - [Mass units and precision](mass-unit-migration-policy.md) — masses display five decimals; prices display two; historical effective rates use saved totals first, density only when needed.
 - [Mass-unit DB target validation](mass-unit-db-target-validation.md) — verify the dump source matches the app's active DB URL before trusting migration profiles.
+- [Tonne-authoritative recalc writes](mass-unit-recalculation-dual-fields.md) — every indirect cost cascade must update tonne fields alongside legacy kg mirrors, or readers can return stale rates.
 - [Migration rehearsal transactions](mass-unit-rehearsal-transactions.md) — replay migrations with their own BEGIN/COMMIT outside temporary probe transactions; nested COMMIT commits the outer PostgreSQL transaction.

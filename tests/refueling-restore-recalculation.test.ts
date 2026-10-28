@@ -1920,6 +1920,9 @@ test(
             id: movement.id,
             totalCost: movement.totalCost,
             purchasePrice: movement.purchasePrice,
+            purchasePricePerTonne: movement.purchasePricePerTonne,
+            costPerKg: movement.costPerKg,
+            costPerTonne: movement.costPerTonne,
           })
           .from(movement)
           .where(eq(movement.id, forwardTransfer.id));
@@ -1947,6 +1950,20 @@ test(
             Number(recalculatedTransfers[0]?.purchasePrice) - 12.666667,
           ) < 0.01,
           `forward transfer purchase price: ${recalculatedTransfers[0]?.purchasePrice}`,
+        );
+        assert.ok(
+          Math.abs(
+            Number(recalculatedTransfers[0]?.purchasePricePerTonne) -
+              Number(recalculatedTransfers[0]?.purchasePrice) * 1_000,
+          ) < 0.001,
+          "forward transfer purchase price must keep the tonne rate synchronized",
+        );
+        assert.ok(
+          Math.abs(
+            Number(recalculatedTransfers[0]?.costPerTonne) -
+              Number(recalculatedTransfers[0]?.costPerKg) * 1_000,
+          ) < 0.001,
+          "forward transfer cost must keep the tonne rate synchronized",
         );
         assert.ok(
           Math.abs(
@@ -1979,6 +1996,20 @@ test(
             Number(recalculatedReverseTransfer?.purchasePrice) - 19.333333,
           ) < 0.01,
           `reverse transfer purchase price: ${recalculatedReverseTransfer?.purchasePrice}`,
+        );
+        assert.ok(
+          Math.abs(
+            Number(recalculatedReverseTransfer?.purchasePricePerTonne) -
+              Number(recalculatedReverseTransfer?.purchasePrice) * 1_000,
+          ) < 0.001,
+          "reverse transfer purchase price must keep the tonne rate synchronized",
+        );
+        assert.ok(
+          Math.abs(
+            Number(recalculatedReverseTransfer?.costPerTonne) -
+              Number(recalculatedReverseTransfer?.costPerKg) * 1_000,
+          ) < 0.001,
+          "reverse transfer cost must keep the tonne rate synchronized",
         );
 
         throw rollbackMarker;
@@ -2169,6 +2200,20 @@ test(
         assert.ok(
           Math.abs(Number(recalculatedReverse?.totalCost) - 192.73) < 0.01,
           `equipment-to-warehouse movement cost: ${recalculatedReverse?.totalCost}`,
+        );
+        assert.ok(
+          Math.abs(
+            Number(recalculatedForward?.costPerTonne) -
+              Number(recalculatedForward?.costPerKg) * 1_000,
+          ) < 0.001,
+          "warehouse-to-equipment transfer must synchronize its tonne cost",
+        );
+        assert.ok(
+          Math.abs(
+            Number(recalculatedReverse?.costPerTonne) -
+              Number(recalculatedReverse?.costPerKg) * 1_000,
+          ) < 0.001,
+          "equipment-to-warehouse transfer must synchronize its tonne cost",
         );
 
         throw rollbackMarker;

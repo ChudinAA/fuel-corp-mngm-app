@@ -72,7 +72,7 @@ function budgetInputToStored(data: Record<string, unknown>) {
 
   const rawKilograms = Number(salesVolume);
   if (!Number.isFinite(rawKilograms) || rawKilograms < 0) {
-    throw new InvalidBudgetVolumeError("Объем продаж должен быть неотрицательным значением в кг");
+    throw new InvalidBudgetVolumeError("Объем продаж должен быть неотрицательным значением");
   }
   const tonnes = Number((rawKilograms / 1000).toFixed(5));
   const kilograms = Number(tonnesToKilograms(tonnes).toFixed(2));

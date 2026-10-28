@@ -650,8 +650,11 @@ export class WarehouseRecalculationService {
         .update(movement)
         .set({
           purchasePrice: newSourceAverageCost.toFixed(6),
+          purchasePricePerTonne:
+            pricePerKilogramToPerTonne(newSourceAverageCost).toFixed(6),
           totalCost: newTotalCost.toFixed(2),
           costPerKg: costPerKg.toFixed(6),
+          costPerTonne: pricePerKilogramToPerTonne(costPerKg).toFixed(6),
           updatedAt: sql`NOW()`,
         })
         .where(eq(movement.id, movementId));
@@ -710,7 +713,7 @@ export class WarehouseRecalculationService {
 
   /**
    * Обрабатывает каскад для перемещения Склад → СЗ (через таблицу equipmentMovement).
-   * Обновляет costPerKg и totalCost в записи equipmentMovement,
+   * Обновляет цену за кг/т и totalCost в записи equipmentMovement,
    * и возвращает данные для пересчёта СЗ-получателя.
    */
   private static async getEquipmentMovementCascadeInfo(
@@ -746,7 +749,8 @@ export class WarehouseRecalculationService {
     await tx
       .update(equipmentMovement)
       .set({
-        costPerKg: newCostPerKg.toFixed(5),
+        costPerKg: newCostPerKg.toFixed(6),
+        costPerTonne: pricePerKilogramToPerTonne(newCostPerKg).toFixed(6),
         totalCost: newTotalCost.toFixed(2),
         updatedAt: sql`NOW()`,
         updatedById,
@@ -829,6 +833,8 @@ export class WarehouseRecalculationService {
           .update(opt)
           .set({
             purchasePrice: newAverageCost.toFixed(6),
+            purchasePricePerTonne:
+              pricePerKilogramToPerTonne(newAverageCost).toFixed(6),
             purchaseAmount: purchaseAmount.toFixed(2),
             profit: profit.toFixed(2),
             purchasePriceModified: true,

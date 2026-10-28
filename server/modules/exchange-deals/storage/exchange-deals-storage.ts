@@ -14,11 +14,9 @@ import {
   exchangeAdvanceTransactions,
 } from "../../exchange-advances/entities/exchange-advances";
 import { MOVEMENT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE, PRODUCT_TYPE } from "@shared/constants";
-import {
-  pricePerTonneToPerKilogram,
-  tonnesToKilograms,
-} from "@shared/units";
+import { tonnesToKilograms } from "@shared/units";
 import { WarehouseTransactionService } from "../../warehouses/services/warehouse-transaction-service";
+import { exchangeDealMovementUnitFields } from "./exchange-deal-movement-units";
 
 // ——— Утилиты для работы с датами без смещения часового пояса ———
 
@@ -369,11 +367,12 @@ export class ExchangeDealsStorage {
 
     if (quantityTon <= 0) return;
 
-    // Temporary compatibility boundary: movement and warehouse tables still
-    // store kilograms and per-kilogram prices pending the coordinated cutover.
-    const quantityKg = tonnesToKilograms(quantityTon);
-    const purchasePricePerKg =
-      pricePerTonneToPerKilogram(purchasePricePerTon);
+    // Tonnes are authoritative; keep the legacy kilogram fields synchronized.
+    const movementUnitFields = exchangeDealMovementUnitFields(
+      quantityTon,
+      purchasePricePerTon,
+    );
+    const quantityKg = Number(movementUnitFields.quantityKg);
 
     // deliveryCost в перемещении — в рублях за тонну (не за кг)
     const deliveryCostPerTon = deal.deliveryTariffId
@@ -389,10 +388,8 @@ export class ExchangeDealsStorage {
           productType: PRODUCT_TYPE.KEROSENE,
           toWarehouseId: supplier.warehouseId!,
           supplierId: deal.sellerId || null,
-          quantityKg: String(quantityKg),
+          ...movementUnitFields,
           totalCost: String(totalAmount),
-          purchasePrice: String(purchasePricePerKg),
-          costPerKg: String(purchasePricePerKg),
           deliveryCost: String(deliveryCostPerTon),
           isDraft: false,
           fromExchange: true,
@@ -454,9 +451,11 @@ export class ExchangeDealsStorage {
     if (newValues.quantityTon <= 0) return;
 
     const oldQuantityKg = tonnesToKilograms(oldValues.quantityTon);
-    const newQuantityKg = tonnesToKilograms(newValues.quantityTon);
-    const newPurchasePricePerKg =
-      pricePerTonneToPerKilogram(newValues.purchasePricePerTon);
+    const movementUnitFields = exchangeDealMovementUnitFields(
+      newValues.quantityTon,
+      newValues.purchasePricePerTon,
+    );
+    const newQuantityKg = Number(movementUnitFields.quantityKg);
 
     const deliveryCostPerTon = deal.deliveryTariffId
       ? await this._getDeliveryTariffPerTon(deal.deliveryTariffId)
@@ -473,10 +472,8 @@ export class ExchangeDealsStorage {
         .set({
           movementDate: newValues.movementDate,
           supplierId: deal.sellerId || null,
-          quantityKg: String(newQuantityKg),
+          ...movementUnitFields,
           totalCost: String(newValues.totalAmount),
-          purchasePrice: String(newPurchasePricePerKg),
-          costPerKg: String(newPurchasePricePerKg),
           deliveryCost: String(deliveryCostPerTon),
           notes: deal.notes || null,
           updatedAt: sql`NOW()`,

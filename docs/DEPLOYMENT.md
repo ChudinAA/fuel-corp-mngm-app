@@ -324,7 +324,7 @@ bash scripts/export-database.sh
 ls -lh database_export_*.sql.gz
 ```
 
-Для экспорта production используйте подключение из Replit Database Settings и передайте его в `DATABASE_URL` в защищённой shell-сессии. Не используйте для этого `DATABASE_URL` обычного shell Replit и не сохраняйте строку подключения в Git или документации.
+Для экспорта production берите подключение из Replit Database Settings. Не подменяйте постоянный `DATABASE_URL` обычного shell Replit: используйте отдельную временную переменную только для команды экспорта в защищённой Shell-сессии, не добавляйте её в Publishing secrets и удалите после экспорта. Не сохраняйте строку подключения в Git или документации. Процедура для внешней Neon-БД описана в `docs/MASS_UNIT_DB_INVENTORY_AND_CUTOVER.md`.
 
 ### Шаг 2: Перенос дампа на сервер
 
