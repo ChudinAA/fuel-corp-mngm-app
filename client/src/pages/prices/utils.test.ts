@@ -4,6 +4,7 @@ import {
   formatContractVolumeLimit,
   formatContractVolumeUsed,
   getApiPriceDisplay,
+  getPriceDisplay,
 } from "./utils";
 
 test("new price rates display two decimals without discarding stored precision", () => {
@@ -14,6 +15,11 @@ test("new price rates display two decimals without discarding stored precision",
 
   assert.match(display, /234,57 ₽/);
   assert.match(display, /—/);
+});
+
+test("price table fallback handles kg and tonne storage without double conversion", () => {
+  assert.equal(getPriceDisplay(['{"price":"1.234567"}'], "₽", "kg"), "1 234,57 ₽");
+  assert.equal(getPriceDisplay(['{"price":"1234.567"}'], "₽", "tonne"), "1 234,57 ₽");
 });
 
 test("contract mass limits and usage display five decimals in tonnes", () => {

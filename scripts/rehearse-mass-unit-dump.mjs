@@ -66,8 +66,8 @@ const fields = [
 ];
 
 const conditionalFields = [
-  ["prices", "volume", "unit depends on price/limit type"],
-  ["prices", "sold_volume", "unit depends on price/limit type"],
+  ["prices", "volume", "legacy kg volume limit when limit_type=volume; ignored for amount limits"],
+  ["prices", "sold_volume", "legacy kg consumed mass"],
 ];
 
 const unmappedLegacyFields = [
@@ -122,6 +122,208 @@ async function financialTotals(client, columnMap) {
     totals.set(`${column.table_name}.${column.column_name}`, result.rows[0]);
   }
   return totals;
+}
+
+async function profilePriceValues(client, columnMap) {
+  if (!hasColumns(columnMap, "prices", ["price_unit", "price_values"])) {
+    return {
+      report: {
+        skipped: true,
+        reason: "prices.price_unit or prices.price_values missing",
+      },
+      rates: [],
+    };
+  }
+
+  const rows = await client.query(
+    "SELECT price_unit, price_values FROM prices",
+  );
+  const report = {
+    priceRows: rows.rowCount,
+    unitRows: {},
+    missingUnitRows: 0,
+    nullArrays: 0,
+    emptyArrays: 0,
+    totalRateEntries: 0,
+    malformedJsonEntries: 0,
+    missingPriceEntries: 0,
+    missingPriceShapes: {},
+    missingPriceShapesByUnit: {},
+    nonNumericPriceEntries: 0,
+    unknownUnitRows: 0,
+    entriesWithAdditionalProperties: 0,
+    validRateEntriesByUnit: { kg: 0, tonne: 0, liter: 0 },
+  };
+  const rawRateEntries = [];
+
+  for (const row of rows.rows) {
+    const originalUnit = row.price_unit;
+    const unit = originalUnit ?? "kg";
+    const unitKey = originalUnit ?? "<null>";
+    report.unitRows[unitKey] = (report.unitRows[unitKey] ?? 0) + 1;
+    if (originalUnit == null) report.missingUnitRows += 1;
+    if (!["kg", "tonne", "liter"].includes(unit)) {
+      report.unknownUnitRows += 1;
+    }
+
+    if (row.price_values == null) {
+      report.nullArrays += 1;
+      continue;
+    }
+    if (!Array.isArray(row.price_values) || row.price_values.length === 0) {
+      report.emptyArrays += 1;
+      continue;
+    }
+
+    for (const rawValue of row.price_values) {
+      report.totalRateEntries += 1;
+      let parsed;
+      try {
+        parsed = JSON.parse(rawValue);
+      } catch {
+        report.malformedJsonEntries += 1;
+        continue;
+      }
+      if (
+        !parsed
+        || typeof parsed !== "object"
+        || Array.isArray(parsed)
+        || !Object.prototype.hasOwnProperty.call(parsed, "price")
+      ) {
+        report.missingPriceEntries += 1;
+        const shape = parsed === null
+          ? "null"
+          : Array.isArray(parsed)
+            ? `array(${parsed.length})`
+            : typeof parsed !== "object"
+              ? typeof parsed
+              : Object.keys(parsed).sort().join(",") || "{}";
+        report.missingPriceShapes[shape] =
+          (report.missingPriceShapes[shape] ?? 0) + 1;
+        const shapesForUnit = report.missingPriceShapesByUnit[unitKey] ?? {};
+        shapesForUnit[shape] = (shapesForUnit[shape] ?? 0) + 1;
+        report.missingPriceShapesByUnit[unitKey] = shapesForUnit;
+        continue;
+      }
+      if (Object.keys(parsed).length > 1) {
+        report.entriesWithAdditionalProperties += 1;
+      }
+      rawRateEntries.push({ unit, rawValue });
+    }
+  }
+
+  if (rawRateEntries.length > 0) {
+    const extracted = await client.query(
+      `
+        SELECT source_unit, raw_value::jsonb ->> 'price' AS rate_text
+        FROM unnest($1::text[], $2::text[])
+          AS entries(source_unit, raw_value)
+      `,
+      [
+        rawRateEntries.map((entry) => entry.unit),
+        rawRateEntries.map((entry) => entry.rawValue),
+      ],
+    );
+    for (const entry of extracted.rows) {
+      const rateText = entry.rate_text;
+      if (
+        typeof rateText !== "string"
+        || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(rateText.trim())
+      ) {
+        report.nonNumericPriceEntries += 1;
+        continue;
+      }
+      if (!Object.prototype.hasOwnProperty.call(report.validRateEntriesByUnit, entry.source_unit)) {
+        continue;
+      }
+      report.validRateEntriesByUnit[entry.source_unit] += 1;
+    }
+
+    const invalidCount =
+      report.malformedJsonEntries
+      + report.missingPriceEntries
+      + report.nonNumericPriceEntries;
+    let validIndex = 0;
+    for (const entry of extracted.rows) {
+      const rateText = entry.rate_text;
+      const validNumeric =
+        typeof rateText === "string"
+        && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(rateText.trim());
+      const knownUnit = Object.prototype.hasOwnProperty.call(
+        report.validRateEntriesByUnit,
+        entry.source_unit,
+      );
+      if (validNumeric && knownUnit) {
+        rawRateEntries[validIndex] = {
+          unit: entry.source_unit,
+          rateText: rateText.trim(),
+        };
+        validIndex += 1;
+      }
+    }
+    rawRateEntries.length = validIndex;
+    report.safeForAutomaticRateConversion =
+      invalidCount === 0 && report.unknownUnitRows === 0 && report.missingUnitRows === 0;
+  } else {
+    report.safeForAutomaticRateConversion =
+      report.malformedJsonEntries === 0
+      && report.missingPriceEntries === 0
+      && report.nonNumericPriceEntries === 0
+      && report.unknownUnitRows === 0
+      && report.missingUnitRows === 0;
+  }
+
+  return { report, rates: rawRateEntries };
+}
+
+async function rehearsePriceValues(client, rates) {
+  await client.query(`
+    CREATE TEMP TABLE __price_value_rehearsal (
+      source_unit text NOT NULL,
+      source_rate numeric NOT NULL,
+      target_rate numeric NOT NULL,
+      round_trip_rate numeric NOT NULL
+    ) ON COMMIT DROP
+  `);
+
+  if (rates.length > 0) {
+    await client.query(
+      `
+        INSERT INTO __price_value_rehearsal
+          (source_unit, source_rate, target_rate, round_trip_rate)
+        SELECT
+          source_unit,
+          rate_text::numeric,
+          CASE WHEN source_unit = 'kg' THEN rate_text::numeric * 1000
+            ELSE rate_text::numeric END,
+          CASE WHEN source_unit = 'kg'
+            THEN (rate_text::numeric * 1000) / 1000
+            ELSE rate_text::numeric END
+        FROM unnest($1::text[], $2::text[])
+          AS entries(source_unit, rate_text)
+      `,
+      [rates.map((rate) => rate.unit), rates.map((rate) => rate.rateText)],
+    );
+  }
+
+  const result = await client.query(`
+    SELECT
+      COUNT(*)::bigint AS rate_entries,
+      COUNT(*) FILTER (WHERE source_unit = 'kg')::bigint AS kg_rates_converted,
+      COUNT(*) FILTER (WHERE source_unit = 'liter')::bigint AS liter_rates_preserved,
+      COUNT(*) FILTER (WHERE source_unit = 'tonne')::bigint AS tonne_rates_preserved,
+      COUNT(*) FILTER (WHERE source_rate <> round_trip_rate)::bigint
+        AS round_trip_differences
+    FROM __price_value_rehearsal
+  `);
+  const summary = result.rows[0];
+  if (Number(summary.round_trip_differences) !== 0) {
+    throw new Error("Price-rate conversion rehearsal failed.");
+  }
+  return {
+    ...summary,
+    note: "kg rates are multiplied by 1000; litre and tonne rates remain unchanged",
+  };
 }
 
 await withTemporaryPostgres(async ({ run, createDatabase }) => {
@@ -458,6 +660,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
       productTypeDistribution = result.rows;
     }
 
+    const priceValues = await profilePriceValues(client, columnMap);
+
     const migrationColumnResult = await client.query(`
       SELECT column_name
       FROM information_schema.columns
@@ -495,6 +699,7 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
       priceLimitUnits: priceUnits,
       budgetSalesVolume: budgetVolume,
       warehouseProductTypeDistribution: productTypeDistribution,
+      priceValues: priceValues.report,
       migrationTracking,
       rehearsal: null,
     };
@@ -567,6 +772,11 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         }
       }
 
+      const priceValueRehearsal = await rehearsePriceValues(
+        client,
+        priceValues.rates,
+      );
+
       const afterFinancialTotals = await financialTotals(client, columnMap);
       const changedFinancialTotals = [];
       for (const [field, before] of sourceFinancialTotals) {
@@ -581,6 +791,7 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
 
       report.rehearsal = {
         convertedFields: rehearsal,
+        priceValues: priceValueRehearsal,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
         note: "Temporary columns and updates are rolled back after the checks.",

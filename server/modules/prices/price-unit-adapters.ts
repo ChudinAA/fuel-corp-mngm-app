@@ -44,11 +44,15 @@ function storedRateOrNull(value: string): number | null {
 }
 
 export function priceToApi<T extends LegacyPriceShape>(price: T) {
-  const unit = price.priceUnit === "liter" ? "liter" : "tonne";
-  const massBased = unit === "tonne";
+  const storedUnit = price.priceUnit ?? "kg";
+  if (!["kg", "tonne", "liter"].includes(storedUnit)) {
+    throw new TypeError(`Неизвестная сохранённая единица цены: ${storedUnit}`);
+  }
+  const unit = storedUnit === "liter" ? "liter" : "tonne";
+  const storedAsKilograms = storedUnit === "kg";
   const rates = (price.priceValues ?? []).map((value) => {
     const storedRate = storedRateOrNull(value);
-    return storedRate === null || !massBased
+    return storedRate === null || !storedAsKilograms
       ? storedRate
       : pricePerKilogramToPerTonne(storedRate);
   });
@@ -87,10 +91,10 @@ export function priceResponseToApi(value: unknown): unknown {
   return adapted;
 }
 
-export function priceUnitFilterToStorage(value: unknown): string | undefined {
+export function priceUnitFilterToStorage(value: unknown): string[] | undefined {
   if (value === undefined || value === null || value === "") return undefined;
-  if (value === "tonne" || value === "kg") return "kg";
-  if (value === "liter") return "liter";
+  if (value === "tonne" || value === "kg") return ["kg", "tonne"];
+  if (value === "liter") return ["liter"];
   throw new TypeError("Неизвестная единица цены");
 }
 

@@ -36,7 +36,7 @@ export const formatDate = (dateStr: string | null) => {
 export const getPriceDisplay = (
   priceValues: string[] | null,
   symbol: string,
-  priceUnit: "kg" | "liter" = "kg",
+  priceUnit: "kg" | "tonne" | "liter" = "kg",
 ) => {
   if (!priceValues || priceValues.length === 0) return "—";
   try {
@@ -44,7 +44,7 @@ export const getPriceDisplay = (
       const parsed = JSON.parse(pv);
       const storedPrice = Number(parsed.price);
       if (!Number.isFinite(storedPrice)) throw new TypeError("Invalid stored price");
-      return priceUnit === "liter"
+      return priceUnit === "liter" || priceUnit === "tonne"
         ? storedPrice
         : pricePerKilogramToPerTonne(storedPrice);
     });

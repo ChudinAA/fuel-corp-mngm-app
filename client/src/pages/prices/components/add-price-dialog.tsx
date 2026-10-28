@@ -121,7 +121,7 @@ export function AddPriceDialog({
             const parsed = JSON.parse(pv);
             const storedPrice = Number(parsed.price);
             if (!Number.isFinite(storedPrice)) return { price: "" };
-            const displayPrice = editPriceUnit === "tonne"
+            const displayPrice = editPrice.priceUnit === "kg" || !editPrice.priceUnit
               ? pricePerKilogramToPerTonne(storedPrice)
               : storedPrice;
             return { price: displayPrice.toFixed(2) };

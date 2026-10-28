@@ -152,9 +152,9 @@ export function registerPricesRoutes(app: Express) {
             .json({ message: "Missing required parameters" });
         }
 
-        let legacyPriceUnit: string | undefined;
+        let storedPriceUnits: string[] | undefined;
         try {
-          legacyPriceUnit = priceUnitFilterToStorage(priceUnit);
+          storedPriceUnits = priceUnitFilterToStorage(priceUnit);
         } catch {
           return res.status(400).json({ message: "Неизвестная единица цены" });
         }
@@ -168,7 +168,7 @@ export function registerPricesRoutes(app: Express) {
           productType: productType as string,
           nomenclatureId: nomenclatureId as string | undefined,
           date: date as string,
-          priceUnit: legacyPriceUnit,
+          priceUnit: storedPriceUnits,
         });
 
         res.json(priceResponseToApi(data));

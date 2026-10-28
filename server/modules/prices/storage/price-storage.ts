@@ -23,7 +23,7 @@ export class PriceStorage {
     productType?: string;
     nomenclatureId?: string;
     date: string;
-    priceUnit?: string;
+    priceUnit?: string[];
   }): Promise<Price[]> {
     const conditions = [
       isNull(prices.deletedAt),
@@ -49,8 +49,12 @@ export class PriceStorage {
     } else {
       conditions.push(isNull(prices.nomenclatureId));
     }
-    if (filters.priceUnit) {
-      conditions.push(eq(prices.priceUnit, filters.priceUnit));
+    if (filters.priceUnit?.length) {
+      conditions.push(
+        filters.priceUnit.length === 1
+          ? eq(prices.priceUnit, filters.priceUnit[0])
+          : inArray(prices.priceUnit, filters.priceUnit),
+      );
     }
 
     return db

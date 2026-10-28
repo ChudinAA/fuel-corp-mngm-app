@@ -48,6 +48,37 @@ test("liter-denominated rates remain per liter while used mass is exposed in ton
   });
 });
 
+test("already tonne-denominated stored rates are not converted a second time", () => {
+  const result = priceToApi({
+    priceUnit: "tonne",
+    priceValues: ['{"price":"1234.567"}'],
+  });
+
+  assert.deepEqual(result.priceRate, {
+    unit: "tonne",
+    values: [1234.567],
+  });
+});
+
+test("raw numeric legacy price entries are marked unusable, not converted", () => {
+  const result = priceToApi({
+    priceUnit: "kg",
+    priceValues: ["123.45"],
+  });
+
+  assert.deepEqual(result.priceRate, {
+    unit: "tonne",
+    values: [null],
+  });
+});
+
+test("unknown stored price units fail explicitly", () => {
+  assert.throws(
+    () => priceToApi({ priceUnit: "gallon", priceValues: [] }),
+    /Неизвестная сохранённая единица цены/,
+  );
+});
+
 test("new tonne-based price writes normalize to legacy database columns", () => {
   const result = priceWriteFromApi({
     priceRate: { unit: "tonne", values: [1234.567] },
@@ -110,10 +141,10 @@ test("volume-limited new price writes require explicit volume units", () => {
   );
 });
 
-test("price lookup accepts tonnes and maps them to the legacy mass-unit filter", () => {
-  assert.equal(priceUnitFilterToStorage("tonne"), "kg");
-  assert.equal(priceUnitFilterToStorage("kg"), "kg");
-  assert.equal(priceUnitFilterToStorage("liter"), "liter");
+test("price lookup accepts legacy and tonne-stored mass rates", () => {
+  assert.deepEqual(priceUnitFilterToStorage("tonne"), ["kg", "tonne"]);
+  assert.deepEqual(priceUnitFilterToStorage("kg"), ["kg", "tonne"]);
+  assert.deepEqual(priceUnitFilterToStorage("liter"), ["liter"]);
   assert.equal(priceUnitFilterToStorage(undefined), undefined);
   assert.throws(() => priceUnitFilterToStorage("gallon"), /Неизвестная единица/);
 });
