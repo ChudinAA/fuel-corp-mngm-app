@@ -224,19 +224,102 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         densityComparison.push({ table, skipped: true, reason: "one or more columns missing" });
         continue;
       }
+      const hasDraft = columnMap.has(`${table}.is_draft`);
+      const hasDeleted = columnMap.has(`${table}.deleted_at`);
+      const draftExpr = hasDraft ? "COALESCE(is_draft, false)" : "false";
+      const deletedExpr = hasDeleted ? "deleted_at IS NOT NULL" : "false";
       const result = await client.query(`
         SELECT
           COUNT(*)::bigint AS comparable_rows,
           COUNT(*) FILTER (
             WHERE ABS(quantity_kg - quantity_liters * density) > 0.005
           )::bigint AS over_half_step_kg,
-          MAX(ABS(quantity_kg - quantity_liters * density))::text AS max_delta_kg
+          MAX(ABS(quantity_kg - quantity_liters * density))::text AS max_delta_kg,
+          COUNT(*) FILTER (
+            WHERE ABS(quantity_kg - quantity_liters * density) > 0.005
+              AND ${draftExpr}
+          )::bigint AS draft_discrepancies,
+          COUNT(*) FILTER (
+            WHERE ABS(quantity_kg - quantity_liters * density) > 0.005
+              AND ${deletedExpr}
+          )::bigint AS deleted_discrepancies,
+          COUNT(*) FILTER (
+            WHERE ABS(quantity_kg - quantity_liters * density) > 0.005
+              AND NOT ${draftExpr}
+              AND NOT ${deletedExpr}
+          )::bigint AS active_discrepancies,
+          MAX(ABS(quantity_kg - quantity_liters * density)) FILTER (
+            WHERE NOT ${draftExpr} AND NOT ${deletedExpr}
+          )::text AS max_active_delta_kg
         FROM ${qualifiedTable(table)}
         WHERE quantity_kg IS NOT NULL
           AND quantity_liters > 0
           AND density > 0
       `);
-      densityComparison.push({ table, ...result.rows[0] });
+      densityComparison.push({
+        table,
+        hasDraftFlag: hasDraft,
+        hasDeletedFlag: hasDeleted,
+        ...result.rows[0],
+      });
+    }
+
+    const perLiterDealDensityCoverage = [];
+    for (const table of densitySources) {
+      if (
+        !hasColumns(columnMap, table, [
+          "id", "quantity_kg", "quantity_liters", "density", "deleted_at",
+        ])
+        || !hasColumns(columnMap, "prices", ["id", "price_unit"])
+      ) {
+        perLiterDealDensityCoverage.push({
+          table,
+          skipped: true,
+          reason: "transaction or price-unit columns missing",
+        });
+        continue;
+      }
+      const draftFilter = columnMap.has(`${table}.is_draft`)
+        ? "AND COALESCE(t.is_draft, false) = false"
+        : "";
+      const priceLinkColumns = ["sale_price_id", "purchase_price_id"]
+        .filter((column) => columnMap.has(`${table}.${column}`));
+      if (priceLinkColumns.length === 0) {
+        perLiterDealDensityCoverage.push({
+          table,
+          skipped: true,
+          reason: "price reference columns missing",
+        });
+        continue;
+      }
+      for (const priceColumn of priceLinkColumns) {
+        const result = await client.query(`
+          SELECT
+            COUNT(DISTINCT t.id)::bigint AS active_liter_price_rows,
+            COUNT(DISTINCT t.id) FILTER (
+              WHERE t.quantity_liters > 0 AND t.density > 0
+            )::bigint AS rows_with_density,
+            COUNT(DISTINCT t.id) FILTER (
+              WHERE t.quantity_kg IS NOT NULL
+                AND t.quantity_liters > 0
+                AND t.density > 0
+                AND ABS(t.quantity_kg - t.quantity_liters * t.density) > 0.005
+            )::bigint AS rows_over_half_step,
+            MAX(ABS(t.quantity_kg - t.quantity_liters * t.density))::text
+              AS max_delta_kg
+          FROM ${qualifiedTable(table)} t
+          INNER JOIN ${qualifiedTable("prices")} p
+            ON p.id = t.${quoteIdentifier(priceColumn)}
+          WHERE t.deleted_at IS NULL
+            ${draftFilter}
+            AND p.price_unit = 'liter'
+        `);
+        perLiterDealDensityCoverage.push({
+          table,
+          priceReference: priceColumn,
+          ...result.rows[0],
+        });
+      }
     }
 
     const zeroMassStatus = [];
@@ -406,6 +489,7 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
       unitConditionalFields: conditionalProfile,
       unmappedLegacyFields: legacyProfile,
       litersDensityComparison: densityComparison,
+      perLiterDealDensityCoverage,
       zeroMassStatus,
       warehouseBalanceReconciliation,
       priceLimitUnits: priceUnits,
