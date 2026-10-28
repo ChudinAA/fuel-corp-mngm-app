@@ -224,21 +224,23 @@ docker compose -f docker-compose.prod-db.yml exec db \
 # Ожидаемый результат: 40+ таблиц
 ```
 
-### 4.8 (Опционально) Перенести данные из Neon (Replit)
+### 4.8 (Опционально) Перенести данные из Replit PostgreSQL
 
 ```bash
-# Экспорт из Neon (выполнять на машине с доступом к Neon):
-# NEON_DATABASE_URL="postgresql://..." ./scripts/export-from-neon.sh
+# Экспорт БД из текущего окружения; в shell Replit это обычно dev-БД:
+bash scripts/export-database.sh
 
 # Скопировать дамп на Server 2
-scp neon_export_*.sql.gz user@DB_SERVER_IP:/opt/avfuel-db/
+scp database_export_*.sql.gz user@DB_SERVER_IP:/opt/avfuel-db/
 
 # Восстановить на Server 2:
 cd /opt/avfuel-db
-gunzip -c neon_export_*.sql.gz | \
+gunzip -c database_export_*.sql.gz | \
   docker compose -f docker-compose.prod-db.yml exec -T db \
     psql -U avfuel -d avfuel
 ```
+
+Для production-экспорта используйте подключение из Replit Database Settings, переданное в `DATABASE_URL` в защищённой shell-сессии. Значения подключения не помещать в команды, репозиторий или документацию.
 
 ### 4.9 Настроить firewall на Server 2
 

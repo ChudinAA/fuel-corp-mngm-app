@@ -93,11 +93,10 @@ export async function withTemporaryPostgres(callback) {
         } finally {
           await pool.end();
         }
-        // Override both app connection settings; no external URL is accepted.
+        // Override the sole app connection setting; no external URL is accepted.
         return {
           ...process.env,
           DATABASE_URL: `${baseUrl}/${name}`,
-          NEON_DATABASE_URL: `${baseUrl}/${name}`,
           STOCK_TEST_USE_STANDARD_POSTGRES: "true",
         };
       },

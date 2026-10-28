@@ -50,7 +50,6 @@ appendFileSync(process.env.MOCK_EVENTS, JSON.stringify({
   type: "command", command, args,
   ...(command === "npx" ? {
     database: process.env.DATABASE_URL,
-    neonDatabase: process.env.NEON_DATABASE_URL,
     standardPostgres: process.env.STOCK_TEST_USE_STANDARD_POSTGRES,
   } : {}),
 }) + "\\n");
@@ -80,7 +79,6 @@ if (process.env.MOCK_FAIL === "interrupt" && command === "npx" && args[0] === "d
           env: {
             ...process.env,
             DATABASE_URL: "postgresql://unused@application.invalid/working_database",
-            NEON_DATABASE_URL: "postgresql://unused@neon.invalid/working_database",
             STOCK_TEST_USE_STANDARD_POSTGRES: "false",
             NODE_OPTIONS: "",
             PATH: `${binDirectory}:${process.env.PATH ?? ""}`,
@@ -134,7 +132,6 @@ test("stock tests always create a local cluster and ignore configured applicatio
   ]);
   for (const call of calls) {
     assert.match(call.database, /^postgresql:\/\/postgres@127\.0\.0\.1:\d+\/stock_restore$/);
-    assert.equal(call.neonDatabase, call.database);
     assert.equal(call.standardPostgres, "true");
   }
   assertStoppedAndRemoved(result);

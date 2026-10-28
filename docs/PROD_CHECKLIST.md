@@ -21,7 +21,7 @@
 - [ ] `docker compose exec db pg_isready -U avfuel` → OK
 - [ ] Схема применена (все миграции из `migrations/*.sql`)
 - [ ] Количество таблиц ≥ 40: `SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';`
-- [ ] (опционально) Данные из Neon восстановлены
+- [ ] (опционально) Данные из выбранной Replit-БД восстановлены
 
 ### Firewall
 - [ ] Порт 5432 открыт только для IP Server 1

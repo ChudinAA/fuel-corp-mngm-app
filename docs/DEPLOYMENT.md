@@ -16,7 +16,7 @@
 7. [Сборка и запуск через Docker Compose](#7-запуск)
 8. [Применение схемы базы данных](#8-схема-бд)
 9. [Открытые порты и сетевые настройки](#9-порты)
-10. [Перенос данных из Neon (Replit) → самохостинг](#10-перенос-данных)
+10. [Экспорт Replit PostgreSQL → самохостинг](#10-экспорт-данных)
 11. [Reverse Proxy (Nginx)](#11-nginx)
 12. [Мониторинг](#12-мониторинг)
 13. [Обновление приложения](#13-обновление)
@@ -97,6 +97,7 @@
 
 > **Это обязательный шаг.** В Replit используется Neon Serverless PostgreSQL через WebSocket.  
 > На серверах заказчика нужен стандартный PostgreSQL-драйвер (TCP).
+> Это различие драйверов; приложение использует одно имя подключения — `DATABASE_URL`.
 
 В репозитории уже подготовлен альтернативный файл `server/db.standalone.ts`.
 
@@ -312,29 +313,23 @@ sudo ufw status
 
 ---
 
-## 10. Перенос данных из Neon (Replit) → самохостинг
+## 10. Экспорт Replit PostgreSQL → самохостинг
 
-### Шаг 1: Дамп из Neon
+### Шаг 1: Экспорт выбранной Replit-БД
 
-В Replit получите `DATABASE_URL` из секретов и выполните локально:
+Скрипт экспортирует БД, указанную через `DATABASE_URL`. В shell Replit это обычно dev-БД:
 
 ```bash
-# Установите pg_dump (если нет): sudo apt install postgresql-client
-pg_dump \
-  "postgresql://user:password@ep-xxx.neon.tech/neondb?sslmode=require" \
-  --no-owner \
-  --no-acl \
-  --format=plain \
-  -f neon_export.sql
-
-# Проверить размер дампа
-wc -l neon_export.sql
+bash scripts/export-database.sh
+ls -lh database_export_*.sql.gz
 ```
+
+Для экспорта production используйте подключение из Replit Database Settings и передайте его в `DATABASE_URL` в защищённой shell-сессии. Не используйте для этого `DATABASE_URL` обычного shell Replit и не сохраняйте строку подключения в Git или документации.
 
 ### Шаг 2: Перенос дампа на сервер
 
 ```bash
-scp neon_export.sql user@your-server:/opt/avfuel/
+scp database_export_*.sql.gz user@your-server:/opt/avfuel/
 ```
 
 ### Шаг 3: Восстановление в Docker PostgreSQL
@@ -349,7 +344,7 @@ docker compose up -d db
 docker compose exec db pg_isready -U avfuel
 
 # Применяем дамп
-docker compose exec -T db psql -U avfuel -d avfuel < neon_export.sql
+gunzip -c database_export_*.sql.gz | docker compose exec -T db psql -U avfuel -d avfuel
 
 echo "Проверка количества таблиц:"
 docker compose exec db psql -U avfuel -d avfuel \

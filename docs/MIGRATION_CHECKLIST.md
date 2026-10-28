@@ -9,10 +9,11 @@
 
 - [ ] Получить последнюю версию кода из Replit (Git push или ZIP-архив)
 - [ ] Убедиться, что все изменения закоммичены
-- [ ] Сделать дамп БД из Neon:  
-  `./scripts/export-from-neon.sh`
-- [ ] Проверить размер дампа: `ls -lh neon_export_*.sql.gz`
-- [ ] Сохранить значения секретов из Replit Secrets (DATABASE_URL, SESSION_SECRET если задан)
+- [ ] Сделать дамп канонической Replit-БД: `bash scripts/export-database.sh`
+- [ ] Проверить размер дампа: `ls -lh database_export_*.sql.gz`
+- [ ] Для production использовать подключение из Replit Database Settings; shell `DATABASE_URL` обычно указывает на dev
+- [ ] Задать `DATABASE_URL` self-hosted БД только в защищённом `.env`; не записывать строку подключения в Git
+- [ ] Сохранить `SESSION_SECRET` безопасным способом, если он нужен для переноса пользовательских сессий
 
 ---
 
@@ -36,7 +37,7 @@
 - [ ] Docker образы собраны: `docker compose build`
 - [ ] PostgreSQL запущен: `docker compose up -d db`
 - [ ] Схема применена: миграции из `migrations/*.sql`
-- [ ] Данные из Neon восстановлены (если нужен перенос данных)
+- [ ] Данные из выбранной Replit-БД восстановлены (если нужен перенос данных)
 - [ ] Приложение запущено: `docker compose up -d`
 - [ ] Health check проходит: `curl http://localhost:5000/api/health`
 
