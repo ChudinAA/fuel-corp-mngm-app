@@ -42,7 +42,7 @@ import {
   kilogramsToTonnes,
   pricePerKilogramToPerTonne,
 } from "@shared/units";
-import { inventoryInputToLegacyWarehousePayload } from "../unit-calculations";
+import { inventoryInputToWarehouseTonnesPayload } from "../unit-calculations";
 
 const inventorySchema = z.object({
   productType: z.string().min(1, "Выберите тип продукта"),
@@ -50,7 +50,10 @@ const inventorySchema = z.object({
   targetBalance: z
     .string()
     .min(1, "Укажите целевой остаток")
-    .refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) >= 0, "Некорректное значение"),
+    .refine(
+      (v) => /^\d+(?:\.\d{1,5})?$/.test(v) && Number.isFinite(Number(v)),
+      "Введите массу с точностью до 5 знаков после запятой",
+    ),
   targetAverageCost: z
     .string()
     .min(1, "Укажите целевую себестоимость")
@@ -122,7 +125,7 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
 
   const mutation = useMutation({
     mutationFn: async (data: InventoryFormValues) => {
-      const payload = inventoryInputToLegacyWarehousePayload(data);
+      const payload = inventoryInputToWarehouseTonnesPayload(data);
       const res = await apiRequest("POST", `/api/warehouses/${warehouse.id}/inventory`, payload);
       if (!res.ok) {
         const err = await res.json();

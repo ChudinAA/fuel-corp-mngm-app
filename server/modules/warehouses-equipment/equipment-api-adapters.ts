@@ -1,19 +1,24 @@
 import {
-  kilogramsToTonnes,
   pricePerKilogramToPerTonne,
 } from "@shared/units";
+import { readMassTonnes } from "./equipment-balance-units";
 
 type LegacyEquipmentBalances = {
   currentBalance?: string | number | null;
+  currentBalanceTonnes?: string | number | null;
   pvkjBalance?: string | number | null;
+  pvkjBalanceTonnes?: string | number | null;
   averageCost?: string | number | null;
   pvkjAverageCost?: string | number | null;
 };
 
 type LegacyEquipmentTransaction = {
   quantity: string | number;
+  quantityTonnes?: string | number | null;
   balanceBefore?: string | number | null;
+  balanceBeforeTonnes?: string | number | null;
   balanceAfter?: string | number | null;
+  balanceAfterTonnes?: string | number | null;
   averageCostBefore?: string | number | null;
   averageCostAfter?: string | number | null;
   price?: string | number | null;
@@ -21,17 +26,9 @@ type LegacyEquipmentTransaction = {
 
 type LegacyEquipmentBalanceSnapshot = {
   balance?: string | number | null;
+  balanceTonnes?: string | number | null;
   averageCost?: string | number | null;
 };
-
-function storedKilogramsToTonnes(
-  value: string | number | null | undefined,
-): string | null {
-  if (value == null || (typeof value === "string" && value.trim() === "")) {
-    return null;
-  }
-  return kilogramsToTonnes(Number(value)).toFixed(5);
-}
 
 function storedPricePerKilogramToPerTonne(
   value: string | number | null | undefined,
@@ -43,13 +40,16 @@ function storedPricePerKilogramToPerTonne(
 }
 
 export function equipmentToApi<T extends LegacyEquipmentBalances>(equipment: T) {
-  const currentBalanceKg = Number(equipment.currentBalance ?? "0");
-  const pvkjBalanceKg = Number(equipment.pvkjBalance ?? "0");
-
   return {
     ...equipment,
-    currentBalanceTonnes: kilogramsToTonnes(currentBalanceKg).toFixed(5),
-    pvkjBalanceTonnes: kilogramsToTonnes(pvkjBalanceKg).toFixed(5),
+    currentBalanceTonnes: readMassTonnes(
+      equipment.currentBalanceTonnes,
+      equipment.currentBalance,
+    ).toFixed(5),
+    pvkjBalanceTonnes: readMassTonnes(
+      equipment.pvkjBalanceTonnes,
+      equipment.pvkjBalance,
+    ).toFixed(5),
     averageCostPerTonne: storedPricePerKilogramToPerTonne(
       equipment.averageCost,
     ),
@@ -64,7 +64,10 @@ export function equipmentBalanceToApi<
 >(balance: T) {
   return {
     ...balance,
-    balanceTonnes: storedKilogramsToTonnes(balance.balance ?? "0")!,
+    balanceTonnes: readMassTonnes(
+      balance.balanceTonnes,
+      balance.balance,
+    ).toFixed(5),
     averageCostPerTonne: storedPricePerKilogramToPerTonne(
       balance.averageCost,
     ),
@@ -76,11 +79,26 @@ export function equipmentTransactionToApi<
 >(transaction: T) {
   return {
     ...transaction,
-    quantityTonnes: storedKilogramsToTonnes(transaction.quantity)!,
-    balanceBeforeTonnes: storedKilogramsToTonnes(
-      transaction.balanceBefore,
-    ),
-    balanceAfterTonnes: storedKilogramsToTonnes(transaction.balanceAfter),
+    quantityTonnes: readMassTonnes(
+      transaction.quantityTonnes,
+      transaction.quantity,
+    ).toFixed(5),
+    balanceBeforeTonnes:
+      transaction.balanceBeforeTonnes == null &&
+      transaction.balanceBefore == null
+        ? null
+        : readMassTonnes(
+            transaction.balanceBeforeTonnes,
+            transaction.balanceBefore,
+          ).toFixed(5),
+    balanceAfterTonnes:
+      transaction.balanceAfterTonnes == null &&
+      transaction.balanceAfter == null
+        ? null
+        : readMassTonnes(
+            transaction.balanceAfterTonnes,
+            transaction.balanceAfter,
+          ).toFixed(5),
     averageCostBeforePerTonne: storedPricePerKilogramToPerTonne(
       transaction.averageCostBefore,
     ),

@@ -26,10 +26,10 @@ function perTonneToLegacyRate(value: unknown): number | null {
   return Number(pricePerTonneToPerKilogram(rate).toFixed(6));
 }
 
-export function toLegacyMovementInput(
+export function normalizeMovementInput(
   input: Record<string, unknown>,
 ): Record<string, unknown> {
-  const legacy: Record<string, unknown> = { ...input };
+  const normalized: Record<string, unknown> = { ...input };
 
   if (Object.prototype.hasOwnProperty.call(input, "quantityTonnes")) {
     const tonnes = parseFinite(input.quantityTonnes);
@@ -39,8 +39,20 @@ export function toLegacyMovementInput(
     if (tonnes !== null && tonnes < 0) {
       throw new MovementApiInputError("Масса не может быть отрицательной");
     }
-    legacy.quantityKg =
+    normalized.quantityTonnes =
+      tonnes === null ? null : Number(tonnes.toFixed(5));
+    normalized.quantityKg =
       tonnes === null ? null : Number(tonnesToKilograms(tonnes).toFixed(2));
+  } else if (Object.prototype.hasOwnProperty.call(input, "quantityKg")) {
+    const kilograms = parseFinite(input.quantityKg);
+    if (input.quantityKg !== null && kilograms === null) {
+      throw new MovementApiInputError("Некорректная масса в килограммах");
+    }
+    if (kilograms !== null && kilograms < 0) {
+      throw new MovementApiInputError("Масса не может быть отрицательной");
+    }
+    normalized.quantityTonnes =
+      kilograms === null ? null : Number(kilogramsToTonnes(kilograms).toFixed(5));
   }
 
   for (const [apiField, legacyField] of [
@@ -49,15 +61,22 @@ export function toLegacyMovementInput(
     ["costPerTonne", "costPerKg"],
   ] as const) {
     if (Object.prototype.hasOwnProperty.call(input, apiField)) {
-      legacy[legacyField] = perTonneToLegacyRate(input[apiField]);
+      const rate = parseFinite(input[apiField]);
+      normalized[apiField] = rate === null ? null : Number(rate.toFixed(6));
+      normalized[legacyField] = perTonneToLegacyRate(input[apiField]);
+    } else if (Object.prototype.hasOwnProperty.call(input, legacyField)) {
+      const rate = parseFinite(input[legacyField]);
+      if (input[legacyField] !== null && rate === null) {
+        throw new MovementApiInputError("Некорректная ставка за килограмм");
+      }
+      const tonneField =
+        apiField as "purchasePricePerTonne" | "deliveryPricePerTonne" | "costPerTonne";
+      normalized[tonneField] =
+        rate === null ? null : Number((rate * 1_000).toFixed(6));
     }
   }
 
-  delete legacy.quantityTonnes;
-  delete legacy.purchasePricePerTonne;
-  delete legacy.deliveryPricePerTonne;
-  delete legacy.costPerTonne;
-  return legacy;
+  return normalized;
 }
 
 export function movementDealToApi<T extends Record<string, any>>(
@@ -78,38 +97,36 @@ export function movementDealToApi<T extends Record<string, any>>(
     costPerKg,
     ...rest
   } = deal;
-  const liters = parseFinite(deal.quantityLiters);
-  const density = parseFinite(deal.density);
-  const tonnesFromLiters =
-    liters !== null && liters > 0 && density !== null && density > 0
-      ? kilogramsToTonnes(liters * density)
-      : null;
   const storedKg = parseFinite(quantityKg);
   const quantityTonnes =
-    tonnesFromLiters ??
+    parseFinite(deal.quantityTonnes) ??
     (storedKg === null ? null : kilogramsToTonnes(storedKg));
   const storedPurchasePrice = parseFinite(purchasePrice);
+  const purchasePricePerTonne =
+    parseFinite(deal.purchasePricePerTonne) ??
+    (storedPurchasePrice === null
+      ? null
+      : Number((storedPurchasePrice * 1_000).toFixed(6)));
   const purchaseAmount =
-    storedKg !== null && storedPurchasePrice !== null
-      ? storedKg * storedPurchasePrice
+    quantityTonnes !== null && purchasePricePerTonne !== null
+      ? quantityTonnes * purchasePricePerTonne
       : 0;
 
   return {
     ...rest,
     quantityTonnes,
     purchaseAmount,
-    purchasePricePerTonne:
-      parseFinite(purchasePrice) === null
-        ? null
-        : Number((parseFinite(purchasePrice)! * 1_000).toFixed(6)),
+    purchasePricePerTonne,
     deliveryPricePerTonne:
-      parseFinite(deliveryPrice) === null
+      parseFinite(deal.deliveryPricePerTonne) ??
+      (parseFinite(deliveryPrice) === null
         ? null
-        : Number((parseFinite(deliveryPrice)! * 1_000).toFixed(6)),
+        : Number((parseFinite(deliveryPrice)! * 1_000).toFixed(6))),
     costPerTonne:
-      parseFinite(costPerKg) === null
+      parseFinite(deal.costPerTonne) ??
+      (parseFinite(costPerKg) === null
         ? null
-        : Number((parseFinite(costPerKg)! * 1_000).toFixed(6)),
+        : Number((parseFinite(costPerKg)! * 1_000).toFixed(6))),
   } as Omit<
     T,
     "quantityKg" | "purchasePrice" | "deliveryPrice" | "costPerKg"

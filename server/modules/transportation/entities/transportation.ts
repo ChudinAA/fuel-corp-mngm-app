@@ -39,11 +39,20 @@ export const transportation = pgTable(
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
+    quantityTonnes: decimal("quantity_tonnes", { precision: 18, scale: 5 }),
     inputMode: text("input_mode"),
     purchasePrice: decimal("purchase_price", { precision: 19, scale: 6 }),
+    purchasePricePerTonne: decimal("purchase_price_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
     purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
     purchasePriceIndex: integer("purchase_price_index").default(0),
     salePrice: decimal("sale_price", { precision: 19, scale: 6 }),
+    salePricePerTonne: decimal("sale_price_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
     salePriceId: uuid("sale_price_id").references(() => prices.id),
     salePriceIndex: integer("sale_price_index").default(0),
     purchaseAmount: decimal("purchase_amount", { precision: 15, scale: 2 }),
@@ -53,6 +62,10 @@ export const transportation = pgTable(
       () => logisticsDeliveryLocations.id,
     ),
     deliveryTariff: decimal("delivery_tariff", { precision: 19, scale: 6 }),
+    deliveryTariffPerTonne: decimal("delivery_tariff_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
     deliveryCost: decimal("delivery_cost", { precision: 15, scale: 2 }),
     profit: decimal("profit", { precision: 15, scale: 2 }),
     notes: text("notes"),
@@ -135,11 +148,14 @@ export const insertTransportationSchema = z
     quantityLiters: z.number().nullable().optional(),
     density: z.number().nullable().optional(),
     quantityKg: z.number().nullable().optional(),
+    quantityTonnes: z.number().nullable().optional(),
     inputMode: z.string().nullable().optional(),
     purchasePrice: z.number().nullable().optional(),
+    purchasePricePerTonne: z.number().nullable().optional(),
     purchasePriceId: z.string().nullable().optional(),
     purchasePriceIndex: z.number().nullable().optional(),
     salePrice: z.number().nullable().optional(),
+    salePricePerTonne: z.number().nullable().optional(),
     salePriceId: z.string().nullable().optional(),
     salePriceIndex: z.number().nullable().optional(),
     purchaseAmount: z.number().nullable().optional(),
@@ -147,6 +163,7 @@ export const insertTransportationSchema = z
     carrierId: z.string().nullable().optional(),
     deliveryLocationId: z.string().nullable().optional(),
     deliveryTariff: z.number().nullable().optional(),
+    deliveryTariffPerTonne: z.number().nullable().optional(),
     deliveryCost: z.number().nullable().optional(),
     profit: z.number().nullable().optional(),
     notes: z.string().nullable().optional(),
@@ -191,11 +208,22 @@ export const insertTransportationSchema = z
           path: ["dealDate"],
         });
       }
-      if (data.quantityKg === undefined || data.quantityKg === null) {
+      const quantityTonnes =
+        data.quantityTonnes ??
+        (data.quantityKg === undefined || data.quantityKg === null
+          ? null
+          : data.quantityKg / 1_000);
+      if (quantityTonnes === null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Масса обязательна",
-          path: ["quantityKg"],
+          path: ["quantityTonnes"],
+        });
+      } else if (!Number.isFinite(quantityTonnes) || quantityTonnes <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Масса должна быть больше нуля",
+          path: ["quantityTonnes"],
         });
       }
     }

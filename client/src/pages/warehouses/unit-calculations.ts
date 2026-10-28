@@ -1,5 +1,4 @@
 import {
-  pricePerTonneToPerKilogram,
   tonnesToKilograms,
 } from "@shared/units";
 
@@ -19,7 +18,7 @@ export function tonnesToLegacyWarehouseKilograms(
   ).toFixed(2);
 }
 
-export function inventoryInputToLegacyWarehousePayload(input: {
+export function inventoryInputToWarehouseTonnesPayload(input: {
   productType: string;
   targetDate: string;
   targetBalance: string;
@@ -37,9 +36,7 @@ export function inventoryInputToLegacyWarehousePayload(input: {
   return {
     productType: input.productType,
     targetDate: input.targetDate,
-    targetBalance: tonnesToKilograms(targetBalanceTonnes).toFixed(2),
-    targetAverageCost: pricePerTonneToPerKilogram(
-      targetCostPerTonne,
-    ).toFixed(6),
+    targetBalanceTonnes: targetBalanceTonnes.toFixed(5),
+    targetAverageCostPerTonne: String(targetCostPerTonne),
   };
 }

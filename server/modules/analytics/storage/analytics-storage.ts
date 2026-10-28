@@ -247,7 +247,7 @@ export class AnalyticsStorage implements IAnalyticsStorage {
       if (metrics.includes('warehouse')) {
         const [warehouseData] = await db
           .select({
-            totalBalanceTonnes: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantity} AS NUMERIC)) / 1000, 0)::text`,
+            totalBalanceTonnes: sql<string>`COALESCE(SUM(COALESCE(CAST(${warehouseTransactions.quantityTonnes} AS NUMERIC), CAST(${warehouseTransactions.quantity} AS NUMERIC) / 1000)), 0)::text`,
           })
           .from(warehouseTransactions)
           .where(isNull(warehouseTransactions.deletedAt));

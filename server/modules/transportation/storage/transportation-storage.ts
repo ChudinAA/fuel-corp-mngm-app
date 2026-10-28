@@ -179,6 +179,10 @@ export class TransportationStorage {
         buyerId: data.buyerId!,
         dealDate: data.dealDate!,
         quantityKg: String(data.quantityKg),
+          quantityTonnes:
+            data.quantityTonnes === null || data.quantityTonnes === undefined
+              ? null
+              : String(data.quantityTonnes),
       }).map(([key, value]) => [key, typeof value === "number" ? String(value) : value]),
     );
     const [created] = await db
@@ -192,10 +196,16 @@ export class TransportationStorage {
     id: string,
     data: Partial<InsertTransportation>,
   ): Promise<Transportation | undefined> {
+    const dbValues = Object.fromEntries(
+      Object.entries(data).map(([key, value]) => [
+        key,
+        typeof value === "number" ? String(value) : value,
+      ]),
+    );
     const [updated] = await db
       .update(transportation)
       .set({
-        ...data,
+        ...dbValues,
         updatedAt: sql`NOW()`,
         updatedById: data.updatedById ?? undefined,
         buyerId: data.buyerId ?? undefined,

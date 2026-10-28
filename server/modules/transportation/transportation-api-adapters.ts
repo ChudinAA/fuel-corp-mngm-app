@@ -43,10 +43,30 @@ function toLegacyPerUnitRate(
   return Number(pricePerTonneToPerKilogram(rate).toFixed(6));
 }
 
-export function toLegacyTransportationInput(
+function legacyRateToPerTonne(
+  legacyRate: unknown,
+  input: Record<string, unknown>,
+): number | null {
+  const rate = toFiniteNumber(legacyRate);
+  if (rate === null) return null;
+  if (
+    input.inputMode === "liters" ||
+    (input.inputMode === null || input.inputMode === undefined) &&
+      toFiniteNumber(input.quantityLiters) !== null &&
+      toFiniteNumber(input.quantityLiters)! > 0
+  ) {
+    const density = toFiniteNumber(input.density);
+    return density !== null && density > 0
+      ? pricePerLitreToPerTonne(rate, density)
+      : null;
+  }
+  return pricePerKilogramToPerTonne(rate);
+}
+
+export function normalizeTransportationInput(
   input: Record<string, unknown>,
 ): Record<string, unknown> {
-  const legacy: Record<string, unknown> = { ...input };
+  const normalized: Record<string, unknown> = { ...input };
 
   if (Object.prototype.hasOwnProperty.call(input, "quantityTonnes")) {
     const tonnes = toFiniteNumber(input.quantityTonnes);
@@ -56,8 +76,20 @@ export function toLegacyTransportationInput(
     if (tonnes !== null && tonnes < 0) {
       throw new TransportationApiInputError("Масса не может быть отрицательной");
     }
-    legacy.quantityKg =
+    normalized.quantityTonnes =
+      tonnes === null ? null : Number(tonnes.toFixed(5));
+    normalized.quantityKg =
       tonnes === null ? null : Number(tonnesToKilograms(tonnes).toFixed(2));
+  } else if (Object.prototype.hasOwnProperty.call(input, "quantityKg")) {
+    const kilograms = toFiniteNumber(input.quantityKg);
+    if (input.quantityKg !== null && kilograms === null) {
+      throw new TransportationApiInputError("Некорректная масса в килограммах");
+    }
+    if (kilograms !== null && kilograms < 0) {
+      throw new TransportationApiInputError("Масса не может быть отрицательной");
+    }
+    normalized.quantityTonnes =
+      kilograms === null ? null : Number(kilogramsToTonnes(kilograms).toFixed(5));
   }
 
   for (const [apiField, legacyField] of [
@@ -65,10 +97,32 @@ export function toLegacyTransportationInput(
     ["salePricePerTonne", "salePrice"],
   ] as const) {
     if (Object.prototype.hasOwnProperty.call(input, apiField)) {
-      legacy[legacyField] =
-        input[apiField] === null
-          ? null
-          : toLegacyPerUnitRate(input[apiField], input);
+      const rate = toFiniteNumber(input[apiField]);
+      if (input[apiField] !== null && rate === null) {
+        throw new TransportationApiInputError("Некорректная цена за тонну");
+      }
+      if (rate !== null && rate < 0) {
+        throw new TransportationApiInputError("Цена не может быть отрицательной");
+      }
+      normalized[apiField] = rate === null ? null : Number(rate.toFixed(6));
+      normalized[legacyField] =
+        rate === null ? null : toLegacyPerUnitRate(rate, input);
+    } else if (Object.prototype.hasOwnProperty.call(input, legacyField)) {
+      const rate = toFiniteNumber(input[legacyField]);
+      if (input[legacyField] !== null && rate === null) {
+        throw new TransportationApiInputError("Некорректная ставка");
+      }
+      if (rate !== null && rate < 0) {
+        throw new TransportationApiInputError("Цена не может быть отрицательной");
+      }
+      const convertedRate = rate === null ? null : legacyRateToPerTonne(rate, input);
+      if (rate !== null && convertedRate === null) {
+        throw new TransportationApiInputError(
+          "Для цены за литр укажите положительную плотность",
+        );
+      }
+      normalized[apiField] =
+        convertedRate === null ? null : Number(convertedRate.toFixed(6));
     }
   }
 
@@ -82,15 +136,23 @@ export function toLegacyTransportationInput(
     if (rate !== null && rate < 0) {
       throw new TransportationApiInputError("Тариф не может быть отрицательным");
     }
-    legacy.deliveryTariff =
+    normalized.deliveryTariffPerTonne =
+      rate === null ? null : Number(rate.toFixed(6));
+    normalized.deliveryTariff =
       rate === null ? null : Number(pricePerTonneToPerKilogram(rate).toFixed(6));
+  } else if (Object.prototype.hasOwnProperty.call(input, "deliveryTariff")) {
+    const rate = toFiniteNumber(input.deliveryTariff);
+    if (input.deliveryTariff !== null && rate === null) {
+      throw new TransportationApiInputError("Некорректный тариф за килограмм");
+    }
+    if (rate !== null && rate < 0) {
+      throw new TransportationApiInputError("Тариф не может быть отрицательным");
+    }
+    normalized.deliveryTariffPerTonne =
+      rate === null ? null : Number(pricePerKilogramToPerTonne(rate).toFixed(6));
   }
 
-  delete legacy.quantityTonnes;
-  delete legacy.purchasePricePerTonne;
-  delete legacy.salePricePerTonne;
-  delete legacy.deliveryTariffPerTonne;
-  return legacy;
+  return normalized;
 }
 
 export function transportationDealToApi<T extends Record<string, any>>(
@@ -110,55 +172,43 @@ export function transportationDealToApi<T extends Record<string, any>>(
   } = deal;
   const quantityLiters = toFiniteNumber(deal.quantityLiters);
   const density = toFiniteNumber(deal.density);
-  const massFromLiters =
-    quantityLiters !== null &&
-    quantityLiters > 0 &&
-    density !== null &&
-    density > 0
-      ? kilogramsToTonnes(quantityLiters * density)
-      : null;
-  const legacyTonnes =
-    massFromLiters ??
-    (toFiniteNumber(quantityKg) === null
+  const storedKilograms = toFiniteNumber(quantityKg);
+  const quantityTonnes =
+    toFiniteNumber(deal.quantityTonnes) ??
+    (storedKilograms === null
       ? null
-      : kilogramsToTonnes(toFiniteNumber(quantityKg)!));
+      : kilogramsToTonnes(storedKilograms));
 
   const ratePerTonne = (
     legacyRate: unknown,
-    savedAmount: unknown,
+    savedTonneRate: unknown,
   ): number | null => {
-    const amount = toFiniteNumber(savedAmount);
-    if (legacyTonnes !== null && legacyTonnes > 0 && amount !== null) {
-      return amount / legacyTonnes;
-    }
-
+    const savedRate = toFiniteNumber(savedTonneRate);
+    if (savedRate !== null) return savedRate;
     const rate = toFiniteNumber(legacyRate);
-    if (rate === null) return null;
-    if (
-      deal.inputMode === "liters" ||
-      (quantityLiters !== null && quantityLiters > 0)
-    ) {
-      return density !== null && density > 0
-        ? pricePerLitreToPerTonne(rate, density)
-        : null;
-    }
-    return pricePerKilogramToPerTonne(rate);
+    return rate === null
+      ? null
+      : legacyRateToPerTonne(rate, {
+          inputMode: deal.inputMode,
+          quantityLiters,
+          density,
+        });
   };
 
-  const deliveryAmount = toFiniteNumber(deal.deliveryCost);
   const deliveryRate =
-    legacyTonnes !== null && legacyTonnes > 0 && deliveryAmount !== null
-      ? deliveryAmount / legacyTonnes
-      : (() => {
-          const legacy = toFiniteNumber(deliveryTariff);
-          return legacy === null ? null : pricePerKilogramToPerTonne(legacy);
-        })();
+    toFiniteNumber(deal.deliveryTariffPerTonne) ??
+    (toFiniteNumber(deliveryTariff) === null
+      ? null
+      : pricePerKilogramToPerTonne(toFiniteNumber(deliveryTariff)!));
 
   return {
     ...rest,
-    quantityTonnes: legacyTonnes,
-    purchasePricePerTonne: ratePerTonne(purchasePrice, deal.purchaseAmount),
-    salePricePerTonne: ratePerTonne(salePrice, deal.saleAmount),
+    quantityTonnes,
+    purchasePricePerTonne: ratePerTonne(
+      purchasePrice,
+      deal.purchasePricePerTonne,
+    ),
+    salePricePerTonne: ratePerTonne(salePrice, deal.salePricePerTonne),
     deliveryTariffPerTonne: deliveryRate,
   } as Omit<
     T,

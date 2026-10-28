@@ -260,8 +260,12 @@ export class WarehouseRecalculationService {
       console.log("      TransactionDate:", transaction.transactionDate);
       console.log("      CreatedAt:", transaction.createdAt);
 
-      const quantityKg = Math.abs(parseFloat(transaction.quantity));
-      const quantity = kilogramsToTonnes(quantityKg);
+      const signedQuantityTonnes =
+        transaction.quantityTonnes == null
+          ? kilogramsToTonnes(Number.parseFloat(transaction.quantity))
+          : Number.parseFloat(transaction.quantityTonnes);
+      const quantityKg = Math.abs(tonnesToKilograms(signedQuantityTonnes));
+      const quantity = Math.abs(signedQuantityTonnes);
       const isReceipt =
         transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
         transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
@@ -287,9 +291,12 @@ export class WarehouseRecalculationService {
         // Inventory is a checkpoint: its balanceAfter/averageCostAfter are the
         // user-specified target values and must NOT be recalculated from running state.
         // We only update balanceBefore/averageCostBefore to the current running values.
-        newBalance = kilogramsToTonnes(
-          parseFloat(transaction.balanceAfter || "0"),
-        );
+        newBalance =
+          transaction.balanceAfterTonnes == null
+            ? kilogramsToTonnes(
+                parseFloat(transaction.balanceAfter || "0"),
+              )
+            : Number.parseFloat(transaction.balanceAfterTonnes);
         newAverageCost = pricePerKilogramToPerTonne(
           parseFloat(transaction.averageCostAfter || "0"),
         );
@@ -306,10 +313,13 @@ export class WarehouseRecalculationService {
           .update(warehouseTransactions)
           .set({
             balanceBefore: tonnesToKilograms(currentBalance).toFixed(2),
+            balanceBeforeTonnes: currentBalance.toFixed(5),
+            balanceAfterTonnes: newBalance.toFixed(5),
             averageCostBefore: pricePerTonneToPerKilogram(
               currentAverageCost,
             ).toFixed(6),
-            // balanceAfter and averageCostAfter are preserved as user-set values
+            // The inventory checkpoint stays user-set in both mass units.
+            // averageCostAfter remains stored in the legacy ₽/kg unit for now.
             sum: newSum.toFixed(2),
             price: pricePerTonneToPerKilogram(newPrice).toFixed(6),
             updatedAt: sql`NOW()`,
@@ -333,9 +343,7 @@ export class WarehouseRecalculationService {
           { balance: currentBalance, averageCost: currentAverageCost },
           {
             ...transaction,
-            quantity: kilogramsToTonnes(
-              Number.parseFloat(transaction.quantity),
-            ),
+            quantity: signedQuantityTonnes,
           },
           incomingCost,
         );
@@ -356,6 +364,8 @@ export class WarehouseRecalculationService {
           .set({
             balanceBefore: tonnesToKilograms(currentBalance).toFixed(2),
             balanceAfter: tonnesToKilograms(newBalance).toFixed(2),
+            balanceBeforeTonnes: currentBalance.toFixed(5),
+            balanceAfterTonnes: newBalance.toFixed(5),
             averageCostBefore: pricePerTonneToPerKilogram(
               currentAverageCost,
             ).toFixed(6),
@@ -431,11 +441,13 @@ export class WarehouseRecalculationService {
 
     if (isPvkj) {
       updateData.pvkjBalance = tonnesToKilograms(currentBalance).toFixed(2);
+      updateData.pvkjBalanceTonnes = currentBalance.toFixed(5);
       updateData.pvkjAverageCost = pricePerTonneToPerKilogram(
         currentAverageCost,
       ).toFixed(6);
     } else {
       updateData.currentBalance = tonnesToKilograms(currentBalance).toFixed(2);
+      updateData.currentBalanceTonnes = currentBalance.toFixed(5);
       updateData.averageCost = pricePerTonneToPerKilogram(
         currentAverageCost,
       ).toFixed(6);
@@ -524,9 +536,12 @@ export class WarehouseRecalculationService {
 
     if (lastTransaction.length > 0) {
       return {
-        balance: kilogramsToTonnes(
-          parseFloat(lastTransaction[0].balanceAfter || "0"),
-        ),
+        balance:
+          lastTransaction[0].balanceAfterTonnes == null
+            ? kilogramsToTonnes(
+                parseFloat(lastTransaction[0].balanceAfter || "0"),
+              )
+            : Number.parseFloat(lastTransaction[0].balanceAfterTonnes),
         averageCost: pricePerKilogramToPerTonne(
           parseFloat(lastTransaction[0].averageCostAfter || "0"),
         ),

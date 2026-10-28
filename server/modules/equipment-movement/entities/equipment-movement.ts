@@ -35,10 +35,12 @@ export const equipmentMovement = pgTable(
     fromEquipmentId: uuid("from_equipment_id").references(() => equipments.id),
     toEquipmentId: uuid("to_equipment_id").references(() => equipments.id),
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
+    quantityTonnes: decimal("quantity_tonnes", { precision: 18, scale: 5 }),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     inputMode: text("input_mode"),
     costPerKg: decimal("cost_per_kg", { precision: 19, scale: 6 }),
+    costPerTonne: decimal("cost_per_tonne", { precision: 22, scale: 6 }),
     totalCost: decimal("total_cost", { precision: 15, scale: 2 }),
     basis: text("basis"),
     basisId: uuid("basis_id").references(() => bases.id),
@@ -137,12 +139,15 @@ export const insertEquipmentMovementSchema = createInsertSchema(
 }).superRefine((data, ctx) => {
   if (data.isDraft) return;
 
-  const quantityKg = Number(data.quantityKg);
-  if (!Number.isFinite(quantityKg) || quantityKg <= 0) {
+  const quantityTonnes =
+    data.quantityTonnes == null
+      ? Number(data.quantityKg) / 1_000
+      : Number(data.quantityTonnes);
+  if (!Number.isFinite(quantityTonnes) || quantityTonnes <= 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Масса должна быть больше нуля",
-      path: ["quantityKg"],
+      path: ["quantityTonnes"],
     });
   }
 

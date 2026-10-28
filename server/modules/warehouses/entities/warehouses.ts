@@ -34,6 +34,10 @@ export const warehouses = pgTable(
       precision: 15,
       scale: 2,
     }).default("0"),
+    currentBalanceTonnes: decimal("current_balance_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
     averageCost: decimal("average_cost", { precision: 15, scale: 6 }).default(
       "0",
     ),
@@ -41,6 +45,10 @@ export const warehouses = pgTable(
     pvkjBalance: decimal("pvkj_balance", { precision: 15, scale: 2 }).default(
       "0",
     ),
+    pvkjBalanceTonnes: decimal("pvkj_balance_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
     pvkjAverageCost: decimal("pvkj_average_cost", {
       precision: 15,
       scale: 6,
@@ -103,10 +111,22 @@ export const warehouseTransactions = pgTable(
     transactionType: text("transaction_type").notNull(),
     productType: text("product_type").default("kerosene"),
     quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
+    quantityTonnes: decimal("quantity_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
     sourceType: text("source_type"),
     sourceId: uuid("source_id"),
     balanceBefore: decimal("balance_before", { precision: 15, scale: 2 }),
     balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
+    balanceBeforeTonnes: decimal("balance_before_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
+    balanceAfterTonnes: decimal("balance_after_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
     averageCostBefore: decimal("average_cost_before", {
       precision: 15,
       scale: 6,
@@ -250,9 +270,12 @@ export type InsertUserWarehouseAccess = z.infer<typeof insertUserWarehouseAccess
 export const insertWarehouseSchema = z.object({
   name: z.string().min(1),
   supplierId: z.string().uuid().optional().nullable(),
+  currentBalance: z.string().optional().nullable(),
+  currentBalanceTonnes: z.string().optional().nullable(),
   equipmentType: z.string().optional().default("common"),
   storageCost: z.string().optional().nullable(),
   pvkjBalance: z.string().optional().nullable(),
+  pvkjBalanceTonnes: z.string().optional().nullable(),
   pvkjAverageCost: z.string().optional().nullable(),
   isExport: z.boolean().optional().default(false),
   isActive: z.boolean().optional(),

@@ -8,7 +8,7 @@ import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
 import {
   TransportationApiInputError,
-  toLegacyTransportationInput,
+  normalizeTransportationInput,
   transportationResultToApi,
 } from "../transportation-api-adapters";
 
@@ -65,7 +65,7 @@ export function registerTransportationRoutes(app: Express) {
     requireAuth,
     async (req, res) => {
       try {
-        const normalized = toLegacyTransportationInput(
+        const normalized = normalizeTransportationInput(
           req.body as Record<string, unknown>,
         );
         const isDuplicate = await (storage as any).transportation.checkDuplicate(
@@ -93,7 +93,7 @@ export function registerTransportationRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        const normalized = toLegacyTransportationInput(
+        const normalized = normalizeTransportationInput(
           req.body as Record<string, unknown>,
         );
         const data = insertTransportationSchema.parse({
@@ -140,7 +140,7 @@ export function registerTransportationRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const normalized = toLegacyTransportationInput(
+        const normalized = normalizeTransportationInput(
           req.body as Record<string, unknown>,
         );
         const item = await (storage as any).transportation.updateTransportation(id, {

@@ -10,11 +10,14 @@ import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { WarehouseRecalculationService } from "server/modules/warehouses/services/warehouse-recalculation-service";
 import { calculateStockMovement } from "server/modules/warehouses/services/stock-transaction-calculations";
 import {
-  kilogramsToTonnes,
   pricePerKilogramToPerTonne,
   pricePerTonneToPerKilogram,
   tonnesToKilograms,
 } from "@shared/units";
+import {
+  massMirrorFields,
+  readMassTonnes,
+} from "../equipment-balance-units";
 
 export class EquipmentRecalculationService {
   static async recalculateEquipmentFromDate(
@@ -90,8 +93,9 @@ export class EquipmentRecalculationService {
       )
       .limit(1);
 
-    let currentBalance = kilogramsToTonnes(
-      parseFloat(lastBefore?.balanceAfter || "0"),
+    let currentBalance = readMassTonnes(
+      lastBefore?.balanceAfterTonnes,
+      lastBefore?.balanceAfter,
     );
     let currentAverageCost = pricePerKilogramToPerTonne(
       parseFloat(lastBefore?.averageCostAfter || "0"),
@@ -137,8 +141,11 @@ export class EquipmentRecalculationService {
     console.log(`  Found ${transactions.length} transactions to recalculate`);
 
     for (const transaction of transactions) {
-      const quantityKg = Math.abs(parseFloat(transaction.quantity));
-      const quantity = kilogramsToTonnes(quantityKg);
+      const quantity = readMassTonnes(
+        transaction.quantityTonnes,
+        transaction.quantity,
+      );
+      const quantityKg = Math.abs(tonnesToKilograms(quantity));
       const isReceipt =
         transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
         transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
@@ -164,9 +171,7 @@ export class EquipmentRecalculationService {
           { balance: currentBalance, averageCost: currentAverageCost },
           {
             ...transaction,
-            quantity: kilogramsToTonnes(
-              Number.parseFloat(transaction.quantity),
-            ),
+            quantity,
           },
           incomingCost,
         );
@@ -195,7 +200,7 @@ export class EquipmentRecalculationService {
         await this.updateEquipmentMovement(
           tx,
           transaction.sourceId,
-          pricePerTonneToPerKilogram(newAverageCost),
+          newAverageCost,
           transaction.transactionType,
           updatedById,
           visited,
@@ -208,6 +213,8 @@ export class EquipmentRecalculationService {
         .set({
           balanceBefore: tonnesToKilograms(currentBalance).toFixed(2),
           balanceAfter: tonnesToKilograms(newBalance).toFixed(2),
+          balanceBeforeTonnes: currentBalance.toFixed(5),
+          balanceAfterTonnes: newBalance.toFixed(5),
           averageCostBefore: pricePerTonneToPerKilogram(
             currentAverageCost,
           ).toFixed(4),
@@ -231,14 +238,17 @@ export class EquipmentRecalculationService {
 
     // 3. Update equipment's current state
     const updateData: any = { updatedAt: sql`NOW()`, updatedById };
+    const balance = massMirrorFields(currentBalance);
 
     if (isPvkj) {
-      updateData.pvkjBalance = tonnesToKilograms(currentBalance).toFixed(2);
+      updateData.pvkjBalanceTonnes = balance.tonnes;
+      updateData.pvkjBalance = balance.kilograms;
       updateData.pvkjAverageCost = pricePerTonneToPerKilogram(
         currentAverageCost,
       ).toFixed(4);
     } else {
-      updateData.currentBalance = tonnesToKilograms(currentBalance).toFixed(2);
+      updateData.currentBalanceTonnes = balance.tonnes;
+      updateData.currentBalance = balance.kilograms;
       updateData.averageCost = pricePerTonneToPerKilogram(
         currentAverageCost,
       ).toFixed(4);
@@ -271,6 +281,10 @@ export class EquipmentRecalculationService {
       if (move) {
         const totalCost = parseFloat(move.totalCost || "0");
         if (totalCost > 0) return totalCost;
+        const costPerTonne = parseFloat(move.costPerTonne || "0");
+        if (costPerTonne > 0) {
+          return costPerTonne * (quantity / 1_000);
+        }
         const costPerKg = parseFloat(move.costPerKg || "0");
         if (costPerKg > 0) return costPerKg * quantity;
       }
@@ -325,12 +339,17 @@ export class EquipmentRecalculationService {
 
     if (!move) return;
 
-    const quantity = parseFloat(move.quantityKg);
-    const totalCost = quantity * newAverageCost;
+    const quantityTonnes =
+      move.quantityTonnes === null || move.quantityTonnes === undefined
+        ? Number(move.quantityKg || 0) / 1_000
+        : Number(move.quantityTonnes);
+    const totalCost = quantityTonnes * newAverageCost;
+    const costPerKg = pricePerTonneToPerKilogram(newAverageCost);
     await tx
       .update(equipmentMovement)
       .set({
-        costPerKg: newAverageCost.toFixed(5),
+        costPerTonne: newAverageCost.toFixed(6),
+        costPerKg: costPerKg.toFixed(6),
         totalCost: totalCost.toFixed(2),
         updatedAt: sql`NOW()`,
         updatedById,

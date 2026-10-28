@@ -25,11 +25,17 @@ function readTonneStockState(
   const balanceKg = Number.parseFloat(
     (isPvkj ? warehouse.pvkjBalance : warehouse.currentBalance) || "0",
   );
+  const storedBalanceTonnes = isPvkj
+    ? warehouse.pvkjBalanceTonnes
+    : warehouse.currentBalanceTonnes;
   const averageCostPerKg = Number.parseFloat(
     (isPvkj ? warehouse.pvkjAverageCost : warehouse.averageCost) || "0",
   );
   return {
-    balanceTonnes: kilogramsToTonnes(balanceKg),
+    balanceTonnes:
+      storedBalanceTonnes == null
+        ? kilogramsToTonnes(balanceKg)
+        : Number.parseFloat(storedBalanceTonnes),
     averageCostPerTonne: pricePerKilogramToPerTonne(averageCostPerKg),
   };
 }
@@ -50,6 +56,7 @@ async function writeLegacyStockState(
   updatedById?: string,
 ) {
   const balance = legacyKg(state.balanceTonnes);
+  const balanceTonnes = state.balanceTonnes.toFixed(5);
   const averageCost = legacyPricePerKg(state.averageCostPerTonne);
   await tx
     .update(warehouses)
@@ -57,12 +64,14 @@ async function writeLegacyStockState(
       isPvkj
         ? {
             pvkjBalance: balance,
+            pvkjBalanceTonnes: balanceTonnes,
             pvkjAverageCost: averageCost,
             updatedAt: sql`NOW()`,
             updatedById,
           }
         : {
             currentBalance: balance,
+            currentBalanceTonnes: balanceTonnes,
             averageCost,
             updatedAt: sql`NOW()`,
             updatedById,
@@ -190,10 +199,13 @@ export class WarehouseTransactionService {
         quantity: isReceipt
           ? legacyKg(quantityTonnes)
           : legacyKg(-quantityTonnes),
+        quantityTonnes: (isReceipt ? quantityTonnes : -quantityTonnes).toFixed(5),
         sum: sum.toString(),
         price: legacyPricePerKg(price),
         balanceBefore: legacyKg(currentBalance),
         balanceAfter: legacyKg(newBalance),
+        balanceBeforeTonnes: currentBalance.toFixed(5),
+        balanceAfterTonnes: newBalance.toFixed(5),
         averageCostBefore: legacyPricePerKg(currentCost),
         averageCostAfter: legacyPricePerKg(newAverageCost),
         createdById,
@@ -323,9 +335,11 @@ export class WarehouseTransactionService {
         quantity: isReceipt
           ? legacyKg(newQuantityTonnes)
           : legacyKg(-newQuantityTonnes),
+        quantityTonnes: (isReceipt ? newQuantityTonnes : -newQuantityTonnes).toFixed(5),
         sum: sum.toString(),
         price: legacyPricePerKg(price),
         balanceAfter: legacyKg(newBalance),
+        balanceAfterTonnes: newBalance.toFixed(5),
         averageCostAfter: legacyPricePerKg(newAverageCost),
         updatedAt: sql`NOW()`,
         updatedById,
@@ -428,9 +442,10 @@ export class WarehouseTransactionService {
       throw new Error(`Warehouse ${transaction.warehouseId} not found`);
     }
 
-    const quantityTonnes = kilogramsToTonnes(
-      Number.parseFloat(transaction.quantity),
-    );
+    const quantityTonnes =
+      transaction.quantityTonnes == null
+        ? kilogramsToTonnes(Number.parseFloat(transaction.quantity))
+        : Number.parseFloat(transaction.quantityTonnes);
     const totalCost = parseFloat(transaction.sum || "0");
     const currentStock = readTonneStockState(warehouse, isPvkj);
     const currentBalance = currentStock.balanceTonnes;
@@ -509,9 +524,10 @@ export class WarehouseTransactionService {
       throw new Error(`Warehouse ${transaction.warehouseId} not found`);
     }
 
-    const quantityTonnes = kilogramsToTonnes(
-      Number.parseFloat(transaction.quantity),
-    );
+    const quantityTonnes =
+      transaction.quantityTonnes == null
+        ? kilogramsToTonnes(Number.parseFloat(transaction.quantity))
+        : Number.parseFloat(transaction.quantityTonnes);
     const totalCost = parseFloat(transaction.sum || "0");
     const currentStock = readTonneStockState(warehouse, isPvkj);
     const currentBalance = currentStock.balanceTonnes;

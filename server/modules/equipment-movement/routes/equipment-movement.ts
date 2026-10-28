@@ -9,7 +9,7 @@ import { SSEService } from "../../../services/sse-service";
 import {
   equipmentMovementResultToApi,
   EquipmentMovementApiInputError,
-  toLegacyEquipmentMovementInput,
+  normalizeEquipmentMovementInput,
 } from "../equipment-movement-api-adapters";
 
 async function validateNomenclature(data: { productType: string; nomenclatureId?: string | null }, required: boolean) {
@@ -114,13 +114,17 @@ export function registerEquipmentMovementRoutes(app: Express) {
           }
         }
 
-        const normalized = toLegacyEquipmentMovementInput(body);
+        const normalized = normalizeEquipmentMovementInput(body);
         const data = insertEquipmentMovementSchema.parse({
           ...normalized,
           quantityKg:
             normalized.quantityKg == null
               ? undefined
               : String(normalized.quantityKg),
+          quantityTonnes:
+            normalized.quantityTonnes == null
+              ? normalized.quantityTonnes
+              : String(normalized.quantityTonnes),
           totalCost:
             normalized.totalCost == null
               ? normalized.totalCost
@@ -129,6 +133,10 @@ export function registerEquipmentMovementRoutes(app: Express) {
             normalized.costPerKg == null
               ? normalized.costPerKg
               : String(normalized.costPerKg),
+          costPerTonne:
+            normalized.costPerTonne == null
+              ? normalized.costPerTonne
+              : String(normalized.costPerTonne),
           quantityLiters:
             normalized.quantityLiters != null
               ? String(normalized.quantityLiters)
@@ -193,13 +201,17 @@ export function registerEquipmentMovementRoutes(app: Express) {
           }
         }
 
-        const normalized = toLegacyEquipmentMovementInput(body);
+        const normalized = normalizeEquipmentMovementInput(body);
         const data = insertEquipmentMovementSchema.parse({
           ...normalized,
           quantityKg:
             normalized.quantityKg == null
               ? undefined
               : String(normalized.quantityKg),
+          quantityTonnes:
+            normalized.quantityTonnes == null
+              ? normalized.quantityTonnes
+              : String(normalized.quantityTonnes),
           totalCost:
             normalized.totalCost == null
               ? normalized.totalCost
@@ -208,6 +220,10 @@ export function registerEquipmentMovementRoutes(app: Express) {
             normalized.costPerKg == null
               ? normalized.costPerKg
               : String(normalized.costPerKg),
+          costPerTonne:
+            normalized.costPerTonne == null
+              ? normalized.costPerTonne
+              : String(normalized.costPerTonne),
           quantityLiters:
             normalized.quantityLiters != null
               ? String(normalized.quantityLiters)

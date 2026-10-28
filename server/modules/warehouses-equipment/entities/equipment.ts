@@ -22,12 +22,20 @@ export const equipments = pgTable(
       precision: 15,
       scale: 2,
     }).default("0"),
+    currentBalanceTonnes: decimal("current_balance_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
     averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default(
       "0",
     ),
     pvkjBalance: decimal("pvkj_balance", { precision: 15, scale: 2 }).default(
       "0",
     ),
+    pvkjBalanceTonnes: decimal("pvkj_balance_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
     pvkjAverageCost: decimal("pvkj_average_cost", {
       precision: 12,
       scale: 4,
@@ -57,8 +65,20 @@ export const equipmentTransactions = pgTable(
     sourceType: text("source_type"),
     sourceId: uuid("source_id"),
     quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
+    quantityTonnes: decimal("quantity_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
     balanceBefore: decimal("balance_before", { precision: 15, scale: 2 }),
     balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
+    balanceBeforeTonnes: decimal("balance_before_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
+    balanceAfterTonnes: decimal("balance_after_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
     averageCostBefore: decimal("average_cost_before", {
       precision: 12,
       scale: 4,

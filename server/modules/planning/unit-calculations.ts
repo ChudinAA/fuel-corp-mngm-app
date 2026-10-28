@@ -46,7 +46,7 @@ export function calculateWarehouseSummaryTonnes(
   plannedIncomeTonnes: number,
   plannedExpenseTonnes: number,
   balancePlanKg: string | number,
-  balanceFactKg: string | number,
+  balanceFactTonnes: string | number,
 ) {
   return {
     plannedIncomeTonnes: finiteNumber(plannedIncomeTonnes, "planned income tonnes"),
@@ -55,23 +55,23 @@ export function calculateWarehouseSummaryTonnes(
       balancePlanKg,
       "planned warehouse balance",
     ),
-    balanceFactTonnes: legacyKilogramsToTonnes(
-      balanceFactKg,
+    balanceFactTonnes: finiteNumber(
+      balanceFactTonnes,
       "actual warehouse balance",
     ),
   };
 }
 
 /**
- * Recalculate the planning balance chain in tonnes while keeping the existing
- * kg-based database contract at the persistence boundary.
+ * Recalculate the planning balance chain from the warehouse's tonne balance;
+ * plan entry mass fields remain on their legacy kg contract for now.
  */
 export function calculatePlanningBalanceChainInTonnes(
-  actualBalanceKg: string | number | null | undefined,
+  actualBalanceTonnes: string | number | null | undefined,
   entries: readonly PlanningBalanceEntryInput[],
 ): PlanningBalanceEntryResult[] {
-  const actualBalanceTonnes = legacyKilogramsToTonnes(
-    actualBalanceKg,
+  const initialBalanceTonnes = finiteNumber(
+    actualBalanceTonnes,
     "actual balance",
     0,
   );
@@ -91,7 +91,7 @@ export function calculatePlanningBalanceChainInTonnes(
     } else {
       const base =
         runningBalanceTonnes === null
-          ? actualBalanceTonnes
+          ? initialBalanceTonnes
           : runningBalanceTonnes;
       const volumeTonnes = legacyKilogramsToTonnes(
         entry.volume,

@@ -101,7 +101,12 @@ export class PlanningStorage implements IPlanningStorage {
       .orderBy(asc(planEntries.date), asc(planEntries.createdAt));
 
     const recalculated = calculatePlanningBalanceChainInTonnes(
-      warehouse?.currentBalance,
+      warehouse?.currentBalanceTonnes ??
+        legacyKilogramsToTonnes(
+          warehouse?.currentBalance,
+          "warehouse current balance",
+          0,
+        ),
       entries,
     );
     const entryById = new Map(entries.map((entry) => [entry.id, entry]));
@@ -651,16 +656,26 @@ export class PlanningStorage implements IPlanningStorage {
       }
       const daily = byDate.get(dateKey)!;
       const entry = daily.row;
-      if (t.balanceAfter !== null && t.balanceAfter !== undefined) {
-        entry.factBalanceAfter = t.balanceAfter;
+      const balanceAfterTonnes =
+        t.balanceAfterTonnes ??
+        (t.balanceAfter === null || t.balanceAfter === undefined
+          ? null
+          : legacyKilogramsToTonnes(
+              Number.parseFloat(t.balanceAfter),
+              "actual balance",
+            ).toFixed(5));
+      if (balanceAfterTonnes !== null) {
+        entry.factBalanceAfter = balanceAfterTonnes;
       }
 
-      const rawQty = parseFloat(t.quantity);
-      const absQty = Math.abs(rawQty);
-      const quantityTonnes = legacyKilogramsToTonnes(
-        absQty,
-        "actual quantity",
+      const rawQty = Number.parseFloat(
+        t.quantityTonnes ?? t.quantity,
       );
+      const absQty = Math.abs(rawQty);
+      const quantityTonnes =
+        t.quantityTonnes == null
+          ? legacyKilogramsToTonnes(absQty, "actual quantity")
+          : absQty;
       let isExpense: boolean;
 
       if (t.transactionType === "inventory") {
@@ -941,12 +956,21 @@ export class PlanningStorage implements IPlanningStorage {
       const balancePlan = lastEntry
         ? lastEntry.balanceAfter || "0"
         : "0";
-      const balanceFact = wh.currentBalance || "0";
+      const balanceFactTonnes =
+        wh.currentBalanceTonnes ??
+        legacyKilogramsToTonnes(
+          wh.currentBalance || "0",
+          "warehouse current balance",
+          0,
+        );
+      const balanceFact = tonnesToLegacyKilograms(
+        Number(balanceFactTonnes),
+      );
       const tonneValues = calculateWarehouseSummaryTonnes(
         plannedIncome,
         plannedExpense,
         balancePlan,
-        balanceFact,
+        balanceFactTonnes,
       );
 
       result.push({

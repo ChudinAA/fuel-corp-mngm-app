@@ -9,7 +9,7 @@ import { SSEService } from "../../../services/sse-service";
 import {
   MovementApiInputError,
   movementResultToApi,
-  toLegacyMovementInput,
+  normalizeMovementInput,
 } from "../movement-api-adapters";
 
 export function registerMovementRoutes(app: Express) {
@@ -75,7 +75,7 @@ export function registerMovementRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        const normalized = toLegacyMovementInput(
+        const normalized = normalizeMovementInput(
           req.body as Record<string, unknown>,
         );
         const data = insertMovementSchema.parse({
@@ -92,6 +92,10 @@ export function registerMovementRoutes(app: Express) {
         const dbData = {
           ...data,
           quantityKg: quantityKgValue.toString(),
+          quantityTonnes:
+            data.quantityTonnes === null || data.quantityTonnes === undefined
+              ? null
+              : data.quantityTonnes.toString(),
           quantityLiters:
             data.quantityLiters !== null && data.quantityLiters !== undefined
               ? data.quantityLiters.toString()
@@ -104,9 +108,19 @@ export function registerMovementRoutes(app: Express) {
             data.purchasePrice !== null && data.purchasePrice !== undefined
               ? data.purchasePrice.toString()
               : null,
+          purchasePricePerTonne:
+            data.purchasePricePerTonne !== null &&
+            data.purchasePricePerTonne !== undefined
+              ? data.purchasePricePerTonne.toString()
+              : null,
           deliveryPrice:
             data.deliveryPrice !== null && data.deliveryPrice !== undefined
               ? data.deliveryPrice.toString()
+              : null,
+          deliveryPricePerTonne:
+            data.deliveryPricePerTonne !== null &&
+            data.deliveryPricePerTonne !== undefined
+              ? data.deliveryPricePerTonne.toString()
               : null,
           deliveryCost:
             data.deliveryCost !== null && data.deliveryCost !== undefined
@@ -123,6 +137,10 @@ export function registerMovementRoutes(app: Express) {
           costPerKg:
             data.costPerKg !== null && data.costPerKg !== undefined
               ? data.costPerKg.toString()
+              : null,
+          costPerTonne:
+            data.costPerTonne !== null && data.costPerTonne !== undefined
+              ? data.costPerTonne.toString()
               : null,
         };
 
@@ -158,7 +176,7 @@ export function registerMovementRoutes(app: Express) {
       try {
         const id = req.params.id;
 
-        const normalized = toLegacyMovementInput(
+        const normalized = normalizeMovementInput(
           req.body as Record<string, unknown>,
         );
 
@@ -170,6 +188,11 @@ export function registerMovementRoutes(app: Express) {
             normalized.quantityKg !== undefined
               ? String(normalized.quantityKg)
               : undefined,
+          quantityTonnes:
+            normalized.quantityTonnes !== null &&
+            normalized.quantityTonnes !== undefined
+              ? String(normalized.quantityTonnes)
+              : normalized.quantityTonnes,
           quantityLiters:
             normalized.quantityLiters !== null &&
             normalized.quantityLiters !== undefined
@@ -184,11 +207,21 @@ export function registerMovementRoutes(app: Express) {
             normalized.purchasePrice !== undefined
               ? String(normalized.purchasePrice)
               : null,
+          purchasePricePerTonne:
+            normalized.purchasePricePerTonne !== null &&
+            normalized.purchasePricePerTonne !== undefined
+              ? String(normalized.purchasePricePerTonne)
+              : normalized.purchasePricePerTonne,
           deliveryPrice:
             normalized.deliveryPrice !== null &&
             normalized.deliveryPrice !== undefined
               ? String(normalized.deliveryPrice)
               : null,
+          deliveryPricePerTonne:
+            normalized.deliveryPricePerTonne !== null &&
+            normalized.deliveryPricePerTonne !== undefined
+              ? String(normalized.deliveryPricePerTonne)
+              : normalized.deliveryPricePerTonne,
           deliveryCost:
             normalized.deliveryCost !== null &&
             normalized.deliveryCost !== undefined
@@ -207,6 +240,11 @@ export function registerMovementRoutes(app: Express) {
             normalized.costPerKg !== null && normalized.costPerKg !== undefined
               ? String(normalized.costPerKg)
               : null,
+          costPerTonne:
+            normalized.costPerTonne !== null &&
+            normalized.costPerTonne !== undefined
+              ? String(normalized.costPerTonne)
+              : normalized.costPerTonne,
           updatedById: req.session.userId,
         };
 

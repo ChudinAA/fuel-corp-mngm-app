@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  inventoryInputToLegacyWarehousePayload,
+  inventoryInputToWarehouseTonnesPayload,
   tonnesToLegacyWarehouseKilograms,
 } from "./unit-calculations";
 
@@ -11,7 +11,7 @@ test("warehouse limits convert tonnes to legacy kilograms", () => {
 
 test("inventory converts tonne balance and per-tonne cost at the API boundary", () => {
   assert.deepEqual(
-    inventoryInputToLegacyWarehousePayload({
+    inventoryInputToWarehouseTonnesPayload({
       productType: "kerosene",
       targetDate: "2026-10-27",
       targetBalance: "2.00001",
@@ -20,8 +20,8 @@ test("inventory converts tonne balance and per-tonne cost at the API boundary", 
     {
       productType: "kerosene",
       targetDate: "2026-10-27",
-      targetBalance: "2000.01",
-      targetAverageCost: "12.345670",
+      targetBalanceTonnes: "2.00001",
+      targetAverageCostPerTonne: "12345.67",
     },
   );
 });

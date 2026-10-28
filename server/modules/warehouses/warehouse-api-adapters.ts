@@ -7,13 +7,16 @@ type NumericValue = string | number | null | undefined;
 
 export interface WarehouseBalanceSnapshot {
   balance: NumericValue;
+  balanceTonnes?: NumericValue;
   averageCost: NumericValue;
   [key: string]: unknown;
 }
 
 export interface WarehouseRecordSnapshot {
   currentBalance: NumericValue;
+  currentBalanceTonnes?: NumericValue;
   pvkjBalance: NumericValue;
+  pvkjBalanceTonnes?: NumericValue;
   averageCost: NumericValue;
   pvkjAverageCost: NumericValue;
   [key: string]: unknown;
@@ -21,8 +24,11 @@ export interface WarehouseRecordSnapshot {
 
 export interface WarehouseTransactionSnapshot {
   quantityKg: NumericValue;
+  quantityTonnes?: NumericValue;
   balanceBefore: NumericValue;
+  balanceBeforeTonnes?: NumericValue;
   balanceAfter: NumericValue;
+  balanceAfterTonnes?: NumericValue;
   price: NumericValue;
   averageCostBefore: NumericValue;
   averageCostAfter: NumericValue;
@@ -34,6 +40,10 @@ export interface WarehouseMonthlyStatsSnapshot {
   expense: number;
   pvkjIncome: number;
   pvkjExpense: number;
+  incomeTonnes?: number;
+  expenseTonnes?: number;
+  pvkjIncomeTonnes?: number;
+  pvkjExpenseTonnes?: number;
   [key: string]: unknown;
 }
 
@@ -60,8 +70,11 @@ export function warehouseToApi<T extends WarehouseRecordSnapshot>(
 ) {
   return {
     ...warehouse,
-    currentBalanceTonnes: kilogramsAsTonnes(warehouse.currentBalance),
-    pvkjBalanceTonnes: kilogramsAsTonnes(warehouse.pvkjBalance),
+    currentBalanceTonnes:
+      warehouse.currentBalanceTonnes ??
+      kilogramsAsTonnes(warehouse.currentBalance),
+    pvkjBalanceTonnes:
+      warehouse.pvkjBalanceTonnes ?? kilogramsAsTonnes(warehouse.pvkjBalance),
     averageCostPerTonne: perKilogramAsPerTonne(warehouse.averageCost),
     pvkjAverageCostPerTonne: perKilogramAsPerTonne(
       warehouse.pvkjAverageCost,
@@ -74,7 +87,8 @@ export function warehouseBalanceToApi<T extends WarehouseBalanceSnapshot>(
 ) {
   return {
     ...balance,
-    balanceTonnes: kilogramsAsTonnes(balance.balance),
+    balanceTonnes:
+      balance.balanceTonnes ?? kilogramsAsTonnes(balance.balance),
     averageCostPerTonne: perKilogramAsPerTonne(balance.averageCost),
   };
 }
@@ -84,9 +98,15 @@ export function warehouseTransactionToApi<
 >(transaction: T) {
   return {
     ...transaction,
-    quantityTonnes: kilogramsAsTonnes(transaction.quantityKg),
-    balanceBeforeTonnes: kilogramsAsTonnes(transaction.balanceBefore),
-    balanceAfterTonnes: kilogramsAsTonnes(transaction.balanceAfter),
+    quantityTonnes:
+      transaction.quantityTonnes ??
+      kilogramsAsTonnes(transaction.quantityKg),
+    balanceBeforeTonnes:
+      transaction.balanceBeforeTonnes ??
+      kilogramsAsTonnes(transaction.balanceBefore),
+    balanceAfterTonnes:
+      transaction.balanceAfterTonnes ??
+      kilogramsAsTonnes(transaction.balanceAfter),
     pricePerTonne: perKilogramAsPerTonne(transaction.price),
     averageCostBeforePerTonne: perKilogramAsPerTonne(
       transaction.averageCostBefore,
@@ -102,9 +122,17 @@ export function warehouseMonthlyStatsToApi<
 >(stats: T) {
   return {
     ...stats,
-    incomeTonnes: Number(kilogramsToTonnes(stats.income).toFixed(5)),
-    expenseTonnes: Number(kilogramsToTonnes(stats.expense).toFixed(5)),
-    pvkjIncomeTonnes: Number(kilogramsToTonnes(stats.pvkjIncome).toFixed(5)),
-    pvkjExpenseTonnes: Number(kilogramsToTonnes(stats.pvkjExpense).toFixed(5)),
+    incomeTonnes:
+      stats.incomeTonnes ??
+      Number(kilogramsToTonnes(stats.income).toFixed(5)),
+    expenseTonnes:
+      stats.expenseTonnes ??
+      Number(kilogramsToTonnes(stats.expense).toFixed(5)),
+    pvkjIncomeTonnes:
+      stats.pvkjIncomeTonnes ??
+      Number(kilogramsToTonnes(stats.pvkjIncome).toFixed(5)),
+    pvkjExpenseTonnes:
+      stats.pvkjExpenseTonnes ??
+      Number(kilogramsToTonnes(stats.pvkjExpense).toFixed(5)),
   };
 }

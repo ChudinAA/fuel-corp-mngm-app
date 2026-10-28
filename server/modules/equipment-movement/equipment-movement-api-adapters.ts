@@ -17,10 +17,10 @@ function parseFinite(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function toLegacyEquipmentMovementInput(
+export function normalizeEquipmentMovementInput(
   input: Record<string, unknown>,
 ): Record<string, unknown> {
-  const legacy: Record<string, unknown> = { ...input };
+  const normalized: Record<string, unknown> = { ...input };
 
   if (Object.prototype.hasOwnProperty.call(input, "quantityTonnes")) {
     const tonnes = parseFinite(input.quantityTonnes);
@@ -30,8 +30,19 @@ export function toLegacyEquipmentMovementInput(
     if (tonnes !== null && tonnes < 0) {
       throw new EquipmentMovementApiInputError("Масса не может быть отрицательной");
     }
-    legacy.quantityKg =
+    normalized.quantityTonnes = tonnes === null ? null : tonnes.toFixed(5);
+    normalized.quantityKg =
       tonnes === null ? null : tonnesToKilograms(tonnes).toFixed(2);
+  } else if (Object.prototype.hasOwnProperty.call(input, "quantityKg")) {
+    const kilograms = parseFinite(input.quantityKg);
+    if (input.quantityKg !== null && kilograms === null) {
+      throw new EquipmentMovementApiInputError("Некорректная масса в килограммах");
+    }
+    if (kilograms !== null && kilograms < 0) {
+      throw new EquipmentMovementApiInputError("Масса не может быть отрицательной");
+    }
+    normalized.quantityTonnes =
+      kilograms === null ? null : kilogramsToTonnes(kilograms).toFixed(5);
   }
 
   if (Object.prototype.hasOwnProperty.call(input, "costPerTonne")) {
@@ -39,13 +50,19 @@ export function toLegacyEquipmentMovementInput(
     if (input.costPerTonne !== null && rate === null) {
       throw new EquipmentMovementApiInputError("Некорректная стоимость за тонну");
     }
-    legacy.costPerKg =
+    normalized.costPerTonne = rate === null ? null : rate.toFixed(6);
+    normalized.costPerKg =
       rate === null ? null : pricePerTonneToPerKilogram(rate).toFixed(6);
+  } else if (Object.prototype.hasOwnProperty.call(input, "costPerKg")) {
+    const rate = parseFinite(input.costPerKg);
+    if (input.costPerKg !== null && rate === null) {
+      throw new EquipmentMovementApiInputError("Некорректная стоимость за килограмм");
+    }
+    normalized.costPerTonne =
+      rate === null ? null : Number((rate * 1_000).toFixed(6));
   }
 
-  delete legacy.quantityTonnes;
-  delete legacy.costPerTonne;
-  return legacy;
+  return normalized;
 }
 
 export function equipmentMovementDealToApi<T extends Record<string, any>>(
@@ -55,22 +72,17 @@ export function equipmentMovementDealToApi<T extends Record<string, any>>(
   costPerTonne: number | null;
 } {
   const { quantityKg, costPerKg, ...rest } = deal;
-  const liters = parseFinite(deal.quantityLiters);
-  const density = parseFinite(deal.density);
-  const tonnesFromLiters =
-    liters !== null && liters > 0 && density !== null && density > 0
-      ? kilogramsToTonnes(liters * density)
-      : null;
   const storedKg = parseFinite(quantityKg);
+  const storedTonnes = parseFinite(deal.quantityTonnes);
+  const storedRate = parseFinite(deal.costPerTonne);
+  const legacyRate = parseFinite(costPerKg);
   return {
     ...rest,
     quantityTonnes:
-      tonnesFromLiters ??
-      (storedKg === null ? null : kilogramsToTonnes(storedKg)),
+      storedTonnes ?? (storedKg === null ? null : kilogramsToTonnes(storedKg)),
     costPerTonne:
-      parseFinite(costPerKg) === null
-        ? null
-        : Number((parseFinite(costPerKg)! * 1_000).toFixed(6)),
+      storedRate ??
+      (legacyRate === null ? null : Number((legacyRate * 1_000).toFixed(6))),
   } as Omit<T, "quantityKg" | "costPerKg"> & {
     quantityTonnes: number | null;
     costPerTonne: number | null;
@@ -88,19 +100,22 @@ export function equipmentMovementResultToApi(result: unknown): unknown {
 
   if (!result || typeof result !== "object") return result;
   const value = result as Record<string, any>;
-  if (Array.isArray(value.data)) {
-    return {
-      ...value,
-      data: value.data.map((item: unknown) =>
-        item && typeof item === "object"
-          ? equipmentMovementDealToApi(item as Record<string, any>)
-          : item,
-      ),
-    };
+  for (const collectionKey of ["data", "items"]) {
+    if (Array.isArray(value[collectionKey])) {
+      return {
+        ...value,
+        [collectionKey]: value[collectionKey].map((item: unknown) =>
+          item && typeof item === "object"
+            ? equipmentMovementDealToApi(item as Record<string, any>)
+            : item,
+        ),
+      };
+    }
   }
   if (
     Object.prototype.hasOwnProperty.call(value, "quantityKg") ||
-    Object.prototype.hasOwnProperty.call(value, "quantityTonnes")
+    Object.prototype.hasOwnProperty.call(value, "quantityTonnes") ||
+    Object.prototype.hasOwnProperty.call(value, "costPerTonne")
   ) {
     return equipmentMovementDealToApi(value);
   }

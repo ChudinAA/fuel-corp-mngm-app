@@ -8,6 +8,22 @@ import { eq, and, isNull, desc, or, ilike, sql, inArray, isNotNull } from "drizz
 import { TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentTransactionService } from "../../warehouses-equipment/services/equipment-transaction-service";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
+import { tonnesToKilograms } from "@shared/units";
+
+function movementQuantityTonnes(
+  movement: { quantityTonnes?: string | number | null; quantityKg?: string | number | null },
+): number {
+  if (movement.quantityTonnes !== null && movement.quantityTonnes !== undefined) {
+    return Number(movement.quantityTonnes);
+  }
+  return Number(movement.quantityKg || 0) / 1_000;
+}
+
+function movementQuantityKg(
+  movement: { quantityTonnes?: string | number | null; quantityKg?: string | number | null },
+): number {
+  return Number(tonnesToKilograms(movementQuantityTonnes(movement)).toFixed(2));
+}
 
 export class EquipmentMovementStorage {
   async getMovements(
@@ -89,10 +105,12 @@ export class EquipmentMovementStorage {
         fromEquipmentId: equipmentMovement.fromEquipmentId,
         toEquipmentId: equipmentMovement.toEquipmentId,
         quantityKg: equipmentMovement.quantityKg,
+        quantityTonnes: equipmentMovement.quantityTonnes,
         quantityLiters: equipmentMovement.quantityLiters,
         density: equipmentMovement.density,
         inputMode: equipmentMovement.inputMode,
         costPerKg: equipmentMovement.costPerKg,
+        costPerTonne: equipmentMovement.costPerTonne,
         totalCost: equipmentMovement.totalCost,
         notes: equipmentMovement.notes,
         fromWarehouseName: sql<string>`(SELECT name FROM warehouses WHERE id = ${equipmentMovement.fromWarehouseId})`,
@@ -142,7 +160,7 @@ export class EquipmentMovementStorage {
         return item;
       }
 
-      const quantityKg = parseFloat(item.quantityKg || "0");
+      const quantityKg = movementQuantityKg(item);
       const totalCost = parseFloat(item.totalCost || "0");
 
       // Destination equipment (income)
@@ -258,7 +276,7 @@ export class EquipmentMovementStorage {
       }
 
       if (transitioningFromDraft) {
-        const quantityKg = parseFloat(data.quantityKg || "0");
+        const quantityKg = movementQuantityKg(data);
         const totalCost = parseFloat(data.totalCost || "0");
 
         if (data.toEquipmentId) {
@@ -329,8 +347,8 @@ export class EquipmentMovementStorage {
           data.sourceTransactionId = sourceTransaction.id;
         }
       } else if (!data.isDraft && !current.isDraft) {
-        const oldQty = parseFloat(current.quantityKg || "0");
-        const newQty = parseFloat(data.quantityKg || "0");
+        const oldQty = movementQuantityKg(current);
+        const newQty = movementQuantityKg(data);
         const oldCost = parseFloat(current.totalCost || "0");
         const newCost = parseFloat(data.totalCost || "0");
 

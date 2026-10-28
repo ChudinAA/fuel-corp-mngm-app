@@ -19,6 +19,25 @@ import {
   SOURCE_TYPE,
 } from "@shared/constants";
 import { WarehouseTransactionService } from "../../warehouses/services/warehouse-transaction-service";
+import {
+  pricePerTonneToPerKilogram,
+  tonnesToKilograms,
+} from "@shared/units";
+
+function movementQuantityTonnes(
+  record: { quantityTonnes?: string | number | null; quantityKg?: string | number | null },
+): number {
+  if (record.quantityTonnes !== null && record.quantityTonnes !== undefined) {
+    return Number(record.quantityTonnes);
+  }
+  return Number(record.quantityKg || 0) / 1_000;
+}
+
+function movementQuantityKg(
+  record: { quantityTonnes?: string | number | null; quantityKg?: string | number | null },
+): number {
+  return Number(tonnesToKilograms(movementQuantityTonnes(record)).toFixed(2));
+}
 
 export class MovementStorage implements IMovementStorage {
   async getMovement(id: string): Promise<Movement | undefined> {
@@ -210,7 +229,7 @@ export class MovementStorage implements IMovementStorage {
         return created;
       }
 
-      const quantityKg = parseFloat(created.quantityKg || "0");
+      const quantityKg = movementQuantityKg(created);
       const totalCost = parseFloat(created.totalCost || "0");
 
       // Обработка склада назначения (приход)
@@ -288,11 +307,16 @@ export class MovementStorage implements IMovementStorage {
         );
       }
 
-      const oldQuantityKg = parseFloat(currentMovement.quantityKg || "0");
+      const oldQuantityTonnes = movementQuantityTonnes(currentMovement);
+      const oldQuantityKg = movementQuantityKg(currentMovement);
       const oldTotalCost = parseFloat(currentMovement.totalCost || "0");
-      const newQuantityKg = data.quantityKg
-        ? parseFloat(data.quantityKg.toString())
-        : oldQuantityKg;
+      const newQuantityTonnes =
+        data.quantityTonnes !== undefined && data.quantityTonnes !== null
+          ? Number(data.quantityTonnes)
+          : data.quantityKg !== undefined && data.quantityKg !== null
+            ? Number(data.quantityKg) / 1_000
+            : oldQuantityTonnes;
+      const newQuantityKg = Number(tonnesToKilograms(newQuantityTonnes).toFixed(2));
       const oldDeliveryCost = parseFloat(currentMovement.deliveryCost || "0");
       const oldStorageCost = parseFloat(currentMovement.storageCost || "0");
       const newDeliveryCost =
@@ -322,16 +346,20 @@ export class MovementStorage implements IMovementStorage {
           ? chargeAdjustedTotalCost
           : requestedTotalCost ?? oldTotalCost;
 
-      const hasQuantityChanged = oldQuantityKg !== newQuantityKg;
+      const hasQuantityChanged = oldQuantityTonnes !== newQuantityTonnes;
       const hasCostChanged = oldTotalCost !== newTotalCost;
 
       // A fee edit must update the movement's stored total even when the client
       // omits totalCost or sends its unchanged previous value.
       if (hasChargeChanged) {
         data.totalCost = newTotalCost.toFixed(2);
+        data.costPerTonne =
+          newQuantityTonnes > 0
+            ? (newTotalCost / newQuantityTonnes).toFixed(6)
+            : "0";
         data.costPerKg =
-          newQuantityKg > 0
-            ? (newTotalCost / newQuantityKg).toFixed(6)
+          newQuantityTonnes > 0
+            ? pricePerTonneToPerKilogram(Number(data.costPerTonne)).toFixed(6)
             : "0";
       }
       

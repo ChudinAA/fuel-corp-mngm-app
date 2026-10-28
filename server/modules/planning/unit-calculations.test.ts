@@ -7,8 +7,8 @@ import {
   tonnesToLegacyKilograms,
 } from "./unit-calculations";
 
-test("planning balance chain calculates in tonnes and persists legacy kilograms", () => {
-  const result = calculatePlanningBalanceChainInTonnes("1000.00", [
+test("planning balance chain starts from tonne stock and persists legacy kilograms", () => {
+  const result = calculatePlanningBalanceChainInTonnes("1.00000", [
     {
       id: "income",
       type: "income",
@@ -39,8 +39,8 @@ test("planning balance chain calculates in tonnes and persists legacy kilograms"
   ]);
 });
 
-test("planning preserves 0.01 kg precision as 0.00001 tonnes", () => {
-  const result = calculatePlanningBalanceChainInTonnes("0.00", [
+test("planning preserves 0.01 kg plan precision from a tonne stock balance", () => {
+  const result = calculatePlanningBalanceChainInTonnes("0.00000", [
     {
       id: "small",
       type: "income",
@@ -67,13 +67,13 @@ test("planning summary totals round-trip summed legacy kilograms", () => {
   assert.equal(tonnesToLegacyKilograms(totalTonnes), "1000.52");
 });
 
-test("warehouse planning summary exposes explicit tonne values from legacy kilograms", () => {
+test("warehouse planning summary uses the authoritative tonne stock balance", () => {
   assert.deepEqual(
     calculateWarehouseSummaryTonnes(
       0.01234,
       0.005,
       "1000.01",
-      "2345.67",
+      "2.34567",
     ),
     {
       plannedIncomeTonnes: 0.01234,

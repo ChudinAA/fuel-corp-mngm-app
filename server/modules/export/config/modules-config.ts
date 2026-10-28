@@ -179,14 +179,14 @@ export const transportationExportConfig: ModuleExportConfig = {
     { key: "basis",                 label: "Базис погрузки",     type: "string", exportable: true },
     { key: "customerBasis",         label: "Базис доставки",     type: "string", exportable: true },
     { key: "productType",           label: "Продукт",            type: "string", exportable: true },
-    { key: "quantityKg",            label: "Масса (т)",          type: "number", exportable: true, format: tonnesFromDealMass, numberFormat: MASS_FORMAT },
-    { key: "salePrice",             label: "Цена услуги (₽/т)",  type: "number", exportable: true, format: dealPricePerTonne("saleAmount"), numberFormat: PRICE_FORMAT },
+    { key: "quantityTonnes",        label: "Масса (т)",          type: "number", exportable: true, numberFormat: MASS_FORMAT },
+    { key: "salePricePerTonne",     label: "Цена услуги (₽/т)",  type: "number", exportable: true, numberFormat: PRICE_FORMAT },
     { key: "saleAmount",            label: "Сумма услуги (₽)",   type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "deliveryCost",          label: "Доставка (₽)",       type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "profit",                label: "Прибыль (₽)",        type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "notes",                 label: "Примечание",         type: "string", exportable: true },
   ],
-  defaultColumns: ["dealDate","buyer.name","carrier.name","deliveryLocation.name","quantityKg","salePrice","saleAmount","profit"],
+  defaultColumns: ["dealDate","buyer.name","carrier.name","deliveryLocation.name","quantityTonnes","salePricePerTonne","saleAmount","profit"],
   relations: ["buyer","supplier","carrier","deliveryLocation"],
 };
 

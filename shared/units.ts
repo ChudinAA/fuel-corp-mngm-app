@@ -32,25 +32,20 @@ export function litresAndDensityToTonnes(
 }
 
 /**
- * Resolves a deal's mass from legacy fields without changing stored data.
- * Prefer litres × deal density when both are valid; otherwise use kilograms.
+ * Resolves a historical deal's mass from its saved legacy kilogram value.
+ * Litres and density are retained in the signature for existing callers, but
+ * must not be used to reconstruct a historical mass.
  */
 export function legacyDealMassToTonnes(
   kilograms: number | string | null | undefined,
-  litres: number | string | null | undefined,
-  densityKilogramsPerLitre: number | string | null | undefined,
+  _litres: number | string | null | undefined,
+  _densityKilogramsPerLitre: number | string | null | undefined,
 ): number | null {
   const parseOptionalFinite = (value: number | string | null | undefined) => {
     if (value === null || value === undefined || value === "") return null;
     const parsed = typeof value === "number" ? value : Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   };
-
-  const volume = parseOptionalFinite(litres);
-  const density = parseOptionalFinite(densityKilogramsPerLitre);
-  if (volume !== null && volume > 0 && density !== null && density > 0) {
-    return litresAndDensityToTonnes(volume, density);
-  }
 
   const massKg = parseOptionalFinite(kilograms);
   return massKg === null ? null : kilogramsToTonnes(massKg);

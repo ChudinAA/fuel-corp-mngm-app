@@ -30,6 +30,18 @@ test("equipment API treats missing balances as zero tonnes", () => {
   assert.equal(result.pvkjBalanceTonnes, "0.00000");
 });
 
+test("equipment API prefers persisted tonne balances over legacy kg mirrors", () => {
+  const result = equipmentToApi({
+    currentBalance: "2000.00",
+    currentBalanceTonnes: "1.23456",
+    pvkjBalance: "10.00",
+    pvkjBalanceTonnes: "0.00001",
+  });
+
+  assert.equal(result.currentBalanceTonnes, "1.23456");
+  assert.equal(result.pvkjBalanceTonnes, "0.00001");
+});
+
 test("equipment balance snapshot exposes tonnes and a per-tonne cost", () => {
   const result = equipmentBalanceToApi({
     balance: "1000.01",
@@ -39,6 +51,17 @@ test("equipment balance snapshot exposes tonnes and a per-tonne cost", () => {
   assert.equal(result.balanceTonnes, "1.00001");
   assert.equal(result.averageCostPerTonne, "12000.000");
   assert.equal(result.balance, "1000.01");
+});
+
+test("equipment balance snapshot prefers persisted tonnes", () => {
+  const result = equipmentBalanceToApi({
+    balance: "2000.00",
+    balanceTonnes: "1.23456",
+    averageCost: "12.0000",
+  });
+
+  assert.equal(result.balanceTonnes, "1.23456");
+  assert.equal(result.balance, "2000.00");
 });
 
 test("equipment transaction API exposes tonne mass and per-tonne cost fields", () => {
@@ -57,4 +80,19 @@ test("equipment transaction API exposes tonne mass and per-tonne cost fields", (
   assert.equal(result.averageCostBeforePerTonne, "12000.000");
   assert.equal(result.averageCostAfterPerTonne, "13250.000");
   assert.equal(result.pricePerTonne, "12000.000");
+});
+
+test("equipment transaction API prefers persisted tonne quantities and snapshots", () => {
+  const result = equipmentTransactionToApi({
+    quantity: "-1000.00",
+    quantityTonnes: "-0.12345",
+    balanceBefore: "1000.00",
+    balanceBeforeTonnes: "0.90000",
+    balanceAfter: "0.00",
+    balanceAfterTonnes: "0.77655",
+  });
+
+  assert.equal(result.quantityTonnes, "-0.12345");
+  assert.equal(result.balanceBeforeTonnes, "0.90000");
+  assert.equal(result.balanceAfterTonnes, "0.77655");
 });

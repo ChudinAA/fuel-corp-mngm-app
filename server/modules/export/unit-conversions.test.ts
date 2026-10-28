@@ -6,11 +6,11 @@ import { legacyDealMassToTonnes } from "@shared/units";
 
 const excelService = new ExcelService();
 
-test("legacy deal mass prefers liters and density, then falls back to kilograms", () => {
-  assert.equal(legacyDealMassToTonnes("1234.5", "1000", "0.8"), 0.8);
+test("legacy deal mass uses saved kilograms and never reconstructs from liters", () => {
+  assert.equal(legacyDealMassToTonnes("1234.5", "1000", "0.8"), 1.2345);
   assert.equal(legacyDealMassToTonnes("1234.5", null, null), 1.2345);
   assert.equal(legacyDealMassToTonnes("1234.5", "1000", "0"), 1.2345);
-  assert.equal(legacyDealMassToTonnes(null, null, null), null);
+  assert.equal(legacyDealMassToTonnes(null, "1000", "0.8"), null);
 });
 
 async function exportSheet(
@@ -28,43 +28,43 @@ async function exportSheet(
   return workbook.worksheets[0];
 }
 
-test("deal exports show tonnes and derive per-tonne rates from saved totals", async () => {
+test("transportation exports use saved tonne mass and rate and preserve amounts", async () => {
   const sheet = await exportSheet(
     "transportation",
-    ["quantityKg", "salePrice", "saleAmount"],
+    ["quantityTonnes", "salePricePerTonne", "saleAmount"],
     [{
-      quantityKg: "10000",
-      quantityLiters: "10000",
-      density: "0.8000",
-      salePrice: "50",
+      quantityTonnes: "10.00000",
+      salePricePerTonne: "62500.123456",
       saleAmount: "500000",
     }],
   );
 
   assert.equal(sheet.getCell("A1").value, "Масса (т)");
-  assert.equal(sheet.getCell("A2").value, 8);
-  assert.equal(sheet.getCell("B2").value, 62500);
+  assert.equal(sheet.getCell("A2").value, 10);
+  assert.equal(sheet.getCell("B2").value, 62500.123456);
   assert.equal(sheet.getCell("C2").value, 500000);
   assert.equal(sheet.getCell("A2").numFmt, "#,##0.00000");
   assert.equal(sheet.getCell("B2").numFmt, "#,##0.00");
   assert.equal(sheet.getCell("C2").numFmt, "#,##0.00");
 });
 
-test("deal exports derive mass and per-tonne rates when legacy mass and rate are null", async () => {
+test("transportation exports do not rebuild missing historical mass from liters", async () => {
   const sheet = await exportSheet(
     "transportation",
-    ["quantityKg", "salePrice", "saleAmount"],
+    ["quantityTonnes", "salePricePerTonne", "saleAmount"],
     [{
+      quantityTonnes: null,
       quantityKg: null,
       quantityLiters: "1000",
       density: "0.8000",
+      salePricePerTonne: null,
       salePrice: null,
       saleAmount: "500000",
     }],
   );
 
-  assert.equal(sheet.getCell("A2").value, 0.8);
-  assert.equal(sheet.getCell("B2").value, 625000);
+  assert.equal(sheet.getCell("A2").value, "");
+  assert.equal(sheet.getCell("B2").value, "");
   assert.equal(sheet.getCell("C2").value, 500000);
 });
 

@@ -38,17 +38,37 @@ const fields = [
   ["movement", "quantity_kg", "mass_kg"],
   ["refueling_abroad", "quantity_kg", "mass_kg"],
   ["equipment_movement", "quantity_kg", "mass_kg"],
+  ["equipment_movement", "quantity_tonnes", "mass_tonne"],
+  ["equipment_movement", "cost_per_tonne", "price_per_tonne"],
+  ["movement", "quantity_tonnes", "mass_tonne"],
+  ["movement", "purchase_price_per_tonne", "price_per_tonne"],
+  ["movement", "delivery_price_per_tonne", "price_per_tonne"],
+  ["movement", "cost_per_tonne", "price_per_tonne"],
+  ["transportation", "quantity_tonnes", "mass_tonne"],
+  ["transportation", "purchase_price_per_tonne", "price_per_tonne"],
+  ["transportation", "sale_price_per_tonne", "price_per_tonne"],
+  ["transportation", "delivery_tariff_per_tonne", "price_per_tonne"],
   ["warehouse_transactions", "quantity", "mass_kg"],
+  ["warehouse_transactions", "quantity_tonnes", "mass_tonne"],
   ["warehouse_transactions", "balance_before", "mass_kg"],
+  ["warehouse_transactions", "balance_before_tonnes", "mass_tonne"],
   ["warehouse_transactions", "balance_after", "mass_kg"],
+  ["warehouse_transactions", "balance_after_tonnes", "mass_tonne"],
   ["warehouses", "current_balance", "mass_kg"],
+  ["warehouses", "current_balance_tonnes", "mass_tonne"],
   ["warehouses", "pvkj_balance", "mass_kg"],
+  ["warehouses", "pvkj_balance_tonnes", "mass_tonne"],
   ["warehouses", "limit_volume", "mass_kg"],
   ["equipment_transactions", "quantity", "mass_kg"],
+  ["equipment_transactions", "quantity_tonnes", "mass_tonne"],
   ["equipment_transactions", "balance_before", "mass_kg"],
+  ["equipment_transactions", "balance_before_tonnes", "mass_tonne"],
   ["equipment_transactions", "balance_after", "mass_kg"],
+  ["equipment_transactions", "balance_after_tonnes", "mass_tonne"],
   ["equipments", "current_balance", "mass_kg"],
+  ["equipments", "current_balance_tonnes", "mass_tonne"],
   ["equipments", "pvkj_balance", "mass_kg"],
+  ["equipments", "pvkj_balance_tonnes", "mass_tonne"],
   ["plan_entries", "volume", "mass_kg"],
   ["plan_entries", "balance_after", "mass_kg"],
   ["free_volume_allocations", "volume", "mass_kg"],
@@ -913,6 +933,938 @@ async function rehearseWarehouseLimitBackfill(client) {
   };
 }
 
+async function rehearseWarehouseStockMassBackfill(client) {
+  const [warehouseSchema, transactionSchema] = await Promise.all([
+    client.query(`
+      SELECT column_name, data_type, numeric_precision, numeric_scale
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'warehouses'
+    `),
+    client.query(`
+      SELECT column_name, data_type, numeric_precision, numeric_scale
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'warehouse_transactions'
+    `),
+  ]);
+  const warehouseColumns = new Map(
+    warehouseSchema.rows.map((row) => [row.column_name, row]),
+  );
+  const transactionColumns = new Map(
+    transactionSchema.rows.map((row) => [row.column_name, row]),
+  );
+  const missing = [
+    ...["id", "current_balance", "pvkj_balance"]
+      .filter((column) => !warehouseColumns.has(column))
+      .map((column) => `warehouses.${column}`),
+    ...[
+      "id",
+      "warehouse_id",
+      "transaction_type",
+      "product_type",
+      "quantity",
+      "balance_before",
+      "balance_after",
+      "sum",
+      "price",
+      "deleted_at",
+      "source_type",
+      "source_id",
+      "transaction_date",
+      "created_at",
+    ]
+      .filter((column) => !transactionColumns.has(column))
+      .map((column) => `warehouse_transactions.${column}`),
+  ];
+  if (missing.length) return { skipped: true, missingColumns: missing };
+
+  const sourceColumn = (columns, name) =>
+    columns.has(name) ? name : "NULL::numeric";
+  await client.query(`
+    CREATE TEMP TABLE __warehouse_stock_warehouse_source AS
+    SELECT
+      id,
+      current_balance,
+      pvkj_balance,
+      ${sourceColumn(warehouseColumns, "current_balance_tonnes")} AS current_balance_tonnes,
+      ${sourceColumn(warehouseColumns, "pvkj_balance_tonnes")} AS pvkj_balance_tonnes
+    FROM warehouses
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __warehouse_stock_transaction_source AS
+    SELECT
+      id,
+      warehouse_id,
+      transaction_type,
+      product_type,
+      quantity,
+      balance_before,
+      balance_after,
+      sum,
+      price,
+      deleted_at,
+      source_type,
+      source_id,
+      transaction_date,
+      created_at,
+      ${sourceColumn(transactionColumns, "quantity_tonnes")} AS quantity_tonnes,
+      ${sourceColumn(transactionColumns, "balance_before_tonnes")} AS balance_before_tonnes,
+      ${sourceColumn(transactionColumns, "balance_after_tonnes")} AS balance_after_tonnes
+    FROM warehouse_transactions
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __warehouse_stock_expected AS
+    SELECT
+      id,
+      current_balance,
+      pvkj_balance,
+      CASE WHEN current_balance IS NULL THEN NULL ELSE current_balance / 1000 END
+        AS current_balance_tonnes,
+      CASE WHEN pvkj_balance IS NULL THEN NULL ELSE pvkj_balance / 1000 END
+        AS pvkj_balance_tonnes
+    FROM __warehouse_stock_warehouse_source
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __warehouse_stock_transactions_expected AS
+    SELECT
+      id,
+      warehouse_id,
+      transaction_type,
+      product_type,
+      quantity,
+      balance_before,
+      balance_after,
+      sum,
+      price,
+      deleted_at,
+      source_type,
+      source_id,
+      transaction_date,
+      created_at,
+      CASE WHEN quantity IS NULL THEN NULL ELSE quantity / 1000 END
+        AS quantity_tonnes,
+      CASE WHEN balance_before IS NULL THEN NULL ELSE balance_before / 1000 END
+        AS balance_before_tonnes,
+      CASE WHEN balance_after IS NULL THEN NULL ELSE balance_after / 1000 END
+        AS balance_after_tonnes
+    FROM __warehouse_stock_transaction_source
+  `);
+
+  const migrationSql = readFileSync(
+    resolve("migrations/0091_warehouse_stock_mass_tonnes.sql"),
+    "utf8",
+  );
+  await client.query(migrationSql);
+
+  const [warehouseComparison, transactionComparison, targetColumns] =
+    await Promise.all([
+      client.query(`
+        SELECT
+          (SELECT COUNT(*)::bigint FROM __warehouse_stock_warehouse_source) AS source_rows,
+          COUNT(*)::bigint AS actual_rows,
+          COUNT(*) FILTER (
+            WHERE expected.id IS NULL
+              OR actual.current_balance IS DISTINCT FROM expected.current_balance
+              OR actual.pvkj_balance IS DISTINCT FROM expected.pvkj_balance
+              OR actual.current_balance_tonnes IS DISTINCT FROM expected.current_balance_tonnes
+              OR actual.pvkj_balance_tonnes IS DISTINCT FROM expected.pvkj_balance_tonnes
+          )::bigint AS changed_value_rows,
+          COUNT(*) FILTER (
+            WHERE source.current_balance_tonnes IS NULL
+              AND source.current_balance IS NOT NULL
+          )::bigint AS current_balance_rows_backfilled,
+          COUNT(*) FILTER (
+            WHERE source.pvkj_balance_tonnes IS NULL
+              AND source.pvkj_balance IS NOT NULL
+          )::bigint AS pvkj_balance_rows_backfilled
+        FROM warehouses AS actual
+        LEFT JOIN __warehouse_stock_expected AS expected USING (id)
+        LEFT JOIN __warehouse_stock_warehouse_source AS source USING (id)
+      `),
+      client.query(`
+        SELECT
+          (SELECT COUNT(*)::bigint FROM __warehouse_stock_transaction_source) AS source_rows,
+          COUNT(*)::bigint AS actual_rows,
+          COUNT(*) FILTER (
+            WHERE expected.id IS NULL
+              OR actual.warehouse_id IS DISTINCT FROM expected.warehouse_id
+              OR actual.transaction_type IS DISTINCT FROM expected.transaction_type
+              OR actual.product_type IS DISTINCT FROM expected.product_type
+              OR actual.quantity IS DISTINCT FROM expected.quantity
+              OR actual.balance_before IS DISTINCT FROM expected.balance_before
+              OR actual.balance_after IS DISTINCT FROM expected.balance_after
+              OR actual.sum IS DISTINCT FROM expected.sum
+              OR actual.price IS DISTINCT FROM expected.price
+              OR actual.deleted_at IS DISTINCT FROM expected.deleted_at
+              OR actual.source_type IS DISTINCT FROM expected.source_type
+              OR actual.source_id IS DISTINCT FROM expected.source_id
+              OR actual.transaction_date IS DISTINCT FROM expected.transaction_date
+              OR actual.created_at IS DISTINCT FROM expected.created_at
+              OR actual.quantity_tonnes IS DISTINCT FROM expected.quantity_tonnes
+              OR actual.balance_before_tonnes IS DISTINCT FROM expected.balance_before_tonnes
+              OR actual.balance_after_tonnes IS DISTINCT FROM expected.balance_after_tonnes
+          )::bigint AS changed_value_rows,
+          COUNT(*) FILTER (WHERE source.quantity < 0)::bigint AS negative_legacy_quantity_rows,
+          COUNT(*) FILTER (WHERE actual.quantity_tonnes < 0)::bigint AS negative_tonne_quantity_rows,
+          COUNT(*) FILTER (
+            WHERE source.quantity_tonnes IS NULL
+              AND source.quantity IS NOT NULL
+          )::bigint AS quantity_rows_backfilled,
+          COUNT(*) FILTER (
+            WHERE source.balance_before_tonnes IS NULL
+              AND source.balance_before IS NOT NULL
+          )::bigint AS balance_before_rows_backfilled,
+          COUNT(*) FILTER (
+            WHERE source.balance_after_tonnes IS NULL
+              AND source.balance_after IS NOT NULL
+          )::bigint AS balance_after_rows_backfilled
+        FROM warehouse_transactions AS actual
+        LEFT JOIN __warehouse_stock_transactions_expected AS expected USING (id)
+        LEFT JOIN __warehouse_stock_transaction_source AS source USING (id)
+      `),
+      client.query(`
+        SELECT table_name, column_name, data_type, numeric_precision, numeric_scale
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND (
+            (table_name = 'warehouses' AND column_name IN (
+              'current_balance_tonnes', 'pvkj_balance_tonnes'
+            ))
+            OR
+            (table_name = 'warehouse_transactions' AND column_name IN (
+              'quantity_tonnes', 'balance_before_tonnes', 'balance_after_tonnes'
+            ))
+          )
+      `),
+    ]);
+
+  const correctTargetTypes =
+    targetColumns.rows.length === 5 &&
+    targetColumns.rows.every(
+      (column) =>
+        column.data_type === "numeric" &&
+        Number(column.numeric_precision) === 18 &&
+        Number(column.numeric_scale) === 5,
+    );
+  const warehouseResult = warehouseComparison.rows[0];
+  const transactionResult = transactionComparison.rows[0];
+  if (
+    Number(warehouseResult.source_rows) !== Number(warehouseResult.actual_rows) ||
+    Number(warehouseResult.changed_value_rows) !== 0 ||
+    Number(transactionResult.source_rows) !== Number(transactionResult.actual_rows) ||
+    Number(transactionResult.changed_value_rows) !== 0 ||
+    Number(transactionResult.negative_legacy_quantity_rows) !==
+      Number(transactionResult.negative_tonne_quantity_rows) ||
+    !correctTargetTypes
+  ) {
+    throw new Error("Warehouse stock mass backfill rehearsal failed.");
+  }
+
+  return {
+    warehouses: warehouseResult,
+    transactions: transactionResult,
+    targetColumns: targetColumns.rows,
+    note: "Tonne balances and ledger quantities are authoritative; legacy kg balances, signed quantities, snapshots, and money remain unchanged",
+  };
+}
+
+async function rehearseEquipmentMovementMassBackfill(client) {
+  const schema = await client.query(`
+    SELECT column_name, data_type, numeric_precision, numeric_scale
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'equipment_movement'
+  `);
+  const columns = new Map(schema.rows.map((row) => [row.column_name, row]));
+  const required = [
+    "id",
+    "quantity_kg",
+    "cost_per_kg",
+    "total_cost",
+    "quantity_liters",
+    "density",
+  ];
+  const missing = required.filter((column) => !columns.has(column));
+  if (missing.length) return { skipped: true, missingColumns: missing };
+
+  const sourceColumn = (name) =>
+    columns.has(name) ? name : "NULL::numeric";
+  await client.query(`
+    CREATE TEMP TABLE __equipment_movement_mass_source AS
+    SELECT
+      id,
+      quantity_kg,
+      cost_per_kg,
+      total_cost,
+      quantity_liters,
+      density,
+      ${sourceColumn("quantity_tonnes")} AS quantity_tonnes,
+      ${sourceColumn("cost_per_tonne")} AS cost_per_tonne
+    FROM equipment_movement
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __equipment_movement_mass_expected AS
+    SELECT
+      id,
+      quantity_kg,
+      cost_per_kg,
+      total_cost,
+      quantity_liters,
+      density,
+      COALESCE(quantity_tonnes, quantity_kg / 1000) AS quantity_tonnes,
+      COALESCE(cost_per_tonne, cost_per_kg * 1000) AS cost_per_tonne
+    FROM __equipment_movement_mass_source
+  `);
+
+  const migrationSql = readFileSync(
+    resolve("migrations/0093_equipment_movement_mass_tonnes.sql"),
+    "utf8",
+  );
+  await client.query(migrationSql);
+
+  const [comparison, targetColumns] = await Promise.all([
+    client.query(`
+      SELECT
+        (SELECT COUNT(*)::bigint FROM __equipment_movement_mass_source) AS source_rows,
+        COUNT(*)::bigint AS actual_rows,
+        COUNT(*) FILTER (
+          WHERE expected.id IS NULL
+            OR actual.quantity_kg IS DISTINCT FROM expected.quantity_kg
+            OR actual.cost_per_kg IS DISTINCT FROM expected.cost_per_kg
+            OR actual.total_cost IS DISTINCT FROM expected.total_cost
+            OR actual.quantity_liters IS DISTINCT FROM expected.quantity_liters
+            OR actual.density IS DISTINCT FROM expected.density
+            OR actual.quantity_tonnes IS DISTINCT FROM expected.quantity_tonnes
+            OR actual.cost_per_tonne IS DISTINCT FROM expected.cost_per_tonne
+        )::bigint AS changed_value_rows,
+        COUNT(*) FILTER (
+          WHERE source.quantity_tonnes IS NULL
+            AND source.quantity_kg IS NOT NULL
+        )::bigint AS quantity_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.cost_per_tonne IS NULL
+            AND source.cost_per_kg IS NOT NULL
+        )::bigint AS rate_rows_backfilled
+      FROM equipment_movement AS actual
+      LEFT JOIN __equipment_movement_mass_expected AS expected USING (id)
+      LEFT JOIN __equipment_movement_mass_source AS source USING (id)
+    `),
+    client.query(`
+      SELECT table_name, column_name, data_type, numeric_precision, numeric_scale
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'equipment_movement'
+        AND column_name IN ('quantity_tonnes', 'cost_per_tonne')
+      ORDER BY column_name
+    `),
+  ]);
+  const typesAreValid =
+    targetColumns.rows.length === 2 &&
+    targetColumns.rows.some(
+      (row) =>
+        row.column_name === "quantity_tonnes" &&
+        row.data_type === "numeric" &&
+        Number(row.numeric_precision) === 18 &&
+        Number(row.numeric_scale) === 5,
+    ) &&
+    targetColumns.rows.some(
+      (row) =>
+        row.column_name === "cost_per_tonne" &&
+        row.data_type === "numeric" &&
+        Number(row.numeric_precision) === 22 &&
+        Number(row.numeric_scale) === 6,
+    );
+  const result = comparison.rows[0];
+  if (
+    Number(result.source_rows) !== Number(result.actual_rows) ||
+    Number(result.changed_value_rows) !== 0 ||
+    !typesAreValid
+  ) {
+    throw new Error("Equipment movement mass backfill rehearsal failed.");
+  }
+
+  return {
+    ...result,
+    targetColumns: targetColumns.rows,
+    note: "Tonne mass and per-tonne cost are authoritative; kg mirrors and historical totals remain unchanged",
+  };
+}
+
+async function rehearseMovementMassBackfill(client) {
+  const schema = await client.query(`
+    SELECT column_name, data_type, numeric_precision, numeric_scale
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'movement'
+  `);
+  const columns = new Map(schema.rows.map((row) => [row.column_name, row]));
+  const required = [
+    "id",
+    "quantity_kg",
+    "purchase_price",
+    "delivery_price",
+    "delivery_cost",
+    "storage_cost",
+    "warehouse_services_cost",
+    "total_cost",
+    "cost_per_kg",
+    "quantity_liters",
+    "density",
+    "input_mode",
+    "deleted_at",
+  ];
+  const missing = required.filter((column) => !columns.has(column));
+  if (missing.length) return { skipped: true, missingColumns: missing };
+
+  const sourceColumn = (name) =>
+    columns.has(name) ? name : "NULL::numeric";
+  await client.query(`
+    CREATE TEMP TABLE __movement_mass_source AS
+    SELECT
+      id,
+      quantity_kg,
+      purchase_price,
+      delivery_price,
+      delivery_cost,
+      storage_cost,
+      warehouse_services_cost,
+      total_cost,
+      cost_per_kg,
+      quantity_liters,
+      density,
+      input_mode,
+      deleted_at,
+      ${sourceColumn("quantity_tonnes")} AS quantity_tonnes,
+      ${sourceColumn("purchase_price_per_tonne")} AS purchase_price_per_tonne,
+      ${sourceColumn("delivery_price_per_tonne")} AS delivery_price_per_tonne,
+      ${sourceColumn("cost_per_tonne")} AS cost_per_tonne
+    FROM movement
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __movement_mass_expected AS
+    SELECT
+      id,
+      quantity_kg,
+      purchase_price,
+      delivery_price,
+      delivery_cost,
+      storage_cost,
+      warehouse_services_cost,
+      total_cost,
+      cost_per_kg,
+      quantity_liters,
+      density,
+      input_mode,
+      deleted_at,
+      COALESCE(quantity_tonnes, quantity_kg / 1000) AS quantity_tonnes,
+      COALESCE(purchase_price_per_tonne, purchase_price * 1000)
+        AS purchase_price_per_tonne,
+      COALESCE(delivery_price_per_tonne, delivery_price * 1000)
+        AS delivery_price_per_tonne,
+      COALESCE(cost_per_tonne, cost_per_kg * 1000) AS cost_per_tonne
+    FROM __movement_mass_source
+  `);
+
+  await client.query(
+    readFileSync(resolve("migrations/0094_movement_mass_tonnes.sql"), "utf8"),
+  );
+
+  const [comparison, targetColumns] = await Promise.all([
+    client.query(`
+      SELECT
+        (SELECT COUNT(*)::bigint FROM __movement_mass_source) AS source_rows,
+        COUNT(*)::bigint AS actual_rows,
+        COUNT(*) FILTER (
+          WHERE expected.id IS NULL
+            OR actual.quantity_kg IS DISTINCT FROM expected.quantity_kg
+            OR actual.purchase_price IS DISTINCT FROM expected.purchase_price
+            OR actual.delivery_price IS DISTINCT FROM expected.delivery_price
+            OR actual.delivery_cost IS DISTINCT FROM expected.delivery_cost
+            OR actual.storage_cost IS DISTINCT FROM expected.storage_cost
+            OR actual.warehouse_services_cost IS DISTINCT FROM expected.warehouse_services_cost
+            OR actual.total_cost IS DISTINCT FROM expected.total_cost
+            OR actual.cost_per_kg IS DISTINCT FROM expected.cost_per_kg
+            OR actual.quantity_liters IS DISTINCT FROM expected.quantity_liters
+            OR actual.density IS DISTINCT FROM expected.density
+            OR actual.input_mode IS DISTINCT FROM expected.input_mode
+            OR actual.deleted_at IS DISTINCT FROM expected.deleted_at
+            OR actual.quantity_tonnes IS DISTINCT FROM expected.quantity_tonnes
+            OR actual.purchase_price_per_tonne IS DISTINCT FROM expected.purchase_price_per_tonne
+            OR actual.delivery_price_per_tonne IS DISTINCT FROM expected.delivery_price_per_tonne
+            OR actual.cost_per_tonne IS DISTINCT FROM expected.cost_per_tonne
+        )::bigint AS changed_value_rows,
+        COUNT(*) FILTER (
+          WHERE source.quantity_tonnes IS NULL AND source.quantity_kg IS NOT NULL
+        )::bigint AS mass_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.purchase_price_per_tonne IS NULL
+            AND source.purchase_price IS NOT NULL
+        )::bigint AS purchase_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.delivery_price_per_tonne IS NULL
+            AND source.delivery_price IS NOT NULL
+        )::bigint AS delivery_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.cost_per_tonne IS NULL AND source.cost_per_kg IS NOT NULL
+        )::bigint AS cost_rate_rows_backfilled
+      FROM movement AS actual
+      LEFT JOIN __movement_mass_expected AS expected USING (id)
+      LEFT JOIN __movement_mass_source AS source USING (id)
+    `),
+    client.query(`
+      SELECT table_name, column_name, data_type, numeric_precision, numeric_scale
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'movement'
+        AND column_name IN (
+          'quantity_tonnes',
+          'purchase_price_per_tonne',
+          'delivery_price_per_tonne',
+          'cost_per_tonne'
+        )
+      ORDER BY column_name
+    `),
+  ]);
+  const targetFields = [
+    ["quantity_tonnes", 18, 5],
+    ["purchase_price_per_tonne", 22, 6],
+    ["delivery_price_per_tonne", 22, 6],
+    ["cost_per_tonne", 22, 6],
+  ];
+  const typesAreValid =
+    targetColumns.rows.length === targetFields.length &&
+    targetFields.every(([name, precision, scale]) =>
+      targetColumns.rows.some(
+        (row) =>
+          row.column_name === name &&
+          row.data_type === "numeric" &&
+          Number(row.numeric_precision) === precision &&
+          Number(row.numeric_scale) === scale,
+      ),
+    );
+  const result = comparison.rows[0];
+  if (
+    Number(result.source_rows) !== Number(result.actual_rows) ||
+    Number(result.changed_value_rows) !== 0 ||
+    !typesAreValid
+  ) {
+    throw new Error("Movement mass backfill rehearsal failed.");
+  }
+  return {
+    ...result,
+    targetColumns: targetColumns.rows,
+    note: "Mass and per-tonne rates backfilled from saved kg values; money and historical liters/density remain unchanged",
+  };
+}
+
+async function rehearseTransportationMassBackfill(client) {
+  const schema = await client.query(`
+    SELECT column_name, data_type, numeric_precision, numeric_scale
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'transportation'
+  `);
+  const columns = new Map(schema.rows.map((row) => [row.column_name, row]));
+  const required = [
+    "id",
+    "quantity_kg",
+    "purchase_price",
+    "sale_price",
+    "delivery_tariff",
+    "purchase_amount",
+    "sale_amount",
+    "delivery_cost",
+    "profit",
+    "quantity_liters",
+    "density",
+    "input_mode",
+    "deleted_at",
+  ];
+  const missing = required.filter((column) => !columns.has(column));
+  if (missing.length) return { skipped: true, missingColumns: missing };
+
+  const sourceColumn = (name) =>
+    columns.has(name) ? name : "NULL::numeric";
+  await client.query(`
+    CREATE TEMP TABLE __transportation_mass_source AS
+    SELECT
+      id,
+      quantity_kg,
+      purchase_price,
+      sale_price,
+      delivery_tariff,
+      purchase_amount,
+      sale_amount,
+      delivery_cost,
+      profit,
+      quantity_liters,
+      density,
+      input_mode,
+      deleted_at,
+      ${sourceColumn("quantity_tonnes")} AS quantity_tonnes,
+      ${sourceColumn("purchase_price_per_tonne")} AS purchase_price_per_tonne,
+      ${sourceColumn("sale_price_per_tonne")} AS sale_price_per_tonne,
+      ${sourceColumn("delivery_tariff_per_tonne")} AS delivery_tariff_per_tonne
+    FROM transportation
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __transportation_mass_expected AS
+    SELECT
+      id,
+      quantity_kg,
+      purchase_price,
+      sale_price,
+      delivery_tariff,
+      purchase_amount,
+      sale_amount,
+      delivery_cost,
+      profit,
+      quantity_liters,
+      density,
+      input_mode,
+      deleted_at,
+      COALESCE(quantity_tonnes, quantity_kg / 1000) AS quantity_tonnes,
+      COALESCE(
+        purchase_price_per_tonne,
+        CASE WHEN input_mode = 'liters'
+          THEN purchase_price * 1000 / NULLIF(density, 0)
+          ELSE purchase_price * 1000
+        END
+      ) AS purchase_price_per_tonne,
+      COALESCE(
+        sale_price_per_tonne,
+        CASE WHEN input_mode = 'liters'
+          THEN sale_price * 1000 / NULLIF(density, 0)
+          ELSE sale_price * 1000
+        END
+      ) AS sale_price_per_tonne,
+      COALESCE(delivery_tariff_per_tonne, delivery_tariff * 1000)
+        AS delivery_tariff_per_tonne
+    FROM __transportation_mass_source
+  `);
+
+  await client.query(
+    readFileSync(
+      resolve("migrations/0095_transportation_mass_tonnes.sql"),
+      "utf8",
+    ),
+  );
+
+  const [comparison, targetColumns] = await Promise.all([
+    client.query(`
+      SELECT
+        (SELECT COUNT(*)::bigint FROM __transportation_mass_source) AS source_rows,
+        COUNT(*)::bigint AS actual_rows,
+        COUNT(*) FILTER (
+          WHERE expected.id IS NULL
+            OR actual.quantity_kg IS DISTINCT FROM expected.quantity_kg
+            OR actual.purchase_price IS DISTINCT FROM expected.purchase_price
+            OR actual.sale_price IS DISTINCT FROM expected.sale_price
+            OR actual.delivery_tariff IS DISTINCT FROM expected.delivery_tariff
+            OR actual.purchase_amount IS DISTINCT FROM expected.purchase_amount
+            OR actual.sale_amount IS DISTINCT FROM expected.sale_amount
+            OR actual.delivery_cost IS DISTINCT FROM expected.delivery_cost
+            OR actual.profit IS DISTINCT FROM expected.profit
+            OR actual.quantity_liters IS DISTINCT FROM expected.quantity_liters
+            OR actual.density IS DISTINCT FROM expected.density
+            OR actual.input_mode IS DISTINCT FROM expected.input_mode
+            OR actual.deleted_at IS DISTINCT FROM expected.deleted_at
+            OR actual.quantity_tonnes IS DISTINCT FROM expected.quantity_tonnes
+            OR actual.purchase_price_per_tonne IS DISTINCT FROM expected.purchase_price_per_tonne
+            OR actual.sale_price_per_tonne IS DISTINCT FROM expected.sale_price_per_tonne
+            OR actual.delivery_tariff_per_tonne IS DISTINCT FROM expected.delivery_tariff_per_tonne
+        )::bigint AS changed_value_rows,
+        COUNT(*) FILTER (
+          WHERE source.quantity_tonnes IS NULL AND source.quantity_kg IS NOT NULL
+        )::bigint AS mass_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.purchase_price_per_tonne IS NULL
+            AND source.purchase_price IS NOT NULL
+        )::bigint AS purchase_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.sale_price_per_tonne IS NULL AND source.sale_price IS NOT NULL
+        )::bigint AS sale_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.delivery_tariff_per_tonne IS NULL
+            AND source.delivery_tariff IS NOT NULL
+        )::bigint AS delivery_rate_rows_backfilled
+      FROM transportation AS actual
+      LEFT JOIN __transportation_mass_expected AS expected USING (id)
+      LEFT JOIN __transportation_mass_source AS source USING (id)
+    `),
+    client.query(`
+      SELECT table_name, column_name, data_type, numeric_precision, numeric_scale
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'transportation'
+        AND column_name IN (
+          'quantity_tonnes',
+          'purchase_price_per_tonne',
+          'sale_price_per_tonne',
+          'delivery_tariff_per_tonne'
+        )
+      ORDER BY column_name
+    `),
+  ]);
+  const targetFields = [
+    ["quantity_tonnes", 18, 5],
+    ["purchase_price_per_tonne", 22, 6],
+    ["sale_price_per_tonne", 22, 6],
+    ["delivery_tariff_per_tonne", 22, 6],
+  ];
+  const typesAreValid =
+    targetColumns.rows.length === targetFields.length &&
+    targetFields.every(([name, precision, scale]) =>
+      targetColumns.rows.some(
+        (row) =>
+          row.column_name === name &&
+          row.data_type === "numeric" &&
+          Number(row.numeric_precision) === precision &&
+          Number(row.numeric_scale) === scale,
+      ),
+    );
+  const result = comparison.rows[0];
+  if (
+    Number(result.source_rows) !== Number(result.actual_rows) ||
+    Number(result.changed_value_rows) !== 0 ||
+    !typesAreValid
+  ) {
+    throw new Error("Transportation mass backfill rehearsal failed.");
+  }
+  return {
+    ...result,
+    targetColumns: targetColumns.rows,
+    note: "Historical mass uses saved kg; per-liter rates use deal density; saved money and source fields remain unchanged",
+  };
+}
+
+async function rehearseEquipmentStockMassBackfill(client) {
+  const [equipmentSchema, transactionSchema] = await Promise.all([
+    client.query(`
+      SELECT column_name, data_type, numeric_precision, numeric_scale
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'equipments'
+    `),
+    client.query(`
+      SELECT column_name, data_type, numeric_precision, numeric_scale
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'equipment_transactions'
+    `),
+  ]);
+  const equipmentColumns = new Map(
+    equipmentSchema.rows.map((row) => [row.column_name, row]),
+  );
+  const transactionColumns = new Map(
+    transactionSchema.rows.map((row) => [row.column_name, row]),
+  );
+  const missing = [
+    ...["id", "current_balance", "pvkj_balance"]
+      .filter((column) => !equipmentColumns.has(column))
+      .map((column) => `equipments.${column}`),
+    ...[
+      "id",
+      "equipment_id",
+      "transaction_type",
+      "product_type",
+      "quantity",
+      "balance_before",
+      "balance_after",
+      "sum",
+      "price",
+      "deleted_at",
+      "source_type",
+      "source_id",
+      "transaction_date",
+      "created_at",
+    ]
+      .filter((column) => !transactionColumns.has(column))
+      .map((column) => `equipment_transactions.${column}`),
+  ];
+  if (missing.length) return { skipped: true, missingColumns: missing };
+
+  const sourceColumn = (columns, name) =>
+    columns.has(name) ? name : "NULL::numeric";
+  await client.query(`
+    CREATE TEMP TABLE __equipment_stock_equipment_source AS
+    SELECT
+      id,
+      current_balance,
+      pvkj_balance,
+      ${sourceColumn(equipmentColumns, "current_balance_tonnes")} AS current_balance_tonnes,
+      ${sourceColumn(equipmentColumns, "pvkj_balance_tonnes")} AS pvkj_balance_tonnes
+    FROM equipments
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __equipment_stock_transaction_source AS
+    SELECT
+      id,
+      equipment_id,
+      transaction_type,
+      product_type,
+      quantity,
+      balance_before,
+      balance_after,
+      sum,
+      price,
+      deleted_at,
+      source_type,
+      source_id,
+      transaction_date,
+      created_at,
+      ${sourceColumn(transactionColumns, "quantity_tonnes")} AS quantity_tonnes,
+      ${sourceColumn(transactionColumns, "balance_before_tonnes")} AS balance_before_tonnes,
+      ${sourceColumn(transactionColumns, "balance_after_tonnes")} AS balance_after_tonnes
+    FROM equipment_transactions
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __equipment_stock_expected AS
+    SELECT
+      id,
+      current_balance,
+      pvkj_balance,
+      CASE WHEN current_balance IS NULL THEN NULL ELSE current_balance / 1000 END
+        AS current_balance_tonnes,
+      CASE WHEN pvkj_balance IS NULL THEN NULL ELSE pvkj_balance / 1000 END
+        AS pvkj_balance_tonnes
+    FROM __equipment_stock_equipment_source
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __equipment_stock_transactions_expected AS
+    SELECT
+      id,
+      equipment_id,
+      transaction_type,
+      product_type,
+      quantity,
+      balance_before,
+      balance_after,
+      sum,
+      price,
+      deleted_at,
+      source_type,
+      source_id,
+      transaction_date,
+      created_at,
+      CASE WHEN quantity IS NULL THEN NULL ELSE quantity / 1000 END
+        AS quantity_tonnes,
+      CASE WHEN balance_before IS NULL THEN NULL ELSE balance_before / 1000 END
+        AS balance_before_tonnes,
+      CASE WHEN balance_after IS NULL THEN NULL ELSE balance_after / 1000 END
+        AS balance_after_tonnes
+    FROM __equipment_stock_transaction_source
+  `);
+
+  const migrationSql = readFileSync(
+    resolve("migrations/0092_equipment_stock_mass_tonnes.sql"),
+    "utf8",
+  );
+  await client.query(migrationSql);
+
+  const [equipmentComparison, transactionComparison, targetColumns] =
+    await Promise.all([
+      client.query(`
+        SELECT
+          (SELECT COUNT(*)::bigint FROM __equipment_stock_equipment_source) AS source_rows,
+          COUNT(*)::bigint AS actual_rows,
+          COUNT(*) FILTER (
+            WHERE expected.id IS NULL
+              OR actual.current_balance IS DISTINCT FROM expected.current_balance
+              OR actual.pvkj_balance IS DISTINCT FROM expected.pvkj_balance
+              OR actual.current_balance_tonnes IS DISTINCT FROM expected.current_balance_tonnes
+              OR actual.pvkj_balance_tonnes IS DISTINCT FROM expected.pvkj_balance_tonnes
+          )::bigint AS changed_value_rows,
+          COUNT(*) FILTER (
+            WHERE source.current_balance_tonnes IS NULL
+              AND source.current_balance IS NOT NULL
+          )::bigint AS current_balance_rows_backfilled,
+          COUNT(*) FILTER (
+            WHERE source.pvkj_balance_tonnes IS NULL
+              AND source.pvkj_balance IS NOT NULL
+          )::bigint AS pvkj_balance_rows_backfilled
+        FROM equipments AS actual
+        LEFT JOIN __equipment_stock_expected AS expected USING (id)
+        LEFT JOIN __equipment_stock_equipment_source AS source USING (id)
+      `),
+      client.query(`
+        SELECT
+          (SELECT COUNT(*)::bigint FROM __equipment_stock_transaction_source) AS source_rows,
+          COUNT(*)::bigint AS actual_rows,
+          COUNT(*) FILTER (
+            WHERE expected.id IS NULL
+              OR actual.equipment_id IS DISTINCT FROM expected.equipment_id
+              OR actual.transaction_type IS DISTINCT FROM expected.transaction_type
+              OR actual.product_type IS DISTINCT FROM expected.product_type
+              OR actual.quantity IS DISTINCT FROM expected.quantity
+              OR actual.balance_before IS DISTINCT FROM expected.balance_before
+              OR actual.balance_after IS DISTINCT FROM expected.balance_after
+              OR actual.sum IS DISTINCT FROM expected.sum
+              OR actual.price IS DISTINCT FROM expected.price
+              OR actual.deleted_at IS DISTINCT FROM expected.deleted_at
+              OR actual.source_type IS DISTINCT FROM expected.source_type
+              OR actual.source_id IS DISTINCT FROM expected.source_id
+              OR actual.transaction_date IS DISTINCT FROM expected.transaction_date
+              OR actual.created_at IS DISTINCT FROM expected.created_at
+              OR actual.quantity_tonnes IS DISTINCT FROM expected.quantity_tonnes
+              OR actual.balance_before_tonnes IS DISTINCT FROM expected.balance_before_tonnes
+              OR actual.balance_after_tonnes IS DISTINCT FROM expected.balance_after_tonnes
+          )::bigint AS changed_value_rows,
+          COUNT(*) FILTER (WHERE source.quantity < 0)::bigint AS negative_legacy_quantity_rows,
+          COUNT(*) FILTER (WHERE actual.quantity_tonnes < 0)::bigint AS negative_tonne_quantity_rows,
+          COUNT(*) FILTER (
+            WHERE source.quantity_tonnes IS NULL
+              AND source.quantity IS NOT NULL
+          )::bigint AS quantity_rows_backfilled,
+          COUNT(*) FILTER (
+            WHERE source.balance_before_tonnes IS NULL
+              AND source.balance_before IS NOT NULL
+          )::bigint AS balance_before_rows_backfilled,
+          COUNT(*) FILTER (
+            WHERE source.balance_after_tonnes IS NULL
+              AND source.balance_after IS NOT NULL
+          )::bigint AS balance_after_rows_backfilled
+        FROM equipment_transactions AS actual
+        LEFT JOIN __equipment_stock_transactions_expected AS expected USING (id)
+        LEFT JOIN __equipment_stock_transaction_source AS source USING (id)
+      `),
+      client.query(`
+        SELECT table_name, column_name, data_type, numeric_precision, numeric_scale
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND (
+            (table_name = 'equipments' AND column_name IN (
+              'current_balance_tonnes', 'pvkj_balance_tonnes'
+            ))
+            OR
+            (table_name = 'equipment_transactions' AND column_name IN (
+              'quantity_tonnes', 'balance_before_tonnes', 'balance_after_tonnes'
+            ))
+          )
+      `),
+    ]);
+
+  const correctTargetTypes =
+    targetColumns.rows.length === 5 &&
+    targetColumns.rows.every(
+      (column) =>
+        column.data_type === "numeric" &&
+        Number(column.numeric_precision) === 18 &&
+        Number(column.numeric_scale) === 5,
+    );
+  const equipmentResult = equipmentComparison.rows[0];
+  const transactionResult = transactionComparison.rows[0];
+  if (
+    Number(equipmentResult.source_rows) !== Number(equipmentResult.actual_rows) ||
+    Number(equipmentResult.changed_value_rows) !== 0 ||
+    Number(transactionResult.source_rows) !== Number(transactionResult.actual_rows) ||
+    Number(transactionResult.changed_value_rows) !== 0 ||
+    Number(transactionResult.negative_legacy_quantity_rows) !==
+      Number(transactionResult.negative_tonne_quantity_rows) ||
+    !correctTargetTypes
+  ) {
+    throw new Error("Equipment stock mass backfill rehearsal failed.");
+  }
+
+  return {
+    equipments: equipmentResult,
+    transactions: transactionResult,
+    targetColumns: targetColumns.rows,
+    note: "Tonne balances and ledger quantities are authoritative; legacy kg balances, signed quantities, snapshots, and money remain unchanged",
+  };
+}
+
 await withTemporaryPostgres(async ({ run, createDatabase }) => {
   const databaseEnvironment = await createDatabase("mass_unit_rehearsal");
   const isolatedDumpPath = resolve(dumpPath);
@@ -1311,6 +2263,15 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
       await rehearseLogisticsCapacityBackfill(client);
     const warehouseLimitBackfill =
       await rehearseWarehouseLimitBackfill(client);
+    const warehouseStockMassBackfill =
+      await rehearseWarehouseStockMassBackfill(client);
+    const equipmentStockMassBackfill =
+      await rehearseEquipmentStockMassBackfill(client);
+    const equipmentMovementMassBackfill =
+      await rehearseEquipmentMovementMassBackfill(client);
+    const movementMassBackfill = await rehearseMovementMassBackfill(client);
+    const transportationMassBackfill =
+      await rehearseTransportationMassBackfill(client);
 
     await client.query("BEGIN");
     try {
@@ -1404,6 +2365,11 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         priceMassBackfill,
         logisticsCapacityBackfill,
         warehouseLimitBackfill,
+        warehouseStockMassBackfill,
+        equipmentStockMassBackfill,
+        equipmentMovementMassBackfill,
+        movementMassBackfill,
+        transportationMassBackfill,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
         note: "Schema/backfill migrations run only on the disposable restored database; temporary rehearsal columns are rolled back.",

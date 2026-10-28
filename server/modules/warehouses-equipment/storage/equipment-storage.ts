@@ -1,6 +1,12 @@
 import { eq, and, isNull, sql, desc } from "drizzle-orm";
 import { db } from "../../../db";
 import { equipments, equipmentTransactions, warehousesEquipment, type Equipment, type InsertEquipment, type EquipmentTransaction, type InsertEquipmentTransaction } from "../entities/equipment";
+import {
+  massMirrorFields,
+  normalizeEquipmentBalanceFields,
+  normalizeEquipmentTransactionMassFields,
+  readMassTonnes,
+} from "../equipment-balance-units";
 
 export class EquipmentStorage {
   async getEquipments(): Promise<Equipment[]> {
@@ -25,12 +31,22 @@ export class EquipmentStorage {
       throw new Error("Такая запись уже существует");
     }
     
-    const [equipment] = await db.insert(equipments).values(data).returning();
+    const [equipment] = await db
+      .insert(equipments)
+      .values(normalizeEquipmentBalanceFields(data))
+      .returning();
     return equipment;
   }
 
   async updateEquipment(id: string, data: Partial<InsertEquipment>): Promise<Equipment | undefined> {
-    const [equipment] = await db.update(equipments).set({ ...data, updatedAt: new Date().toISOString() }).where(eq(equipments.id, id)).returning();
+    const [equipment] = await db
+      .update(equipments)
+      .set({
+        ...normalizeEquipmentBalanceFields(data),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(equipments.id, id))
+      .returning();
     return equipment;
   }
 
@@ -82,7 +98,10 @@ export class EquipmentStorage {
   }
 
   async createTransaction(data: InsertEquipmentTransaction): Promise<EquipmentTransaction> {
-    const [transaction] = await db.insert(equipmentTransactions).values(data).returning();
+    const [transaction] = await db
+      .insert(equipmentTransactions)
+      .values(normalizeEquipmentTransactionMassFields(data))
+      .returning();
     return transaction;
   }
 
@@ -110,7 +129,7 @@ export class EquipmentStorage {
     equipmentId: string,
     date: Date,
     productType: string,
-  ): Promise<{ balance: string; averageCost: string }> {
+  ): Promise<{ balance: string; balanceTonnes: string; averageCost: string }> {
     const dateStr = date.toISOString().split("T")[0];
 
     const [lastTransaction] = await db
@@ -131,8 +150,15 @@ export class EquipmentStorage {
       )
       .limit(1);
 
+    const balance = massMirrorFields(
+      readMassTonnes(
+        lastTransaction?.balanceAfterTonnes,
+        lastTransaction?.balanceAfter,
+      ),
+    );
     return {
-      balance: lastTransaction?.balanceAfter || "0",
+      balance: balance.kilograms,
+      balanceTonnes: balance.tonnes,
       averageCost: lastTransaction?.averageCostAfter || "0",
     };
   }

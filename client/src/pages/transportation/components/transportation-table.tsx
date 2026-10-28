@@ -89,15 +89,10 @@ function getTransportationPricePerTonne(deal: any): number | null {
   ) {
     return Number(deal.salePricePerTonne);
   }
-  const tonnes = getTransportationMassTonnes(deal);
-  const saleAmount = Number.parseFloat(String(deal.saleAmount ?? ""));
-  if (tonnes !== null && tonnes > 0 && Number.isFinite(saleAmount)) {
-    return saleAmount / tonnes;
-  }
-
   const isLiterPrice =
     deal.inputMode === "liters" ||
-    Number.parseFloat(String(deal.quantityLiters ?? "0")) > 0;
+    ((deal.inputMode === null || deal.inputMode === undefined) &&
+      Number.parseFloat(String(deal.quantityLiters ?? "0")) > 0);
   return calculateTransportationPricePerTonne(
     deal.salePrice,
     isLiterPrice ? "liter" : "kg",

@@ -20,6 +20,10 @@ import {
   warehouseTransactionToApi,
   warehouseToApi,
 } from "../warehouse-api-adapters";
+import {
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get(
@@ -523,10 +527,49 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const warehouseId = req.params.id;
-        const { productType, targetDate, targetBalance, targetAverageCost } = req.body;
+        const {
+          productType,
+          targetDate,
+          targetBalanceTonnes,
+          targetAverageCostPerTonne,
+          targetBalance,
+          targetAverageCost,
+        } = req.body;
         const userId = req.session.userId ? String(req.session.userId) : undefined;
 
-        if (!productType || !targetDate || targetBalance === undefined || targetAverageCost === undefined) {
+        const rawBalance =
+          targetBalanceTonnes !== undefined
+            ? targetBalanceTonnes
+            : targetBalance;
+        const rawCost =
+          targetAverageCostPerTonne !== undefined
+            ? targetAverageCostPerTonne
+            : targetAverageCost;
+        const parsedBalance =
+          rawBalance === undefined || rawBalance === null || String(rawBalance).trim() === ""
+            ? Number.NaN
+            : Number(rawBalance);
+        const parsedCost =
+          rawCost === undefined || rawCost === null || String(rawCost).trim() === ""
+            ? Number.NaN
+            : Number(rawCost);
+        const balanceTonnes =
+          targetBalanceTonnes !== undefined
+            ? parsedBalance
+            : kilogramsToTonnes(parsedBalance);
+        const averageCostPerTonne =
+          targetAverageCostPerTonne !== undefined
+            ? parsedCost
+            : pricePerKilogramToPerTonne(parsedCost);
+
+        if (
+          !productType ||
+          !targetDate ||
+          !Number.isFinite(balanceTonnes) ||
+          !Number.isFinite(averageCostPerTonne) ||
+          balanceTonnes < 0 ||
+          averageCostPerTonne < 0
+        ) {
           return res.status(400).json({ message: "Не указаны обязательные параметры" });
         }
 
@@ -534,8 +577,8 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           warehouseId,
           productType,
           targetDate,
-          targetBalance: parseFloat(targetBalance),
-          targetAverageCost: parseFloat(targetAverageCost),
+          targetBalanceTonnes: balanceTonnes,
+          targetAverageCostPerTonne: averageCostPerTonne,
           userId,
         });
 
