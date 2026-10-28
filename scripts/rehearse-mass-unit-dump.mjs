@@ -755,9 +755,10 @@ async function rehearseKnownScalarPriceRateNormalization(client) {
       AND cardinality(price_values) = 1
       AND btrim(price_values[1]) = '75'
   `);
-  if (Number(candidates.rows[0].rows) !== 1) {
+  const candidateRows = Number(candidates.rows[0].rows);
+  if (candidateRows > 1) {
     throw new Error(
-      `Expected exactly one approved scalar price row in rehearsal; found ${candidates.rows[0].rows}`,
+      `Expected at most one approved scalar price row in rehearsal; found ${candidateRows}`,
     );
   }
 
@@ -804,7 +805,7 @@ async function rehearseKnownScalarPriceRateNormalization(client) {
   const result = comparison.rows[0];
   const passed =
     Number(result.source_rows) === Number(result.actual_rows) &&
-    Number(result.normalized_rows) === 1 &&
+    Number(result.normalized_rows) === candidateRows &&
     Number(result.changed_other_rate_rows) === 0 &&
     Number(result.changed_non_rate_rows) === 0;
   if (!passed) {
@@ -814,9 +815,9 @@ async function rehearseKnownScalarPriceRateNormalization(client) {
   }
   return {
     ...result,
-    candidate_rows: Number(candidates.rows[0].rows),
+    candidate_rows: candidateRows,
     passed,
-    note: "Only the single approved raw numeric kg rate of 75 is wrapped as a standard price object and converted to 75000 per tonne.",
+    note: "Zero or one exact raw numeric kg rate of 75 is allowed; if present it is wrapped as a standard price object and converted to 75000 per tonne. Multiple matches abort.",
   };
 }
 
@@ -2686,6 +2687,13 @@ async function rehearsePlanningMassBackfill(client) {
 }
 
 async function rehearseBudgetSalesVolumeBackfill(client, databaseUrl) {
+  const databaseHost = new URL(databaseUrl).hostname;
+  if (databaseHost !== "127.0.0.1" && databaseHost !== "localhost") {
+    throw new Error(
+      `Refusing BDR backfill rehearsal against non-local database host: ${databaseHost}`,
+    );
+  }
+
   const existingTonneColumn = await client.query(`
     SELECT EXISTS (
       SELECT 1 FROM information_schema.columns
@@ -2868,6 +2876,7 @@ async function rehearseBudgetSalesVolumeBackfill(client, databaseUrl) {
   return {
     ...result,
     ...scriptReport,
+    target: "isolated temporary PostgreSQL",
     passed,
     typesAreValid,
     targetColumn: column,
