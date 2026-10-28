@@ -7,7 +7,7 @@ description: Product decisions for converting mass, prices, and litre-based rate
 - Prices per tonne are shown with two decimal places. Keep calculation/storage precision sufficient to preserve existing transaction totals; do not round unit rates early.
 - When an unchanged legacy rate is shown rounded as ₽/т, preserve the exact stored ₽/кг value on save; display rounding must not rewrite stored precision.
 - Convert rates per kilogram to rates per tonne by multiplying by 1,000.
-- Convert a per-litre rate to an equivalent per-tonne rate using the density recorded for that specific deal. Preserve the transaction amount as litres × the source per-litre rate.
+- Keep master per-litre tariffs in ₽/л as reusable source quotes; convert to ₽/т at deal level using that deal's density. Preserve the transaction amount as litres × the source per-litre rate.
 - For historical deal rates, prefer saved amount ÷ saved tonnes when the amount exists, preserving the current displayed effective rate; only use deal density to convert a per-litre rate when no saved amount exists.
 - Historical БДР `salesVolume` values must be recomputed by month from non-deleted OPT and refueling quantities; only this field is replaced, while `salesRevenue` and other budget fields remain unchanged.
 - Management-report government-contract summaries must keep financial amounts in ₽ separate from planned, actual, and remaining mass in tonnes.
