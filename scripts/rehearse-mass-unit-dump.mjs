@@ -824,6 +824,95 @@ async function rehearseLogisticsCapacityBackfill(client) {
   };
 }
 
+async function rehearseWarehouseLimitBackfill(client) {
+  const schemaResult = await client.query(`
+    SELECT column_name, data_type, numeric_precision, numeric_scale
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'warehouses'
+  `);
+  const columns = new Map(schemaResult.rows.map((row) => [row.column_name, row]));
+  const missing = ["id", "limit_volume"].filter((column) => !columns.has(column));
+  if (missing.length) return { skipped: true, missingColumns: missing };
+
+  const tonneColumn = columns.has("limit_volume_tonnes")
+    ? "limit_volume_tonnes"
+    : "NULL::numeric";
+  await client.query(`
+    CREATE TEMP TABLE __warehouse_limit_source AS
+    SELECT
+      id,
+      limit_volume,
+      limit_product_type,
+      limit_expires_at,
+      ${tonneColumn} AS limit_volume_tonnes
+    FROM warehouses
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __warehouse_limit_expected AS
+    SELECT
+      id,
+      limit_volume,
+      limit_product_type,
+      limit_expires_at,
+      COALESCE(limit_volume_tonnes, limit_volume / 1000) AS limit_volume_tonnes
+    FROM __warehouse_limit_source
+  `);
+
+  const migrationSql = readFileSync(
+    resolve("migrations/0090_warehouse_limit_volume_tonnes.sql"),
+    "utf8",
+  );
+  await client.query(migrationSql);
+
+  const comparison = await client.query(`
+    SELECT
+      (SELECT COUNT(*)::bigint FROM __warehouse_limit_source) AS source_rows,
+      COUNT(*)::bigint AS actual_rows,
+      COUNT(*) FILTER (
+        WHERE expected.id IS NULL
+          OR actual.limit_volume IS DISTINCT FROM expected.limit_volume
+          OR actual.limit_product_type IS DISTINCT FROM expected.limit_product_type
+          OR actual.limit_expires_at IS DISTINCT FROM expected.limit_expires_at
+          OR actual.limit_volume_tonnes IS DISTINCT FROM expected.limit_volume_tonnes
+      )::bigint AS changed_value_rows,
+      COUNT(*) FILTER (
+        WHERE source.limit_volume IS NOT NULL
+          AND source.limit_volume_tonnes IS NULL
+      )::bigint AS limit_rows_backfilled,
+      COUNT(*) FILTER (
+        WHERE source.limit_volume IS NOT NULL
+      )::bigint AS populated_legacy_limit_rows
+    FROM warehouses AS actual
+    LEFT JOIN __warehouse_limit_expected AS expected USING (id)
+    LEFT JOIN __warehouse_limit_source AS source USING (id)
+  `);
+  const targetColumn = await client.query(`
+    SELECT data_type, numeric_precision, numeric_scale
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'warehouses'
+      AND column_name = 'limit_volume_tonnes'
+  `);
+  const correctTargetType = targetColumn.rows.length === 1
+    && targetColumn.rows[0].data_type === "numeric"
+    && Number(targetColumn.rows[0].numeric_precision) === 18
+    && Number(targetColumn.rows[0].numeric_scale) === 5;
+  const result = comparison.rows[0];
+  if (
+    Number(result.source_rows) !== Number(result.actual_rows)
+    || Number(result.changed_value_rows) !== 0
+    || !correctTargetType
+  ) {
+    throw new Error("Warehouse limit backfill rehearsal failed.");
+  }
+  return {
+    ...result,
+    targetColumn: targetColumn.rows[0],
+    note: "limit_volume remains a synchronized kg compatibility mirror; limit_volume_tonnes is authoritative",
+  };
+}
+
 await withTemporaryPostgres(async ({ run, createDatabase }) => {
   const databaseEnvironment = await createDatabase("mass_unit_rehearsal");
   const isolatedDumpPath = resolve(dumpPath);
@@ -1220,6 +1309,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
     const priceMassBackfill = await rehearsePriceMassBackfill(client);
     const logisticsCapacityBackfill =
       await rehearseLogisticsCapacityBackfill(client);
+    const warehouseLimitBackfill =
+      await rehearseWarehouseLimitBackfill(client);
 
     await client.query("BEGIN");
     try {
@@ -1312,6 +1403,7 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         priceVolumeSchemaMigration,
         priceMassBackfill,
         logisticsCapacityBackfill,
+        warehouseLimitBackfill,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
         note: "Schema/backfill migrations run only on the disposable restored database; temporary rehearsal columns are rolled back.",

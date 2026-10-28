@@ -13,6 +13,7 @@ import { eq, sql } from "drizzle-orm";
 import { RecalculationQueueService } from "../services/recalculation-queue-service";
 import { format } from "date-fns";
 import { equipmentToApi } from "../../warehouses-equipment/equipment-api-adapters";
+import { normalizeWarehouseLimit } from "../warehouse-limit-units";
 import {
   warehouseBalanceToApi,
   warehouseMonthlyStatsToApi,
@@ -452,11 +453,39 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const warehouseId = req.params.id;
-        const { limitVolume, limitProductType } = req.body;
+        const inputSchema = z.object({
+          limitVolume: z.union([z.string(), z.number()]).nullable().optional(),
+          limitVolumeTonnes: z
+            .union([z.string(), z.number()])
+            .nullable()
+            .optional(),
+          limitProductType: z.string().nullable().optional(),
+        });
+        const parsed = inputSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ message: "Неверные параметры лимита" });
+        }
+        if (
+          parsed.data.limitVolume === undefined &&
+          parsed.data.limitVolumeTonnes === undefined
+        ) {
+          return res.status(400).json({ message: "Не указан объём лимита" });
+        }
+        let normalizedLimit: ReturnType<typeof normalizeWarehouseLimit>;
+        try {
+          normalizedLimit = normalizeWarehouseLimit(parsed.data);
+        } catch (error) {
+          return res.status(400).json({
+            message: "Лимит должен быть неотрицательным числом с точностью до 5 знаков",
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        const { limitProductType } = parsed.data;
+        const hasLimit = normalizedLimit.limitVolumeTonnes != null;
         const userId = req.session.userId ? String(req.session.userId) : undefined;
 
         let limitExpiresAt: string | null = null;
-        if (limitVolume) {
+        if (hasLimit) {
           const now = new Date();
           const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
           limitExpiresAt = format(nextMonth, "yyyy-MM-dd");
@@ -465,8 +494,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         await db
           .update(warehouses)
           .set({
-            limitVolume: limitVolume ? String(limitVolume) : null,
-            limitProductType: limitVolume ? (limitProductType || PRODUCT_TYPE.KEROSENE) : null,
+            ...normalizedLimit,
+            limitProductType: hasLimit
+              ? limitProductType || PRODUCT_TYPE.KEROSENE
+              : null,
             limitExpiresAt: limitExpiresAt,
             updatedAt: sql`NOW()`,
             updatedById: userId,

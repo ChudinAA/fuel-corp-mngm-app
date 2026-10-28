@@ -1,5 +1,6 @@
 import { eq, desc, sql, isNull, and, inArray } from "drizzle-orm";
 import { db } from "server/db";
+import { normalizeWarehouseLimit } from "../warehouse-limit-units";
 import { format } from "date-fns";
 import {
   warehouses,
@@ -86,6 +87,10 @@ export class WarehouseStorage {
     data: InsertWarehouse & { baseIds?: string[]; services?: Array<{ serviceName?: string | null; serviceType: string; serviceValue: string }> },
   ): Promise<Warehouse> {
     const { baseIds, services, ...warehouseData } = data;
+    const normalizedWarehouseData = {
+      ...warehouseData,
+      ...normalizeWarehouseLimit(warehouseData),
+    };
 
     // Check for duplicates
     const existing = await db.query.warehouses.findFirst({
@@ -102,7 +107,7 @@ export class WarehouseStorage {
     return await db.transaction(async (tx) => {
       const [created] = await tx
         .insert(warehouses)
-        .values(warehouseData)
+        .values(normalizedWarehouseData)
         .returning();
 
       if (baseIds && baseIds.length > 0) {
@@ -138,12 +143,14 @@ export class WarehouseStorage {
     data: Partial<InsertWarehouse> & { baseIds?: string[]; services?: Array<{ serviceName?: string | null; serviceType: string; serviceValue: string }> },
   ): Promise<Warehouse | undefined> {
     const { baseIds, services, ...warehouseData } = data;
+    const normalizedLimit = normalizeWarehouseLimit(warehouseData);
 
     return await db.transaction(async (tx) => {
       const [updated] = await tx
         .update(warehouses)
         .set({
           ...warehouseData,
+          ...normalizedLimit,
           updatedAt: sql`NOW()`,
         })
         .where(eq(warehouses.id, id))

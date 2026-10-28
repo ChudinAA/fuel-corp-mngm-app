@@ -51,6 +51,10 @@ export const warehouses = pgTable(
     isActive: boolean("is_active").default(true),
     isPinned: boolean("is_pinned").default(false),
     limitVolume: decimal("limit_volume", { precision: 15, scale: 2 }),
+    limitVolumeTonnes: decimal("limit_volume_tonnes", {
+      precision: 18,
+      scale: 5,
+    }),
     limitProductType: text("limit_product_type"),
     limitExpiresAt: date("limit_expires_at"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -254,6 +258,7 @@ export const insertWarehouseSchema = z.object({
   isActive: z.boolean().optional(),
   isPinned: z.boolean().optional().default(false),
   limitVolume: z.string().optional().nullable(),
+  limitVolumeTonnes: z.string().optional().nullable(),
   limitProductType: z.string().optional().nullable(),
   limitExpiresAt: z.string().optional().nullable(),
   createdById: z.string().uuid(),

@@ -38,13 +38,15 @@ import { PRODUCT_TYPE } from "@shared/constants";
 import { format, addMonths, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
 import { kilogramsToTonnes } from "@shared/units";
-import { tonnesToLegacyWarehouseKilograms } from "../unit-calculations";
 
 const limitSchema = z.object({
-  limitVolume: z
+  limitVolumeTonnes: z
     .string()
     .min(1, "Укажите объём лимита")
-    .refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0, "Лимит должен быть > 0"),
+    .refine(
+      (v) => /^\d+(?:\.\d{1,5})?$/.test(v) && Number(v) > 0,
+      "Лимит должен быть положительным числом с точностью до 5 знаков",
+    ),
   limitProductType: z.string().min(1, "Выберите тип продукта"),
 });
 
@@ -69,9 +71,12 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
   const form = useForm<LimitFormValues>({
     resolver: zodResolver(limitSchema),
     defaultValues: {
-      limitVolume: warehouse.limitVolume
-        ? kilogramsToTonnes(Number(warehouse.limitVolume)).toFixed(5)
-        : "",
+      limitVolumeTonnes:
+        warehouse.limitVolumeTonnes != null
+          ? String(warehouse.limitVolumeTonnes)
+          : warehouse.limitVolume != null
+            ? kilogramsToTonnes(Number(warehouse.limitVolume)).toFixed(5)
+            : "",
       limitProductType: warehouse.limitProductType || PRODUCT_TYPE.KEROSENE,
     },
   });
@@ -79,8 +84,8 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
   const mutation = useMutation({
     mutationFn: async (data: LimitFormValues) => {
       const payload = {
-        ...data,
-        limitVolume: tonnesToLegacyWarehouseKilograms(data.limitVolume),
+        limitVolumeTonnes: data.limitVolumeTonnes,
+        limitProductType: data.limitProductType,
       };
       const res = await apiRequest("POST", `/api/warehouses/${warehouse.id}/set-limit`, payload);
       if (!res.ok) {
@@ -105,7 +110,7 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
   const removeLimitMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", `/api/warehouses/${warehouse.id}/set-limit`, {
-        limitVolume: null,
+        limitVolumeTonnes: null,
         limitProductType: null,
       });
       if (!res.ok) {
@@ -175,7 +180,7 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
 
               <FormField
                 control={form.control}
-                name="limitVolume"
+                name="limitVolumeTonnes"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Объём лимита (т)</FormLabel>
@@ -196,7 +201,8 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
 
               <div className="flex justify-between gap-3 pt-2">
                 <div>
-                  {warehouse.limitVolume && (
+                  {(warehouse.limitVolumeTonnes != null ||
+                    warehouse.limitVolume != null) && (
                     <Button
                       type="button"
                       variant="outline"

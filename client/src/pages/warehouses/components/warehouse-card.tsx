@@ -87,7 +87,13 @@ function formatServiceValue(serviceType: string, serviceValue: string): string {
 }
 
 function isLimitActive(warehouse: Warehouse): boolean {
-  if (!warehouse.limitVolume || !warehouse.limitExpiresAt) return false;
+  if (
+    warehouse.limitVolumeTonnes == null &&
+    warehouse.limitVolume == null
+  ) {
+    return false;
+  }
+  if (!warehouse.limitExpiresAt) return false;
   const expires = new Date(warehouse.limitExpiresAt);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -139,8 +145,10 @@ export function WarehouseCard({
   const hasServices = services.length > 0;
 
   const limitActive = isLimitActive(warehouse);
-  const limitVolume = parseFloat(warehouse.limitVolume || "0");
-  const limitVolumeTonnes = kilogramsToTonnes(limitVolume);
+  const limitVolumeTonnes =
+    warehouse.limitVolumeTonnes != null
+      ? Number(warehouse.limitVolumeTonnes)
+      : kilogramsToTonnes(Number(warehouse.limitVolume || "0"));
   const limitProductType = warehouse.limitProductType || PRODUCT_TYPE.KEROSENE;
 
   const { data: allBases } = useQuery<Base[]>({

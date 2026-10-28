@@ -229,7 +229,8 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     storageCost: "Стоимость хранения (руб./т)",
     isExport: "Экспортный склад",
     isActive: "Активен",
-    limitVolume: "Лимит объёма (т)",
+    limitVolume: "Лимит объёма (кг, совместимость)",
+    limitVolumeTonnes: "Лимит объёма (т)",
     limitProductType: "Лимит по типу топлива",
     limitExpiresAt: "Срок действия лимита",
     // Базисы и услуги — показываем (разрешено в ENTITY_SPECIFIC_SHOW)
