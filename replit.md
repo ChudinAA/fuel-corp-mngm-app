@@ -65,9 +65,10 @@ Preferred communication style: Simple, everyday language.
 - Server-side validation using Zod schemas
 
 **Database:**
-- PostgreSQL via Neon serverless (@neondatabase/serverless)
+- PostgreSQL through the `DATABASE_URL` environment variable; Replit provides separate development and production targets. The app uses the Neon serverless driver, but a `neon.tech` host alone does not prove that the database is externally managed.
 - Drizzle ORM for type-safe database operations
 - Schema-first approach with shared types between client and server
+- For Replit-managed production, Publish applies a development-to-production schema diff. Inspect the diff for data loss before publishing; follow `docs/MASS_UNIT_DB_INVENTORY_AND_CUTOVER.md` for the staged mass-unit migration and cleanup.
 
 ### Project Structure
 
