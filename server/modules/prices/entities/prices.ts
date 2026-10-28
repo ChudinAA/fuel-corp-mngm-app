@@ -122,7 +122,7 @@ export const pricesRelations = relations(prices, ({ many, one }) => ({
 // ============ INSERT SCHEMAS ============
 
 export const insertPriceSchema = createInsertSchema(prices).omit({ id: true }).extend({
-  priceUnit: z.enum(["kg", "liter"]).default("kg"),
+  priceUnit: z.enum(["kg", "tonne", "liter"]).default("kg"),
   volumeUnit: z.enum(["kg", "tonne"]).default("kg"),
   nomenclatureId: z.string().uuid().nullable().optional(),
   contractId: z.string().uuid().nullable().optional(),

@@ -11,6 +11,7 @@ import {
   priceSelectionVolumeToApi,
   priceResponseToApi,
   priceUnitFilterToStorage,
+  normalizePriceValuesForStorage,
   priceWriteFromApi,
 } from "../price-unit-adapters";
 
@@ -316,9 +317,7 @@ export function registerPricesRoutes(app: Express) {
           contractId: selectedContract?.id || null,
           contractNumber: selectedContract?.contractNumber || null,
           contractAppendix: selectedContract?.parentContractId ? selectedContract.contractNumber : null,
-          priceValues: body.priceValues?.map((pv: { price: string }) =>
-            JSON.stringify({ price: parseFloat(pv.price) }),
-          ),
+          priceValues: normalizePriceValuesForStorage(body.priceValues),
           volume: limitType !== "amount" && body.volume ? String(body.volume) : null,
           maxDealAmount: limitType === "amount" && body.maxDealAmount ? String(body.maxDealAmount) : null,
           counterpartyId: body.counterpartyId,
@@ -370,7 +369,7 @@ export function registerPricesRoutes(app: Express) {
               String(body.dateFrom),
               String(body.dateTo),
               String(id),
-              String(body.basisId || currentPrice.basisId),
+              body.basisId || currentPrice.basisId || undefined,
               body.loadingBasisId ? String(body.loadingBasisId) : (currentPrice.loadingBasisId ? String(currentPrice.loadingBasisId) : undefined),
               body.nomenclatureId || currentPrice.nomenclatureId || undefined,
             );
@@ -420,9 +419,7 @@ export function registerPricesRoutes(app: Express) {
             : body.contractId === null || body.contractId === ""
               ? { contractId: null, contractNumber: null, contractAppendix: null }
               : {}),
-          priceValues: body.priceValues?.map((pv: { price: string }) =>
-            JSON.stringify({ price: parseFloat(pv.price) }),
-          ),
+          priceValues: normalizePriceValuesForStorage(body.priceValues),
           volume: patchLimitType !== "amount" && body.volume ? String(body.volume) : null,
           maxDealAmount: patchLimitType === "amount" && body.maxDealAmount ? String(body.maxDealAmount) : null,
           notes: body.notes || null,

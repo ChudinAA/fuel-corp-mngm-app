@@ -444,6 +444,8 @@ async function rehearsePriceVolumeSchemaMigration(client, columnMap) {
     "max_deal_amount",
     "price_unit",
     "price_values",
+    "limit_type",
+    "sold_amount",
   ];
   if (!hasColumns(columnMap, "prices", requiredColumns)) {
     return {
@@ -476,6 +478,8 @@ async function rehearsePriceVolumeSchemaMigration(client, columnMap) {
       volume,
       sold_volume,
       max_deal_amount,
+      sold_amount,
+      limit_type,
       price_unit,
       price_values,
       ${sourceVolumeUnit} AS volume_unit
@@ -507,6 +511,8 @@ async function rehearsePriceVolumeSchemaMigration(client, columnMap) {
           OR prices.volume IS DISTINCT FROM source.volume
           OR prices.sold_volume IS DISTINCT FROM source.sold_volume
           OR prices.max_deal_amount IS DISTINCT FROM source.max_deal_amount
+          OR prices.sold_amount IS DISTINCT FROM source.sold_amount
+          OR prices.limit_type IS DISTINCT FROM source.limit_type
           OR prices.price_unit IS DISTINCT FROM source.price_unit
           OR prices.price_values IS DISTINCT FROM source.price_values
           OR prices.volume_unit IS DISTINCT FROM COALESCE(source.volume_unit, 'kg')
@@ -546,6 +552,166 @@ async function rehearsePriceVolumeSchemaMigration(client, columnMap) {
     ...result,
     targetPrecision18_5: targetPrecision,
     note: "existing prices remain unchanged and are explicitly marked as kg",
+  };
+}
+
+async function rehearsePriceMassBackfill(client) {
+  const schemaResult = await client.query(`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'prices'
+  `);
+  const availableColumns = new Set(
+    schemaResult.rows.map((row) => row.column_name),
+  );
+  const requiredColumns = [
+    "id",
+    "price_unit",
+    "price_values",
+    "volume_unit",
+    "limit_type",
+    "volume",
+    "sold_volume",
+    "max_deal_amount",
+    "sold_amount",
+  ];
+  const missingColumns = requiredColumns.filter(
+    (column) => !availableColumns.has(column),
+  );
+  if (missingColumns.length) {
+    return { skipped: true, missingColumns };
+  }
+
+  await client.query(`
+    CREATE TEMP TABLE __price_backfill_source AS
+    SELECT
+      id,
+      price_unit,
+      price_values,
+      volume_unit,
+      limit_type,
+      volume,
+      sold_volume,
+      max_deal_amount,
+      sold_amount
+    FROM prices
+  `);
+
+  const convertibleRateRow = `
+    price.price_unit = 'kg'
+    AND price.price_values IS NOT NULL
+    AND cardinality(price.price_values) > 0
+    AND NOT EXISTS (
+      SELECT 1
+      FROM unnest(price.price_values) AS element(value)
+      WHERE jsonb_typeof(element.value::jsonb) IS DISTINCT FROM 'object'
+         OR NOT (element.value::jsonb ? 'price')
+         OR jsonb_typeof(element.value::jsonb -> 'price')
+              NOT IN ('number', 'string')
+         OR btrim(element.value::jsonb ->> 'price')
+              !~ '^[+-]?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'
+    )
+  `;
+  await client.query(`
+    CREATE TEMP TABLE __price_backfill_expected AS
+    SELECT
+      price.id,
+      CASE WHEN ${convertibleRateRow}
+        THEN 'tonne' ELSE price.price_unit END AS price_unit,
+      CASE WHEN ${convertibleRateRow} THEN ARRAY(
+        SELECT jsonb_set(
+          element.value::jsonb,
+          '{price}',
+          CASE
+            WHEN jsonb_typeof(element.value::jsonb -> 'price') = 'string'
+              THEN to_jsonb(
+                ((element.value::jsonb ->> 'price')::numeric * 1000)::text
+              )
+            ELSE to_jsonb(
+              (element.value::jsonb ->> 'price')::numeric * 1000
+            )
+          END,
+          false
+        )::text
+        FROM unnest(price.price_values) WITH ORDINALITY
+          AS element(value, position)
+        ORDER BY element.position
+      ) ELSE price.price_values END AS price_values,
+      CASE WHEN price.volume_unit = 'kg'
+        THEN 'tonne' ELSE price.volume_unit END AS volume_unit,
+      CASE WHEN price.volume_unit = 'kg' AND price.limit_type = 'volume'
+        THEN price.volume / 1000 ELSE price.volume END AS volume,
+      CASE WHEN price.volume_unit = 'kg'
+        THEN price.sold_volume / 1000 ELSE price.sold_volume END AS sold_volume,
+      price.max_deal_amount,
+      price.sold_amount
+    FROM __price_backfill_source AS price
+  `);
+
+  const migrationSql = readFileSync(
+    resolve("migrations/0088_prices_mass_unit_backfill.sql"),
+    "utf8",
+  );
+  await client.query(migrationSql);
+
+  const comparison = await client.query(`
+    SELECT
+      (SELECT COUNT(*)::bigint FROM __price_backfill_source) AS source_rows,
+      COUNT(*)::bigint AS price_rows,
+      COUNT(*) FILTER (
+        WHERE expected.id IS NULL
+          OR prices.price_unit IS DISTINCT FROM expected.price_unit
+          OR prices.price_values IS DISTINCT FROM expected.price_values
+          OR prices.volume_unit IS DISTINCT FROM expected.volume_unit
+          OR prices.volume IS DISTINCT FROM expected.volume
+          OR prices.sold_volume IS DISTINCT FROM expected.sold_volume
+          OR prices.max_deal_amount IS DISTINCT FROM expected.max_deal_amount
+          OR prices.sold_amount IS DISTINCT FROM expected.sold_amount
+      )::bigint AS changed_value_rows,
+      COUNT(*) FILTER (
+        WHERE source.price_unit = 'kg'
+          AND expected.price_unit = 'tonne'
+      )::bigint AS rate_rows_converted,
+      COALESCE(SUM(cardinality(source.price_values)) FILTER (
+        WHERE source.price_unit = 'kg'
+          AND expected.price_unit = 'tonne'
+      ), 0)::bigint AS rate_values_converted,
+      COUNT(*) FILTER (
+        WHERE source.price_unit = 'kg'
+          AND expected.price_unit = 'kg'
+      )::bigint AS legacy_rate_rows_preserved,
+      COUNT(*) FILTER (
+        WHERE source.volume_unit = 'kg'
+      )::bigint AS mass_rows_converted,
+      COUNT(*) FILTER (
+        WHERE source.limit_type = 'amount'
+          AND source.volume IS NOT NULL
+      )::bigint AS amount_limit_volumes_left_untouched
+    FROM prices
+    LEFT JOIN __price_backfill_expected AS expected USING (id)
+    LEFT JOIN __price_backfill_source AS source USING (id)
+  `);
+  const result = comparison.rows[0];
+  if (
+    Number(result.source_rows) !== Number(result.price_rows)
+    || Number(result.changed_value_rows) !== 0
+  ) {
+    throw new Error("Price mass backfill rehearsal failed.");
+  }
+
+  const unitsResult = await client.query(`
+    SELECT
+      price_unit,
+      volume_unit,
+      COUNT(*)::bigint AS price_rows
+    FROM prices
+    GROUP BY price_unit, volume_unit
+    ORDER BY price_unit, volume_unit
+  `);
+  return {
+    ...result,
+    priceUnitsAfterMigration: unitsResult.rows,
+    note: "replayed on the disposable restored database; raw or malformed rate rows remain in kg",
   };
 }
 
@@ -934,6 +1100,17 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
 
     const sourceFinancialTotals = await financialTotals(client, columnMap);
     await client.query("BEGIN");
+    let priceVolumeRehearsal;
+    try {
+      priceVolumeRehearsal = await rehearsePriceVolumes(client, columnMap);
+    } finally {
+      await client.query("ROLLBACK");
+    }
+    const priceVolumeSchemaMigration =
+      await rehearsePriceVolumeSchemaMigration(client, columnMap);
+    const priceMassBackfill = await rehearsePriceMassBackfill(client);
+
+    await client.query("BEGIN");
     try {
       const rehearsal = [];
       for (const [table, column, unit] of availableFields) {
@@ -1004,14 +1181,6 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         client,
         priceValues.rates,
       );
-      const priceVolumeRehearsal = await rehearsePriceVolumes(
-        client,
-        columnMap,
-      );
-      const priceVolumeSchemaMigration = await rehearsePriceVolumeSchemaMigration(
-        client,
-        columnMap,
-      );
 
       const afterFinancialTotals = await financialTotals(client, columnMap);
       const changedFinancialTotals = [];
@@ -1030,9 +1199,10 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         priceValues: priceValueRehearsal,
         priceVolumes: priceVolumeRehearsal,
         priceVolumeSchemaMigration,
+        priceMassBackfill,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
-        note: "Temporary columns and updates are rolled back after the checks.",
+        note: "Schema/backfill migrations run only on the disposable restored database; temporary rehearsal columns are rolled back.",
       };
     } finally {
       await client.query("ROLLBACK");

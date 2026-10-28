@@ -1,8 +1,6 @@
 import {
   kilogramsToTonnes,
   pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-  tonnesToKilograms,
 } from "@shared/units";
 import { z } from "zod";
 
@@ -32,6 +30,41 @@ function numericOrNull(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function normalizePriceValuesForStorage(
+  values: unknown,
+): string[] | undefined {
+  if (values === undefined || values === null) return undefined;
+  if (!Array.isArray(values)) {
+    throw new z.ZodError([{
+      code: z.ZodIssueCode.custom,
+      path: ["priceValues"],
+      message: "Ставки цены должны быть списком",
+    }]);
+  }
+
+  return values.map((value, index) => {
+    let candidate = value;
+    if (typeof value === "string") {
+      try {
+        candidate = JSON.parse(value);
+      } catch {
+        candidate = null;
+      }
+    }
+    const price = candidate && typeof candidate === "object" && !Array.isArray(candidate)
+      ? numericOrNull((candidate as Record<string, unknown>).price)
+      : null;
+    if (price === null) {
+      throw new z.ZodError([{
+        code: z.ZodIssueCode.custom,
+        path: ["priceValues", index, "price"],
+        message: "Укажите корректную ставку цены",
+      }]);
+    }
+    return JSON.stringify({ price });
+  });
 }
 
 function normalizeVolumeUnit(value: unknown): "kg" | "tonne" {
@@ -146,7 +179,12 @@ export function priceWriteFromApi<T extends Record<string, unknown>>(
     input,
     "contractVolume",
   );
-  if (!hasRate && !hasContractVolume) return input;
+  const {
+    volumeUnit: _untrustedVolumeUnit,
+    soldVolume: _computedSoldVolume,
+    ...safeInput
+  } = input;
+  if (!hasRate && !hasContractVolume) return safeInput as T;
   if (!hasRate) {
     throw new z.ZodError([
       {
@@ -177,27 +215,17 @@ export function priceWriteFromApi<T extends Record<string, unknown>>(
   const {
     priceRate: _priceRate,
     contractVolume: _contractVolume,
-    volumeUnit: _volumeUnit,
+    volume: _legacyVolume,
     ...legacy
-  } = input;
-  const massBased = rate.unit === "tonne";
+  } = safeInput;
   return {
     ...legacy,
-    priceUnit: massBased ? "kg" : "liter",
-    priceValues: rate.values.map((price) =>
-      JSON.stringify({
-        price: massBased ? pricePerTonneToPerKilogram(price) : price,
-      }),
-    ),
+    priceUnit: rate.unit,
+    priceValues: rate.values.map((price) => JSON.stringify({ price })),
     ...(volume
       ? {
-            volumeUnit: "kg",
-          volume:
-            volume.limit === null
-              ? null
-              : String(
-                  Number(tonnesToKilograms(volume.limit).toFixed(2)),
-                ),
+          volumeUnit: "tonne",
+          volume: volume.limit === null ? null : volume.limit.toFixed(5),
         }
       : {}),
   } as unknown as T;

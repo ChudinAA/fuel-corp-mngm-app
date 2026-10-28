@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   kilogramsToPriceStoredVolume,
+  normalizePriceValuesForStorage,
   priceResponseToApi,
   priceSelectionVolumeToApi,
   priceToApi,
@@ -17,6 +18,8 @@ test("price API exposes tonne rates and contract volumes from legacy kilogram va
     soldVolume: "2345.67",
   });
 
+  assert.equal(result.priceUnit, "kg");
+  assert.equal(result.priceRate.unit, "tonne");
   assert.deepEqual(result.priceRate, {
     unit: "tonne",
     values: [1234.567],
@@ -117,28 +120,45 @@ test("unknown stored price units fail explicitly", () => {
   );
 });
 
-test("new tonne-based price writes normalize to legacy database columns", () => {
+test("new tonne-based price writes store rates and limits in tonnes", () => {
   const result = priceWriteFromApi({
     priceRate: { unit: "tonne", values: [1234.567] },
     contractVolume: { limitUnit: "tonne", limit: 1.23456 },
   });
 
-  assert.equal(result.priceUnit, "kg");
-  assert.equal(result.volumeUnit, "kg");
-  assert.deepEqual(result.priceValues, ['{"price":1.234567}']);
-  assert.equal(result.volume, "1234.56");
+  assert.equal(result.priceUnit, "tonne");
+  assert.equal(result.volumeUnit, "tonne");
+  assert.deepEqual(result.priceValues, ['{"price":1234.567}']);
+  assert.equal(result.volume, "1.23456");
 });
 
-test("new liter-based price writes do not convert the source rate or volume", () => {
+test("liter-based rates keep their rate unit and store mass limits in tonnes", () => {
   const result = priceWriteFromApi({
     priceRate: { unit: "liter", values: [12.345678] },
     contractVolume: { limitUnit: "tonne", limit: 1 },
   });
 
   assert.equal(result.priceUnit, "liter");
-  assert.equal(result.volumeUnit, "kg");
+  assert.equal(result.volumeUnit, "tonne");
   assert.deepEqual(result.priceValues, ['{"price":12.345678}']);
-  assert.equal(result.volume, "1000");
+  assert.equal(result.volume, "1.00000");
+});
+
+test("price value storage accepts API objects and already-normalized JSON", () => {
+  assert.deepEqual(
+    normalizePriceValuesForStorage([
+      { price: "12.345" },
+      '{"price":12.5}',
+    ]),
+    ['{"price":12.345}', '{"price":12.5}'],
+  );
+});
+
+test("price value storage rejects malformed and raw numeric legacy entries", () => {
+  assert.throws(
+    () => normalizePriceValuesForStorage(["123.45"]),
+    /Укажите корректную ставку цены/,
+  );
 });
 
 test("price response adapters mark malformed historical rates instead of fabricating zero", () => {

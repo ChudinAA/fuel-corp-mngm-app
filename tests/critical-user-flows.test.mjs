@@ -300,6 +300,72 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       `INSERT INTO suppliers (name) VALUES ('critical-flow-supplier') RETURNING id`,
     )
   ).rows[0];
+  const tonnePrice = await api("/api/prices", {
+    method: "POST",
+    expectedStatus: 201,
+    body: {
+      productType: "critical-flow-price-unit",
+      counterpartyId: supplier.id,
+      counterpartyType: "abroad",
+      counterpartyRole: "supplier",
+      basis: "critical-flow-price-unit-basis",
+      currency: "RUB",
+      limitType: "volume",
+      contractLimitEnabled: true,
+      contractVolume: { limitUnit: "tonne", limit: 1.23456 },
+      priceRate: { unit: "tonne", values: [1234.567] },
+      dateFrom: "2026-11-01",
+      dateTo: "2026-11-30",
+    },
+  });
+  assert.equal(tonnePrice.priceUnit, "tonne");
+  assert.equal(tonnePrice.volumeUnit, "tonne");
+  assert.equal(tonnePrice.contractVolume.limit, 1.23456);
+
+  await pool.query(
+    `UPDATE prices
+     SET price_unit = 'kg',
+         price_values = ARRAY['{"price":1.234567}']::text[],
+         volume_unit = 'kg',
+         volume = 1234.56,
+         sold_volume = 345.67
+     WHERE id = $1`,
+    [tonnePrice.id],
+  );
+  const updatedTonnePrice = await api(`/api/prices/${tonnePrice.id}`, {
+    method: "PATCH",
+    body: {
+      productType: "critical-flow-price-unit",
+      counterpartyId: supplier.id,
+      counterpartyType: "abroad",
+      counterpartyRole: "supplier",
+      basis: "critical-flow-price-unit-basis",
+      currency: "RUB",
+      limitType: "volume",
+      contractLimitEnabled: true,
+      contractVolume: { limitUnit: "tonne", limit: 1.23456 },
+      priceRate: { unit: "tonne", values: [1234.567] },
+      dateFrom: "2026-11-01",
+      dateTo: "2026-11-30",
+    },
+  });
+  assert.equal(updatedTonnePrice.priceUnit, "tonne");
+  assert.equal(updatedTonnePrice.volumeUnit, "tonne");
+  assert.equal(updatedTonnePrice.contractVolume.used, 0.34567);
+  const persistedTonnePrice = await pool.query(
+    `SELECT price_unit, price_values, volume_unit, volume, sold_volume
+     FROM prices WHERE id = $1`,
+    [tonnePrice.id],
+  );
+  assert.equal(persistedTonnePrice.rows[0].price_unit, "tonne");
+  assert.equal(
+    JSON.parse(persistedTonnePrice.rows[0].price_values[0]).price,
+    1234.567,
+  );
+  assert.equal(persistedTonnePrice.rows[0].volume_unit, "tonne");
+  assert.equal(Number(persistedTonnePrice.rows[0].volume), 1.23456);
+  assert.equal(Number(persistedTonnePrice.rows[0].sold_volume), 0.34567);
+
   const contractPrice = (
     await pool.query(
       `INSERT INTO prices (
