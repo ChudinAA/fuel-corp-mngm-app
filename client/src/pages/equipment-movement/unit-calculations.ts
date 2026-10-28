@@ -5,6 +5,7 @@ import {
   pricePerTonneToPerKilogram,
   tonnesToKilograms,
 } from "@shared/units";
+import { resolveWarehouseBalanceTonnes } from "@/pages/shared/utils/warehouse-balance-units";
 
 export type EquipmentMovementInputMode = "liters" | "tonnes";
 
@@ -55,4 +56,22 @@ export function equipmentMovementLegacyPricePerKgToPerTonne(
 ): number | null {
   const price = parseFinite(pricePerKg);
   return price === null ? null : pricePerKilogramToPerTonne(price);
+}
+
+export function calculateLikAvailableBalanceTonnes(
+  balanceSnapshot: unknown,
+  fallbackBalanceTonnes: string | number | null | undefined,
+  fallbackBalanceKilograms: string | number | null | undefined,
+  isEditing: boolean,
+  initialQuantityTonnes: number,
+): number {
+  const currentBalanceTonnes = resolveWarehouseBalanceTonnes(
+    balanceSnapshot,
+    fallbackBalanceTonnes,
+    fallbackBalanceKilograms,
+  );
+  return currentBalanceTonnes +
+    (isEditing && Number.isFinite(initialQuantityTonnes)
+      ? initialQuantityTonnes
+      : 0);
 }

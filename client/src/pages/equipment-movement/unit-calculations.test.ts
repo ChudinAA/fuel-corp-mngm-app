@@ -3,6 +3,7 @@ import test from "node:test";
 import { equipmentMovementFormSchema } from "./schemas";
 import {
   calculateEquipmentMovementTonnes,
+  calculateLikAvailableBalanceTonnes,
   equipmentMovementLegacyKgToTonnes,
   equipmentMovementLegacyPricePerKgToPerTonne,
   equipmentMovementTonnesRateToLegacyKgRate,
@@ -29,6 +30,29 @@ test("equipment movement adapters preserve legacy mass and price rates", () => {
   assert.equal(equipmentMovementLegacyKgToTonnes(600), 0.6);
   assert.equal(equipmentMovementLegacyPricePerKgToPerTonne(80), 80_000);
   assert.equal(equipmentMovementTonnesRateToLegacyKgRate(80_000), 80);
+});
+
+test("LIK balance prefers tonne snapshots and restores edited tonnes", () => {
+  assert.equal(
+    calculateLikAvailableBalanceTonnes(
+      { balanceTonnes: "1.25", balance: "9000" },
+      "2",
+      "2000",
+      true,
+      0.5,
+    ),
+    1.75,
+  );
+  assert.equal(
+    calculateLikAvailableBalanceTonnes(
+      null,
+      "1.25000",
+      "1250",
+      false,
+      0.5,
+    ),
+    1.25,
+  );
 });
 
 test("equipment movement form validates tonnes and density-based liters", () => {

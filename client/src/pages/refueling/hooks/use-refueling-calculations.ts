@@ -8,7 +8,6 @@ import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 import { useEquipmentBalance } from "@/hooks/use-equipment-balance";
 import {
   formatTonnes,
-  kilogramsToTonnes,
   pricePerKilogramToPerTonne,
 } from "@shared/units";
 import { normalizeCurrencyForDisplay } from "../utils";
@@ -40,14 +39,13 @@ interface UseRefuelingCalculationsProps {
   initialQuantityTonnes?: number;
   initialPurchaseAmount?: number;
   initialSaleAmount?: number;
-  initialWarehouseBalance: number;
   refuelingDate?: Date;
   isPriceRecharge?: boolean;
   isPvkjRecharge?: boolean;
   setSalePriceZero?: boolean;
   equipmentType?: string;
   selectedEquipmentId?: string;
-  equipmentBalance?: number;
+  equipmentBalanceTonnes?: number;
   /** Включено ли агентское вознаграждение в экономику сделки */
   isAgentFeeEnabled?: boolean;
   /** Включена ли прочая услуга в экономику сделки */
@@ -73,14 +71,13 @@ export function useRefuelingCalculations({
   initialQuantityTonnes = 0,
   initialPurchaseAmount = 0,
   initialSaleAmount = 0,
-  initialWarehouseBalance,
   refuelingDate,
   isPriceRecharge = false,
   isPvkjRecharge = false,
   setSalePriceZero = false,
   equipmentType = EQUIPMENT_TYPE.COMMON,
   selectedEquipmentId,
-  equipmentBalance = 0,
+  equipmentBalanceTonnes = 0,
   isAgentFeeEnabled = true,
   isOtherServiceEnabled = true,
 }: UseRefuelingCalculationsProps) {
@@ -362,8 +359,9 @@ export function useRefuelingCalculations({
     }
 
     if (equipmentType === EQUIPMENT_TYPE.LIK) {
-      const likBalanceTonnes = kilogramsToTonnes(
-        Math.max(0, Number.isFinite(equipmentBalance) ? equipmentBalance : 0),
+      const likBalanceTonnes = Math.max(
+        0,
+        Number.isFinite(equipmentBalanceTonnes) ? equipmentBalanceTonnes : 0,
       );
       const availableTonnes = isEditing
         ? likBalanceTonnes + initialQuantityTonnes

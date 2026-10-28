@@ -88,15 +88,13 @@ export const RefuelingForm = forwardRef<
     useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
   const [initialQuantityTonnes, setInitialQuantityTonnes] = useState<number>(0);
-  const [initialWarehouseBalance, setInitialWarehouseBalance] =
-    useState<number>(0); // State for initial balance
   const [isDataInitialized, setIsDataInitialized] = useState(false);
 
   // Новые состояния для ЛИК
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>(
     editData?.equipmentId || "",
   );
-  const [equipmentBalance, setEquipmentBalance] = useState<number>(0);
+  const [equipmentBalanceTonnes, setEquipmentBalanceTonnes] = useState<number>(0);
   const isEditing = !!editData && !!editData.id;
 
   // Состояния включения агентского и прочих услуг в экономику сделки
@@ -475,14 +473,13 @@ export const RefuelingForm = forwardRef<
       isEditing && !editData?.isDraft
         ? Number.parseFloat(editData?.saleAmount || "0")
         : 0,
-    initialWarehouseBalance,
     refuelingDate: watchRefuelingDate,
     isPriceRecharge: watchIsPriceRecharge,
     isPvkjRecharge: watchIsPvkjRecharge,
     setSalePriceZero: form.watch("setSalePriceZero"),
     equipmentType,
     selectedEquipmentId,
-    equipmentBalance,
+    equipmentBalanceTonnes,
     isAgentFeeEnabled,
     isOtherServiceEnabled,
   });
@@ -598,20 +595,6 @@ export const RefuelingForm = forwardRef<
         editData.salePriceId && editData.salePriceIndex !== undefined
           ? `${editData.salePriceId}-${editData.salePriceIndex}`
           : editData.salePriceId || "";
-
-      // Сохраняем изначальный остаток на складе (с учетом текущей сделки)
-      if (editData.warehouseId) {
-        const warehouse = warehouses.find((w) => w.id === editData.warehouseId);
-        if (warehouse) {
-          // Determine the correct balance based on product type
-          const currentBalance =
-            watchProductType === PRODUCT_TYPE.PVKJ
-              ? parseFloat(warehouse.pvkjBalance || "0")
-              : parseFloat(warehouse.currentBalance || "0");
-          const dealQuantity = Number(editData.quantityTonnes || 0) * 1000;
-          setInitialWarehouseBalance(currentBalance + dealQuantity);
-        }
-      }
 
       const basisBase = allBases.find((b) => b.id === editData.basisId);
       const resolvedBasisName = basisBase?.name || editData.basis || "";
@@ -1360,8 +1343,7 @@ export const RefuelingForm = forwardRef<
             equipmentType={equipmentType}
             selectedEquipmentId={selectedEquipmentId}
             setSelectedEquipmentId={setSelectedEquipmentId}
-            equipmentBalance={equipmentBalance}
-            setEquipmentBalance={setEquipmentBalance}
+            setEquipmentBalanceTonnes={setEquipmentBalanceTonnes}
             supplierWarehouse={supplierWarehouse}
             warehouses={warehouses}
           />
@@ -1540,7 +1522,7 @@ export const RefuelingForm = forwardRef<
                 supplierWarehouse={supplierWarehouse}
                 equipmentType={equipmentType}
                 selectedEquipmentId={selectedEquipmentId}
-                equipmentBalance={equipmentBalance}
+                equipmentBalanceTonnes={equipmentBalanceTonnes}
                 volume={additionalVolumes[ap.id] || {
                   inputMode: watchInputMode || inputMode,
                   quantityLiters: watchLiters || "",

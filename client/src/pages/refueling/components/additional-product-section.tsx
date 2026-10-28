@@ -96,7 +96,7 @@ interface AdditionalProductSectionProps {
   supplierWarehouse: Warehouse | undefined;
   equipmentType: string;
   selectedEquipmentId: string;
-  equipmentBalance: number;
+  equipmentBalanceTonnes: number;
   volume: RefuelingVolume;
   onVolumeChange: (volume: RefuelingVolume) => void;
   // Filter data
@@ -127,7 +127,7 @@ export const AdditionalProductSection = forwardRef<
       supplierWarehouse,
       equipmentType,
       selectedEquipmentId,
-      equipmentBalance,
+      equipmentBalanceTonnes,
       volume,
       onVolumeChange,
       suppliers,
@@ -254,14 +254,13 @@ export const AdditionalProductSection = forwardRef<
         editData?.purchaseAmount || "0",
       ),
       initialSaleAmount: Number.parseFloat(editData?.saleAmount || "0"),
-      initialWarehouseBalance: 0,
       refuelingDate,
       isPriceRecharge,
       isPvkjRecharge,
       setSalePriceZero,
       equipmentType,
       selectedEquipmentId,
-      equipmentBalance,
+      equipmentBalanceTonnes,
       isAgentFeeEnabled,
       isOtherServiceEnabled,
     });

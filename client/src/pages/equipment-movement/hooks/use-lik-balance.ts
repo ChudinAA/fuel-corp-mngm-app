@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { EQUIPMENT_MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useWarehouseBalance as useBaseWarehouseBalance } from "@/hooks/use-warehouse-balance";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
+import { calculateLikAvailableBalanceTonnes } from "../unit-calculations";
 
 interface UseLikBalanceProps {
   watchMovementType: string;
@@ -51,37 +52,32 @@ export function useLikBalance({
     if (!sourceId) return { balance: 0, status: "ok", message: "—" };
     if (isLoading) return { balance: 0, status: "ok", message: "Загрузка..." };
 
-    let currentBalanceKg = 0;
+    let availableTonnes = 0;
     let name = "";
 
     if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
       const wh = warehouses.find((w) => w.id === sourceId);
       name = wh?.name || "";
-      currentBalanceKg =
-        balanceData &&
-        typeof balanceData === "object" &&
-        "balance" in balanceData
-          ? Number.parseFloat(String(balanceData.balance))
-          : Number.parseFloat(
-              watchProductType === PRODUCT_TYPE.PVKJ
-                ? wh?.pvkjBalance || "0"
-                : wh?.currentBalance || "0",
-            );
+      const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
+      availableTonnes = calculateLikAvailableBalanceTonnes(
+        balanceData,
+        isPvkj ? wh?.pvkjBalanceTonnes : wh?.currentBalanceTonnes,
+        isPvkj ? wh?.pvkjBalance : wh?.currentBalance,
+        isEditing,
+        initialQuantityTonnes,
+      );
     } else {
       const eq = equipments.find((e) => e.id === sourceId);
       name = eq?.name || "";
-      // For TZK we use equipment balance fields
-      currentBalanceKg = Number.parseFloat(
-        watchProductType === PRODUCT_TYPE.PVKJ
-          ? eq?.pvkjBalance || "0"
-          : eq?.currentBalance || "0",
+      const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
+      availableTonnes = calculateLikAvailableBalanceTonnes(
+        undefined,
+        isPvkj ? eq?.pvkjBalanceTonnes : eq?.currentBalanceTonnes,
+        isPvkj ? eq?.pvkjBalance : eq?.currentBalance,
+        isEditing,
+        initialQuantityTonnes,
       );
     }
-
-    const currentBalanceTonnes = kilogramsToTonnes(currentBalanceKg);
-    const availableTonnes = isEditing
-      ? currentBalanceTonnes + initialQuantityTonnes
-      : currentBalanceTonnes;
 
     if (availableTonnes <= 0) return { balance: availableTonnes, status: "error", message: "Пусто" };
     if (quantityTonnes > availableTonnes) return { balance: availableTonnes, status: "error", message: `Недостаточно! Доступно: ${formatTonnes(availableTonnes)} т` };

@@ -29,6 +29,7 @@ import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
+import { resolveWarehouseBalanceTonnes } from "@/pages/shared/utils/warehouse-balance-units";
 
 interface RefuelingMainFieldsProps {
   preserveLegacySelection?: boolean;
@@ -48,8 +49,7 @@ interface RefuelingMainFieldsProps {
   equipmentType?: string;
   selectedEquipmentId?: string;
   setSelectedEquipmentId?: (value: string) => void;
-  equipmentBalance?: number;
-  setEquipmentBalance?: (value: number) => void;
+  setEquipmentBalanceTonnes?: (value: number) => void;
   supplierWarehouse?: Warehouse;
   warehouses?: Warehouse[];
 }
@@ -72,8 +72,7 @@ export function RefuelingMainFields({
   equipmentType = EQUIPMENT_TYPE.COMMON,
   selectedEquipmentId = "",
   setSelectedEquipmentId,
-  equipmentBalance = 0,
-  setEquipmentBalance,
+  setEquipmentBalanceTonnes,
   supplierWarehouse,
   warehouses,
 }: RefuelingMainFieldsProps) {
@@ -168,10 +167,18 @@ export function RefuelingMainFields({
     if (isLik && selectedEquipmentId && likEquipmentList) {
       const equipment = likEquipmentList.find((e) => e.id === selectedEquipmentId);
       if (equipment) {
-        setEquipmentBalance?.(parseFloat(equipment.currentBalance || "0"));
+        const equipmentWithTonnes = equipment as Equipment & {
+          currentBalanceTonnes?: string | null;
+        };
+        setEquipmentBalanceTonnes?.(
+          resolveWarehouseBalanceTonnes({
+            balanceTonnes: equipmentWithTonnes.currentBalanceTonnes,
+            balance: equipment.currentBalance,
+          }),
+        );
       }
     }
-  }, [selectedEquipmentId, likEquipmentList, isLik]);
+  }, [selectedEquipmentId, likEquipmentList, isLik, setEquipmentBalanceTonnes]);
 
   return (
     <>
@@ -448,7 +455,15 @@ export function RefuelingMainFields({
                 setSelectedEquipmentId?.(value);
                 const equipment = likEquipmentList?.find((e) => e.id === value);
                 if (equipment) {
-                  setEquipmentBalance?.(parseFloat(equipment.currentBalance || "0"));
+                  const equipmentWithTonnes = equipment as Equipment & {
+                    currentBalanceTonnes?: string | null;
+                  };
+                  setEquipmentBalanceTonnes?.(
+                    resolveWarehouseBalanceTonnes({
+                      balanceTonnes: equipmentWithTonnes.currentBalanceTonnes,
+                      balance: equipment.currentBalance,
+                    }),
+                  );
                 }
               }}
               placeholder="Выберите СЗ"
