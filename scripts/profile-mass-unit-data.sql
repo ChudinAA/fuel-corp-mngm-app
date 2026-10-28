@@ -3,6 +3,9 @@
 -- Read-only preflight for an isolated, restored PostgreSQL copy.
 -- Run with: psql "$ISOLATED_DATABASE_URL" -X -f scripts/profile-mass-unit-data.sql
 -- This script intentionally returns aggregates only; it does not emit names or deal rows.
+-- Requires the full current app schema. For older/schema-drifted dumps, use
+-- scripts/rehearse-mass-unit-dump.mjs; it reports missing fields and rehearses
+-- conversions only inside a disposable local PostgreSQL transaction.
 BEGIN TRANSACTION READ ONLY;
 
 -- Mass fields currently stored in kilograms (and planning/stock snapshots).
