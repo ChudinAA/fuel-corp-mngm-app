@@ -845,20 +845,32 @@ export class WarehouseRecalculationService {
       });
 
       if (refuel && refuel.productType !== PRODUCT_TYPE.SERVICE) {
-        const quantityKg = parseFloat(refuel.quantityKg);
-        const salePrice = parseFloat(refuel.salePrice || "0");
+        const quantityTonnes =
+          refuel.quantityTonnes != null
+            ? parseFloat(refuel.quantityTonnes)
+            : parseFloat(refuel.quantityKg) / 1_000;
+        const purchasePricePerTonne =
+          pricePerKilogramToPerTonne(newAverageCost);
+        const salePricePerTonne =
+          refuel.salePricePerTonne != null
+            ? parseFloat(refuel.salePricePerTonne)
+            : pricePerKilogramToPerTonne(
+                parseFloat(refuel.salePrice || "0"),
+              );
         // Агентское: используем сохранённую итоговую сумму, учитываем флаг включения
         const agentFeeEnabled = refuel.isAgentFeeEnabled !== false; // null/undefined → включено
         const effectiveAgentFee = agentFeeEnabled ? parseFloat(refuel.agentFee || "0") : 0;
         // Прочие услуги: используем сохранённую итоговую сумму, учитываем флаг включения
         const otherServiceEnabled = refuel.isOtherServiceEnabled !== false; // null/undefined → включено
         const effectiveOtherServiceFee = otherServiceEnabled ? parseFloat((refuel as any).otherServiceFee || "0") : 0;
-        const purchaseAmount = quantityKg * newAverageCost;
+        const purchaseAmount = quantityTonnes * purchasePricePerTonne;
         const isRechargeActive =
           (refuel.isPriceRecharge && refuel.productType === PRODUCT_TYPE.SERVICE) ||
           (refuel.isPvkjRecharge && refuel.productType === PRODUCT_TYPE.PVKJ);
-        const effectiveSalePrice = isRechargeActive ? newAverageCost : salePrice;
-        const baseSaleAmount = quantityKg * effectiveSalePrice;
+        const effectiveSalePricePerTonne = isRechargeActive
+          ? purchasePricePerTonne
+          : salePricePerTonne;
+        const baseSaleAmount = quantityTonnes * effectiveSalePricePerTonne;
         const saleAmount =
           baseSaleAmount +
           (isRechargeActive
@@ -874,7 +886,7 @@ export class WarehouseRecalculationService {
         });
 
         console.log("        Заправка после обновления:", {
-          purchasePrice: newAverageCost.toFixed(6),
+          purchasePricePerTonne: purchasePricePerTonne.toFixed(6),
           purchaseAmount: purchaseAmount.toFixed(2),
           profit: profit.toFixed(2),
         });
@@ -883,10 +895,12 @@ export class WarehouseRecalculationService {
           .update(aircraftRefueling)
           .set({
             purchasePrice: newAverageCost.toFixed(6),
+            purchasePricePerTonne: purchasePricePerTonne.toFixed(6),
             purchaseAmount: purchaseAmount.toFixed(2),
             ...(isRechargeActive
               ? {
-                  salePrice: effectiveSalePrice.toFixed(6),
+                  salePrice: newAverageCost.toFixed(6),
+                  salePricePerTonne: effectiveSalePricePerTonne.toFixed(6),
                   saleAmount: saleAmount.toFixed(2),
                 }
               : {}),

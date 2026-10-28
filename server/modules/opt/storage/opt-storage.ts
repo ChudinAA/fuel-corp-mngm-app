@@ -1,6 +1,12 @@
 import { eq, desc, asc, sql, or, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+  pricePerTonneToPerKilogram,
+  tonnesToKilograms,
+} from "@shared/units";
+import {
   opt,
   movement,
   warehouses,
@@ -15,6 +21,135 @@ import {
 import { IOptStorage } from "./types";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
+import { optMassTonnesSql } from "../opt-mass-sql";
+
+function numericOrNull(value: unknown, label: string): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    throw new Error(`${label} должна быть числом`);
+  }
+  return numeric;
+}
+
+function withOptUnitMirrors<T extends object>(
+  data: T,
+  current?: object,
+): T {
+  const input = data as Record<string, unknown>;
+  const previous = current as Record<string, unknown> | undefined;
+  const normalized = { ...input };
+  const has = (field: string) =>
+    Object.prototype.hasOwnProperty.call(input, field) &&
+    input[field] !== undefined;
+
+  const tonnes = has("quantityTonnes")
+    ? numericOrNull(input.quantityTonnes, "Масса в тоннах")
+    : null;
+  const kilograms = has("quantityKg")
+    ? numericOrNull(input.quantityKg, "Масса в килограммах")
+    : null;
+  if (tonnes !== null || kilograms !== null) {
+    let resolvedTonnes =
+      tonnes !== null ? tonnes : kilogramsToTonnes(kilograms as number);
+    if (tonnes !== null && kilograms !== null && previous) {
+      const previousTonnes = numericOrNull(
+        previous.quantityTonnes,
+        "Сохранённая масса в тоннах",
+      );
+      const previousKilograms = numericOrNull(
+        previous.quantityKg,
+        "Сохранённая масса в килограммах",
+      );
+      if (
+        previousTonnes !== null &&
+        previousKilograms !== null &&
+        tonnes === previousTonnes &&
+        kilograms !== previousKilograms
+      ) {
+        resolvedTonnes = kilogramsToTonnes(kilograms);
+      }
+    }
+    resolvedTonnes = Number(resolvedTonnes.toFixed(5));
+    normalized.quantityTonnes = resolvedTonnes;
+    normalized.quantityKg = Number(
+      tonnesToKilograms(resolvedTonnes).toFixed(2),
+    );
+  }
+
+  for (const [tonneField, kilogramField] of [
+    ["purchasePricePerTonne", "purchasePrice"],
+    ["salePricePerTonne", "salePrice"],
+    ["deliveryTariffPerTonne", "deliveryTariff"],
+  ] as const) {
+    const hasTonnes = has(tonneField);
+    const hasKilograms = has(kilogramField);
+    if (!hasTonnes && !hasKilograms) continue;
+
+    const tonneRate = hasTonnes
+      ? numericOrNull(input[tonneField], tonneField)
+      : null;
+    const kilogramRate = hasKilograms
+      ? numericOrNull(input[kilogramField], kilogramField)
+      : null;
+    if (hasTonnes && hasKilograms && previous) {
+      const previousTonnes = numericOrNull(previous[tonneField], tonneField);
+      const previousKilograms = numericOrNull(
+        previous[kilogramField],
+        kilogramField,
+      );
+      const bothRatesUnchanged =
+        tonneRate === previousTonnes &&
+        kilogramRate === previousKilograms;
+      const onlyLegacyRateChanged =
+        tonneRate === previousTonnes &&
+        kilogramRate !== previousKilograms;
+      if (bothRatesUnchanged) {
+        normalized[tonneField] = previousTonnes;
+        normalized[kilogramField] = previousKilograms;
+      } else if (onlyLegacyRateChanged) {
+        normalized[tonneField] =
+          kilogramRate === null
+            ? null
+            : pricePerKilogramToPerTonne(kilogramRate);
+      } else {
+        normalized[kilogramField] =
+          tonneRate === null
+            ? null
+            : pricePerTonneToPerKilogram(tonneRate);
+      }
+    } else if (hasTonnes) {
+      const previousTonnes = previous
+        ? numericOrNull(previous[tonneField], tonneField)
+        : null;
+      const previousKilograms = previous
+        ? numericOrNull(previous[kilogramField], kilogramField)
+        : null;
+      const unchangedDisplayedRate =
+        tonneRate !== null &&
+        previousTonnes !== null &&
+        previousKilograms !== null &&
+        Number(tonneRate.toFixed(2)) ===
+          Number(previousTonnes.toFixed(2));
+      if (unchangedDisplayedRate) {
+        normalized[tonneField] = previousTonnes;
+        normalized[kilogramField] = previousKilograms;
+      } else {
+        normalized[kilogramField] =
+          tonneRate === null
+            ? null
+            : pricePerTonneToPerKilogram(tonneRate);
+      }
+    } else {
+      normalized[tonneField] =
+        kilogramRate === null
+          ? null
+          : pricePerKilogramToPerTonne(kilogramRate);
+    }
+  }
+
+  return normalized as T;
+}
 
 export class OptStorage {
   async getOpt(id: string): Promise<Opt | undefined> {
@@ -154,17 +289,25 @@ export class OptStorage {
   }
 
   async createOpt(data: InsertOpt): Promise<Opt> {
-    if (!data.supplierId || !data.buyerId || !data.dealDate || data.quantityKg == null) {
+    const normalizedData = withOptUnitMirrors(data);
+    if (
+      !normalizedData.supplierId ||
+      !normalizedData.buyerId ||
+      !normalizedData.dealDate ||
+      normalizedData.quantityTonnes == null ||
+      normalizedData.quantityKg == null
+    ) {
       throw new Error("Supplier, buyer, deal date, and quantity are required");
     }
     return await db.transaction(async (tx) => {
       const insertValues = Object.fromEntries(
         Object.entries({
-          ...data,
-          supplierId: data.supplierId!,
-          buyerId: data.buyerId!,
-          dealDate: data.dealDate!,
-          quantityKg: String(data.quantityKg),
+          ...normalizedData,
+          supplierId: normalizedData.supplierId!,
+          buyerId: normalizedData.buyerId!,
+          dealDate: normalizedData.dealDate!,
+          quantityTonnes: String(normalizedData.quantityTonnes),
+          quantityKg: String(normalizedData.quantityKg),
         }).map(([key, value]) => [
           key,
           typeof value === "number" ? String(value) : value,
@@ -179,7 +322,7 @@ export class OptStorage {
       if (
         !created.isDraft &&
         created.warehouseId &&
-        created.quantityKg &&
+        created.quantityTonnes &&
         (created.productType === PRODUCT_TYPE.KEROSENE ||
           created.productType === PRODUCT_TYPE.PVKJ)
       ) {
@@ -191,9 +334,9 @@ export class OptStorage {
             created.productType || PRODUCT_TYPE.KEROSENE,
             SOURCE_TYPE.OPT,
             created.id,
-            parseFloat(created.quantityKg),
+            tonnesToKilograms(Number(created.quantityTonnes)),
             parseFloat(created.purchaseAmount || "0"),
-            data.createdById ?? undefined,
+            normalizedData.createdById ?? undefined,
             created.dealDate,
           );
 
@@ -213,7 +356,6 @@ export class OptStorage {
     data: Partial<InsertOpt>,
   ): Promise<Opt | undefined> {
     return await db.transaction(async (tx) => {
-      let createdTransactionId: string | undefined;
       // Получаем текущую сделку с relations
       const currentOpt = await tx.query.opt.findFirst({
         where: eq(opt.id, id),
@@ -222,31 +364,33 @@ export class OptStorage {
       if (!currentOpt) {
         throw new Error("Deal not found");
       }
+      const normalizedData = withOptUnitMirrors(data, currentOpt);
+      let createdTransactionId: string | undefined;
 
       // Логика перехода из черновика в готовую сделку
       const transitioningFromDraft =
-        currentOpt.isDraft && data.isDraft === false;
+        currentOpt.isDraft && normalizedData.isDraft === false;
 
       // Если сделка становится не черновиком, создаем транзакцию
       if (
         transitioningFromDraft &&
-        data.warehouseId &&
-        data.quantityKg &&
-        (data.productType === PRODUCT_TYPE.KEROSENE ||
-          data.productType === PRODUCT_TYPE.PVKJ)
+        normalizedData.warehouseId &&
+        normalizedData.quantityTonnes &&
+        (normalizedData.productType === PRODUCT_TYPE.KEROSENE ||
+          normalizedData.productType === PRODUCT_TYPE.PVKJ)
       ) {
         const { transaction } =
           await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
             tx,
-            data.warehouseId,
+            normalizedData.warehouseId,
             TRANSACTION_TYPE.SALE,
-            data.productType || PRODUCT_TYPE.KEROSENE,
+            normalizedData.productType || PRODUCT_TYPE.KEROSENE,
             SOURCE_TYPE.OPT,
             currentOpt.id,
-            data.quantityKg,
-            data.purchaseAmount || 0,
-            data.updatedById ?? undefined,
-            data.dealDate ?? undefined,
+            tonnesToKilograms(Number(normalizedData.quantityTonnes)),
+            normalizedData.purchaseAmount || 0,
+            normalizedData.updatedById ?? undefined,
+            normalizedData.dealDate ?? undefined,
           );
 
         createdTransactionId = transaction.id;
@@ -277,17 +421,23 @@ export class OptStorage {
           );
         }
 
-        const oldQuantityKg = parseFloat(currentOpt.quantityKg);
-        const newQuantityKg = data.quantityKg
-          ? parseFloat(data.quantityKg.toString())
-          : oldQuantityKg;
+        const oldQuantityKg = tonnesToKilograms(
+          Number(currentOpt.quantityTonnes),
+        );
+        const newQuantityKg =
+          normalizedData.quantityTonnes == null
+            ? oldQuantityKg
+            : tonnesToKilograms(Number(normalizedData.quantityTonnes));
         const oldTotalCost = parseFloat(currentOpt.purchaseAmount || "0");
-        const newTotalCost = data.purchaseAmount ?? oldTotalCost;
+        const newTotalCost =
+          normalizedData.purchaseAmount ?? oldTotalCost;
 
-        const quantityChanged = oldQuantityKg !== newQuantityKg;
+        const quantityChanged =
+          Number(currentOpt.quantityTonnes) !==
+          Number(normalizedData.quantityTonnes ?? currentOpt.quantityTonnes);
         const dateChanged =
-          data.dealDate !== undefined &&
-          data.dealDate !== currentOpt.dealDate;
+          normalizedData.dealDate !== undefined &&
+          normalizedData.dealDate !== currentOpt.dealDate;
 
         if (quantityChanged) {
           // Количество изменилось — обновляем транзакцию (метод также применит новую дату)
@@ -300,8 +450,8 @@ export class OptStorage {
             newQuantityKg,
             newTotalCost,
             currentOpt.productType || PRODUCT_TYPE.KEROSENE,
-            data.updatedById ?? undefined,
-            data.dealDate ?? undefined,
+            normalizedData.updatedById ?? undefined,
+            normalizedData.dealDate ?? undefined,
           );
         } else if (dateChanged) {
           // Только дата изменилась — обновляем дату транзакции и запускаем пересчёт
@@ -311,8 +461,8 @@ export class OptStorage {
             currentOpt.warehouseId,
             currentOpt.productType || PRODUCT_TYPE.KEROSENE,
             currentOpt.dealDate!,
-            data.dealDate!,
-            data.updatedById ?? undefined,
+            normalizedData.dealDate!,
+            normalizedData.updatedById ?? undefined,
           );
         }
       }
@@ -321,10 +471,10 @@ export class OptStorage {
       const [updated] = await tx
         .update(opt)
         .set({
-          ...data,
+          ...normalizedData,
           transactionId: createdTransactionId,
           updatedAt: sql`NOW()`,
-          updatedById: data.updatedById ?? undefined,
+          updatedById: normalizedData.updatedById ?? undefined,
         } as unknown as Partial<typeof opt.$inferInsert>)
         .where(eq(opt.id, id))
         .returning();
@@ -369,14 +519,7 @@ export class OptStorage {
   ): Promise<{ usedVolumeTonnes: number; usedVolume: number }> {
     const [optVolume] = await db
       .select({
-        totalMassKg: sql<string>`COALESCE(SUM(
-          CASE
-            WHEN ${opt.quantityLiters} > 0 AND ${opt.density} > 0
-            THEN ${opt.quantityLiters} * ${opt.density}
-            ELSE ${opt.quantityKg}
-          END
-        ), 0)`,
-        storedMassKg: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
+        totalMassTonnes: sql<string>`COALESCE(SUM(${optMassTonnesSql()}), 0)`,
       })
       .from(opt)
       .where(
@@ -389,30 +532,25 @@ export class OptStorage {
 
     const [movementVolume] = await db
       .select({
-        totalMassKg: sql<string>`COALESCE(SUM(
-          CASE
-            WHEN ${movement.quantityLiters} > 0 AND ${movement.density} > 0
-            THEN ${movement.quantityLiters} * ${movement.density}
-            ELSE ${movement.quantityKg}
-          END
+        totalMassTonnes: sql<string>`COALESCE(SUM(
+          COALESCE(
+            ${movement.quantityTonnes},
+            CAST(${movement.quantityKg} AS NUMERIC) / 1000
+          )
         ), 0)`,
-        storedMassKg: sql<string>`COALESCE(SUM(${movement.quantityKg}), 0)`,
       })
       .from(movement)
       .where(
         and(eq(movement.purchasePriceId, priceId), isNull(movement.deletedAt)),
       );
 
-    const totalMassKg =
-      Number.parseFloat(optVolume.totalMassKg || "0") +
-      Number.parseFloat(movementVolume.totalMassKg || "0");
-    const storedMassKg =
-      Number.parseFloat(optVolume.storedMassKg || "0") +
-      Number.parseFloat(movementVolume.storedMassKg || "0");
+    const usedVolumeTonnes =
+      Number.parseFloat(optVolume.totalMassTonnes || "0") +
+      Number.parseFloat(movementVolume.totalMassTonnes || "0");
     return {
-      usedVolumeTonnes: totalMassKg / 1_000,
+      usedVolumeTonnes,
       // Preserve the previous kg value for any legacy consumers.
-      usedVolume: storedMassKg,
+      usedVolume: tonnesToKilograms(usedVolumeTonnes),
     };
   }
 
@@ -456,8 +594,15 @@ export class OptStorage {
     basisId?: string | null;
     customerBasisId?: string | null;
     deliveryLocationId?: string | null;
-    quantityKg: number;
+    quantityTonnes?: number;
+    quantityKg?: number;
   }): Promise<boolean> {
+    const quantityTonnes =
+      data.quantityTonnes ??
+      (data.quantityKg == null ? null : kilogramsToTonnes(data.quantityKg));
+    if (quantityTonnes === null) {
+      throw new Error("Масса сделки обязательна для проверки дубликата");
+    }
     const existing = await db.query.opt.findFirst({
       where: and(
         sql`DATE(${opt.dealDate}) = DATE(${data.dealDate})`,
@@ -471,7 +616,7 @@ export class OptStorage {
         data.deliveryLocationId
           ? eq(opt.deliveryLocationId, data.deliveryLocationId)
           : isNull(opt.deliveryLocationId),
-        eq(opt.quantityKg, data.quantityKg.toString()),
+        eq(opt.quantityTonnes, Number(quantityTonnes.toFixed(5)).toString()),
         isNull(opt.deletedAt),
         eq(opt.isDraft, false),
       ),

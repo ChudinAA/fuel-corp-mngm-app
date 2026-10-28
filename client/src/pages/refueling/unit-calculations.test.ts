@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateRefuelingPricePerTonne } from "./unit-calculations";
+import {
+  calculateRefuelingPricePerTonne,
+  calculateStoredRefuelingMassTonnes,
+} from "./unit-calculations";
 
 test("refueling uses API tonne rates directly and converts legacy kg rates", () => {
   assert.equal(calculateRefuelingPricePerTonne(1234.56, "tonnes", null, "tonne"), 1234.56);
@@ -9,4 +12,8 @@ test("refueling uses API tonne rates directly and converts legacy kg rates", () 
 
 test("refueling converts per-liter rates using the deal density", () => {
   assert.equal(calculateRefuelingPricePerTonne(12.5, "liters", 0.8, "liter"), 15625);
+});
+
+test("historical refueling mass comes from saved kg, not liters and density", () => {
+  assert.equal(calculateStoredRefuelingMassTonnes(10.45, 10, 1), 0.01045);
 });

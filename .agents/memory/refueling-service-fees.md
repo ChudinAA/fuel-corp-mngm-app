@@ -3,16 +3,13 @@ name: Refueling deal service fees (agent fee + other service)
 description: Architecture of agent fee and other service fee storage, UI checkboxes, and recalculation in aircraft_refueling deals.
 ---
 
-## What was built
+## Fee units and stored totals
 
-7 new columns added to `aircraft_refueling` (migration applied via executeSql):
-- `agent_fee_rate` decimal(19,6) — rate ₽/кг (for accounting/display)
-- `is_agent_fee_enabled` boolean default true — whether included in deal profit
-- `other_service_fee` decimal(15,2) — total other service amount
-- `other_service_name` text — name of service
-- `other_service_type` text — type: royalty_per_ton | percent_of_amount | fixed
-- `other_service_quantity` decimal(15,4) — quantity for "fixed" type
-- `is_other_service_enabled` boolean default true — whether included in deal profit
+The UI and primary API express agent-fee rates in ₽/т. The legacy ₽/кг rate remains a synchronized compatibility mirror. `agentFee` and `otherServiceFee` are stored per-deal money totals; `otherServiceQuantity` for fixed fees is a count, not a mass.
+
+**Why:** A mass-unit migration must not scale money totals or reinterpret service counts, while downstream legacy inventory code may still need the per-kg mirror.
+
+**How to apply:** Convert the rate unit only; preserve fee totals, enable flags, and fixed-service counts. When recalculating inventory cost, reuse the saved fee totals rather than recalculating them from a changed average cost.
 
 ## Profit formula (client + recalculation service)
 
@@ -45,6 +42,6 @@ For regular deals, enabled fees reduce profit but do not change the sale amount.
 
 `refueling-pricing-section.tsx` shows bordered boxes (not Alert) with:
 - Independently selectable checkboxes, including during recharge
-- Agent fee: "X.X ₽/кг = Y ₽" with strikethrough when disabled
+- Agent fee: "X.X ₽/т = Y ₽" with strikethrough when disabled
 - Other service: "TypeLabel · Name · × N шт." with amount, strikethrough when disabled
 - When enabled fees are recharged, note below sale amount identifies the included surcharges

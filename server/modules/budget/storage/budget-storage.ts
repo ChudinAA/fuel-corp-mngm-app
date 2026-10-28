@@ -4,23 +4,9 @@ import { db } from "server/db";
 import { budgetIncomeExpense, type BudgetIncomeExpense, type InsertBudgetIncomeExpense } from "@shared/schema";
 import { getBudgetMonthRange } from "./budget-month-range";
 import { opt } from "../../opt/entities/opt";
+import { optMassTonnesSql } from "../../opt/opt-mass-sql";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { IBudgetStorage } from "./types";
-
-function legacyDealMassKilogramsSql(
-  quantityKg: unknown,
-  quantityLiters: unknown,
-  density: unknown,
-) {
-  return sql`
-    CASE
-      WHEN CAST(COALESCE(${quantityLiters}, '0') AS NUMERIC) > 0
-        AND CAST(COALESCE(${density}, '0') AS NUMERIC) > 0
-      THEN CAST(${quantityLiters} AS NUMERIC) * CAST(${density} AS NUMERIC)
-      ELSE CAST(${quantityKg} AS NUMERIC)
-    END
-  `;
-}
 
 export class BudgetStorage implements IBudgetStorage {
   async getBudgetEntry(id: string): Promise<BudgetIncomeExpense | undefined> {
@@ -204,13 +190,13 @@ export class BudgetStorage implements IBudgetStorage {
     const { start, end } = getBudgetMonthRange(budgetMonth);
     const result = await db.execute(sql`
       SELECT
-        COALESCE(SUM(monthly_sales.volume_kg), 0)::text AS total_volume_kg,
-        COALESCE(SUM(monthly_sales.volume_kg) / 1000, 0)::text AS total_volume_tonnes,
+        COALESCE(SUM(monthly_sales.volume_tonnes) * 1000, 0)::text AS total_volume_kg,
+        COALESCE(SUM(monthly_sales.volume_tonnes), 0)::text AS total_volume_tonnes,
         COALESCE(SUM(monthly_sales.revenue), 0)::text AS total_revenue,
         COALESCE(SUM(monthly_sales.profit), 0)::text AS total_profit
       FROM (
         SELECT
-          ${legacyDealMassKilogramsSql(opt.quantityKg, opt.quantityLiters, opt.density)} AS volume_kg,
+          ${optMassTonnesSql()} AS volume_tonnes,
           CAST(${opt.saleAmount} AS NUMERIC) AS revenue,
           CAST(${opt.profit} AS NUMERIC) AS profit
         FROM ${opt}
@@ -219,7 +205,10 @@ export class BudgetStorage implements IBudgetStorage {
           AND ${opt.deletedAt} IS NULL
         UNION ALL
         SELECT
-          ${legacyDealMassKilogramsSql(aircraftRefueling.quantityKg, aircraftRefueling.quantityLiters, aircraftRefueling.density)} AS volume_kg,
+          COALESCE(
+            ${aircraftRefueling.quantityTonnes},
+            CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
+          ) AS volume_tonnes,
           CAST(${aircraftRefueling.saleAmount} AS NUMERIC) AS revenue,
           CAST(${aircraftRefueling.profit} AS NUMERIC) AS profit
         FROM ${aircraftRefueling}

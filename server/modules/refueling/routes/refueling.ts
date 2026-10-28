@@ -15,7 +15,7 @@ import { formatTonnes, legacyDealMassToTonnes } from "@shared/units";
 import {
   refuelingDealToApi,
   RefuelingApiInputError,
-  toLegacyRefuelingInput,
+  normalizeRefuelingInput,
 } from "../refueling-api-adapters";
 
 const refuelingProductLabel = (type: string) =>
@@ -177,7 +177,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const isDuplicate = await storage.aircraftRefueling.checkDuplicate(
-          toLegacyRefuelingInput(req.body) as Parameters<
+          normalizeRefuelingInput(req.body) as Parameters<
             typeof storage.aircraftRefueling.checkDuplicate
           >[0],
         );
@@ -209,7 +209,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         }
 
         const data = insertAircraftRefuelingSchema.parse({
-          ...toLegacyRefuelingInput(req.body),
+          ...normalizeRefuelingInput(req.body),
           createdById: String(req.session.userId),
         });
         const item = await storage.aircraftRefueling.createRefueling(data);
@@ -276,7 +276,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
 
         const validatedDeals = deals.map((deal) =>
           insertAircraftRefuelingSchema.parse({
-            ...toLegacyRefuelingInput(deal),
+            ...normalizeRefuelingInput(deal),
             createdById: userId,
           }),
         );
@@ -346,7 +346,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         }
 
         const item = await storage.aircraftRefueling.updateRefueling(id, {
-          ...toLegacyRefuelingInput(req.body),
+          ...normalizeRefuelingInput(req.body),
           updatedById: req.session.userId,
         });
         if (!item) {
@@ -400,7 +400,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         }
         const validatedDeals = deals.map((deal) =>
           insertAircraftRefuelingSchema.parse({
-            ...toLegacyRefuelingInput(deal),
+            ...normalizeRefuelingInput(deal),
             updatedById: userId,
           }),
         );

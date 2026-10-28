@@ -1865,6 +1865,322 @@ async function rehearseEquipmentStockMassBackfill(client) {
   };
 }
 
+async function rehearseAircraftRefuelingMassBackfill(client) {
+  const schema = await client.query(`
+    SELECT column_name, data_type, numeric_precision, numeric_scale, is_nullable
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'aircraft_refueling'
+  `);
+  const columns = new Map(schema.rows.map((row) => [row.column_name, row]));
+  const required = [
+    "id",
+    "quantity_kg",
+    "purchase_price",
+    "sale_price",
+    "agent_fee_rate",
+    "purchase_amount",
+    "sale_amount",
+    "agent_fee",
+    "other_service_fee",
+    "profit",
+    "quantity_liters",
+    "density",
+    "input_mode",
+    "deleted_at",
+  ];
+  const missing = required.filter((column) => !columns.has(column));
+  if (missing.length) return { skipped: true, missingColumns: missing };
+
+  const sourceColumn = (name) =>
+    columns.has(name) ? name : "NULL::numeric";
+  await client.query(`
+    CREATE TEMP TABLE __aircraft_refueling_mass_source AS
+    SELECT
+      id,
+      quantity_kg,
+      purchase_price,
+      sale_price,
+      agent_fee_rate,
+      purchase_amount,
+      sale_amount,
+      agent_fee,
+      other_service_fee,
+      profit,
+      quantity_liters,
+      density,
+      input_mode,
+      deleted_at,
+      ${sourceColumn("quantity_tonnes")} AS quantity_tonnes,
+      ${sourceColumn("purchase_price_per_tonne")} AS purchase_price_per_tonne,
+      ${sourceColumn("sale_price_per_tonne")} AS sale_price_per_tonne,
+      ${sourceColumn("agent_fee_rate_per_tonne")} AS agent_fee_rate_per_tonne
+    FROM aircraft_refueling
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __aircraft_refueling_mass_expected AS
+    SELECT
+      id,
+      quantity_kg,
+      purchase_price,
+      sale_price,
+      agent_fee_rate,
+      purchase_amount,
+      sale_amount,
+      agent_fee,
+      other_service_fee,
+      profit,
+      quantity_liters,
+      density,
+      input_mode,
+      deleted_at,
+      COALESCE(quantity_tonnes, quantity_kg / 1000) AS quantity_tonnes,
+      COALESCE(purchase_price_per_tonne, purchase_price * 1000)
+        AS purchase_price_per_tonne,
+      COALESCE(sale_price_per_tonne, sale_price * 1000)
+        AS sale_price_per_tonne,
+      COALESCE(agent_fee_rate_per_tonne, agent_fee_rate * 1000)
+        AS agent_fee_rate_per_tonne
+    FROM __aircraft_refueling_mass_source
+  `);
+
+  await client.query(
+    readFileSync(
+      resolve("migrations/0096_aircraft_refueling_mass_tonnes.sql"),
+      "utf8",
+    ),
+  );
+
+  const [comparison, targetColumns] = await Promise.all([
+    client.query(`
+      SELECT
+        (SELECT COUNT(*)::bigint FROM __aircraft_refueling_mass_source) AS source_rows,
+        COUNT(*)::bigint AS actual_rows,
+        COUNT(*) FILTER (
+          WHERE expected.id IS NULL
+            OR actual.quantity_kg IS DISTINCT FROM expected.quantity_kg
+            OR actual.purchase_price IS DISTINCT FROM expected.purchase_price
+            OR actual.sale_price IS DISTINCT FROM expected.sale_price
+            OR actual.agent_fee_rate IS DISTINCT FROM expected.agent_fee_rate
+            OR actual.purchase_amount IS DISTINCT FROM expected.purchase_amount
+            OR actual.sale_amount IS DISTINCT FROM expected.sale_amount
+            OR actual.agent_fee IS DISTINCT FROM expected.agent_fee
+            OR actual.other_service_fee IS DISTINCT FROM expected.other_service_fee
+            OR actual.profit IS DISTINCT FROM expected.profit
+            OR actual.quantity_liters IS DISTINCT FROM expected.quantity_liters
+            OR actual.density IS DISTINCT FROM expected.density
+            OR actual.input_mode IS DISTINCT FROM expected.input_mode
+            OR actual.deleted_at IS DISTINCT FROM expected.deleted_at
+            OR actual.quantity_tonnes IS DISTINCT FROM expected.quantity_tonnes
+            OR actual.purchase_price_per_tonne IS DISTINCT FROM expected.purchase_price_per_tonne
+            OR actual.sale_price_per_tonne IS DISTINCT FROM expected.sale_price_per_tonne
+            OR actual.agent_fee_rate_per_tonne IS DISTINCT FROM expected.agent_fee_rate_per_tonne
+        )::bigint AS changed_value_rows,
+        COUNT(*) FILTER (
+          WHERE source.quantity_tonnes IS NULL AND source.quantity_kg IS NOT NULL
+        )::bigint AS mass_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.purchase_price_per_tonne IS NULL
+            AND source.purchase_price IS NOT NULL
+        )::bigint AS purchase_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.sale_price_per_tonne IS NULL
+            AND source.sale_price IS NOT NULL
+        )::bigint AS sale_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.agent_fee_rate_per_tonne IS NULL
+            AND source.agent_fee_rate IS NOT NULL
+        )::bigint AS agent_fee_rate_rows_backfilled
+      FROM aircraft_refueling AS actual
+      LEFT JOIN __aircraft_refueling_mass_expected AS expected USING (id)
+      LEFT JOIN __aircraft_refueling_mass_source AS source USING (id)
+    `),
+    client.query(`
+      SELECT column_name, data_type, numeric_precision, numeric_scale, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'aircraft_refueling'
+        AND column_name IN (
+          'quantity_tonnes',
+          'purchase_price_per_tonne',
+          'sale_price_per_tonne',
+          'agent_fee_rate_per_tonne'
+        )
+      ORDER BY column_name
+    `),
+  ]);
+  const targetFields = [
+    ["quantity_tonnes", 18, 5, "NO"],
+    ["purchase_price_per_tonne", 22, 6, "YES"],
+    ["sale_price_per_tonne", 22, 6, "YES"],
+    ["agent_fee_rate_per_tonne", 22, 6, "YES"],
+  ];
+  const typesAreValid =
+    targetColumns.rows.length === targetFields.length &&
+    targetFields.every(([name, precision, scale, nullable]) =>
+      targetColumns.rows.some(
+        (row) =>
+          row.column_name === name &&
+          row.data_type === "numeric" &&
+          Number(row.numeric_precision) === precision &&
+          Number(row.numeric_scale) === scale &&
+          row.is_nullable === nullable,
+      ),
+    );
+  const result = comparison.rows[0];
+  return {
+    ...result,
+    passed:
+      Number(result.source_rows) === Number(result.actual_rows) &&
+      Number(result.changed_value_rows) === 0 &&
+      typesAreValid,
+    typesAreValid,
+    targetColumns: targetColumns.rows,
+    note: "Refueling tonnes use saved kg; per-kg deal rates are scaled by 1000; amounts, fees, liters, and density remain unchanged",
+  };
+}
+
+async function rehearseOptMassBackfill(client) {
+  const schema = await client.query(`
+    SELECT column_name, data_type, numeric_precision, numeric_scale, is_nullable
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'opt'
+  `);
+  const columns = new Map(schema.rows.map((row) => [row.column_name, row]));
+  const requiredColumns = [
+    "id",
+    "quantity_kg",
+    "purchase_price",
+    "sale_price",
+    "delivery_tariff",
+  ];
+  const missing = requiredColumns.filter((column) => !columns.has(column));
+  if (missing.length) return { skipped: true, missingColumns: missing };
+
+  const sourceColumn = (name) =>
+    columns.has(name) ? name : "NULL::numeric";
+  await client.query(`
+    CREATE TEMP TABLE __opt_mass_source AS
+    SELECT
+      id,
+      to_jsonb(opt) AS original_row,
+      quantity_kg,
+      purchase_price,
+      sale_price,
+      delivery_tariff,
+      ${sourceColumn("quantity_tonnes")} AS quantity_tonnes,
+      ${sourceColumn("purchase_price_per_tonne")} AS purchase_price_per_tonne,
+      ${sourceColumn("sale_price_per_tonne")} AS sale_price_per_tonne,
+      ${sourceColumn("delivery_tariff_per_tonne")} AS delivery_tariff_per_tonne
+    FROM opt
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __opt_mass_expected AS
+    SELECT
+      id,
+      original_row,
+      quantity_kg,
+      purchase_price,
+      sale_price,
+      delivery_tariff,
+      COALESCE(quantity_tonnes, quantity_kg / 1000) AS quantity_tonnes,
+      COALESCE(purchase_price_per_tonne, purchase_price * 1000)
+        AS purchase_price_per_tonne,
+      COALESCE(sale_price_per_tonne, sale_price * 1000)
+        AS sale_price_per_tonne,
+      COALESCE(delivery_tariff_per_tonne, delivery_tariff * 1000)
+        AS delivery_tariff_per_tonne
+    FROM __opt_mass_source
+  `);
+
+  await client.query(
+    readFileSync(resolve("migrations/0097_opt_mass_tonnes.sql"), "utf8"),
+  );
+
+  const [comparison, targetColumns] = await Promise.all([
+    client.query(`
+      SELECT
+        (SELECT COUNT(*)::bigint FROM __opt_mass_source) AS source_rows,
+        COUNT(*)::bigint AS actual_rows,
+        COUNT(*) FILTER (
+          WHERE expected.id IS NULL
+            OR (to_jsonb(actual)
+                - 'quantity_tonnes'
+                - 'purchase_price_per_tonne'
+                - 'sale_price_per_tonne'
+                - 'delivery_tariff_per_tonne')
+               IS DISTINCT FROM
+               (source.original_row
+                - 'quantity_tonnes'
+                - 'purchase_price_per_tonne'
+                - 'sale_price_per_tonne'
+                - 'delivery_tariff_per_tonne')
+            OR actual.quantity_tonnes IS DISTINCT FROM expected.quantity_tonnes
+            OR actual.purchase_price_per_tonne IS DISTINCT FROM expected.purchase_price_per_tonne
+            OR actual.sale_price_per_tonne IS DISTINCT FROM expected.sale_price_per_tonne
+            OR actual.delivery_tariff_per_tonne IS DISTINCT FROM expected.delivery_tariff_per_tonne
+        )::bigint AS changed_value_rows,
+        COUNT(*) FILTER (
+          WHERE source.quantity_tonnes IS NULL AND source.quantity_kg IS NOT NULL
+        )::bigint AS mass_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.purchase_price_per_tonne IS NULL
+            AND source.purchase_price IS NOT NULL
+        )::bigint AS purchase_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.sale_price_per_tonne IS NULL
+            AND source.sale_price IS NOT NULL
+        )::bigint AS sale_rate_rows_backfilled,
+        COUNT(*) FILTER (
+          WHERE source.delivery_tariff_per_tonne IS NULL
+            AND source.delivery_tariff IS NOT NULL
+        )::bigint AS delivery_rate_rows_backfilled
+      FROM opt AS actual
+      LEFT JOIN __opt_mass_expected AS expected USING (id)
+      LEFT JOIN __opt_mass_source AS source USING (id)
+    `),
+    client.query(`
+      SELECT column_name, data_type, numeric_precision, numeric_scale, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'opt'
+        AND column_name IN (
+          'quantity_tonnes',
+          'purchase_price_per_tonne',
+          'sale_price_per_tonne',
+          'delivery_tariff_per_tonne'
+        )
+      ORDER BY column_name
+    `),
+  ]);
+  const targetFields = [
+    ["quantity_tonnes", 18, 5, "NO"],
+    ["purchase_price_per_tonne", 22, 6, "YES"],
+    ["sale_price_per_tonne", 22, 6, "YES"],
+    ["delivery_tariff_per_tonne", 22, 6, "YES"],
+  ];
+  const typesAreValid =
+    targetColumns.rows.length === targetFields.length &&
+    targetFields.every(([name, precision, scale, nullable]) =>
+      targetColumns.rows.some(
+        (row) =>
+          row.column_name === name &&
+          row.data_type === "numeric" &&
+          Number(row.numeric_precision) === precision &&
+          Number(row.numeric_scale) === scale &&
+          row.is_nullable === nullable,
+      ),
+    );
+  const result = comparison.rows[0];
+  return {
+    ...result,
+    passed:
+      Number(result.source_rows) === Number(result.actual_rows) &&
+      Number(result.changed_value_rows) === 0 &&
+      typesAreValid,
+    typesAreValid,
+    targetColumns: targetColumns.rows,
+    note: "OPT mass uses saved kg only; per-kg deal rates are scaled by 1000; money, deal rates in their original columns, liters, density, links, and statuses remain unchanged",
+  };
+}
+
 await withTemporaryPostgres(async ({ run, createDatabase }) => {
   const databaseEnvironment = await createDatabase("mass_unit_rehearsal");
   const isolatedDumpPath = resolve(dumpPath);
@@ -2272,6 +2588,9 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
     const movementMassBackfill = await rehearseMovementMassBackfill(client);
     const transportationMassBackfill =
       await rehearseTransportationMassBackfill(client);
+    const refuelingMassBackfill =
+      await rehearseAircraftRefuelingMassBackfill(client);
+    const optMassBackfill = await rehearseOptMassBackfill(client);
 
     await client.query("BEGIN");
     try {
@@ -2370,6 +2689,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         equipmentMovementMassBackfill,
         movementMassBackfill,
         transportationMassBackfill,
+        refuelingMassBackfill,
+        optMassBackfill,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
         note: "Schema/backfill migrations run only on the disposable restored database; temporary rehearsal columns are rolled back.",

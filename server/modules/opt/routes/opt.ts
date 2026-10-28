@@ -6,13 +6,18 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
-import {
-  pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-  tonnesToKilograms,
-} from "@shared/units";
+import { pricePerKilogramToPerTonne } from "@shared/units";
 
 class OptApiInputError extends Error {}
+
+function parseOptionalMass(value: unknown, fieldName: string): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const mass = Number(value);
+  if (!Number.isFinite(mass)) {
+    throw new OptApiInputError(`${fieldName} должна быть числом`);
+  }
+  return mass;
+}
 
 function parseOptionalRate(value: unknown, fieldName: string): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -23,25 +28,32 @@ function parseOptionalRate(value: unknown, fieldName: string): number | null {
   return rate;
 }
 
-function toLegacyOptInput(body: unknown): Record<string, unknown> {
+function normalizeOptInput(body: unknown): Record<string, unknown> {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     throw new OptApiInputError("Тело запроса должно быть объектом");
   }
 
   const input = body as Record<string, unknown>;
-  const legacy = { ...input };
+  const normalized = { ...input };
   if (Object.prototype.hasOwnProperty.call(input, "quantityTonnes")) {
-    const value = input.quantityTonnes;
-    if (value === null || value === undefined || value === "") {
-      legacy.quantityKg = value ?? null;
-    } else {
-      const tonnes = Number(value);
-      if (!Number.isFinite(tonnes)) {
-        throw new OptApiInputError("Масса в тоннах должна быть числом");
-      }
-      legacy.quantityKg = Number(tonnesToKilograms(tonnes).toFixed(2));
+    const tonnes = parseOptionalMass(
+      input.quantityTonnes,
+      "Масса в тоннах",
+    );
+    normalized.quantityTonnes =
+      tonnes === null ? null : Number(tonnes.toFixed(5));
+    if (Object.prototype.hasOwnProperty.call(input, "quantityKg")) {
+      normalized.quantityKg = parseOptionalMass(
+        input.quantityKg,
+        "Масса в килограммах",
+      );
     }
-    delete legacy.quantityTonnes;
+  } else if (Object.prototype.hasOwnProperty.call(input, "quantityKg")) {
+    const kilograms = parseOptionalMass(
+      input.quantityKg,
+      "Масса в килограммах",
+    );
+    normalized.quantityKg = kilograms;
   }
   for (const [apiField, legacyField] of [
     ["purchasePricePerTonne", "purchasePrice"],
@@ -50,12 +62,14 @@ function toLegacyOptInput(body: unknown): Record<string, unknown> {
   ] as const) {
     if (Object.prototype.hasOwnProperty.call(input, apiField)) {
       const rate = parseOptionalRate(input[apiField], apiField);
-      legacy[legacyField] =
-        rate === null ? null : pricePerTonneToPerKilogram(rate);
-      delete legacy[apiField];
+      normalized[apiField] = rate;
+    }
+    if (Object.prototype.hasOwnProperty.call(input, legacyField)) {
+      const rate = parseOptionalRate(input[legacyField], legacyField);
+      normalized[legacyField] = rate;
     }
   }
-  return legacy;
+  return normalized;
 }
 
 function legacyRateToApi(value: unknown, fieldName: string): number | null {
@@ -69,32 +83,51 @@ function legacyRateToApi(value: unknown, fieldName: string): number | null {
 
 function optDealToApi<
   T extends {
-    quantityKg: unknown;
+    quantityKg?: unknown;
+    quantityTonnes?: unknown;
     purchasePrice?: unknown;
+    purchasePricePerTonne?: unknown;
     salePrice?: unknown;
+    salePricePerTonne?: unknown;
     deliveryTariff?: unknown;
+    deliveryTariffPerTonne?: unknown;
   },
 >(deal: T) {
   const {
     quantityKg,
+    quantityTonnes,
     purchasePrice,
+    purchasePricePerTonne,
     salePrice,
+    salePricePerTonne,
     deliveryTariff,
+    deliveryTariffPerTonne,
     ...fields
   } = deal;
-  if (quantityKg === null || quantityKg === undefined || quantityKg === "") {
+  const massValue =
+    quantityTonnes ?? (quantityKg == null ? null : Number(quantityKg) / 1_000);
+  if (massValue === null || massValue === undefined || massValue === "") {
     throw new TypeError("OPT deal has no stored mass to convert");
   }
-  const kilograms = Number(quantityKg);
-  if (!Number.isFinite(kilograms)) {
+  const tonnes = Number(massValue);
+  if (!Number.isFinite(tonnes)) {
     throw new TypeError("OPT deal mass is not numeric");
   }
   return {
     ...fields,
-    quantityTonnes: kilograms / 1000,
-    purchasePricePerTonne: legacyRateToApi(purchasePrice, "purchasePrice"),
-    salePricePerTonne: legacyRateToApi(salePrice, "salePrice"),
-    deliveryTariffPerTonne: legacyRateToApi(deliveryTariff, "deliveryTariff"),
+    quantityTonnes: tonnes,
+    purchasePricePerTonne:
+      purchasePricePerTonne == null
+        ? legacyRateToApi(purchasePrice, "purchasePrice")
+        : Number(purchasePricePerTonne),
+    salePricePerTonne:
+      salePricePerTonne == null
+        ? legacyRateToApi(salePrice, "salePrice")
+        : Number(salePricePerTonne),
+    deliveryTariffPerTonne:
+      deliveryTariffPerTonne == null
+        ? legacyRateToApi(deliveryTariff, "deliveryTariff")
+        : Number(deliveryTariffPerTonne),
   };
 }
 
@@ -179,7 +212,9 @@ export function registerOptRoutes(app: Express) {
     async (req, res) => {
       try {
         const isDuplicate = await storage.opt.checkDuplicate(
-          toLegacyOptInput(req.body) as Parameters<typeof storage.opt.checkDuplicate>[0],
+          normalizeOptInput(req.body) as Parameters<
+            typeof storage.opt.checkDuplicate
+          >[0],
         );
         res.json({ isDuplicate });
       } catch (error) {
@@ -204,7 +239,7 @@ export function registerOptRoutes(app: Express) {
     async (req, res) => {
       try {
         const data = insertOptSchema.parse({
-          ...toLegacyOptInput(req.body),
+          ...normalizeOptInput(req.body),
           createdById: req.session.userId,
         });
         const item = await storage.opt.createOpt(data);
@@ -248,7 +283,7 @@ export function registerOptRoutes(app: Express) {
       try {
         const id = req.params.id;
         const item = await storage.opt.updateOpt(id, {
-          ...toLegacyOptInput(req.body),
+          ...normalizeOptInput(req.body),
           updatedById: req.session.userId,
         });
         if (!item) {

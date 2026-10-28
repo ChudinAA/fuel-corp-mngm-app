@@ -5,6 +5,7 @@ import { opt, aircraftRefueling, savedReports, suppliers, customers, warehouseTr
 import { IAnalyticsStorage, AnalyticsData, AnalyticsSummary } from "./types";
 import type { SavedReport } from "../../reports/storage/types";
 import { legacyDealMassToTonnes } from "@shared/units";
+import { optMassTonnesSql } from "../../opt/opt-mass-sql";
 
 const dealMassTonnes = (deal: {
   quantityKg: string | null;
@@ -12,21 +13,6 @@ const dealMassTonnes = (deal: {
   density: string | null;
 }) =>
   legacyDealMassToTonnes(deal.quantityKg, deal.quantityLiters, deal.density) ?? 0;
-
-function legacyDealMassKilogramsSql(
-  quantityKg: unknown,
-  quantityLiters: unknown,
-  density: unknown,
-) {
-  return sql`
-    CASE
-      WHEN CAST(COALESCE(${quantityLiters}, '0') AS NUMERIC) > 0
-        AND CAST(COALESCE(${density}, '0') AS NUMERIC) > 0
-      THEN CAST(${quantityLiters} AS NUMERIC) * CAST(${density} AS NUMERIC)
-      ELSE CAST(${quantityKg} AS NUMERIC)
-    END
-  `;
-}
 
 export class AnalyticsStorage implements IAnalyticsStorage {
   async getAnalyticsData(
@@ -185,7 +171,7 @@ export class AnalyticsStorage implements IAnalyticsStorage {
       if (metrics.includes('sales')) {
         const [optSales] = await db
           .select({
-            optVolumeTonnes: sql<string>`COALESCE(SUM(${legacyDealMassKilogramsSql(opt.quantityKg, opt.quantityLiters, opt.density)}) / 1000, 0)::text`,
+            optVolumeTonnes: sql<string>`COALESCE(SUM(${optMassTonnesSql()}), 0)::text`,
             optRevenue: sql<string>`COALESCE(SUM(CAST(${opt.saleAmount} AS NUMERIC)), 0)`,
           })
           .from(opt)
@@ -199,7 +185,10 @@ export class AnalyticsStorage implements IAnalyticsStorage {
 
         const [refuelingSales] = await db
           .select({
-            refuelingVolumeTonnes: sql<string>`COALESCE(SUM(${legacyDealMassKilogramsSql(aircraftRefueling.quantityKg, aircraftRefueling.quantityLiters, aircraftRefueling.density)}) / 1000, 0)::text`,
+            refuelingVolumeTonnes: sql<string>`COALESCE(SUM(COALESCE(
+              ${aircraftRefueling.quantityTonnes},
+              CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
+            )), 0)::text`,
             refuelingRevenue: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
           })
           .from(aircraftRefueling)

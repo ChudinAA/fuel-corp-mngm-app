@@ -63,17 +63,30 @@ export const aircraftRefueling = pgTable(
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
+    quantityTonnes: decimal("quantity_tonnes", { precision: 18, scale: 5 }).notNull(),
     inputMode: text("input_mode"),
     purchasePrice: decimal("purchase_price", { precision: 19, scale: 6 }),
+    purchasePricePerTonne: decimal("purchase_price_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
     purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
     purchasePriceIndex: integer("purchase_price_index").default(0),
     salePrice: decimal("sale_price", { precision: 19, scale: 6 }),
+    salePricePerTonne: decimal("sale_price_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
     salePriceId: uuid("sale_price_id").references(() => prices.id),
     salePriceIndex: integer("sale_price_index").default(0),
     purchaseAmount: decimal("purchase_amount", { precision: 15, scale: 2 }),
     saleAmount: decimal("sale_amount", { precision: 15, scale: 2 }),
     agentFee: decimal("agent_fee", { precision: 15, scale: 6 }),
     agentFeeRate: decimal("agent_fee_rate", { precision: 19, scale: 6 }),
+    agentFeeRatePerTonne: decimal("agent_fee_rate_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
     isAgentFeeEnabled: boolean("is_agent_fee_enabled").default(true),
     otherServiceFee: decimal("other_service_fee", { precision: 15, scale: 2 }),
     otherServiceName: text("other_service_name"),
@@ -198,17 +211,21 @@ export const insertAircraftRefuelingSchema = createInsertSchema(
     quantityLiters: z.number().nullable().optional(),
     density: z.number().nullable().optional(),
     quantityKg: z.number().nullable().optional(),
+    quantityTonnes: z.number().nullable().optional(),
     inputMode: z.string().nullable().optional(),
     purchasePrice: z.number().nullable().optional(),
+    purchasePricePerTonne: z.number().nullable().optional(),
     purchasePriceId: z.string().nullable().optional(),
     purchasePriceIndex: z.number().nullable().optional(),
     salePrice: z.number().nullable().optional(),
+    salePricePerTonne: z.number().nullable().optional(),
     salePriceId: z.string().nullable().optional(),
     salePriceIndex: z.number().nullable().optional(),
     purchaseAmount: z.number().nullable().optional(),
     saleAmount: z.number().nullable().optional(),
     agentFee: z.number().nullable().optional(),
     agentFeeRate: z.number().nullable().optional(),
+    agentFeeRatePerTonne: z.number().nullable().optional(),
     isAgentFeeEnabled: z.boolean().optional(),
     otherServiceFee: z.number().nullable().optional(),
     otherServiceName: z.string().nullable().optional(),
@@ -269,11 +286,14 @@ export const insertAircraftRefuelingSchema = createInsertSchema(
           path: ["buyerId"],
         });
       }
-      if (data.quantityKg === undefined || data.quantityKg === null) {
+      if (
+        data.quantityTonnes === undefined ||
+        data.quantityTonnes === null
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Масса обязательна",
-          path: ["quantityKg"],
+          path: ["quantityTonnes"],
         });
       }
     }

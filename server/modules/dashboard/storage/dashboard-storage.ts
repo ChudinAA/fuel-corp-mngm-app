@@ -11,7 +11,8 @@ import {
 import { widgetDefinitions, dashboardConfigurations, dashboardTemplates } from "../entities/dashboard";
 import { IDashboardStorage, WidgetDefinition, DashboardConfiguration, DashboardLayout, DashboardWidget } from "./types";
 import { MOVEMENT_TYPE, SOURCE_TYPE } from "@shared/constants";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes, tonnesToKilograms } from "@shared/units";
+import { optMassTonnesSql } from "../../opt/opt-mass-sql";
 
 export class DashboardStorage implements IDashboardStorage {
   async getDashboardStats(): Promise<{
@@ -82,11 +83,13 @@ export class DashboardStorage implements IDashboardStorage {
 
     // Общий объем продаж за месяц
     const [volumeResult] = await db
-      .select({ total: sql<number>`sum(CAST(${opt.quantityKg} AS DECIMAL))` })
+      .select({
+        totalTonnes: sql<number>`COALESCE(SUM(${optMassTonnesSql()}), 0)`,
+      })
       .from(opt)
       .where(and(sql`${opt.createdAt} >= ${monthStartStr}`, isNull(opt.deletedAt)));
-    const totalVolumeSold = Number(volumeResult?.total || 0);
-    const totalVolumeSoldTonnes = kilogramsToTonnes(totalVolumeSold);
+    const totalVolumeSoldTonnes = Number(volumeResult?.totalTonnes || 0);
+    const totalVolumeSold = tonnesToKilograms(totalVolumeSoldTonnes);
 
     return {
       optDealsToday,
@@ -132,7 +135,7 @@ export class DashboardStorage implements IDashboardStorage {
         type: SOURCE_TYPE.OPT,
         description: `${supplier?.name || deal.supplierId} → ${
           buyer?.name || deal.buyerId
-        }: ${formatTonnes(kilogramsToTonnes(parseFloat(deal.quantityKg || "0")))} т`,
+        }: ${formatTonnes(Number(deal.quantityTonnes || 0))} т`,
         time: deal.createdAt,
         status: "success",
       });
@@ -151,7 +154,7 @@ export class DashboardStorage implements IDashboardStorage {
         type: SOURCE_TYPE.REFUELING,
         description: `${refueling.basis || "База"}: ${
           refueling.aircraftNumber || "ВС"
-        }, ${formatTonnes(kilogramsToTonnes(parseFloat(refueling.quantityKg || "0")))} т`,
+        }, ${formatTonnes(Number(refueling.quantityTonnes || "0"))} т`,
         time: refueling.createdAt,
         status: "success",
       });
@@ -205,7 +208,7 @@ export class DashboardStorage implements IDashboardStorage {
 
       operations.push({
         type: SOURCE_TYPE.MOVEMENT,
-        description: `${fromName} → ${toName}: ${formatTonnes(kilogramsToTonnes(parseFloat(mov.quantityKg || "0")))} т`,
+        description: `${fromName} → ${toName}: ${formatTonnes(Number(mov.quantityTonnes || "0"))} т`,
         time: mov.createdAt,
         status:
           mov.movementType === MOVEMENT_TYPE.SUPPLY ? "success" : "pending",
@@ -255,14 +258,16 @@ export class DashboardStorage implements IDashboardStorage {
 
     // Объем продаж за неделю
     const [volumeWeekResult] = await db
-      .select({ total: sql<number>`sum(CAST(${opt.quantityKg} AS DECIMAL))` })
+      .select({
+        totalTonnes: sql<number>`COALESCE(SUM(${optMassTonnesSql()}), 0)`,
+      })
       .from(opt)
       .where(and(
         sql`${opt.createdAt} >= ${weekAgoStr}`,
         isNull(opt.deletedAt)
       ));
-    const volumeSoldWeek = Number(volumeWeekResult?.total || 0);
-    const volumeSoldWeekTonnes = kilogramsToTonnes(volumeSoldWeek);
+    const volumeSoldWeekTonnes = Number(volumeWeekResult?.totalTonnes || 0);
+    const volumeSoldWeek = tonnesToKilograms(volumeSoldWeekTonnes);
 
     // Прибыль за неделю
     const [optProfitWeek] = await db

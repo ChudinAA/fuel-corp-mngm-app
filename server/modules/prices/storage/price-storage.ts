@@ -13,6 +13,7 @@ import {
   COUNTERPARTY_TYPE,
 } from "@shared/constants";
 import { kilogramsToPriceStoredVolume } from "../price-unit-adapters";
+import { optMassTonnesSql } from "../../opt/opt-mass-sql";
 
 export class PriceStorage {
   async findActivePrices(filters: {
@@ -266,7 +267,7 @@ export class PriceStorage {
       } else {
         const [optVolume] = await db
           .select({
-            total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
+            total: sql<string>`COALESCE(SUM(${optMassTonnesSql()}) * 1000, 0)`,
           })
           .from(opt)
           .where(
@@ -279,7 +280,10 @@ export class PriceStorage {
 
         const [movementVolume] = await db
           .select({
-            total: sql<string>`COALESCE(SUM(${movement.quantityKg}), 0)`,
+            total: sql<string>`COALESCE(SUM(COALESCE(
+              ${movement.quantityTonnes},
+              CAST(${movement.quantityKg} AS NUMERIC) / 1000
+            )) * 1000, 0)`,
           })
           .from(movement)
           .where(
@@ -315,7 +319,10 @@ export class PriceStorage {
       } else {
         const [result] = await db
           .select({
-            total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`,
+            total: sql<string>`COALESCE(SUM(COALESCE(
+              ${aircraftRefueling.quantityTonnes},
+              CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
+            )) * 1000, 0)`,
           })
           .from(aircraftRefueling)
           .where(

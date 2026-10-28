@@ -19,6 +19,7 @@ export interface IOptStorage {
     buyerId: string;
     basis?: string | null;
     deliveryLocationId?: string | null;
-    quantityKg: number;
+    quantityTonnes?: number;
+    quantityKg?: number;
   }): Promise<boolean>;
 }

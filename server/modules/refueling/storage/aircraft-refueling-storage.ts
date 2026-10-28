@@ -22,6 +22,126 @@ import {
 } from "@shared/constants";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
 import { EquipmentTransactionService } from "server/modules/warehouses-equipment/services/equipment-transaction-service";
+import {
+  pricePerKilogramToPerTonne,
+  pricePerTonneToPerKilogram,
+  tonnesToKilograms,
+} from "@shared/units";
+
+function refuelingMassKg(mass: {
+  quantityTonnes?: unknown;
+  quantityKg?: unknown;
+}): number {
+  if (
+    mass.quantityTonnes !== null &&
+    mass.quantityTonnes !== undefined &&
+    mass.quantityTonnes !== ""
+  ) {
+    const tonnes = Number(mass.quantityTonnes);
+    if (Number.isFinite(tonnes)) {
+      return Number(tonnesToKilograms(tonnes).toFixed(2));
+    }
+  }
+  const kilograms = Number(mass.quantityKg);
+  return Number.isFinite(kilograms) ? kilograms : 0;
+}
+
+function withRefuelingUnitMirrors<T extends object>(
+  data: T,
+  current?: object,
+): T {
+  const input = data as Record<string, unknown>;
+  const previous = current as Record<string, unknown> | undefined;
+  const normalized = { ...input };
+  const has = (field: string) =>
+    Object.prototype.hasOwnProperty.call(input, field) &&
+    input[field] !== undefined;
+
+  const hasTonnes = has("quantityTonnes") && input.quantityTonnes !== null;
+  const hasKilograms = has("quantityKg") && input.quantityKg !== null;
+  if (hasTonnes || hasKilograms) {
+    const tonnes = hasTonnes ? Number(input.quantityTonnes) : null;
+    const kilograms = hasKilograms ? Number(input.quantityKg) : null;
+    if (
+      (tonnes !== null && !Number.isFinite(tonnes)) ||
+      (kilograms !== null && !Number.isFinite(kilograms))
+    ) {
+      throw new Error("Масса должна быть числом");
+    }
+
+    let selectedTonnes =
+      tonnes !== null ? tonnes : (kilograms as number) / 1_000;
+    if (tonnes !== null && kilograms !== null && previous) {
+      const previousTonnes =
+        previous.quantityTonnes == null
+          ? null
+          : Number(previous.quantityTonnes);
+      const previousKilograms =
+        previous.quantityKg == null ? null : Number(previous.quantityKg);
+      const onlyKilogramsChanged =
+        previousTonnes !== null &&
+        previousKilograms !== null &&
+        Number.isFinite(previousTonnes) &&
+        Number.isFinite(previousKilograms) &&
+        tonnes === previousTonnes &&
+        kilograms !== previousKilograms;
+      if (onlyKilogramsChanged) selectedTonnes = kilograms / 1_000;
+    }
+
+    const roundedTonnes = Number(selectedTonnes.toFixed(5));
+    normalized.quantityTonnes = roundedTonnes;
+    normalized.quantityKg = Number(
+      tonnesToKilograms(roundedTonnes).toFixed(2),
+    );
+  }
+
+  for (const [tonneField, kilogramField] of [
+    ["purchasePricePerTonne", "purchasePrice"],
+    ["salePricePerTonne", "salePrice"],
+    ["agentFeeRatePerTonne", "agentFeeRate"],
+  ] as const) {
+    const hasTonneRate = has(tonneField);
+    const hasKilogramRate = has(kilogramField);
+    if (hasTonneRate && hasKilogramRate && previous) {
+      const tonneRate =
+        input[tonneField] === null ? null : Number(input[tonneField]);
+      const kilogramRate =
+        input[kilogramField] === null ? null : Number(input[kilogramField]);
+      const previousTonneRate =
+        previous[tonneField] == null ? null : Number(previous[tonneField]);
+      const previousKilogramRate =
+        previous[kilogramField] == null
+          ? null
+          : Number(previous[kilogramField]);
+      const onlyKilogramRateChanged =
+        tonneRate === previousTonneRate &&
+        kilogramRate !== previousKilogramRate;
+      if (onlyKilogramRateChanged) {
+        normalized[tonneField] =
+          kilogramRate === null
+            ? null
+            : pricePerKilogramToPerTonne(kilogramRate);
+      } else {
+        normalized[kilogramField] =
+          tonneRate === null
+            ? null
+            : pricePerTonneToPerKilogram(tonneRate);
+      }
+    } else if (hasTonneRate) {
+      const rate = input[tonneField];
+      normalized[kilogramField] =
+        rate === null ? null : pricePerTonneToPerKilogram(Number(rate));
+    } else if (has(kilogramField)) {
+      const rate = input[kilogramField];
+      normalized[tonneField] =
+        rate === null
+          ? null
+          : pricePerKilogramToPerTonne(Number(rate));
+    }
+  }
+
+  return normalized as T;
+}
 
 export class AircraftRefuelingStorage {
   async getRefueling(id: string): Promise<AircraftRefueling | undefined> {
@@ -208,7 +328,10 @@ export class AircraftRefuelingStorage {
     return await db.transaction(async (tx) => {
       const [created] = await tx
         .insert(aircraftRefueling)
-        .values({ ...data, refuelingOrderId: data.refuelingOrderId || randomUUID() } as any)
+        .values({
+          ...withRefuelingUnitMirrors(data),
+          refuelingOrderId: data.refuelingOrderId || randomUUID(),
+        } as any)
         .returning();
       let result = created;
 
@@ -228,7 +351,7 @@ export class AircraftRefuelingStorage {
               created.productType,
               SOURCE_TYPE.REFUELING,
               created.id,
-              parseFloat(created.quantityKg),
+              refuelingMassKg(created),
               parseFloat(created.purchaseAmount || "0"),
               data.createdById || undefined,
               created.refuelingDate,
@@ -249,7 +372,7 @@ export class AircraftRefuelingStorage {
               created.productType,
               SOURCE_TYPE.REFUELING,
               created.id,
-              parseFloat(created.quantityKg),
+              refuelingMassKg(created),
               parseFloat(created.purchaseAmount || "0"),
               data.createdById || undefined,
               created.refuelingDate,
@@ -281,7 +404,7 @@ export class AircraftRefuelingStorage {
       for (const data of items) {
         const [created] = await tx
           .insert(aircraftRefueling)
-          .values({ ...data, refuelingOrderId } as any)
+          .values({ ...withRefuelingUnitMirrors(data), refuelingOrderId } as any)
           .returning();
 
         if (
@@ -299,7 +422,7 @@ export class AircraftRefuelingStorage {
                 created.productType,
                 SOURCE_TYPE.REFUELING,
                 created.id,
-                Number.parseFloat(created.quantityKg),
+                refuelingMassKg(created),
                 Number.parseFloat(created.purchaseAmount || "0"),
                 data.createdById || undefined,
                 created.refuelingDate,
@@ -318,7 +441,7 @@ export class AircraftRefuelingStorage {
                 created.productType,
                 SOURCE_TYPE.REFUELING,
                 created.id,
-                Number.parseFloat(created.quantityKg),
+                refuelingMassKg(created),
                 Number.parseFloat(created.purchaseAmount || "0"),
                 data.createdById || undefined,
                 created.refuelingDate,
@@ -405,7 +528,7 @@ export class AircraftRefuelingStorage {
           deal.productType,
           SOURCE_TYPE.REFUELING,
           deal.id,
-          Number.parseFloat(deal.quantityKg),
+          refuelingMassKg(deal),
           Number.parseFloat(deal.purchaseAmount || "0"),
           userId,
           deal.refuelingDate,
@@ -420,7 +543,7 @@ export class AircraftRefuelingStorage {
           deal.productType,
           SOURCE_TYPE.REFUELING,
           deal.id,
-          Number.parseFloat(deal.quantityKg),
+          refuelingMassKg(deal),
           Number.parseFloat(deal.purchaseAmount || "0"),
           userId,
           deal.refuelingDate,
@@ -517,7 +640,7 @@ export class AircraftRefuelingStorage {
           const [updated] = await tx
             .update(aircraftRefueling)
             .set({
-              ...item,
+              ...withRefuelingUnitMirrors(item, current),
               refuelingOrderId,
               transactionId: null,
               equipmentTransactionId: null,
@@ -532,7 +655,7 @@ export class AircraftRefuelingStorage {
           const [created] = await tx
             .insert(aircraftRefueling)
             .values({
-              ...item,
+              ...withRefuelingUnitMirrors(item),
               refuelingOrderId,
               createdById: userId,
             } as any)
@@ -604,7 +727,7 @@ export class AircraftRefuelingStorage {
       if (
         transitioningFromDraft &&
         (data.warehouseId || data.equipmentId) &&
-        data.quantityKg &&
+        refuelingMassKg(data) > 0 &&
         (data.productType === PRODUCT_TYPE.KEROSENE ||
           data.productType === PRODUCT_TYPE.PVKJ)
       ) {
@@ -617,7 +740,7 @@ export class AircraftRefuelingStorage {
               data.productType,
               SOURCE_TYPE.REFUELING,
               currentRefueling.id,
-              data.quantityKg,
+              refuelingMassKg(data),
               data.purchaseAmount || 0,
               data.updatedById!,
               data.refuelingDate ?? undefined,
@@ -633,7 +756,7 @@ export class AircraftRefuelingStorage {
               data.productType,
               SOURCE_TYPE.REFUELING,
               currentRefueling.id,
-              data.quantityKg,
+              refuelingMassKg(data),
               data.purchaseAmount || 0,
               data.updatedById ?? undefined,
               data.refuelingDate ?? undefined,
@@ -669,9 +792,11 @@ export class AircraftRefuelingStorage {
           );
         }
 
-        const oldQuantityKg = parseFloat(currentRefueling.quantityKg);
-        const newQuantityKg = data.quantityKg
-          ? parseFloat(data.quantityKg.toString())
+        const oldQuantityKg = refuelingMassKg(currentRefueling);
+        const quantityWasProvided =
+          data.quantityTonnes !== undefined || data.quantityKg !== undefined;
+        const newQuantityKg = quantityWasProvided
+          ? refuelingMassKg(data)
           : oldQuantityKg;
         const oldTotalCost = parseFloat(currentRefueling.purchaseAmount || "0");
         const newTotalCost = data.purchaseAmount ?? oldTotalCost;
@@ -752,7 +877,7 @@ export class AircraftRefuelingStorage {
       const [updated] = await tx
         .update(aircraftRefueling)
         .set({
-          ...data,
+          ...withRefuelingUnitMirrors(data, currentRefueling),
           updatedAt: sql`NOW()`,
         } as any)
         .where(eq(aircraftRefueling.id, id))
@@ -816,15 +941,14 @@ export class AircraftRefuelingStorage {
 
     const [result] = await db
       .select({
-        totalMassKg: sql<string>`COALESCE(SUM(
-          CASE
-            WHEN ${aircraftRefueling.quantityLiters} > 0
-              AND ${aircraftRefueling.density} > 0
-            THEN ${aircraftRefueling.quantityLiters} * ${aircraftRefueling.density}
-            ELSE ${aircraftRefueling.quantityKg}
-          END
-        ), 0)`,
-        storedMassKg: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`,
+        totalMassTonnes: sql<string>`COALESCE(SUM(COALESCE(
+          ${aircraftRefueling.quantityTonnes},
+          ${aircraftRefueling.quantityKg} / 1000
+        )), 0)`,
+        storedMassKg: sql<string>`COALESCE(SUM(COALESCE(
+          ${aircraftRefueling.quantityTonnes} * 1000,
+          ${aircraftRefueling.quantityKg}
+        )), 0)`,
         totalLiters: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityLiters}), 0)`,
       })
       .from(aircraftRefueling)
@@ -838,13 +962,20 @@ export class AircraftRefuelingStorage {
           eq(aircraftRefueling.isDraft, false),
         ),
       );
-    const totalMassKg = Number.parseFloat(result?.totalMassKg || "0");
+    const totalMassTonnes = Number.parseFloat(
+      result?.totalMassTonnes || "0",
+    );
     const storedMassKg = Number.parseFloat(result?.storedMassKg || "0");
     const totalLiters = Number.parseFloat(result?.totalLiters || "0");
     return {
-      usedVolumeTonnes: totalMassKg / 1_000,
+      usedVolumeTonnes: totalMassTonnes,
       // Keep the old response unit for clients not yet migrated.
-      usedVolume: price?.priceUnit === "liter" ? totalLiters : storedMassKg,
+      usedVolume:
+        price?.priceUnit === "liter"
+          ? totalLiters
+          : price?.priceUnit === "tonne"
+            ? totalMassTonnes
+            : storedMassKg,
     };
   }
 

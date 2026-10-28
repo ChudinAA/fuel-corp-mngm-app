@@ -590,12 +590,18 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(new Set(createdOrder.map((deal) => deal.refuelingOrderId)).size, 1);
   assertDealEconomics(createdOrder);
   const storedRefuelingRate = await pool.query(
-    "SELECT quantity_kg, purchase_price, sale_price FROM aircraft_refueling WHERE id = $1",
+    "SELECT quantity_kg, quantity_tonnes, purchase_price, purchase_price_per_tonne, sale_price, sale_price_per_tonne FROM aircraft_refueling WHERE id = $1",
     [createdOrder.find((deal) => deal.productType === "kerosene").id],
   );
   assert.equal(Number(storedRefuelingRate.rows[0].quantity_kg), 10);
+  assert.equal(Number(storedRefuelingRate.rows[0].quantity_tonnes), 0.01);
   assert.equal(Number(storedRefuelingRate.rows[0].purchase_price), 10);
+  assert.equal(
+    Number(storedRefuelingRate.rows[0].purchase_price_per_tonne),
+    10000,
+  );
   assert.equal(Number(storedRefuelingRate.rows[0].sale_price), 15);
+  assert.equal(Number(storedRefuelingRate.rows[0].sale_price_per_tonne), 15000);
   const tonneReport = await api("/api/management-report/generate", {
     method: "POST",
     body: {
@@ -842,8 +848,9 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       productType: "kerosene",
       quantityTonnes: 0.02,
       inputMode: "tonnes",
-      purchasePricePerTonne: 10000,
-      salePricePerTonne: 15000,
+      purchasePricePerTonne: 10000.001,
+      salePricePerTonne: 15000.004,
+      deliveryTariffPerTonne: 500,
       purchaseAmount: 200,
       saleAmount: 300,
       profit: 100,
@@ -853,18 +860,44 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   });
   assert.equal(Number(optCreated.quantityTonnes), 0.02);
   assert.equal(optCreated.quantityKg, undefined);
-  assert.equal(Number(optCreated.purchasePricePerTonne), 10000);
-  assert.equal(Number(optCreated.salePricePerTonne), 15000);
+  assert.equal(Number(optCreated.purchasePricePerTonne), 10000.001);
+  assert.equal(Number(optCreated.salePricePerTonne), 15000.004);
   assert.equal(optCreated.purchasePrice, undefined);
   assert.equal(optCreated.salePrice, undefined);
   assert.equal(Number(optCreated.profit), 100);
   const storedOptMass = await pool.query(
-    "SELECT quantity_kg, purchase_price, sale_price FROM opt WHERE id = $1",
+    `SELECT quantity_tonnes, quantity_kg,
+            purchase_price_per_tonne, purchase_price,
+            sale_price_per_tonne, sale_price,
+            delivery_tariff_per_tonne, delivery_tariff
+     FROM opt WHERE id = $1`,
     [optCreated.id],
   );
+  assert.equal(Number(storedOptMass.rows[0].quantity_tonnes), 0.02);
   assert.equal(Number(storedOptMass.rows[0].quantity_kg), 20);
-  assert.equal(Number(storedOptMass.rows[0].purchase_price), 10);
-  assert.equal(Number(storedOptMass.rows[0].sale_price), 15);
+  assert.equal(Number(storedOptMass.rows[0].purchase_price_per_tonne), 10000.001);
+  assert.equal(Number(storedOptMass.rows[0].purchase_price), 10.000001);
+  assert.equal(Number(storedOptMass.rows[0].sale_price_per_tonne), 15000.004);
+  assert.equal(Number(storedOptMass.rows[0].sale_price), 15.000004);
+  assert.equal(Number(storedOptMass.rows[0].delivery_tariff_per_tonne), 500);
+  assert.equal(Number(storedOptMass.rows[0].delivery_tariff), 0.5);
+  const roundedRateNoop = await api(`/api/opt/${optCreated.id}`, {
+    method: "PATCH",
+    body: {
+      purchasePricePerTonne: 10000,
+      salePricePerTonne: 15000,
+    },
+  });
+  assert.equal(Number(roundedRateNoop.purchasePricePerTonne), 10000.001);
+  assert.equal(Number(roundedRateNoop.salePricePerTonne), 15000.004);
+  const storedOptRateNoop = await pool.query(
+    "SELECT purchase_price_per_tonne, purchase_price, sale_price_per_tonne, sale_price FROM opt WHERE id = $1",
+    [optCreated.id],
+  );
+  assert.equal(Number(storedOptRateNoop.rows[0].purchase_price_per_tonne), 10000.001);
+  assert.equal(Number(storedOptRateNoop.rows[0].purchase_price), 10.000001);
+  assert.equal(Number(storedOptRateNoop.rows[0].sale_price_per_tonne), 15000.004);
+  assert.equal(Number(storedOptRateNoop.rows[0].sale_price), 15.000004);
   const optList = await api("/api/opt?pageSize=100");
   const listedOpt = optList.data.find((deal) => deal.id === optCreated.id);
   assert.equal(Number(listedOpt.quantityTonnes), 0.02);
@@ -1043,6 +1076,12 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(optUpdated.purchasePrice, undefined);
   assert.equal(optUpdated.salePrice, undefined);
   assert.equal(Number(optUpdated.profit), 125);
+  const storedOptAfterUpdate = await pool.query(
+    "SELECT quantity_tonnes, quantity_kg FROM opt WHERE id = $1",
+    [optCreated.id],
+  );
+  assert.equal(Number(storedOptAfterUpdate.rows[0].quantity_tonnes), 0.025);
+  assert.equal(Number(storedOptAfterUpdate.rows[0].quantity_kg), 25);
   assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 962);
   await waitForCompletedQueue(
     "recalculation_queue",

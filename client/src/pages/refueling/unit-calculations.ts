@@ -95,20 +95,9 @@ export function calculateRefuelingAmount(
 
 export function calculateStoredRefuelingMassTonnes(
   quantityKg: number | string | null | undefined,
-  quantityLiters: number | string | null | undefined,
-  density: number | string | null | undefined,
+  _quantityLiters: number | string | null | undefined,
+  _density: number | string | null | undefined,
 ): number | null {
-  const liters = parseFinite(quantityLiters);
-  const parsedDensity = parseFinite(density);
-  if (
-    liters !== null &&
-    liters > 0 &&
-    parsedDensity !== null &&
-    parsedDensity > 0
-  ) {
-    return kilogramsToTonnes(liters * parsedDensity);
-  }
-
   const kilograms = parseFinite(quantityKg);
   return kilograms === null || kilograms < 0
     ? null
