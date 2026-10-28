@@ -69,6 +69,7 @@ export const logisticsVehicles = pgTable("logistics_vehicles", {
   }),
   regNumber: text("reg_number").notNull(),
   model: text("model"),
+  capacityTonnes: decimal("capacity_tonnes", { precision: 15, scale: 5 }),
   capacityKg: decimal("capacity_kg", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -90,6 +91,7 @@ export const logisticsTrailers = pgTable("logistics_trailers", {
     onDelete: "set null",
   }),
   regNumber: text("reg_number").notNull(),
+  capacityTonnes: decimal("capacity_tonnes", { precision: 15, scale: 5 }),
   capacityKg: decimal("capacity_kg", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -183,11 +185,17 @@ export const insertLogisticsDeliveryLocationSchema = createInsertSchema(
 ).omit({ id: true });
 export const insertLogisticsVehicleSchema = createInsertSchema(
   logisticsVehicles,
-  { capacityKg: z.coerce.string().optional().nullable() }
+  {
+    capacityTonnes: z.coerce.string().optional().nullable(),
+    capacityKg: z.coerce.string().optional().nullable(),
+  }
 ).omit({ id: true });
 export const insertLogisticsTrailerSchema = createInsertSchema(
   logisticsTrailers,
-  { capacityKg: z.coerce.string().optional().nullable() }
+  {
+    capacityTonnes: z.coerce.string().optional().nullable(),
+    capacityKg: z.coerce.string().optional().nullable(),
+  }
 ).omit({ id: true });
 export const insertLogisticsDriverSchema = createInsertSchema(
   logisticsDrivers

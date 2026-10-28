@@ -850,10 +850,12 @@ export function TransportTab({ periodFrom, periodTo }: TransportTabProps) {
                         {unit.vehicle.model && (
                           <span className="text-xs text-muted-foreground">{unit.vehicle.model}</span>
                         )}
-                        {unit.vehicle.capacityKg && (
+                        {(unit.vehicle.capacityTonnes != null || unit.vehicle.capacityKg != null) && (
                           <span className="text-xs text-muted-foreground">
                             {formatTonnes(
-                              kilogramsToTonnes(Number.parseFloat(unit.vehicle.capacityKg)),
+                              unit.vehicle.capacityTonnes != null
+                                ? Number(unit.vehicle.capacityTonnes)
+                                : kilogramsToTonnes(Number(unit.vehicle.capacityKg)),
                             )} т
                           </span>
                         )}
@@ -868,10 +870,12 @@ export function TransportTab({ periodFrom, periodTo }: TransportTabProps) {
                     {unit.trailer?.regNumber ? (
                       <div className="flex flex-col gap-0.5">
                         <span className="text-sm">{unit.trailer.regNumber}</span>
-                        {unit.trailer.capacityKg && (
+                        {(unit.trailer.capacityTonnes != null || unit.trailer.capacityKg != null) && (
                           <span className="text-xs text-muted-foreground">
                             {formatTonnes(
-                              kilogramsToTonnes(Number.parseFloat(unit.trailer.capacityKg)),
+                              unit.trailer.capacityTonnes != null
+                                ? Number(unit.trailer.capacityTonnes)
+                                : kilogramsToTonnes(Number(unit.trailer.capacityKg)),
                             )} т
                           </span>
                         )}

@@ -226,9 +226,11 @@ export function GenericLogisticsTab({
             <TableCell className="font-medium">{item.regNumber}</TableCell>
             <TableCell className="text-sm text-muted-foreground">{item.model || "—"}</TableCell>
             <TableCell className="text-right tabular-nums text-sm">
-              {item.capacityKg !== null && item.capacityKg !== undefined
-                ? formatTonnes(kilogramsToTonnes(Number.parseFloat(item.capacityKg)))
-                : <span className="text-muted-foreground">—</span>}
+              {item.capacityTonnes != null
+                ? formatTonnes(Number(item.capacityTonnes))
+                : item.capacityKg != null
+                  ? formatTonnes(kilogramsToTonnes(Number(item.capacityKg)))
+                  : <span className="text-muted-foreground">—</span>}
             </TableCell>
             {actionCell}
           </TableRow>
@@ -244,9 +246,11 @@ export function GenericLogisticsTab({
             </TableCell>
             <TableCell className="font-medium">{item.regNumber}</TableCell>
             <TableCell className="text-right tabular-nums text-sm">
-              {item.capacityKg !== null && item.capacityKg !== undefined
-                ? formatTonnes(kilogramsToTonnes(Number.parseFloat(item.capacityKg)))
-                : <span className="text-muted-foreground">—</span>}
+              {item.capacityTonnes != null
+                ? formatTonnes(Number(item.capacityTonnes))
+                : item.capacityKg != null
+                  ? formatTonnes(kilogramsToTonnes(Number(item.capacityKg)))
+                  : <span className="text-muted-foreground">—</span>}
             </TableCell>
             {actionCell}
           </TableRow>

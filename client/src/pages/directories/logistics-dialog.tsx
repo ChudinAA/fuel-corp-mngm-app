@@ -48,7 +48,7 @@ import {
   Warehouse,
 } from "lucide-react";
 import type { LogisticsCarrier, Base } from "@shared/schema";
-import { kilogramsToTonnes, tonnesToKilograms } from "@shared/units";
+import { kilogramsToTonnes } from "@shared/units";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import { AddBaseDialog } from "./bases-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -237,9 +237,7 @@ export function AddLogisticsDialog({
           regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
           model: data.vehicleType,
-          capacityKg: data.capacityTonnes
-            ? tonnesToKilograms(parseFloat(data.capacityTonnes))
-            : null,
+          capacityTonnes: data.capacityTonnes || null,
           isActive: data.isActive,
         };
       } else if (data.type === "trailer") {
@@ -249,9 +247,7 @@ export function AddLogisticsDialog({
         payload = {
           regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
-          capacityKg: data.capacityTonnes
-            ? tonnesToKilograms(parseFloat(data.capacityTonnes))
-            : null,
+          capacityTonnes: data.capacityTonnes || null,
           isActive: data.isActive,
         };
       } else if (data.type === "driver") {
@@ -349,16 +345,22 @@ export function AddLogisticsDialog({
         formData.plateNumber = data.regNumber;
         formData.carrierId = data.carrierId || undefined;
         formData.vehicleType = data.model || "";
-        formData.capacityTonnes = data.capacityKg
-          ? kilogramsToTonnes(parseFloat(data.capacityKg)).toString()
-          : "";
+        formData.capacityTonnes =
+          data.capacityTonnes != null
+            ? String(data.capacityTonnes)
+            : data.capacityKg != null
+              ? kilogramsToTonnes(Number(data.capacityKg)).toFixed(5)
+              : "";
       } else if (editItem.type === "trailer") {
         formData.name = "";
         formData.plateNumber = data.regNumber;
         formData.carrierId = data.carrierId || undefined;
-        formData.capacityTonnes = data.capacityKg
-          ? kilogramsToTonnes(parseFloat(data.capacityKg)).toString()
-          : "";
+        formData.capacityTonnes =
+          data.capacityTonnes != null
+            ? String(data.capacityTonnes)
+            : data.capacityKg != null
+              ? kilogramsToTonnes(Number(data.capacityKg)).toFixed(5)
+              : "";
       } else if (editItem.type === "driver") {
         formData.name = data.fullName;
         formData.carrierId = data.carrierId || undefined;

@@ -715,6 +715,115 @@ async function rehearsePriceMassBackfill(client) {
   };
 }
 
+async function rehearseLogisticsCapacityBackfill(client) {
+  const tables = ["logistics_vehicles", "logistics_trailers"];
+  const schemaResult = await client.query(`
+    SELECT table_name, column_name, data_type, numeric_precision, numeric_scale
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = ANY($1::text[])
+  `, [tables]);
+  const columns = new Map(
+    schemaResult.rows.map((row) => [`${row.table_name}.${row.column_name}`, row]),
+  );
+  const missing = tables.flatMap((table) =>
+    ["id", "capacity_kg"].filter((column) => !columns.has(`${table}.${column}`))
+      .map((column) => `${table}.${column}`),
+  );
+  if (missing.length) return { skipped: true, missingColumns: missing };
+
+  const sourceQueries = tables.map((table) => {
+    const tonneColumn = columns.has(`${table}.capacity_tonnes`)
+      ? "capacity_tonnes"
+      : "NULL::numeric";
+    return `
+      SELECT
+        '${table}'::text AS table_name,
+        id,
+        capacity_kg,
+        ${tonneColumn} AS capacity_tonnes
+      FROM ${table}
+    `;
+  });
+  await client.query(`
+    CREATE TEMP TABLE __logistics_capacity_source AS
+    ${sourceQueries.join("\nUNION ALL\n")}
+  `);
+  await client.query(`
+    CREATE TEMP TABLE __logistics_capacity_expected AS
+    SELECT
+      table_name,
+      id,
+      capacity_kg,
+      COALESCE(capacity_tonnes, capacity_kg / 1000) AS capacity_tonnes
+    FROM __logistics_capacity_source
+  `);
+
+  const migrationSql = readFileSync(
+    resolve("migrations/0089_logistics_capacity_tonnes.sql"),
+    "utf8",
+  );
+  await client.query(migrationSql);
+
+  const actualQueries = tables.map((table) => `
+    SELECT
+      '${table}'::text AS table_name,
+      id,
+      capacity_kg,
+      capacity_tonnes
+    FROM ${table}
+  `);
+  const comparison = await client.query(`
+    SELECT
+      (SELECT COUNT(*)::bigint FROM __logistics_capacity_source) AS source_rows,
+      COUNT(*)::bigint AS actual_rows,
+      COUNT(*) FILTER (
+        WHERE expected.id IS NULL
+          OR actual.capacity_kg IS DISTINCT FROM expected.capacity_kg
+          OR actual.capacity_tonnes IS DISTINCT FROM expected.capacity_tonnes
+      )::bigint AS changed_value_rows,
+      COUNT(*) FILTER (
+        WHERE source.capacity_kg IS NOT NULL
+          AND source.capacity_tonnes IS NULL
+      )::bigint AS capacity_rows_backfilled,
+      COUNT(*) FILTER (
+        WHERE source.capacity_kg IS NOT NULL
+      )::bigint AS populated_legacy_capacity_rows
+    FROM (${actualQueries.join("\nUNION ALL\n")}) AS actual
+    LEFT JOIN __logistics_capacity_expected AS expected
+      USING (table_name, id)
+    LEFT JOIN __logistics_capacity_source AS source
+      USING (table_name, id)
+  `);
+  const result = comparison.rows[0];
+  const targetColumns = await client.query(`
+    SELECT table_name, data_type, numeric_precision, numeric_scale
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND column_name = 'capacity_tonnes'
+      AND table_name = ANY($1::text[])
+    ORDER BY table_name
+  `, [tables]);
+  const correctTargetTypes = targetColumns.rows.length === tables.length
+    && targetColumns.rows.every((row) =>
+      row.data_type === "numeric"
+      && Number(row.numeric_precision) === 15
+      && Number(row.numeric_scale) === 5,
+    );
+  if (
+    Number(result.source_rows) !== Number(result.actual_rows)
+    || Number(result.changed_value_rows) !== 0
+    || !correctTargetTypes
+  ) {
+    throw new Error("Logistics capacity backfill rehearsal failed.");
+  }
+  return {
+    ...result,
+    targetColumns: targetColumns.rows,
+    note: "kg legacy columns remain synchronized; capacity_tonnes is the new read/write unit",
+  };
+}
+
 await withTemporaryPostgres(async ({ run, createDatabase }) => {
   const databaseEnvironment = await createDatabase("mass_unit_rehearsal");
   const isolatedDumpPath = resolve(dumpPath);
@@ -1109,6 +1218,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
     const priceVolumeSchemaMigration =
       await rehearsePriceVolumeSchemaMigration(client, columnMap);
     const priceMassBackfill = await rehearsePriceMassBackfill(client);
+    const logisticsCapacityBackfill =
+      await rehearseLogisticsCapacityBackfill(client);
 
     await client.query("BEGIN");
     try {
@@ -1200,6 +1311,7 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         priceVolumes: priceVolumeRehearsal,
         priceVolumeSchemaMigration,
         priceMassBackfill,
+        logisticsCapacityBackfill,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
         note: "Schema/backfill migrations run only on the disposable restored database; temporary rehearsal columns are rolled back.",
