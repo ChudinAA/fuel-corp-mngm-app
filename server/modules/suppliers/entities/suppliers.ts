@@ -123,8 +123,11 @@ export type Supplier = typeof suppliers.$inferSelect & {
   basisPrices?: Array<{
     basisId: string;
     servicePrice?: string | null;
+    servicePricePerTonne?: string | null;
     pvkjPrice?: string | null;
+    pvkjPricePerTonne?: string | null;
     agentFee?: string | null;
+    agentFeePerTonne?: string | null;
     otherServiceType?: string | null;
     otherServiceValue?: string | null;
     otherServiceName?: string | null;

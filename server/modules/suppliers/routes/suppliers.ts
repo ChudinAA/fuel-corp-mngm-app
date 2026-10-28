@@ -6,6 +6,7 @@ import { requireAuth, requirePermission, requireAnyPermission } from "../../../m
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
+import { SupplierBasisPriceRateInputError } from "../supplier-basis-price-api-adapters";
 
 export function registerSuppliersRoutes(app: Express) {
   app.get(
@@ -121,6 +122,9 @@ export function registerSuppliersRoutes(app: Express) {
         SSEService.notifyEntityChanged("suppliers", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
+        if (error instanceof SupplierBasisPriceRateInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }
@@ -259,6 +263,9 @@ export function registerSuppliersRoutes(app: Express) {
         SSEService.notifyEntityChanged("suppliers", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
+        if (error instanceof SupplierBasisPriceRateInputError) {
+          return res.status(400).json({ message: error.message });
+        }
         console.error("Supplier update error:", error);
         res.status(500).json({ message: "Ошибка обновления поставщика" });
       }

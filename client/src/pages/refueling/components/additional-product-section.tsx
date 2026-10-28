@@ -222,7 +222,6 @@ export const AdditionalProductSection = forwardRef<
       saleAmount,
       isRechargeActive,
       agentFee,
-      agentFeeRate,
       agentFeeRatePerTonne,
       otherServiceFee,
       hasOtherService,
@@ -720,7 +719,7 @@ export const AdditionalProductSection = forwardRef<
           </div>
 
           {/* Agent fee */}
-          {agentFeeRate > 0 && (
+          {agentFeeRatePerTonne > 0 && (
             <div className="rounded-md border p-3">
               <div className="flex items-center gap-3">
                 <Checkbox

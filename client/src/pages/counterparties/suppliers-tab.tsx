@@ -28,7 +28,8 @@ import {
   EntityAction,
 } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
-import { formatPricePerTonne, pricePerKilogramToPerTonne } from "@shared/units";
+import { formatPricePerTonne } from "@shared/units";
+import { formatStoredBasisRatePerTonne } from "@/pages/shared/utils/basis-price-units";
 import {
   Tooltip,
   TooltipContent,
@@ -224,7 +225,10 @@ export function SuppliersTab() {
                               <div className="space-y-1">
                                 {supplier.basisPrices.map((bp) => {
                                   const base = bases.find((b) => b.id === bp.basisId);
-                                  const hasPrices = bp.servicePrice || bp.pvkjPrice || bp.agentFee || bp.otherServiceType;
+                                  const serviceRate = bp.servicePricePerTonne ?? bp.servicePrice;
+                                  const pvkjRate = bp.pvkjPricePerTonne ?? bp.pvkjPrice;
+                                  const agentRate = bp.agentFeePerTonne ?? bp.agentFee;
+                                  const hasPrices = serviceRate || pvkjRate || agentRate || bp.otherServiceType;
                                   if (!hasPrices) return null;
                                   const otherServiceLabel = bp.otherServiceType === "royalty_per_ton"
                                     ? "Роялти"
@@ -239,19 +243,19 @@ export function SuppliersTab() {
                                         <span className="font-medium text-muted-foreground">{base.name}:</span>
                                       )}
                                       <div className="flex flex-wrap gap-2 pl-1">
-                                        {bp.servicePrice && (
+                                        {serviceRate && (
                                           <span className="text-blue-600 dark:text-blue-400">
-                                            Услуга: {formatPricePerTonne(pricePerKilogramToPerTonne(Number(bp.servicePrice)))} ₽/т
+                                            Услуга: {formatStoredBasisRatePerTonne(bp.servicePricePerTonne, bp.servicePrice)} ₽/т
                                           </span>
                                         )}
-                                        {bp.pvkjPrice && (
+                                        {pvkjRate && (
                                           <span className="text-purple-600 dark:text-purple-400">
-                                            ПВКЖ: {formatPricePerTonne(pricePerKilogramToPerTonne(Number(bp.pvkjPrice)))} ₽/т
+                                            ПВКЖ: {formatStoredBasisRatePerTonne(bp.pvkjPricePerTonne, bp.pvkjPrice)} ₽/т
                                           </span>
                                         )}
-                                        {bp.agentFee && (
+                                        {agentRate && (
                                           <span className="text-amber-600 dark:text-amber-400">
-                                            Агентские: {formatPricePerTonne(pricePerKilogramToPerTonne(Number(bp.agentFee)))} ₽/т
+                                            Агентские: {formatStoredBasisRatePerTonne(bp.agentFeePerTonne, bp.agentFee)} ₽/т
                                           </span>
                                         )}
                                         {otherServiceLabel && bp.otherServiceValue && (

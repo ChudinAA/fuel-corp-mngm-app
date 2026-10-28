@@ -2882,6 +2882,139 @@ async function rehearseDeliveryCostRateBackfill(client) {
   return { ...result, passed, targetIsValid };
 }
 
+async function rehearseSupplierBasisRatesBackfill(client) {
+  const existingColumns = await client.query(`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'supplier_basis_prices'
+      AND column_name IN (
+        'service_price_per_tonne',
+        'pvkj_price_per_tonne',
+        'agent_fee_per_tonne'
+      )
+  `);
+  const presentColumns = new Set(
+    existingColumns.rows.map((row) => row.column_name),
+  );
+  const sourceField = (column) =>
+    presentColumns.has(column) ? column : "NULL::numeric";
+
+  await client.query(`
+    CREATE TEMP TABLE __supplier_basis_rate_source AS
+    SELECT
+      id,
+      to_jsonb(prices) AS original_row,
+      service_price,
+      pvkj_price,
+      agent_fee,
+      ${sourceField("service_price_per_tonne")} AS service_price_per_tonne,
+      ${sourceField("pvkj_price_per_tonne")} AS pvkj_price_per_tonne,
+      ${sourceField("agent_fee_per_tonne")} AS agent_fee_per_tonne
+    FROM supplier_basis_prices AS prices
+  `);
+  await client.query(
+    readFileSync(
+      resolve("migrations/0102_supplier_basis_rates_per_tonne.sql"),
+      "utf8",
+    ),
+  );
+
+  const [comparison, targetColumns] = await Promise.all([
+    client.query(`
+      SELECT
+        (SELECT COUNT(*) FROM __supplier_basis_rate_source)::int AS source_rows,
+        (SELECT COUNT(*) FROM supplier_basis_prices)::int AS actual_rows,
+        (SELECT COUNT(*) FROM supplier_basis_prices
+         WHERE service_price_per_tonne IS NOT NULL
+            OR pvkj_price_per_tonne IS NOT NULL
+            OR agent_fee_per_tonne IS NOT NULL)::int AS tonne_rows,
+        (SELECT COUNT(*) FROM __supplier_basis_rate_source source
+         JOIN supplier_basis_prices target USING (id)
+         WHERE (source.service_price_per_tonne IS NULL
+                AND source.service_price IS NOT NULL AND
+                target.service_price_per_tonne IS DISTINCT FROM
+                  ROUND(source.service_price * 1000, 6))
+            OR (source.pvkj_price_per_tonne IS NULL
+                AND source.pvkj_price IS NOT NULL AND
+                target.pvkj_price_per_tonne IS DISTINCT FROM
+                  ROUND(source.pvkj_price * 1000, 6))
+            OR (source.agent_fee_per_tonne IS NULL
+                AND source.agent_fee IS NOT NULL AND
+                target.agent_fee_per_tonne IS DISTINCT FROM
+                  ROUND(source.agent_fee * 1000, 6)))::int AS backfill_mismatches,
+        (SELECT COUNT(*) FROM __supplier_basis_rate_source source
+         JOIN supplier_basis_prices target USING (id)
+         WHERE (to_jsonb(target) - 'service_price_per_tonne'
+                              - 'pvkj_price_per_tonne'
+                              - 'agent_fee_per_tonne')
+             IS DISTINCT FROM (source.original_row - 'service_price_per_tonne'
+                                                - 'pvkj_price_per_tonne'
+                                                - 'agent_fee_per_tonne'))::int
+          AS changed_legacy_rows,
+        (SELECT COUNT(*) FROM __supplier_basis_rate_source source
+         JOIN supplier_basis_prices target USING (id)
+         WHERE (source.service_price_per_tonne IS NOT NULL AND
+                target.service_price_per_tonne IS DISTINCT FROM
+                  source.service_price_per_tonne)
+            OR (source.pvkj_price_per_tonne IS NOT NULL AND
+                target.pvkj_price_per_tonne IS DISTINCT FROM
+                  source.pvkj_price_per_tonne)
+            OR (source.agent_fee_per_tonne IS NOT NULL AND
+                target.agent_fee_per_tonne IS DISTINCT FROM
+                  source.agent_fee_per_tonne))::int AS changed_existing_tonne_rows
+    `),
+    client.query(`
+      SELECT column_name, data_type, numeric_precision, numeric_scale, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'supplier_basis_prices'
+        AND column_name IN (
+          'service_price_per_tonne',
+          'pvkj_price_per_tonne',
+          'agent_fee_per_tonne'
+        )
+    `),
+  ]);
+
+  const expectedColumns = [
+    "service_price_per_tonne",
+    "pvkj_price_per_tonne",
+    "agent_fee_per_tonne",
+  ];
+  const validColumns =
+    targetColumns.rows.length === expectedColumns.length &&
+    expectedColumns.every((column) => {
+      const target = targetColumns.rows.find((row) => row.column_name === column);
+      return (
+        target?.data_type === "numeric" &&
+        Number(target.numeric_precision) === 22 &&
+        Number(target.numeric_scale) === 6 &&
+        target.is_nullable === "YES"
+      );
+    });
+  const result = {
+    ...comparison.rows[0],
+    targetColumns: targetColumns.rows,
+  };
+  const passed =
+    Number(result.source_rows) === Number(result.actual_rows) &&
+    Number(result.backfill_mismatches) === 0 &&
+    Number(result.changed_legacy_rows) === 0 &&
+    Number(result.changed_existing_tonne_rows) === 0 &&
+    validColumns;
+  if (!passed) {
+    throw new Error(
+      `Supplier basis rate rehearsal failed: ${JSON.stringify({
+        ...result,
+        passed,
+        validColumns,
+      })}`,
+    );
+  }
+  return { ...result, passed, validColumns };
+}
+
 await withTemporaryPostgres(async ({ run, createDatabase }) => {
   const databaseEnvironment = await createDatabase("mass_unit_rehearsal");
   const isolatedDumpPath = resolve(dumpPath);
@@ -3300,6 +3433,8 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
       await rehearseBudgetSalesVolumeBackfill(client, databaseEnvironment.DATABASE_URL);
     const deliveryCostRateBackfill =
       await rehearseDeliveryCostRateBackfill(client);
+    const supplierBasisRatesBackfill =
+      await rehearseSupplierBasisRatesBackfill(client);
 
     await client.query("BEGIN");
     try {
@@ -3404,6 +3539,7 @@ await withTemporaryPostgres(async ({ run, createDatabase }) => {
         planningMassBackfill,
         budgetSalesVolumeBackfill,
         deliveryCostRateBackfill,
+        supplierBasisRatesBackfill,
         financialAggregateColumnsCompared: sourceFinancialTotals.size,
         financialAggregateChanges: changedFinancialTotals.length,
         note: "Schema/backfill migrations run only on the disposable restored database; temporary rehearsal columns are rolled back.",

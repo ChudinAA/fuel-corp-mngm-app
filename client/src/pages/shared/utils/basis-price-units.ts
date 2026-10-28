@@ -4,7 +4,11 @@ import {
   pricePerTonneToPerKilogram,
 } from "@shared/units";
 
-type NumericValue = string | number | null | undefined;
+export type NumericValue = string | number | null | undefined;
+export type StoredBasisPriceRate = {
+  value: number;
+  unit: "tonne" | "kg";
+};
 
 function finiteNumber(value: NumericValue): number | null {
   if (value == null || (typeof value === "string" && value.trim() === "")) {
@@ -14,11 +18,35 @@ function finiteNumber(value: NumericValue): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+export function getStoredBasisPriceRate(
+  tonneValue: NumericValue,
+  legacyKilogramValue: NumericValue,
+): StoredBasisPriceRate | null {
+  const tonneRate = finiteNumber(tonneValue);
+  if (tonneRate !== null) return { value: tonneRate, unit: "tonne" };
+  const legacyRate = finiteNumber(legacyKilogramValue);
+  return legacyRate === null ? null : { value: legacyRate, unit: "kg" };
+}
+
+export function formTonnesRateToNumber(value: string): number | null {
+  return finiteNumber(value);
+}
+
 export function legacyKilogramRateToFormTonnes(value: NumericValue): string {
   const rate = finiteNumber(value);
   return rate === null
     ? ""
     : pricePerKilogramToPerTonne(rate).toFixed(2);
+}
+
+export function storedBasisRateToFormTonnes(
+  tonneValue: NumericValue,
+  legacyKilogramValue: NumericValue,
+): string {
+  const tonneRate = finiteNumber(tonneValue);
+  return tonneRate === null
+    ? legacyKilogramRateToFormTonnes(legacyKilogramValue)
+    : tonneRate.toFixed(2);
 }
 
 export function formTonnesRateToLegacyKilograms(
@@ -49,6 +77,15 @@ export function formatLegacyKilogramRatePerTonne(
   return rate === null
     ? ""
     : formatPricePerTonne(pricePerKilogramToPerTonne(rate));
+}
+
+export function formatStoredBasisRatePerTonne(
+  tonneValue: NumericValue,
+  legacyKilogramValue: NumericValue,
+): string {
+  const tonneRate = finiteNumber(tonneValue);
+  if (tonneRate !== null) return formatPricePerTonne(tonneRate);
+  return formatLegacyKilogramRatePerTonne(legacyKilogramValue);
 }
 
 export function formatOtherBasisServiceValue(

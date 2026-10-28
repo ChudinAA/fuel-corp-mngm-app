@@ -7,6 +7,7 @@ import {
   warehouseAverageCostRate,
   type PriceRateUnit,
 } from "../utils/price-rate";
+import { getStoredBasisPriceRate } from "../utils/basis-price-units";
 
 type WarehouseWithCostRates = Warehouse & {
   averageCostPerTonne?: string | null;
@@ -43,8 +44,14 @@ export function usePriceExtraction({
         const basisPrice = selectedSupplier.basisPrices.find(
           (bp) => bp.basisId === basisId
         );
-        if (basisPrice?.servicePrice) {
-          return { value: parseFloat(basisPrice.servicePrice), unit: "kg" as const };
+        const serviceRate = basisPrice
+          ? getStoredBasisPriceRate(
+              basisPrice.servicePricePerTonne,
+              basisPrice.servicePrice,
+            )
+          : null;
+        if (serviceRate?.value) {
+          return serviceRate;
         }
       }
     }
@@ -55,8 +62,14 @@ export function usePriceExtraction({
         const basisPrice = selectedSupplier.basisPrices.find(
           (bp) => bp.basisId === basisId
         );
-        if (basisPrice?.pvkjPrice) {
-          return { value: parseFloat(basisPrice.pvkjPrice), unit: "kg" as const };
+        const pvkjRate = basisPrice
+          ? getStoredBasisPriceRate(
+              basisPrice.pvkjPricePerTonne,
+              basisPrice.pvkjPrice,
+            )
+          : null;
+        if (pvkjRate?.value) {
+          return pvkjRate;
         }
       }
       // Если basis price не задана — берём со склада

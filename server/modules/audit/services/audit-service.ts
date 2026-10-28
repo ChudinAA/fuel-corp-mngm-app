@@ -224,18 +224,27 @@ export class AuditService {
         } catch { /* ignore */ }
       }
       const prices: string[] = [];
-      const displayLegacyRate = (value: unknown) => {
-        const amount = Number(value);
-        return Number.isFinite(amount)
-          ? formatPricePerTonne(pricePerKilogramToPerTonne(amount))
-          : String(value);
+      const displayBasisRate = (tonneValue: unknown, legacyValue: unknown) => {
+        if (tonneValue != null) {
+          const tonneAmount = Number(tonneValue);
+          if (Number.isFinite(tonneAmount)) {
+            return formatPricePerTonne(tonneAmount);
+          }
+        }
+        const legacyAmount = Number(legacyValue);
+        return Number.isFinite(legacyAmount)
+          ? formatPricePerTonne(pricePerKilogramToPerTonne(legacyAmount))
+          : String(legacyValue);
       };
-      if (bp.servicePrice != null && bp.servicePrice !== 0 && bp.servicePrice !== '0')
-        prices.push(`сервис: ${displayLegacyRate(bp.servicePrice)} ₽/т`);
-      if (bp.pvkjPrice != null && bp.pvkjPrice !== 0 && bp.pvkjPrice !== '0')
-        prices.push(`ПВКЖ: ${displayLegacyRate(bp.pvkjPrice)} ₽/т`);
-      if (bp.agentFee != null && bp.agentFee !== 0 && bp.agentFee !== '0')
-        prices.push(`агент: ${displayLegacyRate(bp.agentFee)} ₽/т`);
+      const serviceRate = bp.servicePricePerTonne ?? bp.servicePrice;
+      const pvkjRate = bp.pvkjPricePerTonne ?? bp.pvkjPrice;
+      const agentRate = bp.agentFeePerTonne ?? bp.agentFee;
+      if (serviceRate != null && serviceRate !== 0 && serviceRate !== '0')
+        prices.push(`сервис: ${displayBasisRate(bp.servicePricePerTonne, bp.servicePrice)} ₽/т`);
+      if (pvkjRate != null && pvkjRate !== 0 && pvkjRate !== '0')
+        prices.push(`ПВКЖ: ${displayBasisRate(bp.pvkjPricePerTonne, bp.pvkjPrice)} ₽/т`);
+      if (agentRate != null && agentRate !== 0 && agentRate !== '0')
+        prices.push(`агент: ${displayBasisRate(bp.agentFeePerTonne, bp.agentFee)} ₽/т`);
       if (bp.otherServiceValue != null && bp.otherServiceValue !== 0 && bp.otherServiceValue !== '0') {
         const label = bp.otherServiceName || 'прочее';
         const serviceType = String(bp.otherServiceType || "");

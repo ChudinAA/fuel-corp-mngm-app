@@ -19,6 +19,7 @@ import {
   type RefuelingPriceUnit,
 } from "../unit-calculations";
 import { resolveWarehouseBalanceTonnes } from "@/pages/shared/utils/warehouse-balance-units";
+import { getStoredBasisPriceRate } from "@/pages/shared/utils/basis-price-units";
 
 interface UseRefuelingCalculationsProps {
   inputMode: "liters" | "tonnes";
@@ -190,7 +191,10 @@ export function useRefuelingCalculations({
   const hasBasisPvkjPrice = useMemo(() => {
     if (productType !== PRODUCT_TYPE.PVKJ || !selectedBasisId || !selectedSupplier?.basisPrices) return false;
     const bp = selectedSupplier.basisPrices.find((b) => b.basisId === selectedBasisId);
-    return !!(bp?.pvkjPrice);
+    const rate = bp
+      ? getStoredBasisPriceRate(bp.pvkjPricePerTonne, bp.pvkjPrice)
+      : null;
+    return !!rate?.value;
   }, [productType, selectedBasisId, selectedSupplier]);
 
   const purchasePrice = useMemo(() => {
@@ -263,22 +267,27 @@ export function useRefuelingCalculations({
     finalTonnes,
   );
 
-  // Legacy agentFeeRate is stored as ₽/кг; calculations and UI use ₽/т.
-  const agentFeeRate = useMemo(() => {
+  // Prefer the authoritative ₽/т rate, falling back to the legacy ₽/кг value.
+  const storedAgentFeeRate = useMemo(() => {
     if (selectedBasisId && selectedSupplier?.basisPrices) {
       const basisPrice = selectedSupplier.basisPrices.find(
         (bp) => bp.basisId === selectedBasisId
       );
-      if (basisPrice?.agentFee) return parseFloat(basisPrice.agentFee);
+      if (basisPrice) {
+        return getStoredBasisPriceRate(
+          basisPrice.agentFeePerTonne,
+          basisPrice.agentFee,
+        );
+      }
     }
-    return 0;
+    return null;
   }, [selectedSupplier, selectedBasisId]);
 
   const agentFeeRatePerTonne = calculateRefuelingPricePerTonne(
-    agentFeeRate,
+    storedAgentFeeRate?.value ?? 0,
     "tonnes",
     density,
-    "kg",
+    storedAgentFeeRate?.unit ?? "tonne",
   ) ?? 0;
 
   const agentFee = useMemo(() => {
@@ -452,7 +461,6 @@ export function useRefuelingCalculations({
     saleAmount,
     isRechargeActive,
     agentFee,
-    agentFeeRate,
     agentFeeRatePerTonne,
     otherServiceFee,
     hasOtherService,

@@ -47,7 +47,7 @@ import { BASE_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import {
-  formatLegacyKilogramRatePerTonne,
+  formatStoredBasisRatePerTonne,
   formatOtherBasisServiceValue,
 } from "@/pages/shared/utils/basis-price-units";
 
@@ -55,8 +55,11 @@ interface SupplierInfo {
   id: string;
   name: string;
   servicePrice?: string | null;
+  servicePricePerTonne?: string | null;
   pvkjPrice?: string | null;
+  pvkjPricePerTonne?: string | null;
   agentFee?: string | null;
+  agentFeePerTonne?: string | null;
   otherServiceType?: string | null;
   otherServiceValue?: string | null;
 }
@@ -94,8 +97,11 @@ export function BasesTab() {
           id: s.id,
           name: s.name,
           servicePrice: bp?.servicePrice,
+          servicePricePerTonne: bp?.servicePricePerTonne,
           pvkjPrice: bp?.pvkjPrice,
+          pvkjPricePerTonne: bp?.pvkjPricePerTonne,
           agentFee: bp?.agentFee,
+          agentFeePerTonne: bp?.agentFeePerTonne,
           otherServiceType: bp?.otherServiceType,
           otherServiceValue: bp?.otherServiceValue,
         };
@@ -236,20 +242,20 @@ export function BasesTab() {
                               {baseSuppliers.map((s) => (
                                 <div key={s.id} className="text-sm">
                                   <span className="font-medium">{s.name}</span>
-                                  {(s.servicePrice || s.pvkjPrice || s.agentFee || s.otherServiceType) && (
+                                      {(s.servicePricePerTonne || s.servicePrice || s.pvkjPricePerTonne || s.pvkjPrice || s.agentFeePerTonne || s.agentFee || s.otherServiceType) && (
                                     <span className="ml-2 text-xs text-muted-foreground">
-                                      {s.servicePrice && (
-                                        <span>Услуга: {formatLegacyKilogramRatePerTonne(s.servicePrice)} ₽/т</span>
+                                          {(s.servicePricePerTonne || s.servicePrice) && (
+                                            <span>Услуга: {formatStoredBasisRatePerTonne(s.servicePricePerTonne, s.servicePrice)} ₽/т</span>
                                       )}
-                                      {s.servicePrice && s.pvkjPrice && <span> · </span>}
-                                      {s.pvkjPrice && (
-                                        <span>ПВКЖ: {formatLegacyKilogramRatePerTonne(s.pvkjPrice)} ₽/т</span>
+                                          {(s.servicePricePerTonne || s.servicePrice) && (s.pvkjPricePerTonne || s.pvkjPrice) && <span> · </span>}
+                                          {(s.pvkjPricePerTonne || s.pvkjPrice) && (
+                                            <span>ПВКЖ: {formatStoredBasisRatePerTonne(s.pvkjPricePerTonne, s.pvkjPrice)} ₽/т</span>
                                       )}
-                                      {(s.servicePrice || s.pvkjPrice) && s.agentFee && <span> · </span>}
-                                      {s.agentFee && (
-                                        <span>Агент.: {formatLegacyKilogramRatePerTonne(s.agentFee)} ₽/т</span>
+                                          {(s.servicePricePerTonne || s.servicePrice || s.pvkjPricePerTonne || s.pvkjPrice) && (s.agentFeePerTonne || s.agentFee) && <span> · </span>}
+                                          {(s.agentFeePerTonne || s.agentFee) && (
+                                            <span>Агент.: {formatStoredBasisRatePerTonne(s.agentFeePerTonne, s.agentFee)} ₽/т</span>
                                       )}
-                                      {(s.servicePrice || s.pvkjPrice || s.agentFee) && s.otherServiceType && <span> · </span>}
+                                          {(s.servicePricePerTonne || s.servicePrice || s.pvkjPricePerTonne || s.pvkjPrice || s.agentFeePerTonne || s.agentFee) && s.otherServiceType && <span> · </span>}
                                       {s.otherServiceType && s.otherServiceValue && (
                                         <span>Прочие: {formatOtherBasisServiceValue(s.otherServiceValue, s.otherServiceType)}</span>
                                       )}

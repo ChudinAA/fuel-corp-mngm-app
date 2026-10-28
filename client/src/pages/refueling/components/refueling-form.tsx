@@ -437,7 +437,6 @@ export const RefuelingForm = forwardRef<
     saleAmount,
     isRechargeActive,
     agentFee,
-    agentFeeRate,
     agentFeeRatePerTonne,
     otherServiceFee,
     hasOtherService,

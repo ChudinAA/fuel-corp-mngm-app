@@ -1,5 +1,6 @@
 import { eq, asc, sql, isNull, and, inArray } from "drizzle-orm";
 import { db } from "server/db";
+import { normalizeSupplierBasisPriceRates } from "../supplier-basis-price-api-adapters";
 import {
   suppliers,
   supplierBases,
@@ -14,14 +15,21 @@ import type { ISupplierStorage } from "./types";
 
 export type SupplierBasisPriceInput = {
   basisId: string;
-  servicePrice?: number | null;
-  pvkjPrice?: number | null;
-  agentFee?: number | null;
+  servicePrice?: string | number | null;
+  servicePricePerTonne?: string | number | null;
+  pvkjPrice?: string | number | null;
+  pvkjPricePerTonne?: string | number | null;
+  agentFee?: string | number | null;
+  agentFeePerTonne?: string | number | null;
   otherServiceType?: string | null;
-  otherServiceValue?: number | null;
+  otherServiceValue?: string | number | null;
   otherServiceName?: string | null;
-  otherServiceQuantity?: number | null;
+  otherServiceQuantity?: string | number | null;
 };
+
+function decimalOrNull(value: unknown): string | null {
+  return value == null ? null : String(value);
+}
 
 export class SupplierStorage implements ISupplierStorage {
   private async loadBasisPrices(supplierIds: string[]): Promise<SupplierBasisPrice[]> {
@@ -160,17 +168,23 @@ export class SupplierStorage implements ISupplierStorage {
       if (basisPrices && basisPrices.length > 0) {
         const pricesToInsert = basisPrices
           .filter((bp) => bp.basisId)
-          .map((bp) => ({
-            supplierId: created.id,
-            basisId: bp.basisId,
-            servicePrice: bp.servicePrice != null ? String(bp.servicePrice) : null,
-            pvkjPrice: bp.pvkjPrice != null ? String(bp.pvkjPrice) : null,
-            agentFee: bp.agentFee != null ? String(bp.agentFee) : null,
-            otherServiceType: bp.otherServiceType || null,
-            otherServiceValue: bp.otherServiceValue != null ? String(bp.otherServiceValue) : null,
-            otherServiceName: bp.otherServiceName || null,
-            otherServiceQuantity: bp.otherServiceQuantity != null ? String(bp.otherServiceQuantity) : null,
-          }));
+          .map((bp) => {
+            const rates = normalizeSupplierBasisPriceRates(bp);
+            return {
+              supplierId: created.id,
+              basisId: bp.basisId,
+              servicePrice: decimalOrNull(rates.servicePrice),
+              servicePricePerTonne: decimalOrNull(rates.servicePricePerTonne),
+              pvkjPrice: decimalOrNull(rates.pvkjPrice),
+              pvkjPricePerTonne: decimalOrNull(rates.pvkjPricePerTonne),
+              agentFee: decimalOrNull(rates.agentFee),
+              agentFeePerTonne: decimalOrNull(rates.agentFeePerTonne),
+              otherServiceType: bp.otherServiceType || null,
+              otherServiceValue: decimalOrNull(bp.otherServiceValue),
+              otherServiceName: bp.otherServiceName || null,
+              otherServiceQuantity: decimalOrNull(bp.otherServiceQuantity),
+            };
+          });
         if (pricesToInsert.length > 0) {
           await tx.insert(supplierBasisPrices).values(pricesToInsert);
         }
@@ -254,21 +268,37 @@ export class SupplierStorage implements ISupplierStorage {
 
       // Update supplier-basis price relations if basisPrices provided
       if (basisPrices !== undefined) {
+        const currentBasisPrices = await tx
+          .select()
+          .from(supplierBasisPrices)
+          .where(eq(supplierBasisPrices.supplierId, id));
+        const currentBasisPricesByBasis = new Map(
+          currentBasisPrices.map((price) => [price.basisId, price]),
+        );
         await tx.delete(supplierBasisPrices).where(eq(supplierBasisPrices.supplierId, id));
         if (basisPrices.length > 0) {
           const pricesToInsert = basisPrices
             .filter((bp) => bp.basisId)
-            .map((bp) => ({
-              supplierId: id,
-              basisId: bp.basisId,
-              servicePrice: bp.servicePrice != null ? String(bp.servicePrice) : null,
-              pvkjPrice: bp.pvkjPrice != null ? String(bp.pvkjPrice) : null,
-              agentFee: bp.agentFee != null ? String(bp.agentFee) : null,
-              otherServiceType: bp.otherServiceType || null,
-              otherServiceValue: bp.otherServiceValue != null ? String(bp.otherServiceValue) : null,
-              otherServiceName: bp.otherServiceName || null,
-              otherServiceQuantity: bp.otherServiceQuantity != null ? String(bp.otherServiceQuantity) : null,
-            }));
+            .map((bp) => {
+              const rates = normalizeSupplierBasisPriceRates(
+                bp,
+                currentBasisPricesByBasis.get(bp.basisId),
+              );
+              return {
+                supplierId: id,
+                basisId: bp.basisId,
+                servicePrice: decimalOrNull(rates.servicePrice),
+                servicePricePerTonne: decimalOrNull(rates.servicePricePerTonne),
+                pvkjPrice: decimalOrNull(rates.pvkjPrice),
+                pvkjPricePerTonne: decimalOrNull(rates.pvkjPricePerTonne),
+                agentFee: decimalOrNull(rates.agentFee),
+                agentFeePerTonne: decimalOrNull(rates.agentFeePerTonne),
+                otherServiceType: bp.otherServiceType || null,
+                otherServiceValue: decimalOrNull(bp.otherServiceValue),
+                otherServiceName: bp.otherServiceName || null,
+                otherServiceQuantity: decimalOrNull(bp.otherServiceQuantity),
+              };
+            });
           if (pricesToInsert.length > 0) {
             await tx.insert(supplierBasisPrices).values(pricesToInsert);
           }

@@ -48,8 +48,9 @@ import { DateInput } from "@/components/ui/date-input";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
+  formTonnesRateToNumber,
   formTonnesRateToLegacyKilograms,
-  legacyKilogramRateToFormTonnes,
+  storedBasisRateToFormTonnes,
 } from "../shared/utils/basis-price-units";
 
 const supplierFormSchema = z.object({
@@ -190,14 +191,17 @@ export function AddSupplierDialog({
         );
         return {
           basisId,
+          servicePricePerTonne: formTonnesRateToNumber(entry.servicePrice),
           servicePrice: formTonnesRateToLegacyKilograms(
             entry.servicePrice,
             originalBasisPrice?.servicePrice,
           ),
+          pvkjPricePerTonne: formTonnesRateToNumber(entry.pvkjPrice),
           pvkjPrice: formTonnesRateToLegacyKilograms(
             entry.pvkjPrice,
             originalBasisPrice?.pvkjPrice,
           ),
+          agentFeePerTonne: formTonnesRateToNumber(entry.agentFee),
           agentFee: formTonnesRateToLegacyKilograms(
             entry.agentFee,
             originalBasisPrice?.agentFee,
@@ -340,11 +344,20 @@ export function AddSupplierDialog({
       });
       const pricesMap: Record<string, BasisPriceEntry> = {};
       if (editItem.basisPrices && Array.isArray(editItem.basisPrices)) {
-        editItem.basisPrices.forEach((bp: { basisId: string; servicePrice?: string | null; pvkjPrice?: string | null; agentFee?: string | null; otherServiceType?: string | null; otherServiceValue?: string | null }) => {
+        editItem.basisPrices.forEach((bp: { basisId: string; servicePrice?: string | null; servicePricePerTonne?: string | null; pvkjPrice?: string | null; pvkjPricePerTonne?: string | null; agentFee?: string | null; agentFeePerTonne?: string | null; otherServiceType?: string | null; otherServiceValue?: string | null }) => {
           pricesMap[bp.basisId] = {
-            servicePrice: legacyKilogramRateToFormTonnes(bp.servicePrice),
-            pvkjPrice: legacyKilogramRateToFormTonnes(bp.pvkjPrice),
-            agentFee: legacyKilogramRateToFormTonnes(bp.agentFee),
+            servicePrice: storedBasisRateToFormTonnes(
+              bp.servicePricePerTonne,
+              bp.servicePrice,
+            ),
+            pvkjPrice: storedBasisRateToFormTonnes(
+              bp.pvkjPricePerTonne,
+              bp.pvkjPrice,
+            ),
+            agentFee: storedBasisRateToFormTonnes(
+              bp.agentFeePerTonne,
+              bp.agentFee,
+            ),
             otherServiceType: bp.otherServiceType || "",
             otherServiceValue: bp.otherServiceValue || "",
             otherServiceName: (bp as any).otherServiceName || "",

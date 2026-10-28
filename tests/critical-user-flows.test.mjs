@@ -428,6 +428,122 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       `INSERT INTO suppliers (name) VALUES ('critical-flow-supplier') RETURNING id`,
     )
   ).rows[0];
+  const supplierBasis = (
+    await pool.query(
+      `INSERT INTO bases (name, base_type)
+       VALUES ('critical-flow-supplier-basis', 'wholesale')
+       RETURNING id`,
+    )
+  ).rows[0];
+  const basisPriceInput = {
+    basisId: supplierBasis.id,
+    servicePricePerTonne: 12345.678901,
+    pvkjPricePerTonne: 250.251234,
+    agentFeePerTonne: 1234.567891,
+    otherServiceType: "fixed",
+    otherServiceValue: "25.50",
+    otherServiceName: "Critical fixed service",
+    otherServiceQuantity: "3",
+  };
+  await api(`/api/suppliers/${supplier.id}`, {
+    method: "PATCH",
+    body: { basisPrices: [basisPriceInput] },
+  });
+  let savedSupplier = await api(`/api/suppliers/${supplier.id}`);
+  let savedBasisPrice = savedSupplier.basisPrices.find(
+    (price) => price.basisId === supplierBasis.id,
+  );
+  assert.equal(Number(savedBasisPrice.servicePricePerTonne), 12345.678901);
+  assert.equal(Number(savedBasisPrice.servicePrice), 12.345679);
+  assert.equal(Number(savedBasisPrice.pvkjPricePerTonne), 250.251234);
+  assert.equal(Number(savedBasisPrice.pvkjPrice), 0.250251);
+  assert.equal(Number(savedBasisPrice.agentFeePerTonne), 1234.567891);
+  assert.equal(Number(savedBasisPrice.agentFee), 1.234568);
+
+  await api(`/api/suppliers/${supplier.id}`, {
+    method: "PATCH",
+    body: {
+      basisPrices: [
+        {
+          ...basisPriceInput,
+          servicePricePerTonne: "12345.68",
+          servicePrice: "12.345679",
+          pvkjPricePerTonne: "250.25",
+          pvkjPrice: "0.250251",
+          agentFeePerTonne: "1234.57",
+          agentFee: "1.234568",
+        },
+      ],
+    },
+  });
+  savedSupplier = await api(`/api/suppliers/${supplier.id}`);
+  savedBasisPrice = savedSupplier.basisPrices.find(
+    (price) => price.basisId === supplierBasis.id,
+  );
+  assert.equal(Number(savedBasisPrice.servicePricePerTonne), 12345.678901);
+  assert.equal(Number(savedBasisPrice.pvkjPricePerTonne), 250.251234);
+  assert.equal(Number(savedBasisPrice.agentFeePerTonne), 1234.567891);
+  assert.equal(Number(savedBasisPrice.otherServiceValue), 25.5);
+  assert.equal(Number(savedBasisPrice.otherServiceQuantity), 3);
+
+  await api(`/api/suppliers/${supplier.id}`, {
+    method: "PATCH",
+    body: {
+      basisPrices: [
+        {
+          ...basisPriceInput,
+          servicePricePerTonne: undefined,
+          servicePrice: "0.200000",
+          pvkjPricePerTonne: "250.25",
+          pvkjPrice: "0.250251",
+          agentFeePerTonne: "1234.57",
+          agentFee: "1.234568",
+        },
+      ],
+    },
+  });
+  savedSupplier = await api(`/api/suppliers/${supplier.id}`);
+  savedBasisPrice = savedSupplier.basisPrices.find(
+    (price) => price.basisId === supplierBasis.id,
+  );
+  assert.equal(Number(savedBasisPrice.servicePricePerTonne), 200);
+  assert.equal(Number(savedBasisPrice.servicePrice), 0.2);
+
+  await api(`/api/suppliers/${supplier.id}`, {
+    method: "PATCH",
+    body: {
+      basisPrices: [
+        {
+          ...basisPriceInput,
+          servicePricePerTonne: 250,
+          servicePrice: "0.200000",
+          pvkjPricePerTonne: "250.25",
+          pvkjPrice: "0.250251",
+          agentFeePerTonne: "1234.57",
+          agentFee: "1.234568",
+        },
+      ],
+    },
+  });
+  const savedBasisRateColumns = await pool.query(
+    `SELECT service_price, service_price_per_tonne,
+            pvkj_price, pvkj_price_per_tonne,
+            agent_fee, agent_fee_per_tonne,
+            other_service_value, other_service_quantity
+     FROM supplier_basis_prices
+     WHERE supplier_id = $1 AND basis_id = $2`,
+    [supplier.id, supplierBasis.id],
+  );
+  assert.equal(Number(savedBasisRateColumns.rows[0].service_price), 0.25);
+  assert.equal(Number(savedBasisRateColumns.rows[0].service_price_per_tonne), 250);
+  assert.equal(Number(savedBasisRateColumns.rows[0].pvkj_price_per_tonne), 250.251234);
+  assert.equal(Number(savedBasisRateColumns.rows[0].agent_fee_per_tonne), 1234.567891);
+  assert.equal(Number(savedBasisRateColumns.rows[0].other_service_value), 25.5);
+  await pool.query("DELETE FROM supplier_basis_prices WHERE supplier_id = $1", [
+    supplier.id,
+  ]);
+  await pool.query("DELETE FROM bases WHERE id = $1", [supplierBasis.id]);
+
   const tonnePrice = await api("/api/prices", {
     method: "POST",
     expectedStatus: 201,

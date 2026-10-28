@@ -23,6 +23,18 @@ export const supplierBasisPrices = pgTable(
     basisId: uuid("basis_id")
       .notNull()
       .references(() => bases.id, { onDelete: "cascade" }),
+    servicePricePerTonne: decimal("service_price_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
+    pvkjPricePerTonne: decimal("pvkj_price_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
+    agentFeePerTonne: decimal("agent_fee_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }),
     servicePrice: decimal("service_price", { precision: 12, scale: 6 }),
     pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 6 }),
     agentFee: decimal("agent_fee", { precision: 12, scale: 6 }),
@@ -69,6 +81,9 @@ export const insertSupplierBasisPriceSchema = createInsertSchema(supplierBasisPr
     servicePrice: z.coerce.number().optional().nullable(),
     pvkjPrice: z.coerce.number().optional().nullable(),
     agentFee: z.coerce.number().optional().nullable(),
+    servicePricePerTonne: z.coerce.number().optional().nullable(),
+    pvkjPricePerTonne: z.coerce.number().optional().nullable(),
+    agentFeePerTonne: z.coerce.number().optional().nullable(),
     otherServiceType: z.string().optional().nullable(),
     otherServiceValue: z.coerce.number().optional().nullable(),
     otherServiceName: z.string().optional().nullable(),
