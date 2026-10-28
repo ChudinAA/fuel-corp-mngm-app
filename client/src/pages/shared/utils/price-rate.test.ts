@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { extractPriceRate, getPriceRateOptions } from "./price-rate";
+import {
+  extractPriceRate,
+  getPriceRateOptions,
+  warehouseAverageCostRate,
+} from "./price-rate";
 
 const legacyPrice = {
   id: "12345678-1234-1234-1234-123456789012",
@@ -56,5 +60,20 @@ test("malformed API rates do not fall back to fabricated legacy values", () => {
       `${legacyPrice.id}-0`,
     ),
     { value: null, unit: "tonne" },
+  );
+});
+
+test("warehouse average cost prefers per-tonne rates and retains kg fallback", () => {
+  assert.deepEqual(
+    warehouseAverageCostRate("12500.25", "12.5"),
+    { value: 12500.25, unit: "tonne" },
+  );
+  assert.deepEqual(
+    warehouseAverageCostRate(null, "12.5"),
+    { value: 12.5, unit: "kg" },
+  );
+  assert.deepEqual(
+    warehouseAverageCostRate("invalid", "12.5"),
+    { value: 12.5, unit: "kg" },
   );
 });

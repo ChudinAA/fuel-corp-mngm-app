@@ -109,13 +109,12 @@ export function useOptCalculations({
   const basisPrice = selectedSupplier?.basisPrices?.find(
     (price) => price.basisId === basisId,
   );
-  const purchaseUsesKilograms =
-    isWarehouseSupplier ||
-    (productType === PRODUCT_TYPE.SERVICE && !!basisPrice?.servicePrice) ||
-    (productType === PRODUCT_TYPE.PVKJ && !!basisPrice?.pvkjPrice);
-  const purchasePriceUnit = purchaseUsesKilograms
-    ? "kg"
-    : extractedPurchasePriceUnit;
+  const purchasePriceUnit =
+    isWarehouseSupplier && warehousePricePerTonneAtDate !== null
+      ? "tonne"
+      : isWarehouseSupplier && warehousePriceAtDate !== null
+        ? "kg"
+        : extractedPurchasePriceUnit;
   const salePriceUnit = extractedSalePriceUnit;
 
   const rawPurchasePrice =
@@ -125,7 +124,7 @@ export function useOptCalculations({
   const purchasePricePerTonne =
     isWarehouseSupplier && warehousePricePerTonneAtDate !== null
       ? warehousePricePerTonneAtDate
-      : purchaseUsesKilograms
+      : purchasePriceUnit === "kg"
         ? rawPurchasePrice === null
           ? null
           : pricePerKilogramToPerTonne(rawPurchasePrice)

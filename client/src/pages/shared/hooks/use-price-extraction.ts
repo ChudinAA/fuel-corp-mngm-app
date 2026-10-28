@@ -2,7 +2,16 @@
 import { useMemo } from "react";
 import type { Price, Supplier, Warehouse } from "@shared/schema";
 import { PRODUCT_TYPE } from "@shared/constants";
-import { extractPriceRate, type PriceRateUnit } from "../utils/price-rate";
+import {
+  extractPriceRate,
+  warehouseAverageCostRate,
+  type PriceRateUnit,
+} from "../utils/price-rate";
+
+type WarehouseWithCostRates = Warehouse & {
+  averageCostPerTonne?: string | null;
+  pvkjAverageCostPerTonne?: string | null;
+};
 
 interface UsePriceExtractionProps {
   purchasePrices: Price[];
@@ -10,7 +19,7 @@ interface UsePriceExtractionProps {
   selectedPurchasePriceId: string;
   selectedSalePriceId: string;
   isWarehouseSupplier: boolean;
-  supplierWarehouse?: Warehouse;
+  supplierWarehouse?: WarehouseWithCostRates;
   selectedSupplier?: Supplier;
   productType?: string;
   basisId?: string;
@@ -52,14 +61,20 @@ export function usePriceExtraction({
       }
       // Если basis price не задана — берём со склада
       if (isWarehouseSupplier && supplierWarehouse) {
-        return { value: parseFloat(supplierWarehouse.pvkjAverageCost || "0"), unit: "kg" as const };
+        return warehouseAverageCostRate(
+          supplierWarehouse.pvkjAverageCostPerTonne,
+          supplierWarehouse.pvkjAverageCost,
+        );
       }
       // Если нет basis-price и поставщик не склад — используем цену из таблицы цен (fall-through ниже)
     }
 
     // Для керосина со склада
     if (isWarehouseSupplier && supplierWarehouse && productType !== PRODUCT_TYPE.SERVICE) {
-      return { value: parseFloat(supplierWarehouse.averageCost || "0"), unit: "kg" as const };
+      return warehouseAverageCostRate(
+        supplierWarehouse.averageCostPerTonne,
+        supplierWarehouse.averageCost,
+      );
     }
 
     return extractPriceRate(purchasePrices, selectedPurchasePriceId);
