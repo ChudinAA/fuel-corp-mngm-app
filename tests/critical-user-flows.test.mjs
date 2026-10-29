@@ -454,11 +454,11 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     (price) => price.basisId === supplierBasis.id,
   );
   assert.equal(Number(savedBasisPrice.servicePricePerTonne), 12345.678901);
-  assert.equal(Number(savedBasisPrice.servicePrice), 12.345679);
+  assert.equal(savedBasisPrice.servicePrice, undefined);
   assert.equal(Number(savedBasisPrice.pvkjPricePerTonne), 250.251234);
-  assert.equal(Number(savedBasisPrice.pvkjPrice), 0.250251);
+  assert.equal(savedBasisPrice.pvkjPrice, undefined);
   assert.equal(Number(savedBasisPrice.agentFeePerTonne), 1234.567891);
-  assert.equal(Number(savedBasisPrice.agentFee), 1.234568);
+  assert.equal(savedBasisPrice.agentFee, undefined);
 
   await api(`/api/suppliers/${supplier.id}`, {
     method: "PATCH",
@@ -467,11 +467,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
         {
           ...basisPriceInput,
           servicePricePerTonne: "12345.68",
-          servicePrice: "12.345679",
           pvkjPricePerTonne: "250.25",
-          pvkjPrice: "0.250251",
           agentFeePerTonne: "1234.57",
-          agentFee: "1.234568",
         },
       ],
     },
@@ -488,16 +485,12 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
 
   await api(`/api/suppliers/${supplier.id}`, {
     method: "PATCH",
+    expectedStatus: 400,
     body: {
       basisPrices: [
         {
-          ...basisPriceInput,
-          servicePricePerTonne: undefined,
+          basisId: supplierBasis.id,
           servicePrice: "0.200000",
-          pvkjPricePerTonne: "250.25",
-          pvkjPrice: "0.250251",
-          agentFeePerTonne: "1234.57",
-          agentFee: "1.234568",
         },
       ],
     },
@@ -506,8 +499,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   savedBasisPrice = savedSupplier.basisPrices.find(
     (price) => price.basisId === supplierBasis.id,
   );
-  assert.equal(Number(savedBasisPrice.servicePricePerTonne), 200);
-  assert.equal(Number(savedBasisPrice.servicePrice), 0.2);
+  assert.equal(Number(savedBasisPrice.servicePricePerTonne), 12345.678901);
+  assert.equal(savedBasisPrice.servicePrice, undefined);
 
   await api(`/api/suppliers/${supplier.id}`, {
     method: "PATCH",
@@ -516,11 +509,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
         {
           ...basisPriceInput,
           servicePricePerTonne: 250,
-          servicePrice: "0.200000",
           pvkjPricePerTonne: "250.25",
-          pvkjPrice: "0.250251",
           agentFeePerTonne: "1234.57",
-          agentFee: "1.234568",
         },
       ],
     },
@@ -534,9 +524,11 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
      WHERE supplier_id = $1 AND basis_id = $2`,
     [supplier.id, supplierBasis.id],
   );
-  assert.equal(Number(savedBasisRateColumns.rows[0].service_price), 0.25);
+  assert.equal(savedBasisRateColumns.rows[0].service_price, null);
   assert.equal(Number(savedBasisRateColumns.rows[0].service_price_per_tonne), 250);
+  assert.equal(savedBasisRateColumns.rows[0].pvkj_price, null);
   assert.equal(Number(savedBasisRateColumns.rows[0].pvkj_price_per_tonne), 250.251234);
+  assert.equal(savedBasisRateColumns.rows[0].agent_fee, null);
   assert.equal(Number(savedBasisRateColumns.rows[0].agent_fee_per_tonne), 1234.567891);
   assert.equal(Number(savedBasisRateColumns.rows[0].other_service_value), 25.5);
   await pool.query("DELETE FROM supplier_basis_prices WHERE supplier_id = $1", [
@@ -572,7 +564,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
          price_values = ARRAY['{"price":1.234567}']::text[],
          volume_unit = 'kg',
          volume = 1234.56,
-         sold_volume = 345.67
+         sold_volume = 0.34567
      WHERE id = $1`,
     [tonnePrice.id],
   );

@@ -996,3 +996,33 @@
 - Обнаружен блокер для остальных складских сценариев: в `warehouses` есть тоннажные остатки, но себестоимость всё ещё хранится в `average_cost` / `pvkj_average_cost` и читается как ₽/кг; в `warehouse_transactions` цена и средняя стоимость до/после также остаются kg-полями. Для этих ставок нет authoritative tonne-колонок. Кроме того, `warehouse_transactions.quantity` и `opt.quantity_kg` остаются `NOT NULL`, поэтому прекращение dual-write до schema expansion сломает новые операции.
 - Наблюдение не требуется, но runtime-адаптеры для доменов без tonne-authoritative storage нельзя безопасно удалить до добавления и backfill недостающих tonne-полей и снятия блокирующих `NOT NULL`. Исторические миграции `0086–0103` не удалять; физическое удаление legacy-колонок выполнять отдельно через поддерживаемый Publish-процесс.
 - **Следующий шаг:** расширить и заполнить tonne-поля складской себестоимости и истории транзакций, ослабить обязательность старых kg-полей, затем завершить runtime-cutover для складов, OPT, заправок, перемещений, логистики, планирования, БДР и отчётов.
+
+#### Подэтап 2.113 — складские ставки в тоннах: development expansion и backfill
+
+- В схему добавлены authoritative поля ₽/т для складов и журнала: средняя стоимость керосина/ПВКЖ, цена и средняя стоимость до/после транзакции. Старые kg-поля пока сохранены.
+- `warehouse_transactions.quantity` и `opt.quantity_kg` стали nullable; текущие обработчики всё ещё заполняют их вместе с тоннажными полями. Это безопасное ослабление ограничений, а не удаление данных или runtime-mirror.
+- В development выполнен идемпотентный backfill только новых складских ставок: kg-rate × 1000; NULL-ставка склада трактуется как 0, NULL-сохранённая ставка транзакции остаётся NULL. Никакие количества, балансы и суммы сделок не менялись.
+- Development сверка: 20 складов, 0 несовпадений новых ставок и тонных остатков; 100 строк warehouse ledger (90 активных), 0 несовпадений новых ставок и тоннажных полей. Сумма активных транзакций осталась 15,913,780.61.
+- API и writers/recalculation уже заполняют новые rate-поля; чтение временно предпочитает ₽/т и fallback-читает прежнее kg-поле, чтобы этот релиз можно было безопасно опубликовать до production backfill. Runtime-cutover ещё не выполнен.
+- Обновлены устаревшие critical-flow ожидания supplier/price API: только тонные поля, sold volume хранится как 0.34567 т, kg-only supplier input отклоняется.
+- Проверки: `npm run check`, `npm run build`, 40 целевых тестов и `npm run test:critical-flows` (33/33) прошли. `runPostMergeSetup()` успешно применил additive/nullable schema в development. Production не менялась.
+- После Publish этого expansion владельцу нужно выполнить в Production SQL Console и проверить следующий backfill. Он не меняет старые значения и сохраняет уже записанные тонные ставки:
+
+  ```sql
+  BEGIN;
+  UPDATE warehouses
+  SET average_cost_per_tonne =
+        COALESCE(average_cost_per_tonne, COALESCE(average_cost, 0) * 1000),
+      pvkj_average_cost_per_tonne =
+        COALESCE(pvkj_average_cost_per_tonne, COALESCE(pvkj_average_cost, 0) * 1000);
+
+  UPDATE warehouse_transactions
+  SET price_per_tonne = COALESCE(price_per_tonne, price * 1000),
+      average_cost_before_per_tonne =
+        COALESCE(average_cost_before_per_tonne, average_cost_before * 1000),
+      average_cost_after_per_tonne =
+        COALESCE(average_cost_after_per_tonne, average_cost_after * 1000);
+  COMMIT;
+  ```
+
+- После SQL backfill требуется read-only сверка: у каждого склада новые rates совпадают с legacy rate × 1000 (NULL legacy warehouse rate считается 0); у каждой транзакции с сохранённой legacy ставкой новое значение совпадает с × 1000; тоннажные остатки и количества не изменились. После успешной сверки сразу продолжается runtime-cutover — периода наблюдения нет. Физическое удаление legacy-колонок и исторических SQL-файлов остаётся последним отдельным шагом, после проверки всех оставшихся читателей/rollback-путей.

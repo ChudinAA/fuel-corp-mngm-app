@@ -708,9 +708,13 @@ export class PlanningStorage implements IPlanningStorage {
         );
       }
 
-      const rawQty = Number.parseFloat(
-        t.quantityTonnes ?? t.quantity,
-      );
+      const quantityValue = t.quantityTonnes ?? t.quantity;
+      if (quantityValue == null) {
+        throw new Error(
+          `Warehouse transaction ${t.id} has no saved quantity`,
+        );
+      }
+      const rawQty = Number.parseFloat(quantityValue);
       const absQty = Math.abs(rawQty);
       const quantityTonnes =
         t.quantityTonnes == null

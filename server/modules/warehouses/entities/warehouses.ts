@@ -118,7 +118,7 @@ export const warehouseTransactions = pgTable(
       .references(() => warehouses.id),
     transactionType: text("transaction_type").notNull(),
     productType: text("product_type").default("kerosene"),
-    quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
+    quantity: decimal("quantity", { precision: 15, scale: 2 }),
     quantityTonnes: decimal("quantity_tonnes", {
       precision: 18,
       scale: 5,

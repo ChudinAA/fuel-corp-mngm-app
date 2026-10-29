@@ -58,7 +58,7 @@ export const opt = pgTable(
       precision: 18,
       scale: 5,
     }),
-    quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
+    quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }),
     inputMode: text("input_mode"),
     purchasePricePerTonne: decimal("purchase_price_per_tonne", {
       precision: 22,
