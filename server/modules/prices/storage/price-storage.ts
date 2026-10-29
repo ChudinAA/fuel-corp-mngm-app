@@ -12,7 +12,7 @@ import {
 import {
   COUNTERPARTY_TYPE,
 } from "@shared/constants";
-import { kilogramsToPriceStoredVolume } from "../price-unit-adapters";
+import { normalizePriceStoredVolume } from "../price-unit-adapters";
 import { optMassTonnesSql } from "../../opt/opt-mass-sql";
 
 export class PriceStorage {
@@ -267,7 +267,7 @@ export class PriceStorage {
       } else {
         const [optVolume] = await db
           .select({
-            total: sql<string>`COALESCE(SUM(${optMassTonnesSql()}) * 1000, 0)`,
+            total: sql<string>`COALESCE(SUM(${optMassTonnesSql()}), 0)`,
           })
           .from(opt)
           .where(
@@ -280,10 +280,7 @@ export class PriceStorage {
 
         const [movementVolume] = await db
           .select({
-            total: sql<string>`COALESCE(SUM(COALESCE(
-              ${movement.quantityTonnes},
-              CAST(${movement.quantityKg} AS NUMERIC) / 1000
-            )) * 1000, 0)`,
+            total: sql<string>`COALESCE(SUM(${movement.quantityTonnes}), 0)`,
           })
           .from(movement)
           .where(
@@ -319,10 +316,7 @@ export class PriceStorage {
       } else {
         const [result] = await db
           .select({
-            total: sql<string>`COALESCE(SUM(COALESCE(
-              ${aircraftRefueling.quantityTonnes},
-              CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
-            )) * 1000, 0)`,
+            total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityTonnes}), 0)`,
           })
           .from(aircraftRefueling)
           .where(
@@ -340,7 +334,7 @@ export class PriceStorage {
     }
 
     // Обновляем значения в базе данных
-    const soldVolume = kilogramsToPriceStoredVolume(
+    const soldVolume = normalizePriceStoredVolume(
       totalVolume,
       price.volumeUnit,
     );

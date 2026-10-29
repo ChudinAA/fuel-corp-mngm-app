@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Price } from "@shared/schema";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 export function usePriceSelection() {
   const { toast } = useToast();
@@ -37,7 +37,7 @@ export function usePriceSelection() {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             }).format(Number(calculatedVolume.value))} л`
-        : `${formatTonnes(kilogramsToTonnes(Number(data.totalVolume || 0)))} т`;
+        : `${formatTonnes(Number(calculatedVolume?.value ?? 0))} т`;
       const description = isAmountLimit
         ? `Общая сумма: ${data.totalAmount} ₽`
         : `Общий объём: ${volumeDescription}`;

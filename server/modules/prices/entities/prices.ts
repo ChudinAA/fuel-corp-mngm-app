@@ -150,8 +150,8 @@ export const insertPriceSchema = createInsertSchema(prices)
     oldPriceValues: true,
   })
   .extend({
-  priceUnit: z.enum(["kg", "tonne", "liter"]).default("tonne"),
-  volumeUnit: z.enum(["kg", "tonne"]).default("tonne"),
+  priceUnit: z.enum(["tonne", "liter"]).default("tonne"),
+  volumeUnit: z.literal("tonne").default("tonne"),
   nomenclatureId: z.string().uuid().nullable().optional(),
   contractId: z.string().uuid().nullable().optional(),
   });

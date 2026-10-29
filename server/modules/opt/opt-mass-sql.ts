@@ -1,10 +1,7 @@
 import { sql } from "drizzle-orm";
 import { opt } from "./entities/opt";
 
-/** Resolve OPT mass from the authoritative tonne column, then the legacy mirror. */
+/** Read OPT mass from its authoritative tonne column. */
 export function optMassTonnesSql() {
-  return sql`COALESCE(
-    ${opt.quantityTonnes},
-    CAST(${opt.quantityKg} AS NUMERIC) / 1000
-  )`;
+  return sql`${opt.quantityTonnes}`;
 }
