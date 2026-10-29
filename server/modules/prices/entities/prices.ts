@@ -56,6 +56,9 @@ export const prices = pgTable(
     currencyId: uuid("currency_id").references(() => currencies.id),
     exchangeRateId: uuid("exchange_rate_id").references(() => exchangeRates.id),
     priceUnit: text("price_unit").default("kg"),
+    // Retained for the staged production schema cutover; no current runtime path uses these.
+    needsRecalculation: boolean("needs_recalculation").notNull().default(false),
+    oldPriceValues: text("old_price_values").array(),
     contractLimitEnabled: boolean("contract_limit_enabled").default(true),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -85,6 +88,25 @@ export const prices = pgTable(
     currencyIdx: index("prices_currency_idx").on(table.currency),
     nomenclatureIdx: index("prices_nomenclature_idx").on(table.nomenclatureId),
     contractIdx: index("prices_contract_idx").on(table.contractId),
+  }),
+);
+
+// Legacy queue table retained in the schema until its production cleanup is reviewed separately.
+export const priceRecalculationTasks = pgTable(
+  "price_recalculation_tasks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    priceId: uuid("price_id").notNull().references(() => prices.id),
+    dealType: text("deal_type").notNull(),
+    dealId: uuid("deal_id").notNull(),
+    status: text("status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { mode: "string" }),
+    errorMessage: text("error_message"),
+  },
+  (table) => ({
+    priceIdIdx: index("idx_price_recalc_tasks_price_id").on(table.priceId),
+    statusIdx: index("idx_price_recalc_tasks_status").on(table.status),
   }),
 );
 
@@ -121,12 +143,18 @@ export const pricesRelations = relations(prices, ({ many, one }) => ({
 
 // ============ INSERT SCHEMAS ============
 
-export const insertPriceSchema = createInsertSchema(prices).omit({ id: true }).extend({
+export const insertPriceSchema = createInsertSchema(prices)
+  .omit({
+    id: true,
+    needsRecalculation: true,
+    oldPriceValues: true,
+  })
+  .extend({
   priceUnit: z.enum(["kg", "tonne", "liter"]).default("kg"),
   volumeUnit: z.enum(["kg", "tonne"]).default("kg"),
   nomenclatureId: z.string().uuid().nullable().optional(),
   contractId: z.string().uuid().nullable().optional(),
-});
+  });
 
 // ============ TYPES ============
 

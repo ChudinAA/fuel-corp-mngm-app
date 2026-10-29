@@ -2094,7 +2094,7 @@ async function rehearseAircraftRefuelingMassBackfill(client) {
     `),
   ]);
   const targetFields = [
-    ["quantity_tonnes", 18, 5, "NO"],
+    ["quantity_tonnes", 18, 5, "YES"],
     ["purchase_price_per_tonne", 22, 6, "YES"],
     ["sale_price_per_tonne", 22, 6, "YES"],
     ["agent_fee_rate_per_tonne", 22, 6, "YES"],
@@ -2237,7 +2237,7 @@ async function rehearseOptMassBackfill(client) {
     `),
   ]);
   const targetFields = [
-    ["quantity_tonnes", 18, 5, "NO"],
+    ["quantity_tonnes", 18, 5, "YES"],
     ["purchase_price_per_tonne", 22, 6, "YES"],
     ["sale_price_per_tonne", 22, 6, "YES"],
     ["delivery_tariff_per_tonne", 22, 6, "YES"],
@@ -2446,7 +2446,7 @@ async function rehearseRefuelingAbroadMassBackfill(client) {
     `),
   ]);
   const targetFields = [
-    ["quantity_tonnes", 18, 5, "NO"],
+    ["quantity_tonnes", 18, 5, "YES"],
     ["purchase_price_usd_per_tonne", 22, 6, "YES"],
     ["purchase_price_rub_per_tonne", 22, 6, "YES"],
     ["sale_price_usd_per_tonne", 22, 6, "YES"],
@@ -2643,11 +2643,11 @@ async function rehearsePlanningMassBackfill(client) {
   ]);
 
   const targetFields = [
-    ["plan_entries", "volume_tonnes", 18, 5, "NO"],
+    ["plan_entries", "volume_tonnes", 18, 5, "YES"],
     ["plan_entries", "balance_after_tonnes", 18, 5, "YES"],
-    ["free_volume_allocations", "volume_tonnes", 18, 5, "NO"],
-    ["supplier_allocated_volumes", "volume_tonnes", 18, 5, "NO"],
-    ["planning_top_level_volumes", "volume_tonnes", 18, 5, "NO"],
+    ["free_volume_allocations", "volume_tonnes", 18, 5, "YES"],
+    ["supplier_allocated_volumes", "volume_tonnes", 18, 5, "YES"],
+    ["planning_top_level_volumes", "volume_tonnes", 18, 5, "YES"],
   ];
   const typesAreValid =
     targetColumns.rows.length === targetFields.length &&

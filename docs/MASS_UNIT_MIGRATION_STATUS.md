@@ -18,7 +18,7 @@
 | 2 | Перевести серверные схемы, API, расчёты и складские цепочки на тонны | В работе на совместимых границах: переведены расчётные потоки склада/техники, планирования, БДР, тарифов доставки, ОПТ, заправок, перевозок, перемещений и договорных объёмов; kg-поля остаются временными зеркалами |
 | 3 | Перевести формы, подписи, отображение и пользовательский ввод | В работе: формы планирования, карточки хранения, ОПТ, заправки, перевозки, вместимость, тарифы доставки, перемещения, госконтракты и БДР используют тонны; оставшиеся формы и отчёты ещё требуют аудита |
 | 4 | Перевести отчёты, дашборды, аудит, откат и экспорт | В работе: плановые/фактические сводки планирования, отчёты и часть экспортов используют тонные значения; аудит, снимки, прочие отчёты и Excel-выгрузки ещё требуют проверки |
-| 5 | Подготовить и проверить миграцию исторических данных и сверочные запросы | В работе: `0086`–`0103` прорепетированы на production dump. Production не менялась. Перед публикацией блокирует текущий Replit schema diff с возможными `TRUNCATE`/`DROP`; нужно согласовать безопасный порядок структурных и data-миграций |
+| 5 | Подготовить и проверить миграцию исторических данных и сверочные запросы | Репетиция `0086`–`0103` на свежей копии production проходит; 16 денежных агрегатов не изменились. Schema diff больше не предлагает очистку/удаление таблиц или колонок. Production не менялась; cutover ожидает владельца |
 | 6 | Запустить проверки, согласовать cutover и проверить согласованность приложения/БД | Ожидает |
 
 ## Карта хранимых данных
@@ -892,3 +892,22 @@
 - В `optStorage` исправлен расчёт старой массы при редактировании legacy-строки с `quantity_tonnes IS NULL`: теперь используется сохранённое `quantity_kg`, а не ноль. В critical-flow добавлен сценарий чтения kg-only сделки, изменения массы и восстановления остатка.
 - Проверки: `npm run check` прошёл; `npm run test:critical-flows` прошёл **33/33** на одноразовом локальном PostgreSQL. Workflow перезапущен и запустился без ошибок. Первоначальная параллельная попытка теста не дала процесса, отдельный повтор прошёл.
 - Dev БД не менялась напрямую в этом шаге; тесты применяли схему только к изолированным локальным БД. Поэтому прежний `explainSchemaDiff()` остаётся актуальным и опасным до автоматического post-merge применения nullable schema в development и повторного preflight. Production не менялась.
+
+#### Подэтап 2.101 — nullable schema применена в dev, Publish diff без потери данных
+
+- Выполнен настроенный `runPostMergeSetup()` для development: schema push прошёл успешно. Это штатный dev-side путь; Replit production не менялась.
+- Новый `explainSchemaDiff()` показывает 211 statements, `hasStructuralDataLoss=false`, `maybeNonBackwardsCompatible=true`; `tablesToTruncate`, `tablesToRemove`, `columnsToRemove` и warnings пусты. Добавляемые массовые поля nullable; единственная добавляемая `NOT NULL` колонка — `prices.volume_unit` с default `'kg'`.
+- В diff есть 41 удаление/пересоздание constraint и 85 FK additions; для существующих в production child-columns read-only orphan checks вернули 0. Production-индекс `planning_resources_supplier_idx` теперь совпадает с кодом как частичный unique index; в dev до этого проверено, что активных дублей поставщиков нет.
+- Schema-only declarations сохраняют в dev без runtime-логики legacy `monthly_plans`, `price_recalculation_tasks` и два старых price-поля. Это убирает посторонние DROP из текущего Publish diff; очистка этих структур отложена до отдельного подтверждённого этапа. Внешний API не раскрывает `needsRecalculation` и `oldPriceValues`.
+- Проверены единицы каталога: форма тарифа отправляет лимит в тоннах и ставку за тонну либо литр; API нормализует старые kg-значения в тонны. Default `'kg'` у физического `volume_unit` — только переходная метка старых строк до backfill `0088`, не ввод массы в UI.
+- Проверки: `npm run check` прошёл; `npm run test:critical-flows` — 33/33; `price-unit-adapters.test.ts` — 20/20. Workflow перезапущен и работает; в новых логах только не блокирующее предупреждение об устаревшей базе Browserslist.
+- Осталось: повторить diff непосредственно перед Publish; утвердить ручной порядок backfill `0086`–`0103` после появления колонок; выполнить production сверки только после отдельного согласования. Публикация и production data-backfill в этом шаге не выполнялись.
+
+#### Подэтап 2.102 — nullable backfill и свежая production-rehearsal
+
+- Пересоздан read-only dump через production connection secret в `/tmp`; URL и credentials не выводились. Его ключевая схема и counts совпали с Replit Production read-only запросами: `aircraft_refueling` 2,892, `opt` 162, `refueling_abroad` 488, `transportation` 19, `movement` 314, `equipment_movement` 257, `prices` 800. `quantity_tonnes`/`volume_tonnes` и `prices.volume_unit` отсутствуют и в dump, и в Replit Production.
+- В `0096`–`0099` убраны ранние `SET NOT NULL`: эти backfill-файлы теперь заполняют и сверяют тонные значения, сохраняя nullable expand-схему. В `0099` schema check и rehearsal harness приведены к ожидаемой nullable-форме. NOT NULL вводится отдельно после production backfill и проверки, вместе с соответствующим изменением source schema.
+- Повторный полный rehearsal `scripts/rehearse-mass-unit-dump.mjs` восстановил dump только в одноразовую локальную PostgreSQL и выполнил актуальные `0086`–`0103`. Все 8 проверяемых секций прошли; строки и исходные значения сохранены, несовпадений backfill нет; 16 денежных агрегатов до/после совпали, `financialAggregateChanges=0`.
+- Первый прогон остановил устаревшая проверка `NOT NULL` в rehearsal harness; она обновлена до nullable expansion. Повторный прогон завершился успешно. Проверенный dump содержит реальные production-данные и после сверки удалён из `/tmp`.
+- Production использовалась только для `pg_dump` и read-only сверки; production DDL/DML, Publish и backfill не запускались.
+- Осталось: перед Publish повторить schema diff и backup; владелец выполняет Publish nullable expansion, затем отдельно инициирует проверенные data migrations в согласованном порядке. После read-only проверки данных — отдельное tightening nullable→NOT NULL, затем период наблюдения и удаление kg-совместимости отдельными шагами.

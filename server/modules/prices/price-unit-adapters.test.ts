@@ -32,6 +32,18 @@ test("price API exposes tonne rates and contract volumes from legacy kilogram va
   });
 });
 
+test("schema-only legacy price columns are not exposed in the price API", () => {
+  const result = priceToApi({
+    priceUnit: "tonne",
+    priceValues: [],
+    needsRecalculation: false,
+    oldPriceValues: null,
+  });
+
+  assert.equal("needsRecalculation" in result, false);
+  assert.equal("oldPriceValues" in result, false);
+});
+
 test("liter-denominated rates remain per liter while used mass is exposed in tonnes", () => {
   const result = priceToApi({
     priceUnit: "liter",

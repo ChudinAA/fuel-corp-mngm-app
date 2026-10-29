@@ -1,5 +1,8 @@
 BEGIN;
 
+-- Keep tonne volume columns nullable during the expand/backfill release.
+-- Apply NOT NULL only in a later schema release after production verification.
+
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
 
@@ -113,18 +116,6 @@ SET volume_tonnes = COALESCE(volume_tonnes, ROUND(volume::numeric / 1000, 5));
 UPDATE public.planning_top_level_volumes
 SET volume_tonnes = COALESCE(volume_tonnes, ROUND(volume::numeric / 1000, 5));
 
-ALTER TABLE public.plan_entries
-  ALTER COLUMN volume_tonnes SET NOT NULL;
-
-ALTER TABLE public.free_volume_allocations
-  ALTER COLUMN volume_tonnes SET NOT NULL;
-
-ALTER TABLE public.supplier_allocated_volumes
-  ALTER COLUMN volume_tonnes SET NOT NULL;
-
-ALTER TABLE public.planning_top_level_volumes
-  ALTER COLUMN volume_tonnes SET NOT NULL;
-
 COMMENT ON COLUMN public.plan_entries.volume_tonnes IS
   'Authoritative planned volume in metric tonnes; volume remains a synchronized kg compatibility mirror.';
 COMMENT ON COLUMN public.plan_entries.balance_after_tonnes IS
@@ -157,7 +148,7 @@ BEGIN
           data_type <> 'numeric'
           OR numeric_precision <> 18
           OR numeric_scale <> 5
-          OR is_nullable <> 'NO'
+          OR is_nullable <> 'YES'
         )
     ) THEN
       RAISE EXCEPTION 'Planning tonne volume schema validation failed for public.%', target_table;

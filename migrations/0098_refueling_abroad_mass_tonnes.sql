@@ -1,5 +1,8 @@
 BEGIN;
 
+-- Keep the tonne columns nullable during the expand/backfill release.
+-- Apply NOT NULL only in a later schema release after production verification.
+
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
 
@@ -172,9 +175,6 @@ SET
   )
 FROM source
 WHERE deal.id = source.id;
-
-ALTER TABLE public.refueling_abroad
-  ALTER COLUMN quantity_tonnes SET NOT NULL;
 
 DO $$
 BEGIN

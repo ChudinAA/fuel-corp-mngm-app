@@ -1,5 +1,8 @@
 BEGIN;
 
+-- Keep the tonne columns nullable during the expand/backfill release.
+-- Apply NOT NULL only in a later schema release after production verification.
+
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -67,9 +70,6 @@ BEGIN
     RAISE EXCEPTION 'OPT per-tonne rate backfill does not match saved per-kilogram rates';
   END IF;
 END $$;
-
-ALTER TABLE public.opt
-  ALTER COLUMN quantity_tonnes SET NOT NULL;
 
 COMMENT ON COLUMN public.opt.quantity_tonnes IS
   'Authoritative deal mass in metric tonnes; quantity_kg is a compatibility mirror.';

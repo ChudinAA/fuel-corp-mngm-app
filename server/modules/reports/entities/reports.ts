@@ -4,6 +4,33 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
+import { bases } from "../../bases/entities/bases";
+
+// Legacy empty table retained until the unrelated production schema cleanup is reviewed separately.
+export const monthlyPlans = pgTable(
+  "monthly_plans",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    planMonth: timestamp("plan_month", { mode: "string" }).notNull(),
+    planType: text("plan_type").notNull(),
+    baseId: uuid("base_id").references(() => bases.id),
+    productType: text("product_type"),
+    plannedVolume: text("planned_volume"),
+    plannedRevenue: text("planned_revenue"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" }),
+    createdById: uuid("created_by_id").notNull().references(() => users.id),
+    updatedById: uuid("updated_by_id").references(() => users.id),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
+  },
+  (table) => ({
+    baseIdx: index("monthly_plans_base_id_idx").on(table.baseId),
+    planMonthIdx: index("monthly_plans_plan_month_idx").on(table.planMonth),
+    planTypeIdx: index("monthly_plans_plan_type_idx").on(table.planType),
+  }),
+);
 
 // Таблица для сохраненных отчетов
 export const savedReports = pgTable("saved_reports", {

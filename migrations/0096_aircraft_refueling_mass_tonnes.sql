@@ -1,5 +1,8 @@
 BEGIN;
 
+-- Keep the tonne columns nullable during the expand/backfill release.
+-- Apply NOT NULL only in a later schema release after production verification.
+
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
 
@@ -72,9 +75,6 @@ UPDATE public.aircraft_refueling
 SET agent_fee_rate_per_tonne = agent_fee_rate * 1000
 WHERE agent_fee_rate_per_tonne IS NULL
   AND agent_fee_rate IS NOT NULL;
-
-ALTER TABLE public.aircraft_refueling
-  ALTER COLUMN quantity_tonnes SET NOT NULL;
 
 DO $$
 BEGIN

@@ -24,6 +24,8 @@ type LegacyPriceShape = {
   priceValues?: string[] | null;
   volume?: string | number | null;
   soldVolume?: string | number | null;
+  needsRecalculation?: boolean | null;
+  oldPriceValues?: string[] | null;
 };
 
 function numericOrNull(value: unknown): number | null {
@@ -100,6 +102,11 @@ function storedRateOrNull(value: string): number | null {
 }
 
 export function priceToApi<T extends LegacyPriceShape>(price: T) {
+  const {
+    needsRecalculation: _needsRecalculation,
+    oldPriceValues: _oldPriceValues,
+    ...priceForApi
+  } = price;
   const storedUnit = price.priceUnit ?? "kg";
   if (!["kg", "tonne", "liter"].includes(storedUnit)) {
     throw new TypeError(`Неизвестная сохранённая единица цены: ${storedUnit}`);
@@ -121,7 +128,7 @@ export function priceToApi<T extends LegacyPriceShape>(price: T) {
       : kilogramsToTonnes(value);
 
   return {
-    ...price,
+    ...priceForApi,
     volumeUnit: storedVolumeUnit,
     priceRate: { unit, values: rates },
     contractVolume: {
