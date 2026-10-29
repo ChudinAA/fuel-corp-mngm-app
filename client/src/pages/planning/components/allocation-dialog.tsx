@@ -29,7 +29,6 @@ import { CalendarIcon } from "lucide-react";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
-import { tonsToKg, kgToTons } from "../utils/planning-utils";
 
 const formSchema = z.object({
   date: z.string().min(1, "Дата обязательна"),
@@ -46,8 +45,7 @@ export interface AllocationFormEntry {
   date: string;
   fromCounterpartyId: string | null;
   toCounterpartyId: string | null;
-  volume: string;
-  volumeTonnes?: string | null;
+  volumeTonnes: string;
   notes: string | null;
   fromName?: string | null;
   toName?: string | null;
@@ -101,9 +99,7 @@ export function AllocationDialog({
         date: entry ? entry.date.slice(0, 10) : (defaultDate || format(new Date(), "yyyy-MM-dd")),
         fromCounterpartyId: entry?.fromCounterpartyId || "",
         toCounterpartyId: entry?.toCounterpartyId || "",
-        volume: entry
-          ? entry.volumeTonnes ?? kgToTons(entry.volume)
-          : "",
+        volume: entry ? entry.volumeTonnes : "",
         notes: entry?.notes || "",
       });
     }
@@ -114,7 +110,6 @@ export function AllocationDialog({
     try {
       await onSubmit({
         ...values,
-        volume: tonsToKg(values.volume),
         volumeTonnes: values.volume,
       });
       onOpenChange(false);

@@ -1,50 +1,11 @@
 
 import type { ModuleExportConfig } from "../entities/export-config";
-import {
-  legacyDealMassToTonnes,
-  pricePerKilogramToPerTonne,
-} from "@shared/units";
 
 const MASS_FORMAT = "#,##0.00000";
 const PRICE_FORMAT = "#,##0.00";
 const AMOUNT_FORMAT = "#,##0.00";
 const LITERS_FORMAT = "#,##0.00";
 const DENSITY_FORMAT = "#,##0.0000";
-
-function finiteNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  const number = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(number) ? number : null;
-}
-
-function tonnesFromLegacyKilograms(value: unknown): number | null {
-  const kilograms = finiteNumber(value);
-  return kilograms === null ? null : legacyDealMassToTonnes(kilograms, null, null);
-}
-
-function tonnesFromDealMass(value: unknown, row?: Record<string, unknown>): number | null {
-  return legacyDealMassToTonnes(
-    finiteNumber(value),
-    finiteNumber(row?.quantityLiters),
-    finiteNumber(row?.density),
-  );
-}
-
-function perTonneFromLegacyPerKilogram(value: unknown): number | null {
-  const rate = finiteNumber(value);
-  return rate === null ? null : pricePerKilogramToPerTonne(rate);
-}
-
-function dealPricePerTonne(amountField: string) {
-  return (legacyRate: unknown, row?: Record<string, unknown>): number | null => {
-    const tonnes = tonnesFromDealMass(row?.quantityKg, row);
-    const amount = finiteNumber(row?.[amountField]);
-    if (amount !== null && amount > 0 && tonnes !== null && tonnes > 0) {
-      return amount / tonnes;
-    }
-    return perTonneFromLegacyPerKilogram(legacyRate);
-  };
-}
 
 export const optExportConfig: ModuleExportConfig = {
   moduleName: "opt",
@@ -55,10 +16,10 @@ export const optExportConfig: ModuleExportConfig = {
     { key: "productType",           label: "Продукт",           type: "string", exportable: true },
     { key: "supplier.name",         label: "Поставщик",         type: "string", exportable: true },
     { key: "buyer.name",            label: "Покупатель",        type: "string", exportable: true },
-    { key: "quantityKg",            label: "Масса (т)",          type: "number", exportable: true, format: tonnesFromDealMass, numberFormat: MASS_FORMAT },
-    { key: "purchasePrice",         label: "Цена покупки (₽/т)", type: "number", exportable: true, format: dealPricePerTonne("purchaseAmount"), numberFormat: PRICE_FORMAT },
+    { key: "quantityTonnes",        label: "Масса (т)",          type: "number", exportable: true, numberFormat: MASS_FORMAT },
+    { key: "purchasePricePerTonne", label: "Цена покупки (₽/т)", type: "number", exportable: true, numberFormat: PRICE_FORMAT },
     { key: "purchaseAmount",        label: "Покупка (₽)",        type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
-    { key: "salePrice",             label: "Цена продажи (₽/т)", type: "number", exportable: true, format: dealPricePerTonne("saleAmount"), numberFormat: PRICE_FORMAT },
+    { key: "salePricePerTonne",     label: "Цена продажи (₽/т)", type: "number", exportable: true, numberFormat: PRICE_FORMAT },
     { key: "saleAmount",            label: "Продажа (₽)",        type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "deliveryLocation.name", label: "Место доставки",    type: "string", exportable: true },
     { key: "carrier.name",          label: "Перевозчик",        type: "string", exportable: true },
@@ -66,7 +27,7 @@ export const optExportConfig: ModuleExportConfig = {
     { key: "profit",                label: "Прибыль (₽)",       type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "notes",                 label: "Примечания",        type: "string", exportable: true },
   ],
-  defaultColumns: ["dealDate","productType","supplier.name","buyer.name","quantityKg","purchasePrice","salePrice","saleAmount","profit"],
+  defaultColumns: ["dealDate","productType","supplier.name","buyer.name","quantityTonnes","purchasePricePerTonne","salePricePerTonne","saleAmount","profit"],
   relations: ["supplier","buyer","deliveryLocation","carrier"],
 };
 
@@ -83,14 +44,14 @@ export const refuelingExportConfig: ModuleExportConfig = {
     { key: "buyer.name",     label: "Покупатель",    type: "string", exportable: true },
     { key: "quantityLiters", label: "Лит.",          type: "number", exportable: true },
     { key: "density",        label: "Плотность",     type: "number", exportable: true },
-    { key: "quantityKg",     label: "Масса (т)",          type: "number", exportable: true, format: tonnesFromDealMass, numberFormat: MASS_FORMAT },
-    { key: "purchasePrice",  label: "Цена покупки (₽/т)", type: "number", exportable: true, format: dealPricePerTonne("purchaseAmount"), numberFormat: PRICE_FORMAT },
-    { key: "salePrice",      label: "Цена продажи (₽/т)", type: "number", exportable: true, format: dealPricePerTonne("saleAmount"), numberFormat: PRICE_FORMAT },
+    { key: "quantityTonnes",        label: "Масса (т)",          type: "number", exportable: true, numberFormat: MASS_FORMAT },
+    { key: "purchasePricePerTonne", label: "Цена покупки (₽/т)", type: "number", exportable: true, numberFormat: PRICE_FORMAT },
+    { key: "salePricePerTonne",     label: "Цена продажи (₽/т)", type: "number", exportable: true, numberFormat: PRICE_FORMAT },
     { key: "saleAmount",     label: "Продажа (₽)",        type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "profit",         label: "Прибыль (₽)",        type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "notes",          label: "Примечания",    type: "string", exportable: true },
   ],
-  defaultColumns: ["refuelingDate","productType","aircraftNumber","supplier.name","basis.name","buyer.name","quantityKg","salePrice","saleAmount","profit"],
+  defaultColumns: ["refuelingDate","productType","aircraftNumber","supplier.name","basis.name","buyer.name","quantityTonnes","salePricePerTonne","saleAmount","profit"],
   relations: ["supplier","buyer","basis"],
 };
 
@@ -104,17 +65,17 @@ export const movementExportConfig: ModuleExportConfig = {
     { key: "productType",           label: "Продукт",        type: "string", exportable: true },
     { key: "fromName",              label: "Откуда",         type: "string", exportable: true },
     { key: "toName",                label: "Куда",           type: "string", exportable: true },
-    { key: "quantityKg",            label: "Масса (т)",      type: "number", exportable: true, format: tonnesFromDealMass, numberFormat: MASS_FORMAT },
-    { key: "purchasePrice",         label: "Цена (₽/т)",     type: "number", exportable: true, format: perTonneFromLegacyPerKilogram, numberFormat: PRICE_FORMAT },
+    { key: "quantityTonnes",        label: "Масса (т)",      type: "number", exportable: true, numberFormat: MASS_FORMAT },
+    { key: "purchasePricePerTonne", label: "Цена (₽/т)",     type: "number", exportable: true, numberFormat: PRICE_FORMAT },
     { key: "_purchaseAmount",       label: "Сумма (₽)",      type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "carrierName",           label: "Перевозчик",     type: "string", exportable: true },
     { key: "deliveryCost",          label: "Доставка (₽)",   type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "storageCost",           label: "Хранение (₽)",   type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "warehouseServicesCost", label: "Услуги (₽)",     type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
-    { key: "costPerKg",             label: "Себест. (₽/т)",  type: "number", exportable: true, format: perTonneFromLegacyPerKilogram, numberFormat: PRICE_FORMAT },
+    { key: "costPerTonne",          label: "Себест. (₽/т)",  type: "number", exportable: true, numberFormat: PRICE_FORMAT },
     { key: "notes",                 label: "Примечания",     type: "string", exportable: true },
   ],
-  defaultColumns: ["movementDate","movementType","productType","fromName","toName","quantityKg","purchasePrice","deliveryCost","costPerKg"],
+  defaultColumns: ["movementDate","movementType","productType","fromName","toName","quantityTonnes","purchasePricePerTonne","deliveryCost","costPerTonne"],
   relations: [],
 };
 
@@ -155,14 +116,14 @@ export const warehousesExportConfig: ModuleExportConfig = {
   displayName: "Склады",
   columns: [
     { key: "name",            label: "Название",              type: "string", exportable: true },
-    { key: "currentBalance",  label: "Остаток керосина (т)", type: "number", exportable: true, format: tonnesFromLegacyKilograms, numberFormat: MASS_FORMAT },
-    { key: "averageCost",     label: "Себест. керосина (₽/т)", type: "number", exportable: true, format: perTonneFromLegacyPerKilogram, numberFormat: PRICE_FORMAT },
-    { key: "pvkjBalance",     label: "Остаток ПВКЖ (т)",     type: "number", exportable: true, format: tonnesFromLegacyKilograms, numberFormat: MASS_FORMAT },
-    { key: "pvkjAverageCost", label: "Себест. ПВКЖ (₽/т)",   type: "number", exportable: true, format: perTonneFromLegacyPerKilogram, numberFormat: PRICE_FORMAT },
-    { key: "maxCapacity",     label: "Ёмкость (т)",          type: "number", exportable: true, format: tonnesFromLegacyKilograms, numberFormat: MASS_FORMAT },
+    { key: "currentBalanceTonnes",        label: "Остаток керосина (т)", type: "number", exportable: true, numberFormat: MASS_FORMAT },
+    { key: "averageCostPerTonne",         label: "Себест. керосина (₽/т)", type: "number", exportable: true, numberFormat: PRICE_FORMAT },
+    { key: "pvkjBalanceTonnes",            label: "Остаток ПВКЖ (т)",     type: "number", exportable: true, numberFormat: MASS_FORMAT },
+    { key: "pvkjAverageCostPerTonne",      label: "Себест. ПВКЖ (₽/т)",   type: "number", exportable: true, numberFormat: PRICE_FORMAT },
+    { key: "maxCapacityTonnes",            label: "Ёмкость (т)",          type: "number", exportable: true, numberFormat: MASS_FORMAT },
     { key: "isActive",        label: "Активен",               type: "boolean",exportable: true },
   ],
-  defaultColumns: ["name","currentBalance","averageCost","pvkjBalance","isActive"],
+  defaultColumns: ["name","currentBalanceTonnes","averageCostPerTonne","pvkjBalanceTonnes","isActive"],
   relations: [],
 };
 
@@ -204,12 +165,12 @@ export const refuelingAbroadExportConfig: ModuleExportConfig = {
     { key: "basis.name",                 label: "Базис",                 type: "string", exportable: true },
     { key: "productType",                label: "Продукт",               type: "string", exportable: true },
     { key: "quantityLiters",             label: "Литры",                  type: "number", exportable: true, numberFormat: LITERS_FORMAT },
-    { key: "quantityKg",                 label: "Масса (т)",               type: "number", exportable: true, format: tonnesFromDealMass, numberFormat: MASS_FORMAT },
-    { key: "purchasePriceUsd",           label: "Цена закупки (USD/т)",    type: "number", exportable: true, format: dealPricePerTonne("purchaseAmountUsd"), numberFormat: PRICE_FORMAT },
+    { key: "quantityTonnes",             label: "Масса (т)",               type: "number", exportable: true, numberFormat: MASS_FORMAT },
+    { key: "purchasePriceUsdPerTonne",   label: "Цена закупки (USD/т)",    type: "number", exportable: true, numberFormat: PRICE_FORMAT },
     { key: "purchaseAmountUsd",          label: "Сумма закупки (USD)",     type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "purchaseExchangeRateValue",  label: "Курс закупки (₽)",       type: "number", exportable: true, numberFormat: "#,##0.0000" },
     { key: "purchaseAmountRub",          label: "Сумма закупки (₽)",      type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
-    { key: "salePriceUsd",               label: "Цена продажи (USD/т)",   type: "number", exportable: true, format: dealPricePerTonne("saleAmountUsd"), numberFormat: PRICE_FORMAT },
+    { key: "salePriceUsdPerTonne",       label: "Цена продажи (USD/т)",   type: "number", exportable: true, numberFormat: PRICE_FORMAT },
     { key: "saleAmountUsd",              label: "Сумма продажи (USD)",    type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "saleExchangeRateValue",      label: "Курс продажи (₽)",       type: "number", exportable: true, numberFormat: "#,##0.0000" },
     { key: "saleAmountRub",              label: "Сумма продажи (₽)",      type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
@@ -223,7 +184,7 @@ export const refuelingAbroadExportConfig: ModuleExportConfig = {
     { key: "profitUsd",                  label: "Прибыль (USD)",             type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "profitRub",                  label: "Прибыль (₽)",               type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
   ],
-  defaultColumns: ["refuelingDate","airport","aircraftNumber","supplier.name","buyer.name","quantityKg","purchasePriceUsd","purchaseExchangeRateValue","purchaseExchangeRateDate","purchaseAmountUsd","salePriceUsd","saleExchangeRateValue","saleExchangeRateDate","saleAmountUsd","_intermediaryNames","_totalIntermediaryUsd","_bankNames","_totalBankCommissionUsd","profitUsd"],
+  defaultColumns: ["refuelingDate","airport","aircraftNumber","supplier.name","buyer.name","quantityTonnes","purchasePriceUsdPerTonne","purchaseExchangeRateValue","purchaseExchangeRateDate","purchaseAmountUsd","salePriceUsdPerTonne","saleExchangeRateValue","saleExchangeRateDate","saleAmountUsd","_intermediaryNames","_totalIntermediaryUsd","_bankNames","_totalBankCommissionUsd","profitUsd"],
   relations: ["supplier","buyer","basis"],
 };
 
@@ -239,14 +200,14 @@ export const equipmentMovementExportConfig: ModuleExportConfig = {
     { key: "fromEquipmentName", label: "ОП (откуда)",    type: "string", exportable: true },
     { key: "toWarehouseName",   label: "Склад (куда)",   type: "string", exportable: true },
     { key: "toEquipmentName",   label: "ОП (куда)",      type: "string", exportable: true },
-    { key: "quantityKg",        label: "Масса (т)",      type: "number", exportable: true, format: tonnesFromDealMass, numberFormat: MASS_FORMAT },
+    { key: "quantityTonnes",    label: "Масса (т)",      type: "number", exportable: true, numberFormat: MASS_FORMAT },
     { key: "quantityLiters",    label: "Литры",          type: "number", exportable: true, numberFormat: LITERS_FORMAT },
     { key: "density",           label: "Плотность (кг/л)", type: "number", exportable: true, numberFormat: DENSITY_FORMAT },
-    { key: "costPerKg",         label: "Себест. (₽/т)",  type: "number", exportable: true, format: perTonneFromLegacyPerKilogram, numberFormat: PRICE_FORMAT },
+    { key: "costPerTonne",      label: "Себест. (₽/т)",  type: "number", exportable: true, numberFormat: PRICE_FORMAT },
     { key: "totalCost",         label: "Сумма (₽)",      type: "number", exportable: true, numberFormat: AMOUNT_FORMAT },
     { key: "notes",             label: "Примечания",     type: "string", exportable: true },
   ],
-  defaultColumns: ["movementDate","movementType","productType","fromWarehouseName","toWarehouseName","fromEquipmentName","toEquipmentName","quantityKg","costPerKg","totalCost"],
+  defaultColumns: ["movementDate","movementType","productType","fromWarehouseName","toWarehouseName","fromEquipmentName","toEquipmentName","quantityTonnes","costPerTonne","totalCost"],
   relations: [],
 };
 
@@ -258,10 +219,10 @@ export const deliveryCostExportConfig: ModuleExportConfig = {
     { key: "carrierName",  label: "Перевозчик",      type: "string", exportable: true },
     { key: "fromLocation", label: "Откуда",          type: "string", exportable: true },
     { key: "toLocation",   label: "Куда",            type: "string", exportable: true },
-    { key: "costPerKg",    label: "Тариф (₽/т)",    type: "number", exportable: true, format: perTonneFromLegacyPerKilogram, numberFormat: PRICE_FORMAT },
+    { key: "costPerTonne", label: "Тариф (₽/т)",    type: "number", exportable: true, numberFormat: PRICE_FORMAT },
     { key: "distance",    label: "Расстояние (км)", type: "number", exportable: true },
   ],
-  defaultColumns: ["carrierName","fromLocation","toLocation","costPerKg"],
+  defaultColumns: ["carrierName","fromLocation","toLocation","costPerTonne"],
   relations: [],
 };
 

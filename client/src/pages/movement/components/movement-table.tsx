@@ -46,8 +46,6 @@ import { formatNumber, formatDate } from "../utils";
 import {
   formatPricePerTonne,
   formatTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 import type { MovementTableProps } from "../types";
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
@@ -367,28 +365,18 @@ export function MovementTable({
                       );
                     }
                   }
-                  const quantityKg = parseFloat(item.quantityKg || "0");
-                  const quantityTonnes =
-                    item.quantityTonnes !== null &&
-                    item.quantityTonnes !== undefined
-                      ? Number(item.quantityTonnes)
-                      : kilogramsToTonnes(quantityKg);
-                  const purchasePrice = item.purchasePrice
-                    ? parseFloat(item.purchasePrice)
-                    : null;
+                  const quantityTonnes = Number(item.quantityTonnes || 0);
                   const purchasePricePerTonne =
                     item.purchasePricePerTonne !== null &&
                     item.purchasePricePerTonne !== undefined
                       ? Number(item.purchasePricePerTonne)
-                      : purchasePrice === null
-                        ? null
-                        : pricePerKilogramToPerTonne(purchasePrice);
+                      : null;
                   const purchaseAmount =
                     item.purchaseAmount !== null &&
                     item.purchaseAmount !== undefined
                       ? Number(item.purchaseAmount)
-                      : purchasePrice !== null && quantityKg > 0
-                        ? purchasePrice * quantityKg
+                      : purchasePricePerTonne !== null
+                        ? purchasePricePerTonne * quantityTonnes
                         : 0;
                   const deliveryCost = item.deliveryCost
                     ? parseFloat(item.deliveryCost)
@@ -397,14 +385,11 @@ export function MovementTable({
                   const warehouseServicesCost = item.warehouseServicesCost
                     ? parseFloat(item.warehouseServicesCost)
                     : null;
-                  const costPerKg = item.costPerKg
-                    ? parseFloat(item.costPerKg)
-                    : 0;
                   const costPerTonne =
                     item.costPerTonne !== null &&
                     item.costPerTonne !== undefined
                       ? Number(item.costPerTonne)
-                      : pricePerKilogramToPerTonne(costPerKg);
+                      : 0;
                   const serviceTypes: Array<{ serviceType: string; serviceValue: string }> =
                     item.warehouseServiceTypes || [];
                   _rows.push((

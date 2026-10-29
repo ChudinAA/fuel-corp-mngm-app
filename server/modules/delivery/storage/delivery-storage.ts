@@ -64,8 +64,7 @@ export class DeliveryStorage implements IDeliveryStorage {
         toEntityType: data.toEntityType,
         toEntityId: data.toEntityId,
         toLocation: data.toLocation,
-        costPerTonne: data.costPerTonne != null ? String(data.costPerTonne) : null,
-        costPerKg: data.costPerKg,
+        costPerTonne: String(data.costPerTonne),
         distance: data.distance || null,
         transitDays: data.transitDays != null ? Number(data.transitDays) : null,
         priority: data.priority != null ? Number(data.priority) : null,
@@ -91,7 +90,6 @@ export class DeliveryStorage implements IDeliveryStorage {
     if (data.toEntityId !== undefined) updateFields.toEntityId = data.toEntityId;
     if (data.toLocation !== undefined) updateFields.toLocation = data.toLocation;
     if (data.costPerTonne !== undefined) updateFields.costPerTonne = (data.costPerTonne !== null && data.costPerTonne !== "") ? String(data.costPerTonne) : null;
-    if (data.costPerKg !== undefined) updateFields.costPerKg = (data.costPerKg !== null && data.costPerKg !== "") ? String(data.costPerKg) : null;
     if (data.distance !== undefined) updateFields.distance = (data.distance !== null && data.distance !== "") ? String(data.distance) : null;
     if (data.isActive !== undefined) updateFields.isActive = data.isActive;
     if (data.transitDays !== undefined) updateFields.transitDays = data.transitDays != null ? Number(data.transitDays) : null;

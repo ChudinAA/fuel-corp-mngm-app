@@ -117,10 +117,9 @@ export class ManagementReportStorage implements IManagementReportStorage {
     // Метрики продаж ЗВС
     const [refuelingMetrics] = await db
       .select({
-        totalVolumeTonnes: sql<string>`COALESCE(SUM(COALESCE(
-          ${aircraftRefueling.quantityTonnes},
-          CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
-        )), 0)::text`,
+        totalVolumeTonnes: sql<string>`COALESCE(SUM(
+          CAST(${aircraftRefueling.quantityTonnes} AS NUMERIC)
+        ), 0)::text`,
         totalRevenue: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
         totalProfit: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.profit} AS NUMERIC)), 0)`,
       })
@@ -236,13 +235,13 @@ export class ManagementReportStorage implements IManagementReportStorage {
           COALESCE(CAST(NULLIF(${governmentContracts.currentAmount}, '') AS NUMERIC), 0),
           0
         )), 0)::text`,
-        plannedVolumeTonnes: sql<string>`COALESCE(SUM(COALESCE(CAST(NULLIF(${governmentContracts.plannedVolume}, '') AS NUMERIC), 0) / 1000), 0)::text`,
-        actualVolumeTonnes: sql<string>`COALESCE(SUM(COALESCE(CAST(NULLIF(${governmentContracts.actualVolume}, '') AS NUMERIC), 0) / 1000), 0)::text`,
+        plannedVolumeTonnes: sql<string>`COALESCE(SUM(CAST(${governmentContracts.plannedVolumeTonnes} AS NUMERIC)), 0)::text`,
+        actualVolumeTonnes: sql<string>`COALESCE(SUM(CAST(${governmentContracts.actualVolumeTonnes} AS NUMERIC)), 0)::text`,
         remainingVolumeTonnes: sql<string>`COALESCE(SUM(GREATEST(
-          COALESCE(CAST(NULLIF(${governmentContracts.plannedVolume}, '') AS NUMERIC), 0) -
-          COALESCE(CAST(NULLIF(${governmentContracts.actualVolume}, '') AS NUMERIC), 0),
+          COALESCE(CAST(${governmentContracts.plannedVolumeTonnes} AS NUMERIC), 0) -
+          COALESCE(CAST(${governmentContracts.actualVolumeTonnes} AS NUMERIC), 0),
           0
-        ) / 1000), 0)::text`,
+        )), 0)::text`,
       })
       .from(governmentContracts)
       .where(

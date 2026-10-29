@@ -60,7 +60,7 @@ import { PlanEntryDialog, type PlanEntryFormEntry } from "./plan-entry-dialog";
 import { AllocationDialog, type AllocationFormEntry } from "./allocation-dialog";
 import { QuickPlanDialog } from "./quick-plan-dialog";
 import { FieldCommentPopover } from "./field-comment-popover";
-import { fmtTonnes, kgToTons } from "../utils/planning-utils";
+import { fmtTonnes } from "../utils/planning-utils";
 import { cn } from "@/lib/utils";
 
 interface PlanEntryRow extends PlanEntryFormEntry {
@@ -73,23 +73,18 @@ interface ActualDetailItem {
   sourceType: string;
   sourceId: string;
   label: string;
-  quantity: string;
-  quantityTonnes?: string | null;
+  quantityTonnes: string;
   date: string;
   isExpense: boolean;
-  balanceAfter: string | null;
-  balanceAfterTonnes?: string | null;
+  balanceAfterTonnes: string | null;
   counterpartyName?: string | null;
 }
 
 interface ActualsByDate {
   date: string;
-  incomeActual: string;
-  incomeActualTonnes?: string;
-  expenseActual: string;
-  expenseActualTonnes?: string;
-  factBalanceAfter: string | null;
-  factBalanceAfterTonnes?: string | null;
+  incomeActualTonnes: string;
+  expenseActualTonnes: string;
+  factBalanceAfterTonnes: string | null;
   details: ActualDetailItem[];
 }
 
@@ -223,20 +218,17 @@ function PeriodDetailPanel({
   const planBalanceTonnes = row.lastPlanBalanceAfter;
   const lastActualWithBalance = [...row.actuals]
     .reverse()
-    .find((a) => a.factBalanceAfterTonnes != null || a.factBalanceAfter !== null);
+    .find((a) => a.factBalanceAfterTonnes !== null);
   const factBalanceTonnes = lastActualWithBalance
-    ? lastActualWithBalance.factBalanceAfterTonnes ??
-      (lastActualWithBalance.factBalanceAfter === null
-        ? null
-        : kgToTons(lastActualWithBalance.factBalanceAfter))
+    ? Number(lastActualWithBalance.factBalanceAfterTonnes)
     : null;
 
   const totalFactIncome = row.actuals.reduce(
-    (s, a) => s + Number(a.incomeActualTonnes ?? kgToTons(a.incomeActual)),
+    (s, a) => s + Number(a.incomeActualTonnes),
     0,
   );
   const totalFactExpense = row.actuals.reduce(
-    (s, a) => s + Number(a.expenseActualTonnes ?? kgToTons(a.expenseActual)),
+    (s, a) => s + Number(a.expenseActualTonnes),
     0,
   );
   const hasAnyPlan = row.incomeEntries.length > 0 || row.expenseEntries.length > 0;
@@ -266,7 +258,7 @@ function PeriodDetailPanel({
               e.type === "income" ? "text-emerald-600" : "text-amber-600",
             )}
           >
-            {fmtTonnes(e.volumeTonnes ?? kgToTons(e.volume))}
+            {fmtTonnes(e.volumeTonnes)}
           </span>
           <span className="ml-1 text-xs text-muted-foreground">
             {format(new Date(e.date.slice(0, 10) + "T00:00:00"), "dd.MM")}
@@ -448,7 +440,7 @@ function PeriodDetailPanel({
                             </Tooltip>
                           </TooltipProvider>
                           <span className="text-emerald-600 font-semibold tabular-nums text-xs">
-                            {fmtTonnes(d.quantityTonnes ?? kgToTons(d.quantity))}
+                            {fmtTonnes(d.quantityTonnes)}
                           </span>
                           {d.counterpartyName && (
                             <span className="text-xs text-muted-foreground truncate">
@@ -482,7 +474,7 @@ function PeriodDetailPanel({
                             </Tooltip>
                           </TooltipProvider>
                           <span className="text-amber-600 font-semibold tabular-nums text-xs">
-                            {fmtTonnes(d.quantityTonnes ?? kgToTons(d.quantity))}
+                            {fmtTonnes(d.quantityTonnes)}
                           </span>
                           {d.counterpartyName && (
                             <span className="text-xs text-muted-foreground truncate">
@@ -503,7 +495,7 @@ function PeriodDetailPanel({
                     <span
                       className={cn(
                         "font-semibold tabular-nums",
-                        parseFloat(factBalanceTonnes) < 0
+                        factBalanceTonnes < 0
                           ? "text-destructive"
                           : "text-foreground",
                       )}
@@ -601,10 +593,8 @@ export function WarehousePlanPanel({
   });
 
   const { data: topLevelSummary } = useQuery<{
-    topLevelIncome: string;
-    topLevelIncomeTonnes?: string;
-    topLevelExpense: string;
-    topLevelExpenseTonnes?: string;
+    topLevelIncomeTonnes: string;
+    topLevelExpenseTonnes: string;
   }>({
     queryKey: ["/api/planning/top-level-volumes/warehouse-summary", warehouseId, dateFrom, dateTo, scenarioId],
     queryFn: async () => {
@@ -635,12 +625,7 @@ export function WarehousePlanPanel({
 
     // Last plan balance: the last entry's balanceAfter in this period
     const lastEntry = periodEntries[periodEntries.length - 1];
-    const lastPlanBalanceAfter = lastEntry
-      ? lastEntry.balanceAfterTonnes ??
-        (lastEntry.balanceAfter === null
-          ? null
-          : kgToTons(lastEntry.balanceAfter))
-      : null;
+    const lastPlanBalanceAfter = lastEntry?.balanceAfterTonnes ?? null;
 
     return {
       period: p,
@@ -655,21 +640,21 @@ export function WarehousePlanPanel({
   const totalIncomeTonnes = entries
     .filter((e) => e.type === "income")
     .reduce(
-      (s, e) => s + Number(e.volumeTonnes ?? kgToTons(e.volume)),
+      (s, e) => s + Number(e.volumeTonnes),
       0,
     );
   const totalExpenseTonnes = entries
     .filter((e) => e.type === "expense")
     .reduce(
-      (s, e) => s + Number(e.volumeTonnes ?? kgToTons(e.volume)),
+      (s, e) => s + Number(e.volumeTonnes),
       0,
     );
   const totalActualIncomeTonnes = actuals.reduce(
-    (s, a) => s + Number(a.incomeActualTonnes ?? kgToTons(a.incomeActual)),
+    (s, a) => s + Number(a.incomeActualTonnes),
     0,
   );
   const totalActualExpenseTonnes = actuals.reduce(
-    (s, a) => s + Number(a.expenseActualTonnes ?? kgToTons(a.expenseActual)),
+    (s, a) => s + Number(a.expenseActualTonnes),
     0,
   );
   const lastPlanBalance =
@@ -679,12 +664,9 @@ export function WarehousePlanPanel({
       ?.lastPlanBalanceAfter ?? null;
   const lastFactBalanceRow = [...actuals]
     .reverse()
-    .find((a) => a.factBalanceAfterTonnes || a.factBalanceAfter);
+    .find((a) => a.factBalanceAfterTonnes !== null);
   const lastFactBalanceTonnes = lastFactBalanceRow
-    ? lastFactBalanceRow.factBalanceAfterTonnes ??
-      (lastFactBalanceRow.factBalanceAfter === null
-        ? null
-        : kgToTons(lastFactBalanceRow.factBalanceAfter))
+    ? Number(lastFactBalanceRow.factBalanceAfterTonnes)
     : null;
 
   const defaultDate = format(period.from, "yyyy-MM-dd");
@@ -913,23 +895,23 @@ export function WarehousePlanPanel({
                 <>
                   {/* ── Верхнеур. план ── */}
                   {topLevelSummary &&
-                  (Number(topLevelSummary.topLevelIncomeTonnes ?? kgToTons(topLevelSummary.topLevelIncome)) > 0 ||
-                    Number(topLevelSummary.topLevelExpenseTonnes ?? kgToTons(topLevelSummary.topLevelExpense)) > 0) && (
+                  (Number(topLevelSummary.topLevelIncomeTonnes) > 0 ||
+                    Number(topLevelSummary.topLevelExpenseTonnes) > 0) && (
                     <TableRow className="bg-violet-50/50 dark:bg-violet-950/20 font-medium">
                       <TableCell />
                       <TableCell className="py-2 text-sm text-violet-700 dark:text-violet-400">
                         Верхнеур. план
                       </TableCell>
                       <TableCell className="py-2">
-                        {Number(topLevelSummary.topLevelIncomeTonnes ?? kgToTons(topLevelSummary.topLevelIncome)) > 0 ? (
-                          <span className="text-emerald-600">{fmtTonnes(topLevelSummary.topLevelIncomeTonnes ?? kgToTons(topLevelSummary.topLevelIncome))}</span>
+                        {Number(topLevelSummary.topLevelIncomeTonnes) > 0 ? (
+                          <span className="text-emerald-600">{fmtTonnes(topLevelSummary.topLevelIncomeTonnes)}</span>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </TableCell>
                       <TableCell className="py-2">
-                        {Number(topLevelSummary.topLevelExpenseTonnes ?? kgToTons(topLevelSummary.topLevelExpense)) > 0 ? (
-                          <span className="text-amber-600">{fmtTonnes(topLevelSummary.topLevelExpenseTonnes ?? kgToTons(topLevelSummary.topLevelExpense))}</span>
+                        {Number(topLevelSummary.topLevelExpenseTonnes) > 0 ? (
+                          <span className="text-amber-600">{fmtTonnes(topLevelSummary.topLevelExpenseTonnes)}</span>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
                         )}
@@ -989,7 +971,7 @@ export function WarehousePlanPanel({
                       {lastFactBalanceTonnes ? (
                         <span
                           className={
-                            parseFloat(lastFactBalanceTonnes) < 0 ? "text-destructive" : ""
+                            lastFactBalanceTonnes < 0 ? "text-destructive" : ""
                           }
                         >
                           {fmtTonnes(lastFactBalanceTonnes)}
@@ -1006,29 +988,26 @@ export function WarehousePlanPanel({
                     const key = periodKey(row.period);
                     const isExpanded = expandedPeriods.has(key);
                     const incomeTonnes = row.incomeEntries.reduce(
-                      (s, e) => s + Number(e.volumeTonnes ?? kgToTons(e.volume)),
+                      (s, e) => s + Number(e.volumeTonnes),
                       0,
                     );
                     const expenseTonnes = row.expenseEntries.reduce(
-                      (s, e) => s + Number(e.volumeTonnes ?? kgToTons(e.volume)),
+                      (s, e) => s + Number(e.volumeTonnes),
                       0,
                     );
                     const factIncomeTonnes = row.actuals.reduce(
-                      (s, a) => s + Number(a.incomeActualTonnes ?? kgToTons(a.incomeActual)),
+                      (s, a) => s + Number(a.incomeActualTonnes),
                       0,
                     );
                     const factExpenseTonnes = row.actuals.reduce(
-                      (s, a) => s + Number(a.expenseActualTonnes ?? kgToTons(a.expenseActual)),
+                      (s, a) => s + Number(a.expenseActualTonnes),
                       0,
                     );
                     const lastActualBalanceRow = [...row.actuals]
                       .reverse()
-                      .find((a) => a.factBalanceAfterTonnes || a.factBalanceAfter);
+                      .find((a) => a.factBalanceAfterTonnes !== null);
                     const lastActualBalTonnes = lastActualBalanceRow
-                      ? lastActualBalanceRow.factBalanceAfterTonnes ??
-                        (lastActualBalanceRow.factBalanceAfter === null
-                          ? null
-                          : kgToTons(lastActualBalanceRow.factBalanceAfter))
+                      ? Number(lastActualBalanceRow.factBalanceAfterTonnes)
                       : null;
 
                     const past = isPastMonth(row.period.start);
@@ -1162,7 +1141,7 @@ export function WarehousePlanPanel({
                             <span
                               className={cn(
                                 "text-sm",
-                                parseFloat(lastActualBalTonnes) < 0 && "text-destructive",
+                                lastActualBalTonnes < 0 && "text-destructive",
                               )}
                             >
                               {fmtTonnes(lastActualBalTonnes)}
@@ -1295,7 +1274,7 @@ export function WarehousePlanPanel({
                     <TableCell>{a.toName || "—"}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <span>{fmtTonnes(a.volumeTonnes ?? kgToTons(a.volume))}</span>
+                        <span>{fmtTonnes(a.volumeTonnes)}</span>
                         <FieldCommentPopover
                           entityType="free_volume_allocation"
                           entityId={a.id}

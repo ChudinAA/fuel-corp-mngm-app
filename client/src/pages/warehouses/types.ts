@@ -1,10 +1,18 @@
 import type { Warehouse } from "@shared/schema";
 
-export type WarehouseWithTonnes = Warehouse & {
-  currentBalanceTonnes?: string | null;
-  pvkjBalanceTonnes?: string | null;
-  averageCostPerTonne?: string | null;
-  pvkjAverageCostPerTonne?: string | null;
+export type WarehouseWithTonnes = Omit<
+  Warehouse,
+  | "currentBalanceTonnes"
+  | "pvkjBalanceTonnes"
+  | "averageCostPerTonne"
+  | "pvkjAverageCostPerTonne"
+  | "limitVolumeTonnes"
+> & {
+  currentBalanceTonnes: string | null;
+  pvkjBalanceTonnes: string | null;
+  averageCostPerTonne: string | null;
+  pvkjAverageCostPerTonne: string | null;
+  limitVolumeTonnes: string | null;
 };
 
 export interface WarehouseTransaction {
@@ -13,19 +21,13 @@ export interface WarehouseTransaction {
   transactionType: string;
   sourceType?: string;
   productType?: string;
-  quantityKg: string;
-  quantityTonnes?: string;
-  balanceBefore: string;
-  balanceAfter: string;
-  balanceBeforeTonnes?: string;
-  balanceAfterTonnes?: string;
-  averageCostBefore: string;
-  averageCostAfter: string;
-  averageCostBeforePerTonne?: string;
-  averageCostAfterPerTonne?: string;
+  quantityTonnes: string;
+  balanceBeforeTonnes: string;
+  balanceAfterTonnes: string;
+  averageCostBeforePerTonne?: string | null;
+  averageCostAfterPerTonne?: string | null;
   sum?: string;
-  price?: string;
-  pricePerTonne?: string;
+  pricePerTonne?: string | null;
   transactionDate?: string;
   createdAt: string;
 }

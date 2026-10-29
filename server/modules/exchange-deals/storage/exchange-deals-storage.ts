@@ -14,9 +14,7 @@ import {
   exchangeAdvanceTransactions,
 } from "../../exchange-advances/entities/exchange-advances";
 import { MOVEMENT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE, PRODUCT_TYPE } from "@shared/constants";
-import { tonnesToKilograms } from "@shared/units";
 import { WarehouseTransactionService } from "../../warehouses/services/warehouse-transaction-service";
-import { exchangeDealMovementUnitFields } from "./exchange-deal-movement-units";
 
 // ——— Утилиты для работы с датами без смещения часового пояса ———
 
@@ -367,14 +365,17 @@ export class ExchangeDealsStorage {
 
     if (quantityTon <= 0) return;
 
-    // Tonnes are authoritative; keep the legacy kilogram fields synchronized.
-    const movementUnitFields = exchangeDealMovementUnitFields(
-      quantityTon,
-      purchasePricePerTon,
-    );
-    const quantityKg = Number(movementUnitFields.quantityKg);
+    if (!Number.isFinite(quantityTon) || !Number.isFinite(purchasePricePerTon)) {
+      throw new RangeError("Movement mass and price must be finite numbers");
+    }
+    const quantityTonnes = Number(quantityTon.toFixed(5));
+    const movementTonneFields = {
+      quantityTonnes: quantityTonnes.toFixed(5),
+      purchasePricePerTonne: Number(purchasePricePerTon.toFixed(6)).toFixed(6),
+      costPerTonne: Number(purchasePricePerTon.toFixed(6)).toFixed(6),
+    };
 
-    // deliveryCost в перемещении — в рублях за тонну (не за кг)
+    // deliveryCost in movement is stored in currency per tonne.
     const deliveryCostPerTon = deal.deliveryTariffId
       ? await this._getDeliveryTariffPerTon(deal.deliveryTariffId)
       : 0;
@@ -388,7 +389,7 @@ export class ExchangeDealsStorage {
           productType: PRODUCT_TYPE.KEROSENE,
           toWarehouseId: supplier.warehouseId!,
           supplierId: deal.sellerId || null,
-          ...movementUnitFields,
+          ...movementTonneFields,
           totalCost: String(totalAmount),
           deliveryCost: String(deliveryCostPerTon),
           isDraft: false,
@@ -406,7 +407,7 @@ export class ExchangeDealsStorage {
         PRODUCT_TYPE.KEROSENE,
         SOURCE_TYPE.MOVEMENT,
         createdMovement.id,
-        quantityKg,
+        quantityTonnes,
         totalAmount,
         deal.createdById || undefined,
         movementDate,
@@ -450,12 +451,20 @@ export class ExchangeDealsStorage {
 
     if (newValues.quantityTon <= 0) return;
 
-    const oldQuantityKg = tonnesToKilograms(oldValues.quantityTon);
-    const movementUnitFields = exchangeDealMovementUnitFields(
-      newValues.quantityTon,
-      newValues.purchasePricePerTon,
-    );
-    const newQuantityKg = Number(movementUnitFields.quantityKg);
+    if (
+      !Number.isFinite(newValues.quantityTon) ||
+      !Number.isFinite(newValues.purchasePricePerTon)
+    ) {
+      throw new RangeError("Movement mass and price must be finite numbers");
+    }
+    const newQuantityTonnes = Number(newValues.quantityTon.toFixed(5));
+    const movementTonneFields = {
+      quantityTonnes: newQuantityTonnes.toFixed(5),
+      purchasePricePerTonne: Number(
+        newValues.purchasePricePerTon.toFixed(6),
+      ).toFixed(6),
+      costPerTonne: Number(newValues.purchasePricePerTon.toFixed(6)).toFixed(6),
+    };
 
     const deliveryCostPerTon = deal.deliveryTariffId
       ? await this._getDeliveryTariffPerTon(deal.deliveryTariffId)
@@ -472,7 +481,7 @@ export class ExchangeDealsStorage {
         .set({
           movementDate: newValues.movementDate,
           supplierId: deal.sellerId || null,
-          ...movementUnitFields,
+          ...movementTonneFields,
           totalCost: String(newValues.totalAmount),
           deliveryCost: String(deliveryCostPerTon),
           notes: deal.notes || null,
@@ -486,9 +495,9 @@ export class ExchangeDealsStorage {
           tx,
           currentMovement.transactionId,
           supplier.warehouseId!,
-          oldQuantityKg,
+          oldValues.quantityTon,
           oldValues.totalAmount,
-          newQuantityKg,
+          newQuantityTonnes,
           newValues.totalAmount,
           PRODUCT_TYPE.KEROSENE,
           updatedById,
@@ -502,7 +511,7 @@ export class ExchangeDealsStorage {
           PRODUCT_TYPE.KEROSENE,
           SOURCE_TYPE.MOVEMENT,
           deal.movementId!,
-          newQuantityKg,
+          newQuantityTonnes,
           newValues.totalAmount,
           updatedById,
           newValues.movementDate,

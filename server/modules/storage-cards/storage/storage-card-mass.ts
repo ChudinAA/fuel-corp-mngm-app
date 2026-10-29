@@ -1,9 +1,8 @@
 import {
-  pricePerKilogramToPerTonne,
   pricePerLitreToPerTonne,
 } from "@shared/units";
 
-export type StorageCardPriceUnit = "kg" | "ton" | "tonne" | "t" | "liter";
+export type StorageCardPriceUnit = "tonne" | "liter";
 
 export function priceToPerTonne(
   price: number,
@@ -13,11 +12,7 @@ export function priceToPerTonne(
   if (!Number.isFinite(price) || price < 0) return null;
 
   switch (unit) {
-    case "kg":
-      return pricePerKilogramToPerTonne(price);
-    case "ton":
     case "tonne":
-    case "t":
       return price;
     case "liter":
       if (
@@ -53,29 +48,10 @@ export function calculateBalanceMassEquivalentTonnes(
 }
 
 export function calculateDealMassTonnes(
-  quantityKg: number | string | null | undefined,
-  quantityLiters: number | string | null | undefined,
-  densityKilogramsPerLitre: number | string | null | undefined,
+  quantityTonnes: number | string | null | undefined,
 ): number | null {
-  const liters = Number.parseFloat(String(quantityLiters ?? "0"));
-  const density = Number.parseFloat(
-    String(densityKilogramsPerLitre ?? "0"),
-  );
-  if (
-    Number.isFinite(liters) &&
-    liters > 0 &&
-    Number.isFinite(density) &&
-    density > 0
-  ) {
-    return (liters * density) / 1_000;
-  }
-
-  const kilograms = Number.parseFloat(String(quantityKg ?? "0"));
-  if (Number.isFinite(kilograms) && kilograms > 0) {
-    return kilograms / 1_000;
-  }
-
-  return null;
+  const tonnes = Number.parseFloat(String(quantityTonnes ?? ""));
+  return Number.isFinite(tonnes) && tonnes >= 0 ? tonnes : null;
 }
 
 export function calculateDealPricePerTonne(

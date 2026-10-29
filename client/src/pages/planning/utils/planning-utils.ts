@@ -1,33 +1,4 @@
-import {
-  formatTonnes,
-  formatTonnesForInput,
-  kilogramsToTonnes,
-  tonnesToKilograms,
-} from "@shared/units";
-
-// Compatibility adapter for older APIs that still return kg mirrors.
-export function kgToTons(kg: string | number | null | undefined): string {
-  if (kg === null || kg === undefined || kg === "") return "0";
-  const val = parseFloat(String(kg));
-  if (!Number.isFinite(val)) return "0";
-  return formatTonnesForInput(kilogramsToTonnes(val));
-}
-
-// Preserve the kg compatibility mirror while tonne fields are authoritative.
-export function tonsToKg(tons: string | number | null | undefined): string {
-  if (tons === null || tons === undefined || tons === "") return "0";
-  const val = parseFloat(String(tons));
-  if (isNaN(val)) return "0";
-  return tonnesToKilograms(val).toFixed(2);
-}
-
-// Format tonnes for display with unit
-export function fmtTons(kg: string | number | null | undefined): string {
-  if (kg === null || kg === undefined || kg === "") return "—";
-  const val = parseFloat(String(kg));
-  if (isNaN(val)) return "—";
-  return `${formatTonnes(kilogramsToTonnes(val))} т`;
-}
+import { formatTonnes } from "@shared/units";
 
 export function fmtTonnes(
   tonnes: string | number | null | undefined,
@@ -43,8 +14,7 @@ export function sumAllocatedForPeriod(
   allocations: {
     periodFrom: string;
     periodTo: string;
-    volume?: string;
-    volumeTonnes?: string;
+    volumeTonnes: string;
     supplierId?: string;
   }[],
   periodFrom: Date,
@@ -58,14 +28,7 @@ export function sumAllocatedForPeriod(
       const at = new Date(a.periodTo);
       return af <= periodTo && at >= periodFrom;
     })
-    .reduce(
-      (sum, a) =>
-        sum +
-        (a.volumeTonnes !== undefined
-          ? Number(a.volumeTonnes)
-          : kilogramsToTonnes(Number(a.volume || "0"))),
-      0,
-    );
+    .reduce((sum, a) => sum + Number(a.volumeTonnes), 0);
 }
 
 // Get month start and end from a date string

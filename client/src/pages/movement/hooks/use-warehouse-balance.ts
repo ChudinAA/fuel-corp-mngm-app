@@ -3,9 +3,9 @@ import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useWarehouseBalance as useBaseWarehouseBalance } from "@/hooks/use-warehouse-balance";
 import { formatTonnes } from "@shared/units";
 import {
-  resolveWarehouseAverageCostPerTonne,
-  resolveWarehouseBalanceTonnes,
-} from "@/pages/shared/utils/warehouse-balance-units";
+  readAverageCostPerTonne,
+  readBalanceTonnes,
+} from "@/pages/shared/utils/tonne-balance-values";
 
 interface UseWarehouseBalanceProps {
   watchMovementType: string;
@@ -76,36 +76,27 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
 
     const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
     
-    const fallbackBalanceTonnes = isPvkj
-      ? fromWarehouse.pvkjBalanceTonnes
-      : fromWarehouse.currentBalanceTonnes;
-    const fallbackBalanceKilograms = isPvkj
-      ? fromWarehouse.pvkjBalance
-      : fromWarehouse.currentBalance;
-    const baseBalanceTonnes = Math.min(
-      resolveWarehouseBalanceTonnes(
-        historicalBalanceStr,
-        fallbackBalanceTonnes,
-        fallbackBalanceKilograms,
-      ),
-      resolveWarehouseBalanceTonnes(
-        currentBalanceStr,
-        fallbackBalanceTonnes,
-        fallbackBalanceKilograms,
-      ),
-    );
+    const historicalSnapshot = isBackdated
+      ? historicalBalanceStr
+      : currentBalanceStr;
+    const historicalTonnes = readBalanceTonnes(historicalSnapshot);
+    const currentTonnes = readBalanceTonnes(currentBalanceStr);
+    if (historicalTonnes === null || currentTonnes === null) {
+      return {
+        balance: 0,
+        cost: 0,
+        status: "error",
+        message: "Не удалось получить остаток в тоннах",
+      };
+    }
+    const baseBalanceTonnes = Math.min(historicalTonnes, currentTonnes);
     
     const balanceTonnes = isEditing
       ? baseBalanceTonnes + initialQuantityTonnes
       : baseBalanceTonnes;
 
-    const costPerTonne = resolveWarehouseAverageCostPerTonne(
-      historicalBalanceStr,
-      isPvkj
-        ? fromWarehouse.pvkjAverageCostPerTonne
-        : fromWarehouse.averageCostPerTonne,
-      isPvkj ? fromWarehouse.pvkjAverageCost : fromWarehouse.averageCost,
-    );
+    const costPerTonne =
+      readAverageCostPerTonne(historicalSnapshot) ?? 0;
 
     if (balanceTonnes <= 0) {
       return { balance: balanceTonnes, cost: costPerTonne, status: "error", message: "Склад пуст" };

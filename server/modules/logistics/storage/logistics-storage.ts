@@ -18,7 +18,6 @@ import {
   type InsertLogisticsDriver,
 } from "@shared/schema";
 import type { ILogisticsStorage } from "./types";
-import { normalizeLogisticsCapacity } from "../logistics-capacity-units";
 
 export class LogisticsStorage implements ILogisticsStorage {
   async getAllLogisticsCarriers(): Promise<LogisticsCarrier[]> {
@@ -234,7 +233,6 @@ export class LogisticsStorage implements ILogisticsStorage {
       .insert(logisticsVehicles)
       .values({
         ...data,
-        ...normalizeLogisticsCapacity(data),
       })
       .returning();
     return created;
@@ -248,7 +246,6 @@ export class LogisticsStorage implements ILogisticsStorage {
       .update(logisticsVehicles)
       .set({
         ...data,
-        ...normalizeLogisticsCapacity(data),
         updatedAt: sql`NOW()`,
       })
       .where(eq(logisticsVehicles.id, id))
@@ -324,7 +321,6 @@ export class LogisticsStorage implements ILogisticsStorage {
       .insert(logisticsTrailers)
       .values({
         ...data,
-        ...normalizeLogisticsCapacity(data),
       })
       .returning();
     return created;
@@ -338,7 +334,6 @@ export class LogisticsStorage implements ILogisticsStorage {
       .update(logisticsTrailers)
       .set({
         ...data,
-        ...normalizeLogisticsCapacity(data),
         updatedAt: sql`NOW()`,
       })
       .where(eq(logisticsTrailers.id, id))

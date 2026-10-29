@@ -39,10 +39,8 @@ export const movement = pgTable(
       .references(() => warehouses.id),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
-    quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
     quantityTonnes: decimal("quantity_tonnes", { precision: 18, scale: 5 }),
     inputMode: text("input_mode"),
-    purchasePrice: decimal("purchase_price", { precision: 19, scale: 6 }),
     purchasePricePerTonne: decimal("purchase_price_per_tonne", { precision: 22, scale: 6 }),
     purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
     purchasePriceIndex: integer("purchase_price_index").default(0),
@@ -52,7 +50,6 @@ export const movement = pgTable(
     storageCost: decimal("storage_cost", { precision: 15, scale: 2 }),
     warehouseServicesCost: decimal("warehouse_services_cost", { precision: 15, scale: 2 }),
     totalCost: decimal("total_cost", { precision: 15, scale: 2 }),
-    costPerKg: decimal("cost_per_kg", { precision: 19, scale: 6 }),
     costPerTonne: decimal("cost_per_tonne", { precision: 22, scale: 6 }),
     carrierId: uuid("carrier_id").references(() => logisticsCarriers.id),
     basis: text("basis"),
@@ -148,20 +145,16 @@ export const insertMovementSchema = z
     toWarehouseId: z.string().nullable().optional(),
     quantityLiters: z.number().nullable().optional(),
     density: z.number().nullable().optional(),
-    quantityKg: z.number().nullable().optional(),
     quantityTonnes: z.number().nullable().optional(),
     inputMode: z.string().nullable().optional(),
-    purchasePrice: z.number().nullable().optional(),
     purchasePricePerTonne: z.number().nullable().optional(),
     purchasePriceId: z.string().nullable().optional(),
     purchasePriceIndex: z.number().nullable().optional(),
-    deliveryPrice: z.number().nullable().optional(),
     deliveryPricePerTonne: z.number().nullable().optional(),
     deliveryCost: z.number().nullable().optional(),
     storageCost: z.number().nullable().optional(),
     warehouseServicesCost: z.number().nullable().optional(),
     totalCost: z.number().nullable().optional(),
-    costPerKg: z.number().nullable().optional(),
     costPerTonne: z.number().nullable().optional(),
     carrierId: z.string().nullable().optional(),
     basis: z.string().nullable().optional(),
@@ -173,6 +166,7 @@ export const insertMovementSchema = z
     isDraft: z.boolean().default(false),
     createdById: z.string().nullable().optional(),
   })
+  .strict()
   .superRefine((data, ctx) => {
     if (!data.isDraft) {
       if (!data.toWarehouseId) {
@@ -196,11 +190,7 @@ export const insertMovementSchema = z
           path: ["movementDate"],
         });
       }
-      const quantityTonnes =
-        data.quantityTonnes ??
-        (data.quantityKg === undefined || data.quantityKg === null
-          ? null
-          : data.quantityKg / 1_000);
+      const quantityTonnes = data.quantityTonnes ?? null;
       if (quantityTonnes === null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

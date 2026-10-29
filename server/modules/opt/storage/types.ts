@@ -11,7 +11,7 @@ export interface IOptStorage {
   deleteOpt(id: string): Promise<boolean>;
   getUsedVolumeByPrice(
     priceId: string,
-  ): Promise<{ usedVolumeTonnes: number; usedVolume: number }>;
+  ): Promise<{ usedVolumeTonnes: number }>;
   getUsedAmountByPrice(priceId: string): Promise<number>;
   checkDuplicate(data: {
     dealDate: string;
@@ -20,6 +20,5 @@ export interface IOptStorage {
     basis?: string | null;
     deliveryLocationId?: string | null;
     quantityTonnes?: number;
-    quantityKg?: number;
   }): Promise<boolean>;
 }

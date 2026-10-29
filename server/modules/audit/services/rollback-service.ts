@@ -6,7 +6,7 @@ import { AuditService, AuditContext } from "./audit-service";
 import { storage } from "../../../storage/index";
 import { warehouseTransactions, warehouses } from "@shared/schema";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
-import { formatTonnes, legacyDealMassToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 export interface RollbackOptions {
   auditLogId: string;
@@ -259,11 +259,7 @@ export class RollbackService {
                     : deal.productType === "service"
                       ? "Услуга"
                       : deal.productType;
-              const quantityTonnes = legacyDealMassToTonnes(
-                deal.quantityKg,
-                deal.quantityLiters,
-                deal.density,
-              );
+              const quantityTonnes = Number(deal.quantityTonnes ?? 0);
               return `${product}${quantityTonnes ? ` — ${formatTonnes(quantityTonnes)} т` : ""}`;
             })
             .join(", ");

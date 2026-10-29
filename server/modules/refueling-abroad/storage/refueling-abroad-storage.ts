@@ -20,9 +20,9 @@ import { refuelingAbroadIntermediaries } from "../entities/refueling-abroad-inte
 import { refuelingAbroadBankCommissions } from "../entities/refueling-abroad-bank-commissions";
 import { suppliers } from "../../suppliers/entities/suppliers";
 import { customers } from "../../customers/entities/customers";
-import { prices, storageCards, storageCardTransactions, bases } from "@shared/schema";
+import { storageCards, storageCardTransactions, bases } from "@shared/schema";
 import { SOURCE_TYPE, STORAGE_CARD_TRANSACTION_TYPE } from "@shared/constants";
-import { normalizeRefuelingAbroadUnitInput } from "../refueling-abroad-api-adapters";
+import { normalizeRefuelingAbroadInput } from "../refueling-abroad-input-validation";
 
 export interface IRefuelingAbroadStorage {
   getAll(
@@ -329,7 +329,7 @@ export class RefuelingAbroadStorage {
         .insert(refuelingAbroad)
         .values({
           ...this.transformData(
-            normalizeRefuelingAbroadUnitInput(
+            normalizeRefuelingAbroadInput(
               data as unknown as Record<string, unknown>,
             ) as Partial<InsertRefuelingAbroad>,
           ),
@@ -352,7 +352,7 @@ export class RefuelingAbroadStorage {
         const quantity = parseFloat(created.purchaseAmountUsd || "0");
         const newBalance = currentBalance - quantity;
         const newAverageCost = parseFloat(
-          created.purchasePriceUsd || currentCost,
+          created.purchasePriceUsdPerTonne || currentCost,
         );
 
         if (newBalance < 0) {
@@ -467,9 +467,8 @@ export class RefuelingAbroadStorage {
         throw new Error("Deal not found");
       }
 
-      data = normalizeRefuelingAbroadUnitInput(
+      data = normalizeRefuelingAbroadInput(
         data as unknown as Record<string, unknown>,
-        currentRefueling as unknown as Record<string, unknown>,
       ) as Partial<InsertRefuelingAbroad>;
 
       // Логика перехода из черновика в готовую заправку
@@ -489,7 +488,8 @@ export class RefuelingAbroadStorage {
         const currentCost = storageCard.averageCost || "0";
         const quantity = data.purchaseAmountUsd;
         const newBalance = currentBalance - quantity;
-        const newAverageCost = data.purchasePriceUsd || parseFloat(currentCost);
+        const newAverageCost =
+          data.purchasePriceUsdPerTonne || parseFloat(currentCost);
 
         if (newBalance < 0) {
           data.needsTopUp = true;
@@ -565,7 +565,8 @@ export class RefuelingAbroadStorage {
           const balanceBeforeOldOperation = currentBalance + oldQuantity;
 
           const newBalance = balanceBeforeOldOperation - newQuantity;
-          const newCost = data.purchasePriceUsd || parseFloat(currentCost);
+          const newCost =
+            data.purchasePriceUsdPerTonne || parseFloat(currentCost);
 
           data.needsTopUp = newBalance < 0;
 
@@ -881,10 +882,6 @@ export class RefuelingAbroadStorage {
     if (data.density !== undefined) {
       result.density = data.density !== null ? String(data.density) : null;
     }
-    if (data.quantityKg !== undefined) {
-      result.quantityKg =
-        data.quantityKg !== null ? String(data.quantityKg) : null;
-    }
     if (data.quantityTonnes !== undefined) {
       result.quantityTonnes =
         data.quantityTonnes !== null ? String(data.quantityTonnes) : null;
@@ -905,19 +902,11 @@ export class RefuelingAbroadStorage {
           ? String(data.saleExchangeRateValue)
           : null;
     }
-    if (data.purchasePriceUsd !== undefined) {
-      result.purchasePriceUsd =
-        data.purchasePriceUsd !== null ? String(data.purchasePriceUsd) : null;
-    }
     if (data.purchasePriceUsdPerTonne !== undefined) {
       result.purchasePriceUsdPerTonne =
         data.purchasePriceUsdPerTonne !== null
           ? String(data.purchasePriceUsdPerTonne)
           : null;
-    }
-    if (data.purchasePriceRub !== undefined) {
-      result.purchasePriceRub =
-        data.purchasePriceRub !== null ? String(data.purchasePriceRub) : null;
     }
     if (data.purchasePriceRubPerTonne !== undefined) {
       result.purchasePriceRubPerTonne =
@@ -925,19 +914,11 @@ export class RefuelingAbroadStorage {
           ? String(data.purchasePriceRubPerTonne)
           : null;
     }
-    if (data.salePriceUsd !== undefined) {
-      result.salePriceUsd =
-        data.salePriceUsd !== null ? String(data.salePriceUsd) : null;
-    }
     if (data.salePriceUsdPerTonne !== undefined) {
       result.salePriceUsdPerTonne =
         data.salePriceUsdPerTonne !== null
           ? String(data.salePriceUsdPerTonne)
           : null;
-    }
-    if (data.salePriceRub !== undefined) {
-      result.salePriceRub =
-        data.salePriceRub !== null ? String(data.salePriceRub) : null;
     }
     if (data.salePriceRubPerTonne !== undefined) {
       result.salePriceRubPerTonne =
@@ -995,22 +976,10 @@ export class RefuelingAbroadStorage {
 
   async getUsedVolumeByPrice(
     priceId: string,
-  ): Promise<{ usedVolumeTonnes: number; usedVolume: number }> {
-    const price = await db.query.prices.findFirst({
-      where: eq(prices.id, priceId),
-      columns: { priceUnit: true },
-    });
-
+  ): Promise<{ usedVolumeTonnes: number }> {
     const [result] = await db
       .select({
-        totalMassTonnes: sql<string>`COALESCE(SUM(
-          COALESCE(
-            ${refuelingAbroad.quantityTonnes},
-            ${refuelingAbroad.quantityKg} / 1000
-          )
-        ), 0)`,
-        storedMassKg: sql<string>`COALESCE(SUM(${refuelingAbroad.quantityKg}), 0)`,
-        totalLiters: sql<string>`COALESCE(SUM(${refuelingAbroad.quantityLiters}), 0)`,
+        totalMassTonnes: sql<string>`COALESCE(SUM(${refuelingAbroad.quantityTonnes}), 0)`,
       })
       .from(refuelingAbroad)
       .where(
@@ -1024,13 +993,7 @@ export class RefuelingAbroadStorage {
         ),
       );
     const totalMassTonnes = Number.parseFloat(result?.totalMassTonnes || "0");
-    const storedMassKg = Number.parseFloat(result?.storedMassKg || "0");
-    const totalLiters = Number.parseFloat(result?.totalLiters || "0");
-    return {
-      usedVolumeTonnes: totalMassTonnes,
-      // Keep the old response unit for clients not yet migrated.
-      usedVolume: price?.priceUnit === "liter" ? totalLiters : storedMassKg,
-    };
+    return { usedVolumeTonnes: totalMassTonnes };
   }
 
   /** Поиск уникальных значений по колонке для серверного фильтра */

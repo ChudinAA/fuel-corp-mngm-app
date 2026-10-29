@@ -3,8 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
   formatTonnesForInput,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 
 export function useEquipmentBalance(
@@ -23,18 +21,14 @@ export function useEquipmentBalance(
     queryFn: async () => {
        if (productType === PRODUCT_TYPE.SERVICE) {
          return {
-           balance: "0",
             balanceTonnes: "0",
-           averageCost: "0",
-           averageCostPerTonne: "0.000",
+            averageCostPerTonne: null,
          };
        }
        if (!equipmentId || !date) {
          return {
-           balance: "0",
             balanceTonnes: "0",
-           averageCost: "0",
-           averageCostPerTonne: "0.000",
+            averageCostPerTonne: null,
          };
        }
       const params = new URLSearchParams({
@@ -46,23 +40,17 @@ export function useEquipmentBalance(
       );
       if (!res.ok) throw new Error("Failed to fetch equipment balance");
       const data = await res.json();
-       const balance = String(data.balance ?? "0");
-       const averageCost =
-         data.averageCost == null ? null : String(data.averageCost);
+        if (data.balanceTonnes == null) {
+          throw new Error(
+            "Equipment balance response is missing balanceTonnes",
+          );
+        }
       return {
-         balance,
-          balanceTonnes: formatTonnesForInput(
-            data.balanceTonnes == null
-              ? kilogramsToTonnes(Number(balance))
-              : String(data.balanceTonnes),
-          ),
-         averageCost,
-         averageCostPerTonne:
-           data.averageCostPerTonne == null
-             ? averageCost == null
-               ? null
-               : pricePerKilogramToPerTonne(Number(averageCost)).toFixed(3)
-             : String(data.averageCostPerTonne),
+          balanceTonnes: formatTonnesForInput(data.balanceTonnes),
+          averageCostPerTonne:
+            data.averageCostPerTonne == null
+              ? null
+              : String(data.averageCostPerTonne),
       };
     },
     enabled: !!equipmentId && !!date,

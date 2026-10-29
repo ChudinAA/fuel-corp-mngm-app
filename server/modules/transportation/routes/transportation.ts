@@ -9,8 +9,7 @@ import { SSEService } from "../../../services/sse-service";
 import {
   TransportationApiInputError,
   normalizeTransportationInput,
-  transportationResultToApi,
-} from "../transportation-api-adapters";
+} from "../transportation-input-validation";
 
 export function registerTransportationRoutes(app: Express) {
   app.get(
@@ -42,7 +41,7 @@ export function registerTransportationRoutes(app: Express) {
         search,
         filters,
       );
-      res.json(transportationResultToApi(result));
+      res.json(result);
     },
   );
 
@@ -56,7 +55,7 @@ export function registerTransportationRoutes(app: Express) {
       if (!item) {
         return res.status(404).json({ message: "Сделка не найдена" });
       }
-      res.json(transportationResultToApi(item));
+      res.json(item);
     },
   );
 
@@ -102,7 +101,7 @@ export function registerTransportationRoutes(app: Express) {
         });
         const item = await (storage as any).transportation.createTransportation(data);
         SSEService.notifyEntityChanged("transportation", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(transportationResultToApi(item));
+        res.status(201).json(item);
       } catch (error) {
         if (error instanceof TransportationApiInputError) {
           return res.status(400).json({ message: error.message });
@@ -151,7 +150,7 @@ export function registerTransportationRoutes(app: Express) {
           return res.status(404).json({ message: "Сделка не найдена" });
         }
         SSEService.notifyEntityChanged("transportation", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(transportationResultToApi(item));
+        res.json(item);
       } catch (error) {
         if (error instanceof TransportationApiInputError) {
           return res.status(400).json({ message: error.message });

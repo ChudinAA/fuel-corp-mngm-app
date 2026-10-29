@@ -129,10 +129,10 @@ test("restoring an older refueling movement recalculates both fuel products in s
           .insert(warehouses)
           .values({
             name: `restore-test-${productType}-${crypto.randomUUID()}`,
-            currentBalance: isPvkj ? "0" : "80",
-            averageCost: isPvkj ? "0" : "10",
-            pvkjBalance: isPvkj ? "80" : "0",
-            pvkjAverageCost: isPvkj ? "10" : "0",
+            currentBalanceTonnes: isPvkj ? "0" : "80",
+            averageCostPerTonne: isPvkj ? "0" : "10",
+            pvkjBalanceTonnes: isPvkj ? "80" : "0",
+            pvkjAverageCostPerTonne: isPvkj ? "10" : "0",
           })
           .returning();
 
@@ -140,10 +140,10 @@ test("restoring an older refueling movement recalculates both fuel products in s
           .insert(equipments)
           .values({
             name: `restore-test-${productType}-${crypto.randomUUID()}`,
-            currentBalance: isPvkj ? "0" : "80",
-            averageCost: isPvkj ? "0" : "10",
-            pvkjBalance: isPvkj ? "80" : "0",
-            pvkjAverageCost: isPvkj ? "10" : "0",
+            currentBalanceTonnes: isPvkj ? "0" : "80",
+            averageCostPerTonne: isPvkj ? "0" : "10",
+            pvkjBalanceTonnes: isPvkj ? "80" : "0",
+            pvkjAverageCostPerTonne: isPvkj ? "10" : "0",
           })
           .returning();
 
@@ -153,11 +153,11 @@ test("restoring an older refueling movement recalculates both fuel products in s
             warehouseId: warehouse.id,
             transactionType: TRANSACTION_TYPE.INVENTORY,
             productType,
-            quantity: "100",
-            balanceBefore: "0",
-            balanceAfter: "100",
-            averageCostBefore: "0",
-            averageCostAfter: "10",
+          quantityTonnes: "100",
+          balanceBeforeTonnes: "0",
+          balanceAfterTonnes: "100",
+          averageCostBeforePerTonne: "0",
+          averageCostAfterPerTonne: "10",
             sum: "1000",
             transactionDate: testDates.opening,
           })
@@ -168,11 +168,11 @@ test("restoring an older refueling movement recalculates both fuel products in s
             warehouseId: warehouse.id,
             transactionType: TRANSACTION_TYPE.SALE,
             productType,
-            quantity: "-20",
-            balanceBefore: "100",
-            balanceAfter: "80",
-            averageCostBefore: "10",
-            averageCostAfter: "10",
+          quantityTonnes: "-20",
+          balanceBeforeTonnes: "100",
+          balanceAfterTonnes: "80",
+          averageCostBeforePerTonne: "10",
+          averageCostAfterPerTonne: "10",
             sum: "200",
             transactionDate: testDates.oldOrder,
           })
@@ -184,11 +184,11 @@ test("restoring an older refueling movement recalculates both fuel products in s
             equipmentId: equipment.id,
             transactionType: TRANSACTION_TYPE.INVENTORY,
             productType,
-            quantity: "100",
-            balanceBefore: "0",
-            balanceAfter: "100",
-            averageCostBefore: "0",
-            averageCostAfter: "10",
+          quantityTonnes: "100",
+          balanceBeforeTonnes: "0",
+          balanceAfterTonnes: "100",
+          averageCostBeforePerTonne: "0",
+          averageCostAfterPerTonne: "10",
             sum: "1000",
             transactionDate: testDates.opening,
           })
@@ -199,11 +199,11 @@ test("restoring an older refueling movement recalculates both fuel products in s
             equipmentId: equipment.id,
             transactionType: TRANSACTION_TYPE.SALE,
             productType,
-            quantity: "-20",
-            balanceBefore: "100",
-            balanceAfter: "80",
-            averageCostBefore: "10",
-            averageCostAfter: "10",
+          quantityTonnes: "-20",
+          balanceBeforeTonnes: "100",
+          balanceAfterTonnes: "80",
+          averageCostBeforePerTonne: "10",
+          averageCostAfterPerTonne: "10",
             sum: "200",
             transactionDate: testDates.oldOrder,
           })
@@ -227,10 +227,10 @@ test("restoring an older refueling movement recalculates both fuel products in s
             movementType: "supply",
             productType,
             toWarehouseId: warehouse.id,
-            quantityKg: "40",
+            quantityTonnes: "40",
             totalCost: "600",
-            purchasePrice: "15",
-            costPerKg: "15",
+            purchasePricePerTonne: "15",
+            costPerTonne: "15",
           })
           .returning();
         await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -253,11 +253,10 @@ test("restoring an older refueling movement recalculates both fuel products in s
             supplierId: supplier.id,
             buyerId: customer.id,
             warehouseId: warehouse.id,
-            quantityKg: "10",
-            quantityTonnes: "0.01",
-            purchasePrice: "10",
+            quantityTonnes: "10",
+            purchasePricePerTonne: "10",
             purchaseAmount: "100",
-            salePrice: "20",
+            salePricePerTonne: "20",
             saleAmount: "200",
             agentFee: "5",
             isAgentFeeEnabled: true,
@@ -292,9 +291,9 @@ test("restoring an older refueling movement recalculates both fuel products in s
             movementType: "storage_to_tzk",
             productType,
             toEquipmentId: equipment.id,
-            quantityKg: "40",
+            quantityTonnes: "40",
             totalCost: "600",
-            costPerKg: "15",
+            costPerTonne: "15",
           })
           .returning();
         await EquipmentTransactionService.createTransactionAndUpdateEquipment(
@@ -317,11 +316,10 @@ test("restoring an older refueling movement recalculates both fuel products in s
             supplierId: supplier.id,
             buyerId: customer.id,
             equipmentId: equipment.id,
-            quantityKg: "10",
-            quantityTonnes: "0.01",
-            purchasePrice: "10",
+            quantityTonnes: "10",
+            purchasePricePerTonne: "10",
             purchaseAmount: "100",
-            salePrice: "20",
+            salePricePerTonne: "20",
             saleAmount: "200",
             agentFee: "5",
             isAgentFeeEnabled: true,
@@ -353,21 +351,21 @@ test("restoring an older refueling movement recalculates both fuel products in s
           .insert(warehouses)
           .values({
             name: `restore-equipment-chain-warehouse-${productType}-${crypto.randomUUID()}`,
-            currentBalance: isPvkj ? "0" : "10",
-            averageCost: isPvkj ? "0" : "8",
-            pvkjBalance: isPvkj ? "10" : "0",
-            pvkjAverageCost: isPvkj ? "8" : "0",
+            currentBalanceTonnes: isPvkj ? "0" : "10",
+            averageCostPerTonne: isPvkj ? "0" : "8",
+            pvkjBalanceTonnes: isPvkj ? "10" : "0",
+            pvkjAverageCostPerTonne: isPvkj ? "8" : "0",
           })
           .returning();
         await tx.insert(warehouseTransactions).values({
           warehouseId: equipmentTransferWarehouse.id,
           transactionType: TRANSACTION_TYPE.INVENTORY,
           productType,
-          quantity: "10",
-          balanceBefore: "0",
-          balanceAfter: "10",
-          averageCostBefore: "0",
-          averageCostAfter: "8",
+          quantityTonnes: "10",
+          balanceBeforeTonnes: "0",
+          balanceAfterTonnes: "10",
+          averageCostBeforePerTonne: "0",
+          averageCostAfterPerTonne: "8",
           sum: "80",
           transactionDate: testDates.opening,
         });
@@ -379,9 +377,9 @@ test("restoring an older refueling movement recalculates both fuel products in s
             productType,
             fromEquipmentId: equipment.id,
             toWarehouseId: equipmentTransferWarehouse.id,
-            quantityKg: "20",
+            quantityTonnes: "20",
             totalCost: "200",
-            costPerKg: "10",
+            costPerTonne: "10",
           })
           .returning();
         await EquipmentTransactionService.createTransactionAndUpdateEquipment(
@@ -416,20 +414,20 @@ test("restoring an older refueling movement recalculates both fuel products in s
           .insert(warehouses)
           .values({
             name: `restore-chain-warehouse-${productType}-${crypto.randomUUID()}`,
-            currentBalance: isPvkj ? "0" : "10",
-            averageCost: isPvkj ? "0" : "8",
-            pvkjBalance: isPvkj ? "10" : "0",
-            pvkjAverageCost: isPvkj ? "8" : "0",
+            currentBalanceTonnes: isPvkj ? "0" : "10",
+            averageCostPerTonne: isPvkj ? "0" : "8",
+            pvkjBalanceTonnes: isPvkj ? "10" : "0",
+            pvkjAverageCostPerTonne: isPvkj ? "8" : "0",
           })
           .returning();
         const [receivingEquipment] = await tx
           .insert(equipments)
           .values({
             name: `restore-chain-equipment-${productType}-${crypto.randomUUID()}`,
-            currentBalance: isPvkj ? "0" : "5",
-            averageCost: isPvkj ? "0" : "12",
-            pvkjBalance: isPvkj ? "5" : "0",
-            pvkjAverageCost: isPvkj ? "12" : "0",
+            currentBalanceTonnes: isPvkj ? "0" : "5",
+            averageCostPerTonne: isPvkj ? "0" : "12",
+            pvkjBalanceTonnes: isPvkj ? "5" : "0",
+            pvkjAverageCostPerTonne: isPvkj ? "12" : "0",
           })
           .returning();
 
@@ -437,11 +435,11 @@ test("restoring an older refueling movement recalculates both fuel products in s
           warehouseId: receivingWarehouse.id,
           transactionType: TRANSACTION_TYPE.INVENTORY,
           productType,
-          quantity: "10",
-          balanceBefore: "0",
-          balanceAfter: "10",
-          averageCostBefore: "0",
-          averageCostAfter: "8",
+          quantityTonnes: "10",
+          balanceBeforeTonnes: "0",
+          balanceAfterTonnes: "10",
+          averageCostBeforePerTonne: "0",
+          averageCostAfterPerTonne: "8",
           sum: "80",
           transactionDate: testDates.opening,
         });
@@ -449,11 +447,11 @@ test("restoring an older refueling movement recalculates both fuel products in s
           equipmentId: receivingEquipment.id,
           transactionType: TRANSACTION_TYPE.INVENTORY,
           productType,
-          quantity: "5",
-          balanceBefore: "0",
-          balanceAfter: "5",
-          averageCostBefore: "0",
-          averageCostAfter: "12",
+          quantityTonnes: "5",
+          balanceBeforeTonnes: "0",
+          balanceAfterTonnes: "5",
+          averageCostBeforePerTonne: "0",
+          averageCostAfterPerTonne: "12",
           sum: "60",
           transactionDate: testDates.opening,
         });
@@ -466,10 +464,10 @@ test("restoring an older refueling movement recalculates both fuel products in s
             productType,
             fromWarehouseId: warehouse.id,
             toWarehouseId: receivingWarehouse.id,
-            quantityKg: "20",
+            quantityTonnes: "20",
             totalCost: "200",
-            purchasePrice: "10",
-            costPerKg: "10",
+            purchasePricePerTonne: "10",
+            costPerTonne: "10",
           })
           .returning();
         await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -505,9 +503,9 @@ test("restoring an older refueling movement recalculates both fuel products in s
             productType,
             fromWarehouseId: receivingWarehouse.id,
             toEquipmentId: receivingEquipment.id,
-            quantityKg: "10",
+            quantityTonnes: "10",
             totalCost: "100",
-            costPerKg: "10",
+            costPerTonne: "10",
           })
           .returning();
         await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -545,11 +543,10 @@ test("restoring an older refueling movement recalculates both fuel products in s
             supplierId: supplier.id,
             buyerId: customer.id,
             warehouseId: receivingWarehouse.id,
-            quantityKg: "10",
-            quantityTonnes: "0.01",
-            purchasePrice: "10",
+            quantityTonnes: "10",
+            purchasePricePerTonne: "10",
             purchaseAmount: "100",
-            salePrice: "20",
+            salePricePerTonne: "20",
             saleAmount: "200",
             agentFee: "5",
             isAgentFeeEnabled: true,
@@ -649,11 +646,10 @@ test("restoring an older refueling movement recalculates both fuel products in s
             supplierId: supplier.id,
             buyerId: customer.id,
             equipmentId: receivingEquipment.id,
-            quantityKg: "10",
-            quantityTonnes: "0.01",
-            purchasePrice: "10",
+            quantityTonnes: "10",
+            purchasePricePerTonne: "10",
             purchaseAmount: "100",
-            salePrice: "20",
+            salePricePerTonne: "20",
             saleAmount: "200",
             agentFee: "5",
             isAgentFeeEnabled: true,
@@ -767,16 +763,24 @@ test("restoring an older refueling movement recalculates both fuel products in s
           .from(equipments)
           .where(eq(equipments.id, equipment.id));
         const warehouseBalance = Number(
-          isPvkj ? refreshedWarehouse?.pvkjBalance : refreshedWarehouse?.currentBalance,
+          isPvkj
+            ? refreshedWarehouse?.pvkjBalanceTonnes
+            : refreshedWarehouse?.currentBalanceTonnes,
         );
         const warehouseAverageCost = Number(
-          isPvkj ? refreshedWarehouse?.pvkjAverageCost : refreshedWarehouse?.averageCost,
+          isPvkj
+            ? refreshedWarehouse?.pvkjAverageCostPerTonne
+            : refreshedWarehouse?.averageCostPerTonne,
         );
         const equipmentBalance = Number(
-          isPvkj ? refreshedEquipment[0]?.pvkjBalance : refreshedEquipment[0]?.currentBalance,
+          isPvkj
+            ? refreshedEquipment[0]?.pvkjBalanceTonnes
+            : refreshedEquipment[0]?.currentBalanceTonnes,
         );
         const equipmentAverageCost = Number(
-          isPvkj ? refreshedEquipment[0]?.pvkjAverageCost : refreshedEquipment[0]?.averageCost,
+          isPvkj
+            ? refreshedEquipment[0]?.pvkjAverageCostPerTonne
+            : refreshedEquipment[0]?.averageCostPerTonne,
         );
 
         assert.equal(warehouseBalance, 90, `warehouse ${productType} balance`);
@@ -800,23 +804,23 @@ test("restoring an older refueling movement recalculates both fuel products in s
           });
         const downstreamWarehouseBalance = Number(
           isPvkj
-            ? refreshedReceivingWarehouse?.pvkjBalance
-            : refreshedReceivingWarehouse?.currentBalance,
+            ? refreshedReceivingWarehouse?.pvkjBalanceTonnes
+            : refreshedReceivingWarehouse?.currentBalanceTonnes,
         );
         const downstreamWarehouseAverageCost = Number(
           isPvkj
-            ? refreshedReceivingWarehouse?.pvkjAverageCost
-            : refreshedReceivingWarehouse?.averageCost,
+            ? refreshedReceivingWarehouse?.pvkjAverageCostPerTonne
+            : refreshedReceivingWarehouse?.averageCostPerTonne,
         );
         const downstreamEquipmentBalance = Number(
           isPvkj
-            ? refreshedReceivingEquipment?.pvkjBalance
-            : refreshedReceivingEquipment?.currentBalance,
+            ? refreshedReceivingEquipment?.pvkjBalanceTonnes
+            : refreshedReceivingEquipment?.currentBalanceTonnes,
         );
         const downstreamEquipmentAverageCost = Number(
           isPvkj
-            ? refreshedReceivingEquipment?.pvkjAverageCost
-            : refreshedReceivingEquipment?.averageCost,
+            ? refreshedReceivingEquipment?.pvkjAverageCostPerTonne
+            : refreshedReceivingEquipment?.averageCostPerTonne,
         );
 
         assert.equal(
@@ -844,13 +848,13 @@ test("restoring an older refueling movement recalculates both fuel products in s
           });
         const equipmentToWarehouseBalance = Number(
           isPvkj
-            ? refreshedEquipmentTransferWarehouse?.pvkjBalance
-            : refreshedEquipmentTransferWarehouse?.currentBalance,
+            ? refreshedEquipmentTransferWarehouse?.pvkjBalanceTonnes
+            : refreshedEquipmentTransferWarehouse?.currentBalanceTonnes,
         );
         const equipmentToWarehouseAverageCost = Number(
           isPvkj
-            ? refreshedEquipmentTransferWarehouse?.pvkjAverageCost
-            : refreshedEquipmentTransferWarehouse?.averageCost,
+            ? refreshedEquipmentTransferWarehouse?.pvkjAverageCostPerTonne
+            : refreshedEquipmentTransferWarehouse?.averageCostPerTonne,
         );
         assert.equal(
           equipmentToWarehouseBalance,
@@ -889,15 +893,15 @@ test("restoring an older refueling movement recalculates both fuel products in s
 
         const [updatedDownstreamWarehouseRefueling] = await tx
           .select({
-            purchasePrice: aircraftRefueling.purchasePrice,
+            purchasePricePerTonne: aircraftRefueling.purchasePricePerTonne,
             purchaseAmount: aircraftRefueling.purchaseAmount,
             profit: aircraftRefueling.profit,
           })
           .from(aircraftRefueling)
           .where(eq(aircraftRefueling.id, downstreamWarehouseRefueling.id));
         assert.ok(
-          Math.abs(Number(updatedDownstreamWarehouseRefueling?.purchasePrice) - 10.444333) < 0.00001,
-          `downstream warehouse refueling purchase price (${productType}): ${updatedDownstreamWarehouseRefueling?.purchasePrice}`,
+          Math.abs(Number(updatedDownstreamWarehouseRefueling?.purchasePricePerTonne) - 10.444333) < 0.00001,
+          `downstream warehouse refueling purchase price (${productType}): ${updatedDownstreamWarehouseRefueling?.purchasePricePerTonne}`,
         );
         assert.equal(
           Number(updatedDownstreamWarehouseRefueling?.purchaseAmount),
@@ -912,15 +916,15 @@ test("restoring an older refueling movement recalculates both fuel products in s
 
         const [updatedDownstreamEquipmentRefueling] = await tx
           .select({
-            purchasePrice: aircraftRefueling.purchasePrice,
+            purchasePricePerTonne: aircraftRefueling.purchasePricePerTonne,
             purchaseAmount: aircraftRefueling.purchaseAmount,
             profit: aircraftRefueling.profit,
           })
           .from(aircraftRefueling)
           .where(eq(aircraftRefueling.id, downstreamEquipmentRefueling.id));
         assert.ok(
-          Math.abs(Number(updatedDownstreamEquipmentRefueling?.purchasePrice) - 10.962667) < 0.00001,
-          `downstream equipment refueling purchase price (${productType}): ${updatedDownstreamEquipmentRefueling?.purchasePrice}`,
+          Math.abs(Number(updatedDownstreamEquipmentRefueling?.purchasePricePerTonne) - 10.962667) < 0.00001,
+          `downstream equipment refueling purchase price (${productType}): ${updatedDownstreamEquipmentRefueling?.purchasePricePerTonne}`,
         );
         assert.equal(
           Number(updatedDownstreamEquipmentRefueling?.purchaseAmount),
@@ -980,7 +984,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
 
           const [refreshedWarehouseRefueling] = await tx
             .select({
-              purchasePrice: aircraftRefueling.purchasePrice,
+              purchasePricePerTonne: aircraftRefueling.purchasePricePerTonne,
               purchaseAmount: aircraftRefueling.purchaseAmount,
               profit: aircraftRefueling.profit,
             })
@@ -988,7 +992,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
             .where(eq(aircraftRefueling.id, warehouseRefueling.id));
           const [refreshedEquipmentRefueling] = await tx
             .select({
-              purchasePrice: aircraftRefueling.purchasePrice,
+              purchasePricePerTonne: aircraftRefueling.purchasePricePerTonne,
               purchaseAmount: aircraftRefueling.purchaseAmount,
               profit: aircraftRefueling.profit,
             })
@@ -1000,7 +1004,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
             ["equipment", refreshedEquipmentRefueling],
           ] as const) {
             assert.equal(
-              Number(refueling?.purchasePrice),
+              Number(refueling?.purchasePricePerTonne),
               11.666667,
               `${label} refueling purchase price (${scenario.label})`,
             );
@@ -1073,7 +1077,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
 
           const [refreshedWarehouseRefueling] = await tx
             .select({
-              purchasePrice: aircraftRefueling.purchasePrice,
+              purchasePricePerTonne: aircraftRefueling.purchasePricePerTonne,
               purchaseAmount: aircraftRefueling.purchaseAmount,
               profit: aircraftRefueling.profit,
             })
@@ -1081,7 +1085,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
             .where(eq(aircraftRefueling.id, warehouseRefueling.id));
           const [refreshedEquipmentRefueling] = await tx
             .select({
-              purchasePrice: aircraftRefueling.purchasePrice,
+              purchasePricePerTonne: aircraftRefueling.purchasePricePerTonne,
               purchaseAmount: aircraftRefueling.purchaseAmount,
               profit: aircraftRefueling.profit,
             })
@@ -1093,7 +1097,7 @@ test("restoring an older refueling movement recalculates both fuel products in s
             ["equipment", refreshedEquipmentRefueling],
           ] as const) {
             assert.equal(
-              Number(refueling?.purchasePrice),
+              Number(refueling?.purchasePricePerTonne),
               11.666667,
               `${label} refueling purchase price (${scenario.label})`,
             );
@@ -1131,8 +1135,8 @@ test("refueling recalculation excludes disabled fees from profit", async () => {
           findFirst: async () => ({
             id: refuelingId,
             productType: PRODUCT_TYPE.KEROSENE,
-            quantityKg: "10",
-            salePrice: "20",
+            quantityTonnes: "10",
+            salePricePerTonne: "20",
             agentFee: "5",
             isAgentFeeEnabled: scenario.agentFeeEnabled,
             otherServiceFee: "3",
@@ -1157,7 +1161,7 @@ test("refueling recalculation excludes disabled fees from profit", async () => {
     );
 
     assert.equal(
-      Number(updatedRefueling?.purchasePrice),
+      Number(updatedRefueling?.purchasePricePerTonne),
       11.666667,
       `${scenario.label} purchase price`,
     );
@@ -1184,8 +1188,8 @@ test("recharged PVKJ carries enabled fees into sale amount and keeps zero profit
           findFirst: async () => ({
             id: refuelingId,
             productType: PRODUCT_TYPE.PVKJ,
-            quantityKg: "10",
-            salePrice: "10",
+            quantityTonnes: "10",
+            salePricePerTonne: "10",
             isPvkjRecharge: true,
             isPriceRecharge: false,
             agentFee: "5",
@@ -1219,7 +1223,7 @@ test("recharged PVKJ carries enabled fees into sale amount and keeps zero profit
       (hasOtherServiceFee ? 3 : 0);
 
     assert.equal(
-      Number(updatedRefueling?.salePrice),
+      Number(updatedRefueling?.salePricePerTonne),
       11.666667,
       `${scenario.label} sale price follows recalculated cost`,
     );
@@ -1251,8 +1255,8 @@ test("late refueling recalculation uses the latest saved fee amounts", async () 
           findFirst: async () => ({
             id: scenario.label,
             productType: PRODUCT_TYPE.KEROSENE,
-            quantityKg: "10",
-            salePrice: "20",
+            quantityTonnes: "10",
+            salePricePerTonne: "20",
             agentFee: scenario.agentFee,
             isAgentFeeEnabled: true,
             otherServiceFee: scenario.otherServiceFee,
@@ -1276,7 +1280,7 @@ test("late refueling recalculation uses the latest saved fee amounts", async () 
       11.666667,
     );
 
-    assert.equal(Number(updatedRefueling?.purchasePrice), 11.666667);
+    assert.equal(Number(updatedRefueling?.purchasePricePerTonne), 11.666667);
     assert.equal(Number(updatedRefueling?.purchaseAmount), 116.67);
     assert.equal(
       Number(updatedRefueling?.profit),
@@ -1324,21 +1328,21 @@ test("restoring an older sale preserves delivery and storage costs in shared war
           .insert(warehouses)
           .values({
             name: `shared-destination-${fixtureId}`,
-            currentBalance: "10",
-            averageCost: "4",
-            pvkjBalance: "0",
-            pvkjAverageCost: "0",
+            currentBalanceTonnes: "10",
+            averageCostPerTonne: "4",
+            pvkjBalanceTonnes: "0",
+            pvkjAverageCostPerTonne: "0",
           })
           .returning();
         await tx.insert(warehouseTransactions).values({
           warehouseId: destination.id,
           transactionType: TRANSACTION_TYPE.INVENTORY,
           productType,
-          quantity: "10",
-          balanceBefore: "0",
-          balanceAfter: "10",
-          averageCostBefore: "0",
-          averageCostAfter: "4",
+            quantityTonnes: "10",
+            balanceBeforeTonnes: "0",
+            balanceAfterTonnes: "10",
+            averageCostBeforePerTonne: "0",
+            averageCostAfterPerTonne: "4",
           sum: "40",
           transactionDate: openingDate,
         });
@@ -1349,21 +1353,21 @@ test("restoring an older sale preserves delivery and storage costs in shared war
             .insert(warehouses)
             .values({
               name: `shared-source-${fixtureId}-${index}`,
-              currentBalance: String(spec.openingBalance),
-              averageCost: String(spec.openingCost),
-              pvkjBalance: "0",
-              pvkjAverageCost: "0",
+              currentBalanceTonnes: String(spec.openingBalance),
+              averageCostPerTonne: String(spec.openingCost),
+              pvkjBalanceTonnes: "0",
+              pvkjAverageCostPerTonne: "0",
             })
             .returning();
           await tx.insert(warehouseTransactions).values({
             warehouseId: source.id,
             transactionType: TRANSACTION_TYPE.INVENTORY,
             productType,
-            quantity: String(spec.openingBalance),
-            balanceBefore: "0",
-            balanceAfter: String(spec.openingBalance),
-            averageCostBefore: "0",
-            averageCostAfter: String(spec.openingCost),
+            quantityTonnes: String(spec.openingBalance),
+            balanceBeforeTonnes: "0",
+            balanceAfterTonnes: String(spec.openingBalance),
+            averageCostBeforePerTonne: "0",
+            averageCostAfterPerTonne: String(spec.openingCost),
             sum: String(spec.openingBalance * spec.openingCost),
             transactionDate: openingDate,
           });
@@ -1393,10 +1397,10 @@ test("restoring an older sale preserves delivery and storage costs in shared war
               movementType: "supply",
               productType,
               toWarehouseId: source.id,
-              quantityKg: String(spec.receiptQty),
+              quantityTonnes: String(spec.receiptQty),
               totalCost: String(spec.receiptQty * spec.receiptPrice),
-              purchasePrice: String(spec.receiptPrice),
-              costPerKg: String(spec.receiptPrice),
+              purchasePricePerTonne: String(spec.receiptPrice),
+              costPerTonne: String(spec.receiptPrice),
             })
             .returning();
           await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -1424,10 +1428,10 @@ test("restoring an older sale preserves delivery and storage costs in shared war
               productType,
               fromWarehouseId: source.id,
               toWarehouseId: destination.id,
-              quantityKg: "10",
+              quantityTonnes: "10",
               totalCost: (10 * staleAverageCost).toFixed(2),
-              purchasePrice: staleAverageCost.toFixed(6),
-              costPerKg: staleAverageCost.toFixed(6),
+              purchasePricePerTonne: staleAverageCost.toFixed(6),
+              costPerTonne: staleAverageCost.toFixed(6),
               deliveryCost: String(spec.deliveryCost),
               storageCost: String(spec.storageCost),
             })
@@ -1478,10 +1482,10 @@ test("restoring an older sale preserves delivery and storage costs in shared war
         const refreshedDestination = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, destination.id),
         });
-        assert.equal(Number(refreshedDestination?.currentBalance), 30);
+        assert.equal(Number(refreshedDestination?.currentBalanceTonnes), 30);
         assert.ok(
-          Math.abs(Number(refreshedDestination?.averageCost) - 14.237667) < 0.000001,
-          `destination average cost in source order ${sourceOrder.join("→")}: ${refreshedDestination?.averageCost}`,
+          Math.abs(Number(refreshedDestination?.averageCostPerTonne) - 14.237667) < 0.000001,
+          `destination average cost in source order ${sourceOrder.join("→")}: ${refreshedDestination?.averageCostPerTonne}`,
         );
 
         const transferRows = await tx
@@ -1541,21 +1545,21 @@ test("restoring an older sale preserves delivery and storage costs in shared war
           .insert(equipments)
           .values({
             name: `shared-equipment-destination-${fixtureId}`,
-            currentBalance: "5",
-            averageCost: "12",
-            pvkjBalance: "0",
-            pvkjAverageCost: "0",
+            currentBalanceTonnes: "5",
+            averageCostPerTonne: "12",
+            pvkjBalanceTonnes: "0",
+            pvkjAverageCostPerTonne: "0",
           })
           .returning();
         await tx.insert(equipmentTransactions).values({
           equipmentId: destination.id,
           transactionType: TRANSACTION_TYPE.INVENTORY,
           productType,
-          quantity: "5",
-          balanceBefore: "0",
-          balanceAfter: "5",
-          averageCostBefore: "0",
-          averageCostAfter: "12",
+          quantityTonnes: "5",
+          balanceBeforeTonnes: "0",
+          balanceAfterTonnes: "5",
+          averageCostBeforePerTonne: "0",
+          averageCostAfterPerTonne: "12",
           sum: "60",
           transactionDate: openingDate,
         });
@@ -1570,21 +1574,21 @@ test("restoring an older sale preserves delivery and storage costs in shared war
             .insert(warehouses)
             .values({
               name: `shared-equipment-source-${fixtureId}-${index}`,
-              currentBalance: String(spec.openingBalance),
-              averageCost: String(spec.openingCost),
-              pvkjBalance: "0",
-              pvkjAverageCost: "0",
+              currentBalanceTonnes: String(spec.openingBalance),
+              averageCostPerTonne: String(spec.openingCost),
+              pvkjBalanceTonnes: "0",
+              pvkjAverageCostPerTonne: "0",
             })
             .returning();
           await tx.insert(warehouseTransactions).values({
             warehouseId: source.id,
             transactionType: TRANSACTION_TYPE.INVENTORY,
             productType,
-            quantity: String(spec.openingBalance),
-            balanceBefore: "0",
-            balanceAfter: String(spec.openingBalance),
-            averageCostBefore: "0",
-            averageCostAfter: String(spec.openingCost),
+            quantityTonnes: String(spec.openingBalance),
+            balanceBeforeTonnes: "0",
+            balanceAfterTonnes: String(spec.openingBalance),
+            averageCostBeforePerTonne: "0",
+            averageCostAfterPerTonne: String(spec.openingCost),
             sum: String(spec.openingBalance * spec.openingCost),
             transactionDate: openingDate,
           });
@@ -1614,10 +1618,10 @@ test("restoring an older sale preserves delivery and storage costs in shared war
               movementType: "supply",
               productType,
               toWarehouseId: source.id,
-              quantityKg: String(spec.receiptQty),
+              quantityTonnes: String(spec.receiptQty),
               totalCost: String(spec.receiptQty * spec.receiptPrice),
-              purchasePrice: String(spec.receiptPrice),
-              costPerKg: String(spec.receiptPrice),
+              purchasePricePerTonne: String(spec.receiptPrice),
+              costPerTonne: String(spec.receiptPrice),
             })
             .returning();
           await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -1645,9 +1649,9 @@ test("restoring an older sale preserves delivery and storage costs in shared war
               productType,
               fromWarehouseId: source.id,
               toEquipmentId: destination.id,
-              quantityKg: String(spec.transferQty),
+              quantityTonnes: String(spec.transferQty),
               totalCost: (spec.transferQty * staleAverageCost).toFixed(2),
-              costPerKg: staleAverageCost.toFixed(5),
+              costPerTonne: staleAverageCost.toFixed(5),
             })
             .returning();
           await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -1703,13 +1707,13 @@ test("restoring an older sale preserves delivery and storage costs in shared war
           where: eq(equipments.id, destination.id),
         });
         assert.equal(
-          Number(refreshedDestination?.currentBalance),
+          Number(refreshedDestination?.currentBalanceTonnes),
           25,
           `equipment balance in source order ${sourceOrder.join("→")}`,
         );
         assert.ok(
-          Math.abs(Number(refreshedDestination?.averageCost) - 15.9556) < 0.0001,
-          `equipment average cost in source order ${sourceOrder.join("→")}: ${refreshedDestination?.averageCost}`,
+          Math.abs(Number(refreshedDestination?.averageCostPerTonne) - 15.9556) < 0.0001,
+          `equipment average cost in source order ${sourceOrder.join("→")}: ${refreshedDestination?.averageCostPerTonne}`,
         );
 
         const sourceBalances = await Promise.all(
@@ -1717,7 +1721,7 @@ test("restoring an older sale preserves delivery and storage costs in shared war
             const warehouse = await tx.query.warehouses.findFirst({
               where: eq(warehouses.id, warehouseId),
             });
-            return Number(warehouse?.currentBalance);
+            return Number(warehouse?.currentBalanceTonnes);
           }),
         );
         assert.deepEqual(
@@ -1779,20 +1783,20 @@ test(
           .insert(warehouses)
           .values({
             name: `cycle-warehouse-a-${fixtureId}`,
-            currentBalance: "100",
-            averageCost: "12",
-            pvkjBalance: "0",
-            pvkjAverageCost: "0",
+            currentBalanceTonnes: "100",
+            averageCostPerTonne: "12",
+            pvkjBalanceTonnes: "0",
+            pvkjAverageCostPerTonne: "0",
           })
           .returning();
         const [warehouseB] = await tx
           .insert(warehouses)
           .values({
             name: `cycle-warehouse-b-${fixtureId}`,
-            currentBalance: "100",
-            averageCost: "20",
-            pvkjBalance: "0",
-            pvkjAverageCost: "0",
+            currentBalanceTonnes: "100",
+            averageCostPerTonne: "20",
+            pvkjBalanceTonnes: "0",
+            pvkjAverageCostPerTonne: "0",
           })
           .returning();
 
@@ -1801,11 +1805,11 @@ test(
             warehouseId: warehouseA.id,
             transactionType: TRANSACTION_TYPE.INVENTORY,
             productType,
-            quantity: "100",
-            balanceBefore: "0",
-            balanceAfter: "100",
-            averageCostBefore: "0",
-            averageCostAfter: "12",
+            quantityTonnes: "100",
+            balanceBeforeTonnes: "0",
+            balanceAfterTonnes: "100",
+            averageCostBeforePerTonne: "0",
+            averageCostAfterPerTonne: "12",
             sum: "1200",
             transactionDate: openingDate,
           },
@@ -1813,11 +1817,11 @@ test(
             warehouseId: warehouseB.id,
             transactionType: TRANSACTION_TYPE.INVENTORY,
             productType,
-            quantity: "100",
-            balanceBefore: "0",
-            balanceAfter: "100",
-            averageCostBefore: "0",
-            averageCostAfter: "20",
+            quantityTonnes: "100",
+            balanceBeforeTonnes: "0",
+            balanceAfterTonnes: "100",
+            averageCostBeforePerTonne: "0",
+            averageCostAfterPerTonne: "20",
             sum: "2000",
             transactionDate: openingDate,
           },
@@ -1831,10 +1835,10 @@ test(
             productType,
             fromWarehouseId: warehouseA.id,
             toWarehouseId: warehouseB.id,
-            quantityKg: "10",
+            quantityTonnes: "10",
             totalCost: "60",
-            purchasePrice: "6",
-            costPerKg: "6",
+            purchasePricePerTonne: "6",
+            costPerTonne: "6",
           })
           .returning();
         await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -1870,10 +1874,10 @@ test(
             productType,
             fromWarehouseId: warehouseB.id,
             toWarehouseId: warehouseA.id,
-            quantityKg: "10",
+            quantityTonnes: "10",
             totalCost: "200",
-            purchasePrice: "20",
-            costPerKg: "20",
+            purchasePricePerTonne: "20",
+            costPerTonne: "20",
           })
           .returning();
         await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -1919,9 +1923,7 @@ test(
           .select({
             id: movement.id,
             totalCost: movement.totalCost,
-            purchasePrice: movement.purchasePrice,
             purchasePricePerTonne: movement.purchasePricePerTonne,
-            costPerKg: movement.costPerKg,
             costPerTonne: movement.costPerTonne,
           })
           .from(movement)
@@ -1947,23 +1949,9 @@ test(
         );
         assert.ok(
           Math.abs(
-            Number(recalculatedTransfers[0]?.purchasePrice) - 12.666667,
+            Number(recalculatedTransfers[0]?.purchasePricePerTonne) - 12.666667,
           ) < 0.01,
-          `forward transfer purchase price: ${recalculatedTransfers[0]?.purchasePrice}`,
-        );
-        assert.ok(
-          Math.abs(
-            Number(recalculatedTransfers[0]?.purchasePricePerTonne) -
-              Number(recalculatedTransfers[0]?.purchasePrice) * 1_000,
-          ) < 0.001,
-          "forward transfer purchase price must keep the tonne rate synchronized",
-        );
-        assert.ok(
-          Math.abs(
-            Number(recalculatedTransfers[0]?.costPerTonne) -
-              Number(recalculatedTransfers[0]?.costPerKg) * 1_000,
-          ) < 0.001,
-          "forward transfer cost must keep the tonne rate synchronized",
+          `forward transfer purchase price per tonne: ${recalculatedTransfers[0]?.purchasePricePerTonne}`,
         );
         assert.ok(
           Math.abs(
@@ -1974,17 +1962,17 @@ test(
         );
         assert.ok(
           Math.abs(
-            Number(recalculatedReturnReceipt?.price) -
+            Number(recalculatedReturnReceipt?.pricePerTonne) -
               Number(recalculatedReturnReceipt?.sum) / 10,
           ) < 0.0001,
-          "the originating warehouse receipt price should match its recorded total cost per kg",
+          "the originating warehouse receipt price should match its recorded total cost per tonne",
         );
         assert.ok(
           Math.abs(
-            Number(recalculatedWarehouse?.averageCost) -
+            Number(recalculatedWarehouse?.averageCostPerTonne) -
               (1200 + Number(recalculatedReturnReceipt?.sum)) / 110,
           ) < 0.00001,
-          `final warehouse average cost: ${recalculatedWarehouse?.averageCost}`,
+          `final warehouse average cost per tonne: ${recalculatedWarehouse?.averageCostPerTonne}`,
         );
         assert.ok(
           Math.abs(Number(recalculatedReverseTransfer?.totalCost) - 193.33) <
@@ -1993,23 +1981,9 @@ test(
         );
         assert.ok(
           Math.abs(
-            Number(recalculatedReverseTransfer?.purchasePrice) - 19.333333,
+            Number(recalculatedReverseTransfer?.purchasePricePerTonne) - 19.333333,
           ) < 0.01,
-          `reverse transfer purchase price: ${recalculatedReverseTransfer?.purchasePrice}`,
-        );
-        assert.ok(
-          Math.abs(
-            Number(recalculatedReverseTransfer?.purchasePricePerTonne) -
-              Number(recalculatedReverseTransfer?.purchasePrice) * 1_000,
-          ) < 0.001,
-          "reverse transfer purchase price must keep the tonne rate synchronized",
-        );
-        assert.ok(
-          Math.abs(
-            Number(recalculatedReverseTransfer?.costPerTonne) -
-              Number(recalculatedReverseTransfer?.costPerKg) * 1_000,
-          ) < 0.001,
-          "reverse transfer cost must keep the tonne rate synchronized",
+          `reverse transfer purchase price per tonne: ${recalculatedReverseTransfer?.purchasePricePerTonne}`,
         );
 
         throw rollbackMarker;
@@ -2058,20 +2032,20 @@ test(
           .insert(warehouses)
           .values({
             name: `cross-cycle-warehouse-${fixtureId}`,
-            currentBalance: "100",
-            averageCost: "12",
-            pvkjBalance: "0",
-            pvkjAverageCost: "0",
+            currentBalanceTonnes: "100",
+            averageCostPerTonne: "12",
+            pvkjBalanceTonnes: "0",
+            pvkjAverageCostPerTonne: "0",
           })
           .returning();
         const [equipment] = await tx
           .insert(equipments)
           .values({
             name: `cross-cycle-equipment-${fixtureId}`,
-            currentBalance: "100",
-            averageCost: "20",
-            pvkjBalance: "0",
-            pvkjAverageCost: "0",
+            currentBalanceTonnes: "100",
+            averageCostPerTonne: "20",
+            pvkjBalanceTonnes: "0",
+            pvkjAverageCostPerTonne: "0",
           })
           .returning();
 
@@ -2079,11 +2053,11 @@ test(
           warehouseId: warehouse.id,
           transactionType: TRANSACTION_TYPE.INVENTORY,
           productType,
-          quantity: "100",
-          balanceBefore: "0",
-          balanceAfter: "100",
-          averageCostBefore: "0",
-          averageCostAfter: "12",
+          quantityTonnes: "100",
+          balanceBeforeTonnes: "0",
+          balanceAfterTonnes: "100",
+          averageCostBeforePerTonne: "0",
+          averageCostAfterPerTonne: "12",
           sum: "1200",
           transactionDate: openingDate,
         });
@@ -2091,11 +2065,11 @@ test(
           equipmentId: equipment.id,
           transactionType: TRANSACTION_TYPE.INVENTORY,
           productType,
-          quantity: "100",
-          balanceBefore: "0",
-          balanceAfter: "100",
-          averageCostBefore: "0",
-          averageCostAfter: "20",
+          quantityTonnes: "100",
+          balanceBeforeTonnes: "0",
+          balanceAfterTonnes: "100",
+          averageCostBeforePerTonne: "0",
+          averageCostAfterPerTonne: "20",
           sum: "2000",
           transactionDate: openingDate,
         });
@@ -2108,9 +2082,9 @@ test(
             productType,
             fromWarehouseId: warehouse.id,
             toEquipmentId: equipment.id,
-            quantityKg: "10",
+            quantityTonnes: "10",
             totalCost: "60",
-            costPerKg: "6",
+            costPerTonne: "6",
           })
           .returning();
         await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -2146,9 +2120,9 @@ test(
             productType,
             fromEquipmentId: equipment.id,
             toWarehouseId: warehouse.id,
-            quantityKg: "10",
+            quantityTonnes: "10",
             totalCost: "200",
-            costPerKg: "20",
+            costPerTonne: "20",
           })
           .returning();
         await EquipmentTransactionService.createTransactionAndUpdateEquipment(
@@ -2202,18 +2176,12 @@ test(
           `equipment-to-warehouse movement cost: ${recalculatedReverse?.totalCost}`,
         );
         assert.ok(
-          Math.abs(
-            Number(recalculatedForward?.costPerTonne) -
-              Number(recalculatedForward?.costPerKg) * 1_000,
-          ) < 0.001,
-          "warehouse-to-equipment transfer must synchronize its tonne cost",
+          Math.abs(Number(recalculatedForward?.costPerTonne) - 12) < 0.001,
+          "warehouse-to-equipment transfer retains its per-tonne cost",
         );
         assert.ok(
-          Math.abs(
-            Number(recalculatedReverse?.costPerTonne) -
-              Number(recalculatedReverse?.costPerKg) * 1_000,
-          ) < 0.001,
-          "equipment-to-warehouse transfer must synchronize its tonne cost",
+          Math.abs(Number(recalculatedReverse?.costPerTonne) - 19.273) < 0.001,
+          "equipment-to-warehouse transfer retains its per-tonne cost",
         );
 
         throw rollbackMarker;
@@ -2251,10 +2219,10 @@ test(
           .insert(warehouses)
           .values({
             name: `movement-charge-edit-${fixtureId}`,
-            currentBalance: "0",
-            averageCost: "0",
-            pvkjBalance: "0",
-            pvkjAverageCost: "0",
+            currentBalanceTonnes: "0",
+            averageCostPerTonne: "0",
+            pvkjBalanceTonnes: "0",
+            pvkjAverageCostPerTonne: "0",
           })
           .returning();
         warehouseId = warehouse.id;
@@ -2267,12 +2235,12 @@ test(
             movementType: "supply",
             productType: PRODUCT_TYPE.KEROSENE,
             toWarehouseId: warehouse.id,
-            quantityKg: "10",
-            purchasePrice: "10",
+            quantityTonnes: "10",
+            purchasePricePerTonne: "10",
             deliveryCost: "10",
             storageCost: "5",
             totalCost: "115",
-            costPerKg: "11.5",
+            costPerTonne: "11.5",
           })
           .returning();
         movementId = createdMovement.id;
@@ -2307,17 +2275,17 @@ test(
         where: eq(warehouses.id, warehouseId!),
       });
       assert.ok(
-        Math.abs(Number(warehouseAfterEdit?.averageCost) - 13.5) < 0.000001,
-        `average cost after delivery charge edit: ${warehouseAfterEdit?.averageCost}`,
+        Math.abs(Number(warehouseAfterEdit?.averageCostPerTonne) - 13.5) < 0.000001,
+        `average cost per tonne after delivery charge edit: ${warehouseAfterEdit?.averageCostPerTonne}`,
       );
       let receivingTransaction = await db.query.warehouseTransactions.findFirst({
         where: eq(warehouseTransactions.sourceId, movementId!),
       });
       assert.equal(Number(receivingTransaction?.sum), 135);
       assert.ok(
-        Math.abs(Number(receivingTransaction?.averageCostAfter) - 13.5) <
+        Math.abs(Number(receivingTransaction?.averageCostAfterPerTonne) - 13.5) <
           0.000001,
-        `transaction average cost after delivery charge edit: ${receivingTransaction?.averageCostAfter}`,
+        `transaction average cost per tonne after delivery charge edit: ${receivingTransaction?.averageCostAfterPerTonne}`,
       );
 
       const storageUpdated = await storage.updateMovement(movementId!, {
@@ -2330,17 +2298,17 @@ test(
         where: eq(warehouses.id, warehouseId!),
       });
       assert.ok(
-        Math.abs(Number(warehouseAfterEdit?.averageCost) - 15.5) < 0.000001,
-        `average cost after storage charge edit: ${warehouseAfterEdit?.averageCost}`,
+        Math.abs(Number(warehouseAfterEdit?.averageCostPerTonne) - 15.5) < 0.000001,
+        `average cost per tonne after storage charge edit: ${warehouseAfterEdit?.averageCostPerTonne}`,
       );
       receivingTransaction = await db.query.warehouseTransactions.findFirst({
         where: eq(warehouseTransactions.sourceId, movementId!),
       });
       assert.equal(Number(receivingTransaction?.sum), 155);
       assert.ok(
-        Math.abs(Number(receivingTransaction?.averageCostAfter) - 15.5) <
+        Math.abs(Number(receivingTransaction?.averageCostAfterPerTonne) - 15.5) <
           0.000001,
-        `transaction average cost after storage charge edit: ${receivingTransaction?.averageCostAfter}`,
+        `transaction average cost per tonne after storage charge edit: ${receivingTransaction?.averageCostAfterPerTonne}`,
       );
     } finally {
       if (movementId && warehouseId) {

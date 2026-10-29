@@ -46,10 +46,6 @@ import {
   getProductLabel,
 } from "@/pages/opt/utils";
 import { formatPricePerTonne, formatTonnes } from "@shared/units";
-import {
-  calculateStoredTransportationMassTonnes,
-  calculateTransportationPricePerTonne,
-} from "../unit-calculations";
 import { useTransportationTable } from "../hooks/use-transportation-table";
 import {
   EntityActionsMenu,
@@ -67,37 +63,13 @@ import {
 } from "../constants";
 
 function getTransportationMassTonnes(deal: any): number | null {
-  if (
-    deal.quantityTonnes !== null &&
-    deal.quantityTonnes !== undefined &&
-    Number.isFinite(Number(deal.quantityTonnes))
-  ) {
-    return Number(deal.quantityTonnes);
-  }
-  return calculateStoredTransportationMassTonnes(
-    deal.quantityKg,
-    deal.quantityLiters,
-    deal.density,
-  );
+  const tonnes = Number(deal.quantityTonnes);
+  return Number.isFinite(tonnes) && tonnes >= 0 ? tonnes : null;
 }
 
 function getTransportationPricePerTonne(deal: any): number | null {
-  if (
-    deal.salePricePerTonne !== null &&
-    deal.salePricePerTonne !== undefined &&
-    Number.isFinite(Number(deal.salePricePerTonne))
-  ) {
-    return Number(deal.salePricePerTonne);
-  }
-  const isLiterPrice =
-    deal.inputMode === "liters" ||
-    ((deal.inputMode === null || deal.inputMode === undefined) &&
-      Number.parseFloat(String(deal.quantityLiters ?? "0")) > 0);
-  return calculateTransportationPricePerTonne(
-    deal.salePrice,
-    isLiterPrice ? "liter" : "kg",
-    deal.density,
-  );
+  const price = Number(deal.salePricePerTonne);
+  return Number.isFinite(price) && price >= 0 ? price : null;
 }
 
 function isCreatedToday(createdAt: string | null | undefined): boolean {

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Truck, History, Plane, Warehouse } from "lucide-react";
 import { AuditPanel } from "@/components/audit-panel";
-import type { Warehouse as WarehouseType } from "@shared/schema";
+import type { WarehouseWithTonnes as WarehouseType } from "../warehouses/types";
 import { WarehouseCard } from "../warehouses/components/warehouse-card";
 import { WarehouseDetailsDialog } from "../warehouses/components/warehouse-details-dialog";
 import { AddWarehouseDialog } from "../warehouses/components/add-warehouse-dialog";
@@ -15,7 +15,7 @@ import { EquipmentDetailsDialog } from "./components/equipment-details-dialog";
 import { AddEquipmentDialog } from "./components/add-equipment-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { EQUIPMENT_TYPE } from "@shared/constants";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 import type { EquipmentApi } from "./types";
 
 export default function EquipmentsPage() {
@@ -54,14 +54,8 @@ export default function EquipmentsPage() {
   const filteredEquipments = allEquipments
     .filter((e) => e.name.toLowerCase().includes(searchLower))
     .sort((a, b) => {
-      const balA =
-        a.currentBalanceTonnes !== undefined
-          ? Number(a.currentBalanceTonnes)
-          : kilogramsToTonnes(Number(a.currentBalance || "0"));
-      const balB =
-        b.currentBalanceTonnes !== undefined
-          ? Number(b.currentBalanceTonnes)
-          : kilogramsToTonnes(Number(b.currentBalance || "0"));
+      const balA = Number(a.currentBalanceTonnes);
+      const balB = Number(b.currentBalanceTonnes);
       return balB - balA;
     });
 
@@ -161,19 +155,11 @@ export default function EquipmentsPage() {
                   </h2>
                   {(() => {
                     const totalKeroseneTonnes = filteredEquipments.reduce(
-                      (sum, eq) =>
-                        sum +
-                        (eq.currentBalanceTonnes !== undefined
-                          ? Number(eq.currentBalanceTonnes)
-                          : kilogramsToTonnes(Number(eq.currentBalance || "0"))),
+                      (sum, eq) => sum + Number(eq.currentBalanceTonnes),
                       0,
                     );
                     const totalPvkjTonnes = filteredEquipments.reduce(
-                      (sum, eq) =>
-                        sum +
-                        (eq.pvkjBalanceTonnes !== undefined
-                          ? Number(eq.pvkjBalanceTonnes)
-                          : kilogramsToTonnes(Number(eq.pvkjBalance || "0"))),
+                      (sum, eq) => sum + Number(eq.pvkjBalanceTonnes),
                       0,
                     );
                     return (

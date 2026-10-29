@@ -33,11 +33,11 @@ import { Loader2, Gauge } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
-import type { Warehouse } from "@shared/schema";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { format, addMonths, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
-import { formatTonnesForInput, kilogramsToTonnes } from "@shared/units";
+import { formatTonnesForInput } from "@shared/units";
+import type { WarehouseWithTonnes } from "../types";
 
 const limitSchema = z.object({
   limitVolumeTonnes: z
@@ -53,7 +53,7 @@ const limitSchema = z.object({
 type LimitFormValues = z.infer<typeof limitSchema>;
 
 interface SetLimitDialogProps {
-  warehouse: Warehouse;
+  warehouse: WarehouseWithTonnes;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -74,11 +74,7 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
       limitVolumeTonnes:
         warehouse.limitVolumeTonnes != null
           ? formatTonnesForInput(String(warehouse.limitVolumeTonnes))
-          : warehouse.limitVolume != null
-            ? formatTonnesForInput(
-                kilogramsToTonnes(Number(warehouse.limitVolume)),
-              )
-            : "",
+          : "",
       limitProductType: warehouse.limitProductType || PRODUCT_TYPE.KEROSENE,
     },
   });
@@ -203,8 +199,7 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
 
               <div className="flex justify-between gap-3 pt-2">
                 <div>
-                  {(warehouse.limitVolumeTonnes != null ||
-                    warehouse.limitVolume != null) && (
+                  {warehouse.limitVolumeTonnes != null && (
                     <Button
                       type="button"
                       variant="outline"

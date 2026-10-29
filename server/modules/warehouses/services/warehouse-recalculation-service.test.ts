@@ -4,16 +4,17 @@ import { SOURCE_TYPE } from "@shared/constants";
 import { opt } from "@shared/schema";
 import { WarehouseRecalculationService } from "./warehouse-recalculation-service";
 
-test("warehouse recalculation synchronizes the OPT per-tonne purchase price", async () => {
+test("warehouse recalculation updates OPT prices using tonne-authoritative fields", async () => {
   let savedValues: Record<string, unknown> | undefined;
   const tx = {
     query: {
       opt: {
         findFirst: async () => ({
           id: "opt-deal",
-          quantityKg: "1000",
-          salePrice: "20",
-          purchasePrice: "10",
+          quantityTonnes: "1.00000",
+          salePricePerTonne: "20000",
+          saleAmount: "20000",
+          purchasePricePerTonne: "10000",
           purchaseAmount: "10000",
           profit: "10000",
         }),
@@ -34,10 +35,10 @@ test("warehouse recalculation synchronizes the OPT per-tonne purchase price", as
     tx as never,
     SOURCE_TYPE.OPT,
     "opt-deal",
-    5,
+    5_000,
   );
 
-  assert.equal(savedValues?.purchasePrice, "5.000000");
+  assert.equal(savedValues?.purchasePrice, undefined);
   assert.equal(savedValues?.purchasePricePerTonne, "5000.000000");
   assert.equal(savedValues?.purchaseAmount, "5000.00");
 });

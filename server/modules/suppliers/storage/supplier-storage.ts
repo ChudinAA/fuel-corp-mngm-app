@@ -2,8 +2,7 @@ import { eq, asc, sql, isNull, and, inArray } from "drizzle-orm";
 import { db } from "server/db";
 import {
   normalizeSupplierBasisPriceRates,
-  supplierBasisPriceToApi,
-} from "../supplier-basis-price-api-adapters";
+} from "../supplier-basis-price-rates";
 import {
   suppliers,
   supplierBases,
@@ -12,6 +11,7 @@ import {
   type Supplier,
   type InsertSupplier,
   type SupplierBasisPrice,
+  insertSupplierBasisPriceSchema,
   currencies,
 } from "@shared/schema";
 import type { ISupplierStorage } from "./types";
@@ -38,12 +38,7 @@ export class SupplierStorage implements ISupplierStorage {
       .select()
       .from(supplierBasisPrices)
       .where(inArray(supplierBasisPrices.supplierId, supplierIds))
-      .then((rows) =>
-        rows.map(
-          (row) =>
-            supplierBasisPriceToApi(row) as unknown as SupplierBasisPrice,
-        ),
-      );
+      .then((rows) => rows);
   }
 
   async getAllSuppliers(): Promise<Supplier[]> {
@@ -175,17 +170,21 @@ export class SupplierStorage implements ISupplierStorage {
         const pricesToInsert = basisPrices
           .filter((bp) => bp.basisId)
           .map((bp) => {
-            const rates = normalizeSupplierBasisPriceRates(bp);
+            const parsed = insertSupplierBasisPriceSchema.parse({
+              ...bp,
+              supplierId: created.id,
+            });
+            const rates = normalizeSupplierBasisPriceRates(parsed);
             return {
               supplierId: created.id,
-              basisId: bp.basisId,
+              basisId: parsed.basisId,
               servicePricePerTonne: decimalOrNull(rates.servicePricePerTonne),
               pvkjPricePerTonne: decimalOrNull(rates.pvkjPricePerTonne),
               agentFeePerTonne: decimalOrNull(rates.agentFeePerTonne),
-              otherServiceType: bp.otherServiceType || null,
-              otherServiceValue: decimalOrNull(bp.otherServiceValue),
-              otherServiceName: bp.otherServiceName || null,
-              otherServiceQuantity: decimalOrNull(bp.otherServiceQuantity),
+              otherServiceType: parsed.otherServiceType || null,
+              otherServiceValue: decimalOrNull(parsed.otherServiceValue),
+              otherServiceName: parsed.otherServiceName || null,
+              otherServiceQuantity: decimalOrNull(parsed.otherServiceQuantity),
             };
           });
         if (pricesToInsert.length > 0) {
@@ -283,20 +282,24 @@ export class SupplierStorage implements ISupplierStorage {
           const pricesToInsert = basisPrices
             .filter((bp) => bp.basisId)
             .map((bp) => {
+              const parsed = insertSupplierBasisPriceSchema.parse({
+                ...bp,
+                supplierId: id,
+              });
               const rates = normalizeSupplierBasisPriceRates(
-                bp,
-                currentBasisPricesByBasis.get(bp.basisId),
+                parsed,
+                currentBasisPricesByBasis.get(parsed.basisId),
               );
               return {
                 supplierId: id,
-                basisId: bp.basisId,
+                basisId: parsed.basisId,
                 servicePricePerTonne: decimalOrNull(rates.servicePricePerTonne),
                 pvkjPricePerTonne: decimalOrNull(rates.pvkjPricePerTonne),
                 agentFeePerTonne: decimalOrNull(rates.agentFeePerTonne),
-                otherServiceType: bp.otherServiceType || null,
-                otherServiceValue: decimalOrNull(bp.otherServiceValue),
-                otherServiceName: bp.otherServiceName || null,
-                otherServiceQuantity: decimalOrNull(bp.otherServiceQuantity),
+                otherServiceType: parsed.otherServiceType || null,
+                otherServiceValue: decimalOrNull(parsed.otherServiceValue),
+                otherServiceName: parsed.otherServiceName || null,
+                otherServiceQuantity: decimalOrNull(parsed.otherServiceQuantity),
               };
             });
           if (pricesToInsert.length > 0) {

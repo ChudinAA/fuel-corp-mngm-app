@@ -6,7 +6,7 @@ import { requireAuth, requirePermission, requireAnyPermission } from "../../../m
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
-import { SupplierBasisPriceRateInputError } from "../supplier-basis-price-api-adapters";
+import { SupplierBasisPriceRateInputError } from "../supplier-basis-price-rates";
 
 export function registerSuppliersRoutes(app: Express) {
   app.get(
@@ -265,6 +265,9 @@ export function registerSuppliersRoutes(app: Express) {
       } catch (error) {
         if (error instanceof SupplierBasisPriceRateInputError) {
           return res.status(400).json({ message: error.message });
+        }
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: error.errors[0].message });
         }
         console.error("Supplier update error:", error);
         res.status(500).json({ message: "Ошибка обновления поставщика" });

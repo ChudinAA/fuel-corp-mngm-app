@@ -41,7 +41,7 @@ import {
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { fmtTonnes, kgToTons, tonsToKg } from "../utils/planning-utils";
+import { fmtTonnes } from "../utils/planning-utils";
 import { FieldCommentPopover } from "./field-comment-popover";
 import type { PlanningPeriod } from "../planning-page";
 import { cn } from "@/lib/utils";
@@ -54,8 +54,7 @@ interface TopLevelVolume {
   periodFrom: string;
   periodTo: string;
   type: string;
-  volume: string;
-  volumeTonnes?: string | null;
+  volumeTonnes: string;
   counterpartyId?: string | null;
   counterpartyName?: string | null;
   notes?: string | null;
@@ -146,7 +145,7 @@ export function TopLevelResourceDetail({
     setForm({
       warehouseId: v.warehouseId,
       type: v.type as "income" | "expense",
-      volume: v.volumeTonnes ?? kgToTons(v.volume),
+      volume: v.volumeTonnes,
       counterpartyId: v.counterpartyId || NONE_VALUE,
       notes: v.notes || "",
     });
@@ -156,14 +155,12 @@ export function TopLevelResourceDetail({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const volumeKg = tonsToKg(form.volume);
       const body = {
         supplierId,
         warehouseId: form.warehouseId,
         periodFrom: period.from.toISOString(),
         periodTo: period.to.toISOString(),
         type: form.type,
-        volume: volumeKg,
         volumeTonnes: form.volume,
         counterpartyId:
           form.counterpartyId && form.counterpartyId !== NONE_VALUE
@@ -227,13 +224,13 @@ export function TopLevelResourceDetail({
   const totalIncome = volumes
     .filter((v) => v.type === "income")
     .reduce(
-      (s, v) => s + Number(v.volumeTonnes ?? kgToTons(v.volume)),
+      (s, v) => s + Number(v.volumeTonnes),
       0,
     );
   const totalExpense = volumes
     .filter((v) => v.type === "expense")
     .reduce(
-      (s, v) => s + Number(v.volumeTonnes ?? kgToTons(v.volume)),
+      (s, v) => s + Number(v.volumeTonnes),
       0,
     );
 
@@ -274,11 +271,11 @@ export function TopLevelResourceDetail({
         <div className="space-y-2">
           {warehouseGroups.map(([whId, whData]) => {
             const whIncome = whData.income.reduce(
-              (s, v) => s + Number(v.volumeTonnes ?? kgToTons(v.volume)),
+              (s, v) => s + Number(v.volumeTonnes),
               0,
             );
             const whExpense = whData.expense.reduce(
-              (s, v) => s + Number(v.volumeTonnes ?? kgToTons(v.volume)),
+              (s, v) => s + Number(v.volumeTonnes),
               0,
             );
             return (
@@ -552,7 +549,7 @@ function VolumeEntry({
             isIncome ? "text-emerald-600" : "text-amber-600",
           )}
         >
-          {isIncome ? "+" : "−"}{fmtTonnes(entry.volumeTonnes ?? kgToTons(entry.volume))}
+          {isIncome ? "+" : "−"}{fmtTonnes(entry.volumeTonnes)}
         </span>
         {entry.counterpartyName && (
           <span className="ml-1.5 text-xs text-muted-foreground truncate">

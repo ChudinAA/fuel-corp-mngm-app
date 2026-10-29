@@ -13,14 +13,20 @@ import { getFieldLabel, hasFieldLabel, hasZodRegistryLabel, FIELD_LABELS } from 
 import {
   formatPricePerTonne,
   formatTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
   pricePerLitreToPerTonne,
 } from "@shared/units";
 // Инициализация реестра форм-схем — регистрирует Zod .describe() как метки полей.
 // Этот side-effect import достаточно выполнить один раз при загрузке audit-helpers.
 import "./form-schema-registry";
 import type { AuditEntry } from "@/hooks/use-audit";
+
+// Historical audit snapshots can still contain legacy kilogram values.
+// Keep this conversion isolated from current API and transaction calculations.
+const HISTORICAL_KILOGRAMS_PER_TONNE = 1_000;
+const historicalKilogramsToTonnes = (value: number) =>
+  value / HISTORICAL_KILOGRAMS_PER_TONNE;
+const historicalPricePerKilogramToPerTonne = (value: number) =>
+  value * HISTORICAL_KILOGRAMS_PER_TONNE;
 
 // ─── UUID detection ───────────────────────────────────────────────────────────
 const UUID_RE =
@@ -282,7 +288,7 @@ export function formatValue(
         const displayPrice = unitContext?.priceUnit === "liter" ||
           unitContext?.priceUnit === "per_liter"
           ? storedPrice
-          : pricePerKilogramToPerTonne(storedPrice);
+          : historicalPricePerKilogramToPerTonne(storedPrice);
         return formatPricePerTonne(displayPrice);
       }).join(", ");
     } catch {
@@ -294,7 +300,7 @@ export function formatValue(
     return value.replace(
       /(-?\d+(?:\.\d+)?)\s*\(за кг\)/gi,
       (_match, rawRate: string) =>
-        `${formatPricePerTonne(pricePerKilogramToPerTonne(Number(rawRate)))} (за т)`,
+        `${formatPricePerTonne(historicalPricePerKilogramToPerTonne(Number(rawRate)))} (за т)`,
     );
   }
 
@@ -306,7 +312,7 @@ export function formatValue(
     return value.replace(
       /(сервис|пвкж|агент):\s*(-?\d+(?:\.\d+)?)/gi,
       (_match, label: string, rawRate: string) =>
-        `${label}: ${formatPricePerTonne(pricePerKilogramToPerTonne(Number(rawRate)))} ₽/т`,
+        `${label}: ${formatPricePerTonne(historicalPricePerKilogramToPerTonne(Number(rawRate)))} ₽/т`,
     );
   }
 
@@ -328,11 +334,11 @@ export function formatValue(
         Number.isFinite(density) &&
         density > 0
           ? pricePerLitreToPerTonne(numericValue, density)
-          : pricePerKilogramToPerTonne(numericValue);
+          : historicalPricePerKilogramToPerTonne(numericValue);
       return formatPricePerTonne(pricePerTonne);
     }
     if (fieldName === "quantityKg") {
-      return formatTonnes(kilogramsToTonnes(numericValue));
+      return formatTonnes(historicalKilogramsToTonnes(numericValue));
     }
     if (fieldName === "quantityTonnes") {
       return formatTonnes(numericValue);
@@ -350,10 +356,10 @@ export function formatValue(
       return formatPricePerTonne(numericValue);
     }
     if (fieldName === "costPerKg" || fieldName === "agentFeeRate") {
-      return formatPricePerTonne(pricePerKilogramToPerTonne(numericValue));
+      return formatPricePerTonne(historicalPricePerKilogramToPerTonne(numericValue));
     }
     if (fieldName === "otherServiceValue" && unitContext?.otherServiceType === "per_kg") {
-      return formatPricePerTonne(pricePerKilogramToPerTonne(numericValue));
+      return formatPricePerTonne(historicalPricePerKilogramToPerTonne(numericValue));
     }
   }
 
@@ -577,7 +583,7 @@ function qtyLabel(kg: unknown, liters: unknown): string {
   const kgN = normalizeNum(kg);
   const lN = normalizeNum(liters);
   if (kgN && kgN > 0)
-    return `${formatTonnes(kilogramsToTonnes(kgN))} т`;
+    return `${formatTonnes(historicalKilogramsToTonnes(kgN))} т`;
   if (lN && lN > 0)
     return lN.toLocaleString("ru-RU", { maximumFractionDigits: 0 }) + " л";
   return "";
@@ -693,7 +699,7 @@ export function getEntitySummary(
       const kgQty = data.quantityKg ? normalizeNum(data.quantityKg) : null;
       const lQty = data.quantityLiters ? normalizeNum(data.quantityLiters) : null;
       const qtyStr = kgQty
-        ? `${formatTonnes(kilogramsToTonnes(kgQty))} т`
+        ? `${formatTonnes(historicalKilogramsToTonnes(kgQty))} т`
         : lQty
         ? `${lQty.toLocaleString("ru-RU")} л`
         : null;

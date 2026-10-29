@@ -56,9 +56,6 @@ export const prices = pgTable(
     currencyId: uuid("currency_id").references(() => currencies.id),
     exchangeRateId: uuid("exchange_rate_id").references(() => exchangeRates.id),
     priceUnit: text("price_unit").default("tonne"),
-    // Retained for the staged production schema cutover; no current runtime path uses these.
-    needsRecalculation: boolean("needs_recalculation").notNull().default(false),
-    oldPriceValues: text("old_price_values").array(),
     contractLimitEnabled: boolean("contract_limit_enabled").default(true),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -146,8 +143,6 @@ export const pricesRelations = relations(prices, ({ many, one }) => ({
 export const insertPriceSchema = createInsertSchema(prices)
   .omit({
     id: true,
-    needsRecalculation: true,
-    oldPriceValues: true,
   })
   .extend({
   priceUnit: z.enum(["tonne", "liter"]).default("tonne"),

@@ -38,7 +38,7 @@ export function usePriceExtraction({
   basisId,
 }: UsePriceExtractionProps) {
   const purchaseRate = useMemo(() => {
-    // Для услуги заправки - сначала проверяем basis-specific service_price у поставщика
+    // Для услуги заправки сначала проверяем тонную ставку поставщика по базису.
     if (productType === PRODUCT_TYPE.SERVICE) {
       if (basisId && selectedSupplier?.basisPrices) {
         const basisPrice = selectedSupplier.basisPrices.find(
@@ -55,7 +55,7 @@ export function usePriceExtraction({
       }
     }
 
-    // Для ПВКЖ - сначала проверяем basis-specific pvkj_price у поставщика
+    // Для ПВКЖ сначала проверяем тонную ставку поставщика по базису.
     if (productType === PRODUCT_TYPE.PVKJ) {
       if (basisId && selectedSupplier?.basisPrices) {
         const basisPrice = selectedSupplier.basisPrices.find(

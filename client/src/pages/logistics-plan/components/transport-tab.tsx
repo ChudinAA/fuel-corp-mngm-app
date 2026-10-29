@@ -60,7 +60,7 @@ import { TransportUnitDialog } from "./transport-unit-dialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 interface TransportTabProps {
   periodFrom: string;
@@ -850,13 +850,9 @@ export function TransportTab({ periodFrom, periodTo }: TransportTabProps) {
                         {unit.vehicle.model && (
                           <span className="text-xs text-muted-foreground">{unit.vehicle.model}</span>
                         )}
-                        {(unit.vehicle.capacityTonnes != null || unit.vehicle.capacityKg != null) && (
+                        {unit.vehicle.capacityTonnes != null && (
                           <span className="text-xs text-muted-foreground">
-                            {formatTonnes(
-                              unit.vehicle.capacityTonnes != null
-                                ? Number(unit.vehicle.capacityTonnes)
-                                : kilogramsToTonnes(Number(unit.vehicle.capacityKg)),
-                            )} т
+                            {formatTonnes(Number(unit.vehicle.capacityTonnes))} т
                           </span>
                         )}
                       </div>
@@ -870,13 +866,9 @@ export function TransportTab({ periodFrom, periodTo }: TransportTabProps) {
                     {unit.trailer?.regNumber ? (
                       <div className="flex flex-col gap-0.5">
                         <span className="text-sm">{unit.trailer.regNumber}</span>
-                        {(unit.trailer.capacityTonnes != null || unit.trailer.capacityKg != null) && (
+                        {unit.trailer.capacityTonnes != null && (
                           <span className="text-xs text-muted-foreground">
-                            {formatTonnes(
-                              unit.trailer.capacityTonnes != null
-                                ? Number(unit.trailer.capacityTonnes)
-                                : kilogramsToTonnes(Number(unit.trailer.capacityKg)),
-                            )} т
+                            {formatTonnes(Number(unit.trailer.capacityTonnes))} т
                           </span>
                         )}
                       </div>

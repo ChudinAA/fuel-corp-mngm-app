@@ -4,8 +4,6 @@ import { ru } from "date-fns/locale";
 import type { CalculatedValues } from "./types";
 import {
   calculateMovementMassTonnes,
-  movementTonnesRateToLegacyKgRate,
-  movementTonnesToLegacyKg,
   type MovementInputMode,
 } from "./unit-calculations";
 import { formatTonnes } from "@shared/units";
@@ -52,15 +50,10 @@ export const calculateValues = (
   const costPerTonne = tonnesNum > 0 ? totalCost / tonnesNum : 0;
 
   return {
-    calculatedKg:
-      calculatedTonnes === null
-        ? null
-        : String(movementTonnesToLegacyKg(calculatedTonnes)),
     calculatedTonnes,
     purchasePricePerTonne,
     deliveryCost,
     totalCost,
     costPerTonne,
-    costPerKg: movementTonnesRateToLegacyKgRate(costPerTonne),
   };
 };

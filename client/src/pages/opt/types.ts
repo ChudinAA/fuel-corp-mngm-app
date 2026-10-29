@@ -3,7 +3,10 @@ import type { Opt } from "@shared/schema";
 
 export type OptApi = Omit<
   Opt,
-  "quantityKg" | "purchasePrice" | "salePrice" | "deliveryTariff"
+  | "quantityTonnes"
+  | "purchasePricePerTonne"
+  | "salePricePerTonne"
+  | "deliveryTariffPerTonne"
 > & {
   quantityTonnes: number;
   purchasePricePerTonne: number | null;

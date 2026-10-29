@@ -11,18 +11,23 @@ import {
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentRecalculationService } from "server/modules/warehouses-equipment/services/equipment-recalculation-service";
 import { calculateStockMovement } from "./stock-transaction-calculations";
-import {
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-  tonnesToKilograms,
-} from "@shared/units";
 
 type WarehouseCascade = {
   warehouseId: string;
   afterDate: string;
   productType: string;
 };
+
+function requireTonneValue(value: unknown, label: string): number {
+  if (value === null || value === undefined || value === "") {
+    throw new Error(`${label} is missing its authoritative tonne value`);
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} has an invalid tonne value`);
+  }
+  return parsed;
+}
 
 export class WarehouseRecalculationService {
   private static deferredWarehouseCascades = new WeakMap<
@@ -260,11 +265,19 @@ export class WarehouseRecalculationService {
       console.log("      TransactionDate:", transaction.transactionDate);
       console.log("      CreatedAt:", transaction.createdAt);
 
-      const signedQuantityTonnes =
-        transaction.quantityTonnes == null
-          ? kilogramsToTonnes(Number.parseFloat(transaction.quantity))
-          : Number.parseFloat(transaction.quantityTonnes);
-      const quantityKg = Math.abs(tonnesToKilograms(signedQuantityTonnes));
+      if (transaction.quantityTonnes == null) {
+        throw new Error(
+          `Warehouse transaction ${transaction.id} has no authoritative tonne quantity`,
+        );
+      }
+      const signedQuantityTonnes = Number.parseFloat(
+        transaction.quantityTonnes,
+      );
+      if (!Number.isFinite(signedQuantityTonnes)) {
+        throw new Error(
+          `Warehouse transaction ${transaction.id} has an invalid tonne quantity`,
+        );
+      }
       const quantity = Math.abs(signedQuantityTonnes);
       const isReceipt =
         transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
@@ -291,18 +304,23 @@ export class WarehouseRecalculationService {
         // Inventory is a checkpoint: its balanceAfter/averageCostAfter are the
         // user-specified target values and must NOT be recalculated from running state.
         // We only update balanceBefore/averageCostBefore to the current running values.
-        newBalance =
-          transaction.balanceAfterTonnes == null
-            ? kilogramsToTonnes(
-                parseFloat(transaction.balanceAfter || "0"),
-              )
-            : Number.parseFloat(transaction.balanceAfterTonnes);
-        newAverageCost =
+        if (
+          transaction.balanceAfterTonnes == null ||
           transaction.averageCostAfterPerTonne == null
-            ? pricePerKilogramToPerTonne(
-                parseFloat(transaction.averageCostAfter || "0"),
-              )
-            : Number.parseFloat(transaction.averageCostAfterPerTonne);
+        ) {
+          throw new Error(
+            `Inventory transaction ${transaction.id} is missing tonne checkpoint values`,
+          );
+        }
+        newBalance = Number.parseFloat(transaction.balanceAfterTonnes);
+        newAverageCost = Number.parseFloat(
+          transaction.averageCostAfterPerTonne,
+        );
+        if (!Number.isFinite(newBalance) || !Number.isFinite(newAverageCost)) {
+          throw new Error(
+            `Inventory transaction ${transaction.id} has invalid tonne checkpoint values`,
+          );
+        }
         const delta = newBalance - currentBalance;
         newSum = delta * newAverageCost;
         newPrice = newAverageCost;
@@ -315,17 +333,10 @@ export class WarehouseRecalculationService {
         await tx
           .update(warehouseTransactions)
           .set({
-            balanceBefore: tonnesToKilograms(currentBalance).toFixed(2),
             balanceBeforeTonnes: currentBalance.toFixed(5),
             balanceAfterTonnes: newBalance.toFixed(5),
-            averageCostBefore: pricePerTonneToPerKilogram(
-              currentAverageCost,
-            ).toFixed(6),
             averageCostBeforePerTonne: currentAverageCost.toFixed(6),
-            // The inventory checkpoint stays user-set in both mass units.
-            // averageCostAfter remains stored in the legacy ₽/kg unit for now.
             sum: newSum.toFixed(2),
-            price: pricePerTonneToPerKilogram(newPrice).toFixed(6),
             pricePerTonne: newPrice.toFixed(6),
             averageCostAfterPerTonne: newAverageCost.toFixed(6),
             updatedAt: sql`NOW()`,
@@ -339,8 +350,7 @@ export class WarehouseRecalculationService {
             tx,
             transaction.sourceType,
             transaction.sourceId,
-            quantityKg,
-            pricePerTonneToPerKilogram(currentAverageCost),
+            quantity,
           );
           console.log("      Incoming cost:", incomingCost);
         }
@@ -368,20 +378,11 @@ export class WarehouseRecalculationService {
         await tx
           .update(warehouseTransactions)
           .set({
-            balanceBefore: tonnesToKilograms(currentBalance).toFixed(2),
-            balanceAfter: tonnesToKilograms(newBalance).toFixed(2),
             balanceBeforeTonnes: currentBalance.toFixed(5),
             balanceAfterTonnes: newBalance.toFixed(5),
-            averageCostBefore: pricePerTonneToPerKilogram(
-              currentAverageCost,
-            ).toFixed(6),
-            averageCostAfter: pricePerTonneToPerKilogram(
-              newAverageCost,
-            ).toFixed(6),
             averageCostBeforePerTonne: currentAverageCost.toFixed(6),
             averageCostAfterPerTonne: newAverageCost.toFixed(6),
             sum: newSum.toFixed(2),
-            price: pricePerTonneToPerKilogram(newPrice).toFixed(6),
             pricePerTonne: newPrice.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById,
@@ -397,7 +398,7 @@ export class WarehouseRecalculationService {
           tx,
           transaction.sourceType,
           transaction.sourceId,
-          pricePerTonneToPerKilogram(currentAverageCost),
+          currentAverageCost,
           updatedById,
         );
       }
@@ -410,8 +411,8 @@ export class WarehouseRecalculationService {
         const warehouseCascade = await this.getMovementCascadeInfo(
           tx,
           transaction.sourceId,
-          pricePerTonneToPerKilogram(newAverageCost),
-          quantityKg,
+          newAverageCost,
+          quantity,
           visited,
         );
 
@@ -423,8 +424,8 @@ export class WarehouseRecalculationService {
         const equipmentCascade = await this.getEquipmentMovementCascadeInfo(
           tx,
           transaction.sourceId,
-          pricePerTonneToPerKilogram(newAverageCost),
-          quantityKg,
+          newAverageCost,
+          quantity,
           visitedEq,
           updatedById,
         );
@@ -449,18 +450,10 @@ export class WarehouseRecalculationService {
     };
 
     if (isPvkj) {
-      updateData.pvkjBalance = tonnesToKilograms(currentBalance).toFixed(2);
       updateData.pvkjBalanceTonnes = currentBalance.toFixed(5);
-      updateData.pvkjAverageCost = pricePerTonneToPerKilogram(
-        currentAverageCost,
-      ).toFixed(6);
       updateData.pvkjAverageCostPerTonne = currentAverageCost.toFixed(6);
     } else {
-      updateData.currentBalance = tonnesToKilograms(currentBalance).toFixed(2);
       updateData.currentBalanceTonnes = currentBalance.toFixed(5);
-      updateData.averageCost = pricePerTonneToPerKilogram(
-        currentAverageCost,
-      ).toFixed(6);
       updateData.averageCostPerTonne = currentAverageCost.toFixed(6);
     }
 
@@ -547,20 +540,14 @@ export class WarehouseRecalculationService {
 
     if (lastTransaction.length > 0) {
       return {
-        balance:
-          lastTransaction[0].balanceAfterTonnes == null
-            ? kilogramsToTonnes(
-                parseFloat(lastTransaction[0].balanceAfter || "0"),
-              )
-            : Number.parseFloat(lastTransaction[0].balanceAfterTonnes),
-        averageCost:
-          lastTransaction[0].averageCostAfterPerTonne == null
-            ? pricePerKilogramToPerTonne(
-                parseFloat(lastTransaction[0].averageCostAfter || "0"),
-              )
-            : Number.parseFloat(
-                lastTransaction[0].averageCostAfterPerTonne,
-              ),
+        balance: requireTonneValue(
+          lastTransaction[0].balanceAfterTonnes,
+          `Transaction ${lastTransaction[0].id} balanceAfterTonnes`,
+        ),
+        averageCost: requireTonneValue(
+          lastTransaction[0].averageCostAfterPerTonne,
+          `Transaction ${lastTransaction[0].id} averageCostAfterPerTonne`,
+        ),
       };
     }
 
@@ -571,8 +558,7 @@ export class WarehouseRecalculationService {
     tx: any,
     sourceType: string,
     sourceId: string,
-    quantity: number,
-    currentAverageCost: number,
+    quantityTonnes: number,
   ): Promise<number> {
     if (sourceType === SOURCE_TYPE.MOVEMENT) {
       const movementRecord = await tx.query.movement.findFirst({
@@ -596,10 +582,12 @@ export class WarehouseRecalculationService {
       if (equipmentMovementRecord) {
         const totalCost = parseFloat(equipmentMovementRecord.totalCost || "0");
         if (totalCost > 0) return totalCost;
-        const costPerKg = parseFloat(
-          equipmentMovementRecord.costPerKg || "0",
-        );
-        if (costPerKg > 0) return costPerKg * quantity;
+        if (equipmentMovementRecord.costPerTonne != null) {
+          const costPerTonne = Number(equipmentMovementRecord.costPerTonne);
+          if (Number.isFinite(costPerTonne)) {
+            return costPerTonne * quantityTonnes;
+          }
+        }
       }
 
       // Запасной путь для старых перемещений без стоимости в записи движения.
@@ -615,9 +603,11 @@ export class WarehouseRecalculationService {
         ),
       });
       if (equipmentTx) {
-        const averageCost = parseFloat(equipmentTx.averageCostAfter || "0");
-        const totalCost = quantity * averageCost;
-        return totalCost;
+        const averageCostPerTonne = requireTonneValue(
+          equipmentTx.averageCostAfterPerTonne,
+          `Equipment transaction ${equipmentTx.id} averageCostAfterPerTonne`,
+        );
+        return quantityTonnes * averageCostPerTonne;
       }
     }
 
@@ -627,8 +617,8 @@ export class WarehouseRecalculationService {
   private static async getMovementCascadeInfo(
     tx: any,
     movementId: string,
-    newSourceAverageCost: number,
-    quantity: number,
+    newSourceAverageCostPerTonne: number,
+    quantityTonnes: number,
     visitedWarehouses: Set<string>,
   ): Promise<{
     warehouseId: string;
@@ -649,28 +639,32 @@ export class WarehouseRecalculationService {
 
     if (
       Math.abs(
-        newSourceAverageCost - parseFloat(movementRecord.purchasePrice || "0"),
+        newSourceAverageCostPerTonne -
+          requireTonneValue(
+            movementRecord.purchasePricePerTonne,
+            `Movement ${movementId} purchasePricePerTonne`,
+          ),
       ) > 0.0001
     ) {
       console.log(
-        `        Обновление цены закупки перемещения: ${movementRecord.purchasePrice} -> ${newSourceAverageCost}`,
+        `        Обновление цены закупки перемещения: ${movementRecord.purchasePricePerTonne} -> ${newSourceAverageCostPerTonne}`,
       );
 
       const deliveryCost = parseFloat(movementRecord.deliveryCost || "0");
       const storageCost = parseFloat(movementRecord.storageCost || "0");
       const newTotalCost =
-        quantity * newSourceAverageCost + deliveryCost + storageCost;
-      const costPerKg = quantity > 0 ? newTotalCost / quantity : 0;
+        quantityTonnes * newSourceAverageCostPerTonne +
+        deliveryCost +
+        storageCost;
+      const costPerTonne =
+        quantityTonnes > 0 ? newTotalCost / quantityTonnes : 0;
 
       await tx
         .update(movement)
         .set({
-          purchasePrice: newSourceAverageCost.toFixed(6),
-          purchasePricePerTonne:
-            pricePerKilogramToPerTonne(newSourceAverageCost).toFixed(6),
+          purchasePricePerTonne: newSourceAverageCostPerTonne.toFixed(6),
           totalCost: newTotalCost.toFixed(2),
-          costPerKg: costPerKg.toFixed(6),
-          costPerTonne: pricePerKilogramToPerTonne(costPerKg).toFixed(6),
+          costPerTonne: costPerTonne.toFixed(6),
           updatedAt: sql`NOW()`,
         })
         .where(eq(movement.id, movementId));
@@ -729,14 +723,14 @@ export class WarehouseRecalculationService {
 
   /**
    * Обрабатывает каскад для перемещения Склад → СЗ (через таблицу equipmentMovement).
-   * Обновляет цену за кг/т и totalCost в записи equipmentMovement,
+   * Обновляет цену за тонну и totalCost в записи equipmentMovement,
    * и возвращает данные для пересчёта СЗ-получателя.
    */
   private static async getEquipmentMovementCascadeInfo(
     tx: any,
     movementId: string,
-    newSourceAverageCost: number,
-    quantity: number,
+    newSourceAverageCostPerTonne: number,
+    quantityTonnes: number,
     visitedEquipments: Set<string>,
     updatedById?: string,
   ): Promise<{
@@ -755,18 +749,16 @@ export class WarehouseRecalculationService {
       return null;
     }
 
-    const newTotalCost = quantity * newSourceAverageCost;
-    const newCostPerKg = quantity > 0 ? newTotalCost / quantity : 0;
+    const newTotalCost = quantityTonnes * newSourceAverageCostPerTonne;
 
     console.log(
-      `        Обновление стоимости перемещения Склад→СЗ: costPerKg=${newCostPerKg.toFixed(5)}, totalCost=${newTotalCost.toFixed(2)}`,
+      `        Обновление стоимости перемещения Склад→СЗ: costPerTonne=${newSourceAverageCostPerTonne.toFixed(5)}, totalCost=${newTotalCost.toFixed(2)}`,
     );
 
     await tx
       .update(equipmentMovement)
       .set({
-        costPerKg: newCostPerKg.toFixed(6),
-        costPerTonne: pricePerKilogramToPerTonne(newCostPerKg).toFixed(6),
+        costPerTonne: newSourceAverageCostPerTonne.toFixed(6),
         totalCost: newTotalCost.toFixed(2),
         updatedAt: sql`NOW()`,
         updatedById,
@@ -814,11 +806,11 @@ export class WarehouseRecalculationService {
     tx: any,
     sourceType: string,
     sourceId: string,
-    newAverageCost: number,
+    newAverageCostPerTonne: number,
     updatedById?: string,
   ) {
     console.log("        [updateRelatedDeal]", sourceType, sourceId);
-    console.log("        New average cost:", newAverageCost);
+    console.log("        New average cost per tonne:", newAverageCostPerTonne);
 
     if (sourceType === SOURCE_TYPE.OPT) {
       const deal = await tx.query.opt.findFirst({
@@ -826,11 +818,18 @@ export class WarehouseRecalculationService {
       });
 
       if (deal) {
-        const quantityKg = parseFloat(deal.quantityKg);
-        const salePrice = parseFloat(deal.salePrice || "0");
+        const quantityTonnes = requireTonneValue(
+          deal.quantityTonnes,
+          `OPT deal ${deal.id} quantityTonnes`,
+        );
+        const saleAmount =
+          deal.salePricePerTonne != null
+            ? quantityTonnes * Number(deal.salePricePerTonne)
+            : deal.saleAmount == null
+              ? 0
+              : Number(deal.saleAmount);
         const deliveryCost = parseFloat(deal.deliveryCost || "0");
-        const purchaseAmount = quantityKg * newAverageCost;
-        const saleAmount = quantityKg * salePrice;
+        const purchaseAmount = quantityTonnes * newAverageCostPerTonne;
         const profit = saleAmount - purchaseAmount - deliveryCost;
 
         console.log("        ОПТ сделка до обновления:", {
@@ -840,7 +839,7 @@ export class WarehouseRecalculationService {
         });
 
         console.log("        ОПТ сделка после обновления:", {
-          purchasePrice: newAverageCost.toFixed(6),
+          purchasePricePerTonne: newAverageCostPerTonne.toFixed(6),
           purchaseAmount: purchaseAmount.toFixed(2),
           profit: profit.toFixed(2),
         });
@@ -848,9 +847,7 @@ export class WarehouseRecalculationService {
         await tx
           .update(opt)
           .set({
-            purchasePrice: newAverageCost.toFixed(6),
-            purchasePricePerTonne:
-              pricePerKilogramToPerTonne(newAverageCost).toFixed(6),
+            purchasePricePerTonne: newAverageCostPerTonne.toFixed(6),
             purchaseAmount: purchaseAmount.toFixed(2),
             profit: profit.toFixed(2),
             purchasePriceModified: true,
@@ -867,18 +864,17 @@ export class WarehouseRecalculationService {
       });
 
       if (refuel && refuel.productType !== PRODUCT_TYPE.SERVICE) {
-        const quantityTonnes =
-          refuel.quantityTonnes != null
-            ? parseFloat(refuel.quantityTonnes)
-            : parseFloat(refuel.quantityKg) / 1_000;
-        const purchasePricePerTonne =
-          pricePerKilogramToPerTonne(newAverageCost);
+        const quantityTonnes = requireTonneValue(
+          refuel.quantityTonnes,
+          `Refueling ${refuel.id} quantityTonnes`,
+        );
+        const purchasePricePerTonne = newAverageCostPerTonne;
         const salePricePerTonne =
           refuel.salePricePerTonne != null
-            ? parseFloat(refuel.salePricePerTonne)
-            : pricePerKilogramToPerTonne(
-                parseFloat(refuel.salePrice || "0"),
-              );
+            ? Number(refuel.salePricePerTonne)
+            : quantityTonnes > 0
+              ? Number(refuel.saleAmount || "0") / quantityTonnes
+              : 0;
         // Агентское: используем сохранённую итоговую сумму, учитываем флаг включения
         const agentFeeEnabled = refuel.isAgentFeeEnabled !== false; // null/undefined → включено
         const effectiveAgentFee = agentFeeEnabled ? parseFloat(refuel.agentFee || "0") : 0;
@@ -916,12 +912,10 @@ export class WarehouseRecalculationService {
         await tx
           .update(aircraftRefueling)
           .set({
-            purchasePrice: newAverageCost.toFixed(6),
             purchasePricePerTonne: purchasePricePerTonne.toFixed(6),
             purchaseAmount: purchaseAmount.toFixed(2),
             ...(isRechargeActive
               ? {
-                  salePrice: newAverageCost.toFixed(6),
                   salePricePerTonne: effectiveSalePricePerTonne.toFixed(6),
                   saleAmount: saleAmount.toFixed(2),
                 }

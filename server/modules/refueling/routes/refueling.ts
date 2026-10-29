@@ -11,29 +11,22 @@ import {
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { AuditService } from "../../audit/services/audit-service";
 import { SSEService } from "../../../services/sse-service";
-import { formatTonnes, legacyDealMassToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 import {
-  refuelingDealToApi,
   RefuelingApiInputError,
   normalizeRefuelingInput,
-} from "../refueling-api-adapters";
+} from "../refueling-input-validation";
 
 const refuelingProductLabel = (type: string) =>
   type === "kerosene" ? "Керосин" : type === "pvkj" ? "ПВКЖ" : type === "service" ? "Услуга" : type;
 
 const getOrderProductSummary = (deals: Array<{
   productType: string;
-  quantityKg?: unknown;
-  quantityLiters?: unknown;
-  density?: unknown;
+  quantityTonnes?: unknown;
 }>) =>
   deals
     .map((deal) => {
-      const quantityTonnes = legacyDealMassToTonnes(
-        deal.quantityKg as number | string | null | undefined,
-        deal.quantityLiters as number | string | null | undefined,
-        deal.density as number | string | null | undefined,
-      );
+      const quantityTonnes = Number(deal.quantityTonnes);
       return `${refuelingProductLabel(deal.productType)}${quantityTonnes ? ` — ${formatTonnes(quantityTonnes)} т` : ""}`;
     })
     .join(", ");
@@ -81,7 +74,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           filters,
           allowedWarehouseIds,
         );
-        res.json({ ...result, data: result.data.map(refuelingDealToApi) });
+        res.json(result);
       } catch (error) {
         console.error("Error loading aircraft refueling list:", error);
         res.status(500).json({
@@ -149,7 +142,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
       if (!item) {
         return res.status(404).json({ message: "Заправка не найдена" });
       }
-      res.json(refuelingDealToApi(item));
+      res.json(item);
     }
   );
 
@@ -163,7 +156,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         if (!deals.length) {
           return res.status(404).json({ message: "Заказ заправки не найден" });
         }
-        res.json(deals.map(refuelingDealToApi));
+        res.json(deals);
       } catch (error) {
         console.error("Error fetching refueling order:", error);
         res.status(500).json({ message: "Ошибка загрузки заказа заправки" });
@@ -222,7 +215,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           extraMeta: { orderProducts: getOrderProductSummary([item]) },
         });
         SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(refuelingDealToApi(item));
+        res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof RefuelingApiInputError) {
           return res.status(400).json({ message: error.message });
@@ -304,7 +297,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           "refueling",
           SSEService.extractClientId(req.headers["x-client-id"]),
         );
-        res.status(201).json(created.map(refuelingDealToApi));
+        res.status(201).json(created);
       } catch (error: any) {
         if (error instanceof RefuelingApiInputError) {
           return res.status(400).json({ message: error.message });
@@ -353,7 +346,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           return res.status(404).json({ message: "Заправка не найдена" });
         }
         SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(refuelingDealToApi(item));
+        res.json(item);
       } catch (error) {
         if (error instanceof RefuelingApiInputError) {
           return res.status(400).json({ message: error.message });
@@ -443,7 +436,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
             ),
         ]);
         SSEService.notifyEntityChanged("refueling", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(savedDeals.map(refuelingDealToApi));
+        res.json(savedDeals);
       } catch (error: unknown) {
         if (error instanceof RefuelingApiInputError) {
           return res.status(400).json({ message: error.message });

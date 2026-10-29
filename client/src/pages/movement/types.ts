@@ -5,17 +5,17 @@ export type InputMode = "liters" | "tonnes";
 
 export type MovementApiRecord = Omit<
   DatabaseMovement,
-  "quantityKg" | "purchasePrice" | "deliveryPrice" | "costPerKg"
+  | "quantityTonnes"
+  | "purchaseAmount"
+  | "purchasePricePerTonne"
+  | "deliveryPricePerTonne"
+  | "costPerTonne"
 > & {
   quantityTonnes: number | string | null;
   purchaseAmount: number | string | null;
   purchasePricePerTonne: number | string | null;
   deliveryPricePerTonne: number | string | null;
   costPerTonne: number | string | null;
-  quantityKg?: number | string | null;
-  purchasePrice?: number | string | null;
-  deliveryPrice?: number | string | null;
-  costPerKg?: number | string | null;
 };
 
 export interface MovementDialogProps {
@@ -42,12 +42,10 @@ export interface MovementTableProps {
 }
 
 export interface CalculatedValues {
-  calculatedKg: string | null;
   calculatedTonnes: number | null;
   purchasePricePerTonne: number;
   deliveryCost: number;
   totalCost: number;
-  costPerKg: number;
   costPerTonne: number;
 }
 

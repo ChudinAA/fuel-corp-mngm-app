@@ -4,10 +4,6 @@ import { equipmentMovementFormSchema } from "./schemas";
 import {
   calculateEquipmentMovementTonnes,
   calculateLikAvailableBalanceTonnes,
-  equipmentMovementLegacyKgToTonnes,
-  equipmentMovementLegacyPricePerKgToPerTonne,
-  equipmentMovementTonnesRateToLegacyKgRate,
-  equipmentMovementTonnesToLegacyKg,
 } from "./unit-calculations";
 
 test("equipment movement mass converts from tonnes and deal liters", () => {
@@ -25,19 +21,11 @@ test("equipment movement mass converts from tonnes and deal liters", () => {
   );
 });
 
-test("equipment movement adapters preserve legacy mass and price rates", () => {
-  assert.equal(equipmentMovementTonnesToLegacyKg(0.6), 600);
-  assert.equal(equipmentMovementLegacyKgToTonnes(600), 0.6);
-  assert.equal(equipmentMovementLegacyPricePerKgToPerTonne(80), 80_000);
-  assert.equal(equipmentMovementTonnesRateToLegacyKgRate(80_000), 80);
-});
-
-test("LIK balance prefers tonne snapshots and restores edited tonnes", () => {
+test("LIK balance reads tonne snapshots and restores edited tonnes", () => {
   assert.equal(
     calculateLikAvailableBalanceTonnes(
-      { balanceTonnes: "1.25", balance: "9000" },
+      { balanceTonnes: "1.25" },
       "2",
-      "2000",
       true,
       0.5,
     ),
@@ -47,7 +35,6 @@ test("LIK balance prefers tonne snapshots and restores edited tonnes", () => {
     calculateLikAvailableBalanceTonnes(
       null,
       "1.25000",
-      "1250",
       false,
       0.5,
     ),

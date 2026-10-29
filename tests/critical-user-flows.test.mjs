@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, test } from "node:test";
-import { spawnSync } from "node:child_process";
 import pg from "pg";
 
 const { Pool } = pg;
@@ -40,50 +39,23 @@ async function api(path, { method = "GET", body, expectedStatus = 200 } = {}) {
 }
 
 async function getInventory(warehouseId, equipmentId) {
-  const [warehouse, equipment, warehouseMassConsistency] = await Promise.all([
+  const [warehouse, equipment] = await Promise.all([
     pool.query(
-      `SELECT current_balance, current_balance_tonnes,
-              pvkj_balance, pvkj_balance_tonnes
+      `SELECT current_balance_tonnes, pvkj_balance_tonnes
        FROM warehouses WHERE id = $1`,
       [warehouseId],
     ),
     pool.query(
-      `SELECT current_balance, pvkj_balance FROM equipments WHERE id = $1`,
+      `SELECT current_balance_tonnes, pvkj_balance_tonnes FROM equipments WHERE id = $1`,
       [equipmentId],
-    ),
-    pool.query(
-      `SELECT COUNT(*)::int AS mismatches
-       FROM warehouse_transactions
-       WHERE warehouse_id = $1
-         AND (
-           quantity_tonnes IS DISTINCT FROM CAST(quantity AS NUMERIC) / 1000
-           OR balance_before_tonnes IS DISTINCT FROM CAST(balance_before AS NUMERIC) / 1000
-           OR balance_after_tonnes IS DISTINCT FROM CAST(balance_after AS NUMERIC) / 1000
-         )`,
-      [warehouseId],
     ),
   ]);
   const warehouseRow = warehouse.rows[0];
-  assert.equal(
-    Number(warehouseRow?.current_balance_tonnes),
-    Number((Number(warehouseRow?.current_balance) / 1000).toFixed(5)),
-    "warehouse kerosene balance must be stored in tonnes",
-  );
-  assert.equal(
-    Number(warehouseRow?.pvkj_balance_tonnes),
-    Number((Number(warehouseRow?.pvkj_balance) / 1000).toFixed(5)),
-    "warehouse PVKJ balance must be stored in tonnes",
-  );
-  assert.equal(
-    Number(warehouseMassConsistency.rows[0]?.mismatches),
-    0,
-    "warehouse ledger tonne values must mirror their legacy kg values",
-  );
   return {
-    warehouseKerosene: Number(warehouseRow?.current_balance),
-    warehousePvkj: Number(warehouseRow?.pvkj_balance),
-    equipmentKerosene: Number(equipment.rows[0]?.current_balance),
-    equipmentPvkj: Number(equipment.rows[0]?.pvkj_balance),
+    warehouseKerosene: Number(warehouseRow?.current_balance_tonnes),
+    warehousePvkj: Number(warehouseRow?.pvkj_balance_tonnes),
+    equipmentKerosene: Number(equipment.rows[0]?.current_balance_tonnes),
+    equipmentPvkj: Number(equipment.rows[0]?.pvkj_balance_tonnes),
   };
 }
 
@@ -131,34 +103,25 @@ async function getStock(table, id) {
     `unsupported stock table: ${table}`,
   );
   const result = await pool.query(
-    `SELECT current_balance, current_balance_tonnes, average_cost
+    `SELECT current_balance_tonnes, average_cost_per_tonne
      FROM ${table} WHERE id = $1`,
     [id],
   );
   assert.ok(result.rows[0], `${table} stock record exists`);
   return {
-    quantity: Number(result.rows[0].current_balance),
-    quantityTonnes:
-      result.rows[0].current_balance_tonnes == null
-        ? null
-        : Number(result.rows[0].current_balance_tonnes),
-    averageCost: Number(result.rows[0].average_cost),
+    quantityTonnes: Number(result.rows[0].current_balance_tonnes),
+    averageCostPerTonne: Number(result.rows[0].average_cost_per_tonne),
   };
 }
 
-function assertStock(actual, quantity, averageCost, label) {
+function assertStock(actual, quantityTonnes, averageCostPerTonne, label) {
   assert.ok(
-    Math.abs(actual.quantity - quantity) < 0.011,
-    `${label} quantity: expected ${quantity}, received ${actual.quantity}`,
+    Math.abs(actual.quantityTonnes - quantityTonnes) < 0.000001,
+    `${label} tonne balance: expected ${quantityTonnes}, received ${actual.quantityTonnes}`,
   );
   assert.ok(
-    Math.abs(actual.averageCost - averageCost) < 0.011,
-    `${label} average cost: expected ${averageCost}, received ${actual.averageCost}`,
-  );
-  assert.notEqual(actual.quantityTonnes, null, `${label} tonne balance is stored`);
-  assert.ok(
-    Math.abs(actual.quantityTonnes - actual.quantity / 1000) < 0.000001,
-    `${label} tonne balance matches its legacy kg mirror`,
+    Math.abs(actual.averageCostPerTonne - averageCostPerTonne) < 0.011,
+    `${label} average cost per tonne: expected ${averageCostPerTonne}, received ${actual.averageCostPerTonne}`,
   );
 }
 
@@ -194,12 +157,12 @@ function makeRefuelingDeal({
   buyerId,
   warehouseId,
   equipmentId,
-  quantityKg,
-  purchasePrice,
-  salePrice,
+  quantityTonnes,
+  purchasePricePerTonne,
+  salePricePerTonne,
 }) {
-  const purchaseAmount = quantityKg * purchasePrice;
-  const saleAmount = quantityKg * salePrice;
+  const purchaseAmount = quantityTonnes * purchasePricePerTonne;
+  const saleAmount = quantityTonnes * salePricePerTonne;
   return {
     refuelingDate: date,
     productType,
@@ -208,41 +171,16 @@ function makeRefuelingDeal({
     warehouseId: warehouseId ?? null,
     equipmentId: equipmentId ?? null,
     equipmentType: "common",
-    inputMode: "kg",
-    quantityKg,
-    purchasePrice,
+    inputMode: "tonnes",
+    quantityTonnes,
+    purchasePricePerTonne,
     purchaseAmount,
-    salePrice,
+    salePricePerTonne,
     saleAmount,
     profit: saleAmount - purchaseAmount,
     isDraft: false,
     isAgentFeeEnabled: true,
     isOtherServiceEnabled: true,
-  };
-}
-
-function makeTonneRefuelingDeal(input) {
-  const legacyDeal = makeRefuelingDeal(input);
-  const {
-    quantityKg,
-    purchasePrice,
-    salePrice,
-    agentFeeRate,
-    ...fields
-  } = legacyDeal;
-  return {
-    ...fields,
-    quantityTonnes: quantityKg / 1000,
-    purchasePricePerTonne:
-      purchasePrice === null || purchasePrice === undefined
-        ? null
-        : purchasePrice * 1000,
-    salePricePerTonne:
-      salePrice === null || salePrice === undefined ? null : salePrice * 1000,
-    agentFeeRatePerTonne:
-      agentFeeRate === null || agentFeeRate === undefined
-        ? null
-        : agentFeeRate * 1000,
   };
 }
 
@@ -322,46 +260,35 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
         toEntityType: "base",
         toEntityId: "00000000-0000-4000-8000-000000000002",
         toLocation: "Critical destination",
-        costPerTonne: 12345.67,
+        costPerTonne: "12345.67",
       },
     });
     deliveryCostId = deliveryCost.id;
     assert.equal(Number(deliveryCost.costPerTonne), 12345.67);
-    assert.equal(deliveryCost.costPerKg, undefined);
 
     let storedDeliveryCost = await pool.query(
-      `SELECT cost_per_kg, cost_per_tonne
+      `SELECT cost_per_tonne
        FROM delivery_cost WHERE id = $1`,
       [deliveryCostId],
     );
-    assert.equal(Number(storedDeliveryCost.rows[0].cost_per_kg), 12.34567);
     assert.equal(Number(storedDeliveryCost.rows[0].cost_per_tonne), 12345.67);
-
-    const legacyEdit = await api(`/api/delivery-costs/${deliveryCostId}`, {
-      method: "PATCH",
-      body: { costPerKg: 0.2 },
-    });
-    assert.equal(Number(legacyEdit.costPerTonne), 200);
 
     const tonneEdit = await api(`/api/delivery-costs/${deliveryCostId}`, {
       method: "PATCH",
-      body: { costPerTonne: 250, costPerKg: 0.2 },
+      body: { costPerTonne: "250" },
     });
     assert.equal(Number(tonneEdit.costPerTonne), 250);
-    assert.equal(tonneEdit.costPerKg, undefined);
     storedDeliveryCost = await pool.query(
-      `SELECT cost_per_kg, cost_per_tonne
+      `SELECT cost_per_tonne
        FROM delivery_cost WHERE id = $1`,
       [deliveryCostId],
     );
-    assert.equal(Number(storedDeliveryCost.rows[0].cost_per_kg), 0.25);
     assert.equal(Number(storedDeliveryCost.rows[0].cost_per_tonne), 250);
 
     const fetchedDeliveryCost = await api(
       `/api/delivery-costs/${deliveryCostId}`,
     );
     assert.equal(Number(fetchedDeliveryCost.costPerTonne), 250);
-    assert.equal(fetchedDeliveryCost.costPerKg, undefined);
   } finally {
     if (deliveryCostId) {
       await pool.query("DELETE FROM delivery_cost WHERE id = $1", [
@@ -393,31 +320,24 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       saleAmountRub: 24680,
     },
   });
-  assert.equal(foreignDraft.quantityTonnes, 0.01234);
+  assert.equal(Number(foreignDraft.quantityTonnes), 0.01234);
   assert.equal(foreignDraft.inputMode, "tonnes");
   assert.ok(Math.abs(foreignDraft.purchasePriceUsdPerTonne - 20000) < 0.001);
   assert.ok(Math.abs(foreignDraft.purchasePriceRubPerTonne - 1600000) < 0.001);
-  assert.equal(foreignDraft.quantityKg, undefined);
-  assert.equal(foreignDraft.purchasePriceUsd, undefined);
   const fetchedForeignDraft = await api(`/api/refueling-abroad/${foreignDraft.id}`);
-  assert.equal(fetchedForeignDraft.quantityTonnes, 0.01234);
-  assert.equal(fetchedForeignDraft.quantityKg, undefined);
+  assert.equal(Number(fetchedForeignDraft.quantityTonnes), 0.01234);
   const storedForeignDraft = await pool.query(
-    `SELECT quantity_kg, quantity_tonnes, input_mode,
-            purchase_price_usd, purchase_price_usd_per_tonne,
-            purchase_price_rub, purchase_price_rub_per_tonne
+    `SELECT quantity_tonnes, input_mode,
+            purchase_price_usd_per_tonne, purchase_price_rub_per_tonne
      FROM refueling_abroad WHERE id = $1`,
     [foreignDraft.id],
   );
-  assert.equal(Number(storedForeignDraft.rows[0].quantity_kg), 12.34);
   assert.equal(Number(storedForeignDraft.rows[0].quantity_tonnes), 0.01234);
   assert.equal(storedForeignDraft.rows[0].input_mode, "tonnes");
-  assert.equal(Number(storedForeignDraft.rows[0].purchase_price_usd), 20);
   assert.equal(
     Number(storedForeignDraft.rows[0].purchase_price_usd_per_tonne),
     20000,
   );
-  assert.equal(Number(storedForeignDraft.rows[0].purchase_price_rub), 1600);
   assert.equal(
     Number(storedForeignDraft.rows[0].purchase_price_rub_per_tonne),
     1600000,
@@ -500,7 +420,6 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     (price) => price.basisId === supplierBasis.id,
   );
   assert.equal(Number(savedBasisPrice.servicePricePerTonne), 12345.678901);
-  assert.equal(savedBasisPrice.servicePrice, undefined);
 
   await api(`/api/suppliers/${supplier.id}`, {
     method: "PATCH",
@@ -508,7 +427,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       basisPrices: [
         {
           ...basisPriceInput,
-          servicePricePerTonne: 250,
+          servicePricePerTonne: "250",
           pvkjPricePerTonne: "250.25",
           agentFeePerTonne: "1234.57",
         },
@@ -516,19 +435,15 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     },
   });
   const savedBasisRateColumns = await pool.query(
-    `SELECT service_price, service_price_per_tonne,
-            pvkj_price, pvkj_price_per_tonne,
-            agent_fee, agent_fee_per_tonne,
+    `SELECT service_price_per_tonne, pvkj_price_per_tonne,
+            agent_fee_per_tonne,
             other_service_value, other_service_quantity
      FROM supplier_basis_prices
      WHERE supplier_id = $1 AND basis_id = $2`,
     [supplier.id, supplierBasis.id],
   );
-  assert.equal(savedBasisRateColumns.rows[0].service_price, null);
   assert.equal(Number(savedBasisRateColumns.rows[0].service_price_per_tonne), 250);
-  assert.equal(savedBasisRateColumns.rows[0].pvkj_price, null);
   assert.equal(Number(savedBasisRateColumns.rows[0].pvkj_price_per_tonne), 250.251234);
-  assert.equal(savedBasisRateColumns.rows[0].agent_fee, null);
   assert.equal(Number(savedBasisRateColumns.rows[0].agent_fee_per_tonne), 1234.567891);
   assert.equal(Number(savedBasisRateColumns.rows[0].other_service_value), 25.5);
   await pool.query("DELETE FROM supplier_basis_prices WHERE supplier_id = $1", [
@@ -560,10 +475,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
 
   await pool.query(
     `UPDATE prices
-     SET price_unit = 'kg',
-         price_values = ARRAY['{"price":1.234567}']::text[],
-         volume_unit = 'kg',
-         volume = 1234.56,
+     SET price_values = ARRAY['{"price":1234.567}']::text[],
+         volume = 1.23456,
          sold_volume = 0.34567
      WHERE id = $1`,
     [tonnePrice.id],
@@ -606,10 +519,10 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     await pool.query(
       `INSERT INTO prices (
          product_type, counterparty_id, counterparty_type, counterparty_role,
-         basis, volume, date_from, date_to, price_unit
+         basis, volume, volume_unit, date_from, date_to, price_unit
        )
        VALUES ('kerosene', $1, 'supplier', 'supplier', 'critical-flow-basis',
-               1000, CURRENT_DATE, CURRENT_DATE, 'liter')
+              1000, 'tonne', CURRENT_DATE, CURRENT_DATE, 'liter')
        RETURNING id`,
       [supplier.id],
     )
@@ -624,13 +537,11 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   const foreignContractUsage = await api(
     `/api/refueling-abroad/contract-used/${contractPrice.id}`,
   );
-  // Historical mass follows the saved kg/tonne value, even when litres ×
-  // density differs; liters remain the compatibility value for liter tariffs.
+  // Saved tonne mass remains authoritative if litres and density are edited later.
   assert.ok(
     Math.abs(Number(foreignContractUsage.usedVolumeTonnes) - 0.01234) <
       0.000001,
   );
-  assert.equal(Number(foreignContractUsage.usedVolume), 15.5);
 
   const domesticContractUsage = await api(
     `/api/refueling/contract-used/${contractPrice.id}`,
@@ -670,25 +581,21 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       isDraft: true,
     },
   });
-  assert.equal(transportationDeal.quantityTonnes, 0.01234);
-  assert.equal(transportationDeal.quantityKg, undefined);
+  assert.equal(Number(transportationDeal.quantityTonnes), 0.01234);
   assert.equal(Number(transportationDeal.salePricePerTonne), 160_000);
   assert.equal(Number(transportationDeal.deliveryTariffPerTonne), 2_500);
   assert.equal(Number(transportationDeal.saleAmount), 1_974.4);
   const storedTransportationDeal = await pool.query(
-    `SELECT quantity_kg, quantity_tonnes, sale_price, sale_price_per_tonne,
-            delivery_tariff, delivery_tariff_per_tonne, sale_amount, delivery_cost
+    `SELECT quantity_tonnes, sale_price_per_tonne,
+            delivery_tariff_per_tonne, sale_amount, delivery_cost
      FROM transportation WHERE id = $1`,
     [transportationDeal.id],
   );
-  assert.equal(Number(storedTransportationDeal.rows[0].quantity_kg), 12.34);
   assert.equal(Number(storedTransportationDeal.rows[0].quantity_tonnes), 0.01234);
-  assert.equal(Number(storedTransportationDeal.rows[0].sale_price), 160);
   assert.equal(
     Number(storedTransportationDeal.rows[0].sale_price_per_tonne),
     160_000,
   );
-  assert.equal(Number(storedTransportationDeal.rows[0].delivery_tariff), 2.5);
   assert.equal(
     Number(storedTransportationDeal.rows[0].delivery_tariff_per_tonne),
     2_500,
@@ -698,35 +605,34 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   const fetchedTransportationDeal = await api(
     `/api/transportation/${transportationDeal.id}`,
   );
-  assert.equal(fetchedTransportationDeal.quantityTonnes, 0.01234);
-  assert.equal(fetchedTransportationDeal.quantityKg, undefined);
+  assert.equal(Number(fetchedTransportationDeal.quantityTonnes), 0.01234);
 
   const warehouse = (
     await pool.query(
       `INSERT INTO warehouses
-         (name, current_balance, current_balance_tonnes, average_cost,
-          pvkj_balance, pvkj_balance_tonnes, pvkj_average_cost)
-       VALUES ('critical-flow-warehouse', 1000, 1.00000, 10, 1000, 1.00000, 12)
+         (name, current_balance_tonnes, average_cost_per_tonne,
+          pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+       VALUES ('critical-flow-warehouse', 1.00000, 10000, 1.00000, 12000)
        RETURNING id`,
     )
   ).rows[0];
   const equipment = (
     await pool.query(
       `INSERT INTO equipments
-         (name, current_balance, current_balance_tonnes, average_cost,
-          pvkj_balance, pvkj_balance_tonnes, pvkj_average_cost)
-       VALUES ('critical-flow-equipment', 1000, 1.00000, 10, 1000, 1.00000, 12)
+         (name, current_balance_tonnes, average_cost_per_tonne,
+          pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+       VALUES ('critical-flow-equipment', 1.00000, 10000, 1.00000, 12000)
        RETURNING id`,
     )
   ).rows[0];
   await pool.query(
     `INSERT INTO warehouse_transactions
-       (warehouse_id, transaction_type, product_type, quantity, quantity_tonnes,
-        source_type, balance_before, balance_before_tonnes,
-        balance_after, balance_after_tonnes, average_cost_before,
-        average_cost_after, sum, price, transaction_date)
-     VALUES ($1, 'receipt', 'kerosene', 1000, 1.00000, 'critical_flow_seed',
-             0, 0.00000, 1000, 1.00000, 0, 10, 10000, 10,
+       (warehouse_id, transaction_type, product_type, quantity_tonnes,
+        source_type, balance_before_tonnes, balance_after_tonnes,
+        average_cost_before_per_tonne, average_cost_after_per_tonne,
+        sum, price_per_tonne, transaction_date)
+     VALUES ($1, 'receipt', 'kerosene', 1.00000, 'critical_flow_seed',
+             0.00000, 1.00000, 0, 10000, 10000, 10000,
              '2026-10-01T00:00:00.000Z')`,
     [warehouse.id],
   );
@@ -734,9 +640,9 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   const planningWarehouse = (
     await pool.query(
       `INSERT INTO warehouses
-         (name, current_balance, current_balance_tonnes, average_cost,
-          pvkj_balance, pvkj_balance_tonnes, pvkj_average_cost)
-       VALUES ('critical-flow-planning-warehouse', 0, 0, 0, 0, 0, 0)
+         (name, current_balance_tonnes, average_cost_per_tonne,
+          pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+       VALUES ('critical-flow-planning-warehouse', 0, 0, 0, 0)
        RETURNING id`,
     )
   ).rows[0];
@@ -747,20 +653,10 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       warehouseId: planningWarehouse.id,
       date: "2030-01-15T12:00:00.000Z",
       type: "income",
-      volume: "123.45",
+      volumeTonnes: "0.12345",
     },
   });
-  assert.equal(Number(planningEntry.volume), 123.45);
   assert.equal(Number(planningEntry.volumeTonnes), 0.12345);
-  const kgOnlyPlanningEdit = await api(
-    `/api/planning/entries/${planningEntry.id}`,
-    {
-      method: "PATCH",
-      body: { volume: "234.56" },
-    },
-  );
-  assert.equal(Number(kgOnlyPlanningEdit.volume), 234.56);
-  assert.equal(Number(kgOnlyPlanningEdit.volumeTonnes), 0.23456);
   const tonnePlanningEdit = await api(
     `/api/planning/entries/${planningEntry.id}`,
     {
@@ -768,59 +664,56 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       body: { volumeTonnes: "0.34567" },
     },
   );
-  assert.equal(Number(tonnePlanningEdit.volume), 345.67);
   assert.equal(Number(tonnePlanningEdit.volumeTonnes), 0.34567);
   const storedPlanningMass = await pool.query(
-    `SELECT volume, volume_tonnes, balance_after, balance_after_tonnes
+    `SELECT volume_tonnes, balance_after_tonnes
      FROM plan_entries WHERE id = $1`,
     [planningEntry.id],
   );
-  assert.equal(Number(storedPlanningMass.rows[0].volume), 345.67);
   assert.equal(Number(storedPlanningMass.rows[0].volume_tonnes), 0.34567);
-  assert.equal(Number(storedPlanningMass.rows[0].balance_after), 345.67);
   assert.equal(Number(storedPlanningMass.rows[0].balance_after_tonnes), 0.34567);
 
   await pool.query(
     `INSERT INTO equipment_transactions
-       (equipment_id, transaction_type, product_type, quantity, quantity_tonnes,
-        source_type, balance_before, balance_before_tonnes,
-        balance_after, balance_after_tonnes, average_cost_before,
-        average_cost_after, sum, price, transaction_date)
-     VALUES ($1, 'receipt', 'pvkj', 1000, 1.00000, 'critical_flow_seed',
-             0, 0.00000, 1000, 1.00000, 0, 12, 12000, 12,
+       (equipment_id, transaction_type, product_type, quantity_tonnes,
+        source_type, balance_before_tonnes, balance_after_tonnes,
+        average_cost_before_per_tonne, average_cost_after_per_tonne,
+        sum, price_per_tonne, transaction_date)
+     VALUES ($1, 'receipt', 'pvkj', 1.00000, 'critical_flow_seed',
+             0.00000, 1.00000, 0, 12000, 12000, 12000,
              '2026-10-01T00:00:00.000Z')`,
     [equipment.id],
   );
 
   const initialDeals = [
-    makeTonneRefuelingDeal({
+    makeRefuelingDeal({
       productType: "kerosene",
       date: "2026-10-20T12:00:00.000Z",
       supplierId: supplier.id,
       buyerId: refuelingBuyer.id,
       warehouseId: warehouse.id,
-      quantityKg: 10,
-      purchasePrice: 10,
-      salePrice: 15,
+      quantityTonnes: 0.01,
+      purchasePricePerTonne: 10_000,
+      salePricePerTonne: 15_000,
     }),
-    makeTonneRefuelingDeal({
+    makeRefuelingDeal({
       productType: "pvkj",
       date: "2026-10-20T12:00:00.000Z",
       supplierId: supplier.id,
       buyerId: refuelingBuyer.id,
       equipmentId: equipment.id,
-      quantityKg: 7,
-      purchasePrice: 12,
-      salePrice: 18,
+      quantityTonnes: 0.007,
+      purchasePricePerTonne: 12_000,
+      salePricePerTonne: 18_000,
     }),
-    makeTonneRefuelingDeal({
+    makeRefuelingDeal({
       productType: "service",
       date: "2026-10-20T12:00:00.000Z",
       supplierId: supplier.id,
       buyerId: refuelingBuyer.id,
-      quantityKg: 17,
-      purchasePrice: 0,
-      salePrice: 2,
+      quantityTonnes: 0.017,
+      purchasePricePerTonne: 0,
+      salePricePerTonne: 2_000,
     }),
   ];
   const createdOrder = await api("/api/refueling/bulk", {
@@ -833,23 +726,18 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     createdOrder.map((deal) => Number(deal.quantityTonnes)).sort((a, b) => a - b),
     [0.007, 0.01, 0.017],
   );
-  assert.ok(createdOrder.every((deal) => deal.quantityKg === undefined));
   assert.equal(Number(createdOrder[0].purchasePricePerTonne), 10000);
-  assert.equal(createdOrder[0].purchasePrice, undefined);
   assert.equal(new Set(createdOrder.map((deal) => deal.refuelingOrderId)).size, 1);
   assertDealEconomics(createdOrder);
   const storedRefuelingRate = await pool.query(
-    "SELECT quantity_kg, quantity_tonnes, purchase_price, purchase_price_per_tonne, sale_price, sale_price_per_tonne FROM aircraft_refueling WHERE id = $1",
+    "SELECT quantity_tonnes, purchase_price_per_tonne, sale_price_per_tonne FROM aircraft_refueling WHERE id = $1",
     [createdOrder.find((deal) => deal.productType === "kerosene").id],
   );
-  assert.equal(Number(storedRefuelingRate.rows[0].quantity_kg), 10);
   assert.equal(Number(storedRefuelingRate.rows[0].quantity_tonnes), 0.01);
-  assert.equal(Number(storedRefuelingRate.rows[0].purchase_price), 10);
   assert.equal(
     Number(storedRefuelingRate.rows[0].purchase_price_per_tonne),
     10000,
   );
-  assert.equal(Number(storedRefuelingRate.rows[0].sale_price), 15);
   assert.equal(Number(storedRefuelingRate.rows[0].sale_price_per_tonne), 15000);
   const tonneReport = await api("/api/management-report/generate", {
     method: "POST",
@@ -893,10 +781,10 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     createdOrder.map((deal) => [deal.productType, deal.id]),
   );
   assert.deepEqual(await getInventory(warehouse.id, equipment.id), {
-    warehouseKerosene: 990,
-    warehousePvkj: 1000,
-    equipmentKerosene: 1000,
-    equipmentPvkj: 993,
+    warehouseKerosene: 0.99,
+    warehousePvkj: 1,
+    equipmentKerosene: 1,
+    equipmentPvkj: 0.993,
   });
 
   const laterOrder = await api("/api/refueling/bulk", {
@@ -910,9 +798,9 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
           supplierId: supplier.id,
           buyerId: refuelingBuyer.id,
           warehouseId: warehouse.id,
-          quantityKg: 2,
-          purchasePrice: 10,
-          salePrice: 15,
+          quantityTonnes: 0.002,
+          purchasePricePerTonne: 10_000,
+          salePricePerTonne: 15_000,
         }),
         makeRefuelingDeal({
           productType: "pvkj",
@@ -920,15 +808,14 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
           supplierId: supplier.id,
           buyerId: refuelingBuyer.id,
           equipmentId: equipment.id,
-          quantityKg: 2,
-          purchasePrice: 12,
-          salePrice: 18,
+          quantityTonnes: 0.002,
+          purchasePricePerTonne: 12_000,
+          salePricePerTonne: 18_000,
         }),
       ],
     },
   });
   assert.equal(laterOrder.length, 2);
-  assert.ok(laterOrder.every((deal) => deal.quantityKg === undefined));
   assert.equal(Number(laterOrder[0].quantityTonnes), 0.002);
 
   const backdatedDeals = [
@@ -938,9 +825,9 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       supplierId: supplier.id,
       buyerId: refuelingBuyer.id,
       warehouseId: warehouse.id,
-      quantityKg: 11,
-      purchasePrice: 10,
-      salePrice: 15,
+      quantityTonnes: 0.011,
+      purchasePricePerTonne: 10_000,
+      salePricePerTonne: 15_000,
     }),
     makeRefuelingDeal({
       productType: "pvkj",
@@ -948,18 +835,18 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       supplierId: supplier.id,
       buyerId: refuelingBuyer.id,
       equipmentId: equipment.id,
-      quantityKg: 8,
-      purchasePrice: 12,
-      salePrice: 18,
+      quantityTonnes: 0.008,
+      purchasePricePerTonne: 12_000,
+      salePricePerTonne: 18_000,
     }),
     makeRefuelingDeal({
       productType: "service",
       date: "2026-10-15T12:00:00.000Z",
       supplierId: supplier.id,
       buyerId: refuelingBuyer.id,
-      quantityKg: 19,
-      purchasePrice: 0,
-      salePrice: 2,
+      quantityTonnes: 0.019,
+      purchasePricePerTonne: 0,
+      salePricePerTonne: 2_000,
     }),
   ];
   const editedOrder = await api(`/api/refueling/order/${anchorId}`, {
@@ -987,9 +874,9 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     date: "2026-10-15T12:00:00.000Z",
     supplierId: supplier.id,
     buyerId: refuelingBuyer.id,
-    quantityKg: 19,
-    purchasePrice: 0,
-    salePrice: 2,
+    quantityTonnes: 0.019,
+    purchasePricePerTonne: 0,
+    salePricePerTonne: 2_000,
   });
   const withoutService = backdatedDeals.filter(
     (deal) => deal.productType !== "service",
@@ -1021,10 +908,10 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     "re-adding a removed product creates a fresh row",
   );
   assert.deepEqual(await getInventory(warehouse.id, equipment.id), {
-    warehouseKerosene: 987,
-    warehousePvkj: 1000,
-    equipmentKerosene: 1000,
-    equipmentPvkj: 990,
+    warehouseKerosene: 0.987,
+    warehousePvkj: 1,
+    equipmentKerosene: 1,
+    equipmentPvkj: 0.99,
   });
 
   await waitForCompletedQueue(
@@ -1054,10 +941,10 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   });
   assert.equal(deleteOrder.deletedDeals, 3);
   assert.deepEqual(await getInventory(warehouse.id, equipment.id), {
-    warehouseKerosene: 998,
-    warehousePvkj: 1000,
-    equipmentKerosene: 1000,
-    equipmentPvkj: 998,
+    warehouseKerosene: 0.998,
+    warehousePvkj: 1,
+    equipmentKerosene: 1,
+    equipmentPvkj: 0.998,
   });
   const refuelingDeleteAuditId = await latestAuditId(
     "aircraft_refueling",
@@ -1079,10 +966,10 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     "restoring an order does not revive a product removed in an earlier edit",
   );
   assert.deepEqual(await getInventory(warehouse.id, equipment.id), {
-    warehouseKerosene: 987,
-    warehousePvkj: 1000,
-    equipmentKerosene: 1000,
-    equipmentPvkj: 990,
+    warehouseKerosene: 0.987,
+    warehousePvkj: 1,
+    equipmentKerosene: 1,
+    equipmentPvkj: 0.99,
   });
   assertDealEconomics(restoredRefuelingDeals);
 
@@ -1108,54 +995,41 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     },
   });
   assert.equal(Number(optCreated.quantityTonnes), 0.02);
-  assert.equal(optCreated.quantityKg, undefined);
   assert.equal(Number(optCreated.purchasePricePerTonne), 10000.001);
   assert.equal(Number(optCreated.salePricePerTonne), 15000.004);
-  assert.equal(optCreated.purchasePrice, undefined);
-  assert.equal(optCreated.salePrice, undefined);
   assert.equal(Number(optCreated.profit), 100);
   const storedOptMass = await pool.query(
-    `SELECT quantity_tonnes, quantity_kg,
-            purchase_price_per_tonne, purchase_price,
-            sale_price_per_tonne, sale_price,
-            delivery_tariff_per_tonne, delivery_tariff
+    `SELECT quantity_tonnes, purchase_price_per_tonne,
+            sale_price_per_tonne, delivery_tariff_per_tonne
      FROM opt WHERE id = $1`,
     [optCreated.id],
   );
   assert.equal(Number(storedOptMass.rows[0].quantity_tonnes), 0.02);
-  assert.equal(Number(storedOptMass.rows[0].quantity_kg), 20);
   assert.equal(Number(storedOptMass.rows[0].purchase_price_per_tonne), 10000.001);
-  assert.equal(Number(storedOptMass.rows[0].purchase_price), 10.000001);
   assert.equal(Number(storedOptMass.rows[0].sale_price_per_tonne), 15000.004);
-  assert.equal(Number(storedOptMass.rows[0].sale_price), 15.000004);
   assert.equal(Number(storedOptMass.rows[0].delivery_tariff_per_tonne), 500);
-  assert.equal(Number(storedOptMass.rows[0].delivery_tariff), 0.5);
-  const roundedRateNoop = await api(`/api/opt/${optCreated.id}`, {
+  const unchangedRateUpdate = await api(`/api/opt/${optCreated.id}`, {
     method: "PATCH",
     body: {
-      purchasePricePerTonne: 10000,
-      salePricePerTonne: 15000,
+      purchasePricePerTonne: 10000.001,
+      salePricePerTonne: 15000.004,
     },
   });
-  assert.equal(Number(roundedRateNoop.purchasePricePerTonne), 10000.001);
-  assert.equal(Number(roundedRateNoop.salePricePerTonne), 15000.004);
+  assert.equal(Number(unchangedRateUpdate.purchasePricePerTonne), 10000.001);
+  assert.equal(Number(unchangedRateUpdate.salePricePerTonne), 15000.004);
   const storedOptRateNoop = await pool.query(
-    "SELECT purchase_price_per_tonne, purchase_price, sale_price_per_tonne, sale_price FROM opt WHERE id = $1",
+    "SELECT purchase_price_per_tonne, sale_price_per_tonne FROM opt WHERE id = $1",
     [optCreated.id],
   );
   assert.equal(Number(storedOptRateNoop.rows[0].purchase_price_per_tonne), 10000.001);
-  assert.equal(Number(storedOptRateNoop.rows[0].purchase_price), 10.000001);
   assert.equal(Number(storedOptRateNoop.rows[0].sale_price_per_tonne), 15000.004);
-  assert.equal(Number(storedOptRateNoop.rows[0].sale_price), 15.000004);
   const optList = await api("/api/opt?pageSize=100");
   const listedOpt = optList.data.find((deal) => deal.id === optCreated.id);
   assert.equal(Number(listedOpt.quantityTonnes), 0.02);
-  assert.equal(listedOpt.quantityKg, undefined);
   const dailyOptReport = await api("/api/reports/daily-opt?date=2026-10-26");
   const dailyOptDeal = dailyOptReport.find((deal) => deal.id === optCreated.id);
   assert.ok(dailyOptDeal, "daily OPT report includes the deal for the selected date");
   assert.equal(Number(dailyOptDeal.quantityTonnes), 0.02);
-  assert.equal(dailyOptDeal.quantityKg, undefined);
   const customPeriodReport = await api("/api/reports/custom-period", {
     method: "POST",
     body: {
@@ -1169,26 +1043,25 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assert.ok(customReportOptDeal, "custom-period report includes the selected OPT deal");
   assert.equal(Number(customReportOptDeal.quantityTonnes), 0.02);
-  assert.equal(customReportOptDeal.quantityKg, undefined);
   for (const reportType of ["refueling", "movement"]) {
     for (const deal of customPeriodReport[reportType]) {
-      assert.equal(deal.quantityKg, undefined);
       assert.ok(Number.isFinite(Number(deal.quantityTonnes)));
     }
   }
 
-  await pool.query(
-    "UPDATE opt SET quantity_tonnes = NULL WHERE id = $1",
-    [optCreated.id],
-  );
-  const legacyMassList = await api("/api/opt?pageSize=100");
-  const legacyMassOpt = legacyMassList.data.find(
+  const tonneMassList = await api("/api/opt?pageSize=100");
+  const tonneMassOpt = tonneMassList.data.find(
     (deal) => deal.id === optCreated.id,
   );
-  assert.equal(Number(legacyMassOpt.quantityTonnes), 0.02);
-  assert.equal(legacyMassOpt.quantityKg, undefined);
+  assert.equal(Number(tonneMassOpt.quantityTonnes), 0.02);
 
-  const inventoryBeforeLegacyMassEdit = await getInventory(
+  // The removed kg-only field must not be accepted by the tonne API.
+  await api(`/api/opt/${optCreated.id}`, {
+    method: "PATCH",
+    expectedStatus: 400,
+    body: { quantityKg: 20 },
+  });
+  const inventoryBeforeTonneMassEdit = await getInventory(
     warehouse.id,
     equipment.id,
   );
@@ -1196,17 +1069,18 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     method: "PATCH",
     body: { quantityTonnes: 0.03 },
   });
-  const inventoryAfterLegacyMassEdit = await getInventory(
+  const inventoryAfterTonneMassEdit = await getInventory(
     warehouse.id,
     equipment.id,
   );
-  assert.equal(
+  assert.ok(
     Math.abs(
-      inventoryAfterLegacyMassEdit.warehouseKerosene -
-        inventoryBeforeLegacyMassEdit.warehouseKerosene,
-    ),
-    10,
-    "editing a kg-only historical OPT row adjusts stock by the 10 kg delta",
+      Math.abs(
+      inventoryAfterTonneMassEdit.warehouseKerosene -
+          inventoryBeforeTonneMassEdit.warehouseKerosene,
+      ) - 0.01,
+    ) < 1e-9,
+    "editing an OPT deal adjusts stock using the tonne delta",
   );
   await api(`/api/opt/${optCreated.id}`, {
     method: "PATCH",
@@ -1214,8 +1088,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   });
   assert.deepEqual(
     await getInventory(warehouse.id, equipment.id),
-    inventoryBeforeLegacyMassEdit,
-    "restoring the original mass restores the warehouse balance",
+    inventoryBeforeTonneMassEdit,
+    "restoring the original tonne quantity restores the warehouse balance",
   );
 
   const governmentContract = await api("/api/gov-contracts", {
@@ -1230,22 +1104,20 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       endDate: "2026-11-01T00:00:00.000Z",
       totalAmount: "1000.00",
       productType: "RT",
-      plannedVolumeTonnes: 0.5,
+      plannedVolumeTonnes: "0.5",
       status: "active",
       notes: "",
     },
   });
   assert.equal(Number(governmentContract.plannedVolumeTonnes), 0.5);
-  assert.equal(governmentContract.plannedVolume, undefined);
   const storedContractMass = await pool.query(
-    "SELECT planned_volume FROM government_contracts WHERE id = $1",
+    "SELECT planned_volume_tonnes FROM government_contracts WHERE id = $1",
     [governmentContract.id],
   );
-  assert.equal(Number(storedContractMass.rows[0].planned_volume), 500);
+  assert.equal(Number(storedContractMass.rows[0].planned_volume_tonnes), 0.5);
   const listedContracts = await api("/api/gov-contracts");
   const listedContract = listedContracts.find((contract) => contract.id === governmentContract.id);
   assert.equal(Number(listedContract.plannedVolumeTonnes), 0.5);
-  assert.equal(listedContract.plannedVolume, undefined);
 
   const contractSalesSync = await api(
     `/api/gov-contracts/${governmentContract.id}/update-from-sales`,
@@ -1253,26 +1125,24 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assert.equal(Number(contractSalesSync.plannedVolumeTonnes), 0.5);
   assert.ok(Number(contractSalesSync.actualVolumeTonnes) >= 0.02);
-  assert.equal(contractSalesSync.actualVolume, undefined);
 
   const contractCompletion = await api(
     `/api/gov-contracts/${governmentContract.id}/completion-status`,
   );
   assert.equal(Number(contractCompletion.planned.volumeTonnes), 0.5);
-  assert.equal(contractCompletion.planned.volume, undefined);
   const updatedGovernmentContract = await api(
     `/api/gov-contracts/${governmentContract.id}`,
     {
       method: "PATCH",
-      body: { plannedVolumeTonnes: 0.75 },
+      body: { plannedVolumeTonnes: "0.75" },
     },
   );
   assert.equal(Number(updatedGovernmentContract.plannedVolumeTonnes), 0.75);
   const updatedStoredContractMass = await pool.query(
-    "SELECT planned_volume FROM government_contracts WHERE id = $1",
+    "SELECT planned_volume_tonnes FROM government_contracts WHERE id = $1",
     [governmentContract.id],
   );
-  assert.equal(Number(updatedStoredContractMass.rows[0].planned_volume), 750);
+  assert.equal(Number(updatedStoredContractMass.rows[0].planned_volume_tonnes), 0.75);
 
   const budgetEntry = await api("/api/budget", {
     method: "POST",
@@ -1292,42 +1162,32 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     },
   });
   assert.equal(Number(budgetEntry.salesVolumeTonnes), 0.00001);
-  assert.equal(budgetEntry.salesVolume, undefined);
   const storedBudgetBeforeAutofill = await pool.query(
-    "SELECT sales_volume, sales_volume_tonnes, sales_revenue FROM budget_income_expense WHERE id = $1",
+    "SELECT sales_volume_tonnes, sales_revenue FROM budget_income_expense WHERE id = $1",
     [budgetEntry.id],
   );
-  assert.equal(Number(storedBudgetBeforeAutofill.rows[0].sales_volume), 0.01);
   assert.equal(Number(storedBudgetBeforeAutofill.rows[0].sales_volume_tonnes), 0.00001);
   assert.equal(Number(storedBudgetBeforeAutofill.rows[0].sales_revenue), 777);
   const listedBudgetEntries = await api("/api/budget");
   const listedBudgetEntry = listedBudgetEntries.find((entry) => entry.id === budgetEntry.id);
   assert.equal(Number(listedBudgetEntry.salesVolumeTonnes), 0.00001);
-  assert.equal(listedBudgetEntry.salesVolume, undefined);
-  const updatedFromLegacyKilograms = await api(`/api/budget/${budgetEntry.id}`, {
-    method: "PATCH",
-    body: { salesVolume: "0.03" },
-  });
-  assert.equal(Number(updatedFromLegacyKilograms.salesVolumeTonnes), 0.00003);
   const updatedBudgetEntry = await api(`/api/budget/${budgetEntry.id}`, {
     method: "PATCH",
     body: { salesVolumeTonnes: 0.00002 },
   });
   assert.equal(Number(updatedBudgetEntry.salesVolumeTonnes), 0.00002);
-  assert.equal(updatedBudgetEntry.salesVolume, undefined);
   const storedBudgetAfterPatch = await pool.query(
-    "SELECT sales_volume, sales_volume_tonnes FROM budget_income_expense WHERE id = $1",
+    "SELECT sales_volume_tonnes FROM budget_income_expense WHERE id = $1",
     [budgetEntry.id],
   );
-  assert.equal(Number(storedBudgetAfterPatch.rows[0].sales_volume), 0.02);
   assert.equal(Number(storedBudgetAfterPatch.rows[0].sales_volume_tonnes), 0.00002);
 
   const budgetSalesRows = await pool.query(
-    `SELECT quantity_kg, quantity_tonnes, quantity_liters, density FROM opt
+    `SELECT quantity_tonnes, quantity_liters, density FROM opt
        WHERE deal_date >= '2026-10-01' AND deal_date < '2026-11-01'
          AND deleted_at IS NULL
      UNION ALL
-     SELECT quantity_kg, quantity_tonnes, quantity_liters, density FROM aircraft_refueling
+     SELECT quantity_tonnes, quantity_liters, density FROM aircraft_refueling
        WHERE refueling_date >= '2026-10-01' AND refueling_date < '2026-11-01'
          AND deleted_at IS NULL`,
   );
@@ -1336,9 +1196,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     const density = Number(deal.density ?? 0);
     const massTonnes = litres > 0 && density > 0
       ? (litres * density) / 1000
-      : deal.quantity_tonnes !== null
-        ? Number(deal.quantity_tonnes)
-        : Number(deal.quantity_kg ?? 0) / 1000;
+      : Number(deal.quantity_tonnes ?? 0);
     return sum + massTonnes;
   }, 0);
 
@@ -1349,68 +1207,39 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.ok(
     Math.abs(Number(budgetAutofill.salesVolumeTonnes) - expectedBudgetVolumeTonnes) < 1e-9,
   );
-  assert.equal(budgetAutofill.salesVolume, undefined);
   const storedBudgetAfterAutofill = await pool.query(
-    "SELECT sales_volume, sales_volume_tonnes, sales_revenue FROM budget_income_expense WHERE id = $1",
+    "SELECT sales_volume_tonnes, sales_revenue FROM budget_income_expense WHERE id = $1",
     [budgetEntry.id],
-  );
-  assert.ok(
-    Math.abs(Number(storedBudgetAfterAutofill.rows[0].sales_volume) / 1000 - expectedBudgetVolumeTonnes) < 1e-9,
   );
   assert.ok(
     Math.abs(Number(storedBudgetAfterAutofill.rows[0].sales_volume_tonnes) - expectedBudgetVolumeTonnes) < 1e-9,
   );
   assert.equal(Number(storedBudgetAfterAutofill.rows[0].sales_revenue), 777);
 
-  const budgetBackfillRun = spawnSync(
-    process.execPath,
-    ["scripts/backfill-budget-sales-volume.mjs", "--target=development", "--apply"],
-    { cwd: process.cwd(), env: process.env, encoding: "utf8" },
-  );
-  assert.equal(budgetBackfillRun.status, 0, budgetBackfillRun.stderr);
-  const budgetBackfillReport = JSON.parse(budgetBackfillRun.stdout);
-  assert.equal(budgetBackfillReport.activeBudgetRows, 1);
-  assert.equal(budgetBackfillReport.rowsRecalculated, 1);
-  const storedBudgetAfterBackfill = await pool.query(
-    "SELECT sales_volume, sales_volume_tonnes, sales_revenue FROM budget_income_expense WHERE id = $1",
-    [budgetEntry.id],
-  );
-  assert.ok(
-    Math.abs(Number(storedBudgetAfterBackfill.rows[0].sales_volume_tonnes) - expectedBudgetVolumeTonnes) < 1e-9,
-  );
-  assert.ok(
-    Math.abs(Number(storedBudgetAfterBackfill.rows[0].sales_volume) / 1000 - expectedBudgetVolumeTonnes) < 1e-9,
-  );
-  assert.equal(Number(storedBudgetAfterBackfill.rows[0].sales_revenue), 777);
-
-  assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 967);
+  assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 0.967);
 
   const optUpdated = await api(`/api/opt/${optCreated.id}`, {
     method: "PATCH",
     body: {
       dealDate: "2026-10-10T12:00:00.000Z",
-      quantityKg: 25,
-      purchasePrice: 10,
-      salePrice: 15,
+      quantityTonnes: 0.025,
+      purchasePricePerTonne: 10_000,
+      salePricePerTonne: 15_000,
       purchaseAmount: 250,
       saleAmount: 375,
       profit: 125,
     },
   });
   assert.equal(Number(optUpdated.quantityTonnes), 0.025);
-  assert.equal(optUpdated.quantityKg, undefined);
   assert.equal(Number(optUpdated.purchasePricePerTonne), 10000);
   assert.equal(Number(optUpdated.salePricePerTonne), 15000);
-  assert.equal(optUpdated.purchasePrice, undefined);
-  assert.equal(optUpdated.salePrice, undefined);
   assert.equal(Number(optUpdated.profit), 125);
   const storedOptAfterUpdate = await pool.query(
-    "SELECT quantity_tonnes, quantity_kg FROM opt WHERE id = $1",
+    "SELECT quantity_tonnes FROM opt WHERE id = $1",
     [optCreated.id],
   );
   assert.equal(Number(storedOptAfterUpdate.rows[0].quantity_tonnes), 0.025);
-  assert.equal(Number(storedOptAfterUpdate.rows[0].quantity_kg), 25);
-  assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 962);
+  assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 0.962);
   await waitForCompletedQueue(
     "recalculation_queue",
     "warehouse_id",
@@ -1419,11 +1248,11 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
 
   const optMovement = await pool.query(
-    `SELECT quantity, transaction_date, deleted_at
+    `SELECT quantity_tonnes, transaction_date, deleted_at
      FROM warehouse_transactions WHERE id = $1`,
     [optUpdated.transactionId],
   );
-  assert.equal(Number(optMovement.rows[0]?.quantity), -25);
+  assert.equal(Number(optMovement.rows[0]?.quantity_tonnes), -0.025);
   assert.equal(optMovement.rows[0]?.deleted_at, null);
   assert.equal(
     new Date(optMovement.rows[0]?.transaction_date).toISOString().slice(0, 10),
@@ -1433,7 +1262,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
 
   const deleteOpt = await api(`/api/opt/${optCreated.id}`, { method: "DELETE" });
   assert.equal(deleteOpt.message, "Сделка удалена");
-  assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 987);
+  assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 0.987);
   const optDeleteAuditId = await latestAuditId("opt", optCreated.id);
   const restoredOpt = await api(`/api/audit/rollback/${optDeleteAuditId}`, {
     method: "POST",
@@ -1442,11 +1271,10 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(restoredOpt.success, true);
   const activeOpt = await api(`/api/opt/${optCreated.id}`);
   assert.equal(Number(activeOpt.quantityTonnes), 0.025);
-  assert.equal(activeOpt.quantityKg, undefined);
   assert.equal(Number(activeOpt.purchasePricePerTonne), 10000);
   assert.equal(Number(activeOpt.salePricePerTonne), 15000);
   assert.equal(Number(activeOpt.profit), 125);
-  assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 962);
+  assert.equal((await getInventory(warehouse.id, equipment.id)).warehouseKerosene, 0.962);
 
   const auditCounts = await pool.query(
     `SELECT entity_type, COUNT(*)::int AS count
@@ -1462,8 +1290,10 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   // including when an existing transfer is edited to an earlier business date.
   const transferWarehouse = (
     await pool.query(
-      `INSERT INTO warehouses (name, current_balance, average_cost)
-       VALUES ('critical-flow-transfer-warehouse', 0, 0)
+      `INSERT INTO warehouses
+         (name, current_balance_tonnes, average_cost_per_tonne,
+          pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+       VALUES ('critical-flow-transfer-warehouse', 0, 0, 0, 0)
        RETURNING id`,
     )
   ).rows[0];
@@ -1487,39 +1317,34 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   });
   const transferId = transferCreated.id;
   assert.ok(transferId, "warehouse transfer is created");
-  assert.equal(transferCreated.quantityTonnes, 0.02);
-  assert.equal(transferCreated.quantityKg, undefined);
+  assert.equal(Number(transferCreated.quantityTonnes), 0.02);
   assert.equal(Number(transferCreated.purchasePricePerTonne), 10_000);
-  assert.equal(Number(transferCreated.purchaseAmount), 200);
+  assert.equal(Number(transferCreated.totalCost), 200);
   const storedMovement = await pool.query(
-    `SELECT quantity_kg, quantity_tonnes, purchase_price,
-            purchase_price_per_tonne, total_cost, cost_per_kg, cost_per_tonne
+    `SELECT quantity_tonnes, purchase_price_per_tonne,
+            total_cost, cost_per_tonne
      FROM movement WHERE id = $1`,
     [transferId],
   );
-  assert.equal(Number(storedMovement.rows[0].quantity_kg), 20);
   assert.equal(Number(storedMovement.rows[0].quantity_tonnes), 0.02);
-  assert.equal(Number(storedMovement.rows[0].purchase_price), 10);
   assert.equal(Number(storedMovement.rows[0].purchase_price_per_tonne), 10_000);
   assert.equal(Number(storedMovement.rows[0].total_cost), 200);
-  assert.equal(Number(storedMovement.rows[0].cost_per_kg), 10);
   assert.equal(Number(storedMovement.rows[0].cost_per_tonne), 10_000);
   const listedMovements = await api("/api/movement?pageSize=500");
   const listedTransfer = listedMovements.data.find(
     (item) => item.id === transferId,
   );
-  assert.equal(listedTransfer.quantityTonnes, 0.02);
-  assert.equal(listedTransfer.quantityKg, undefined);
+  assert.equal(Number(listedTransfer.quantityTonnes), 0.02);
   assertStock(
     await getStock("warehouses", warehouse.id),
-    sourceBeforeTransfer.quantity - 20,
-    sourceBeforeTransfer.averageCost,
+    sourceBeforeTransfer.quantityTonnes - 0.02,
+    sourceBeforeTransfer.averageCostPerTonne,
     "warehouse transfer source after create",
   );
   assertStock(
     await getStock("warehouses", transferWarehouse.id),
-    20,
-    10,
+    0.02,
+    10_000,
     "warehouse transfer destination after create",
   );
 
@@ -1539,8 +1364,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     },
   });
   assert.equal(transferUpdated.id, transferId);
-  assert.equal(transferUpdated.quantityTonnes, 0.025);
-  assert.equal(transferUpdated.quantityKg, undefined);
+  assert.equal(Number(transferUpdated.quantityTonnes), 0.025);
   await waitForCompletedQueue(
     "recalculation_queue",
     "warehouse_id",
@@ -1555,18 +1379,18 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assertStock(
     await getStock("warehouses", warehouse.id),
-    sourceBeforeTransfer.quantity - 25,
-    sourceBeforeTransfer.averageCost,
+    sourceBeforeTransfer.quantityTonnes - 0.025,
+    sourceBeforeTransfer.averageCostPerTonne,
     "warehouse transfer source after backdated edit",
   );
   assertStock(
     await getStock("warehouses", transferWarehouse.id),
-    25,
-    10,
+    0.025,
+    10_000,
     "warehouse transfer destination after backdated edit",
   );
   const activeWarehouseTransactions = await pool.query(
-    `SELECT transaction_type, quantity, sum, deleted_at
+    `SELECT transaction_type, quantity_tonnes, sum, deleted_at
      FROM warehouse_transactions
      WHERE source_type = 'movement' AND source_id = $1
      ORDER BY transaction_type`,
@@ -1582,8 +1406,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     "both active warehouse transactions remain linked to the transfer",
   );
   assert.deepEqual(
-    activeWarehouseTransactions.rows.map((row) => Number(row.quantity)).sort((a, b) => a - b),
-    [-25, 25],
+    activeWarehouseTransactions.rows.map((row) => Number(row.quantity_tonnes)).sort((a, b) => a - b),
+    [-0.025, 0.025],
     "transfer source and destination quantities reconcile",
   );
   assert.ok(
@@ -1606,8 +1430,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assertStock(
     await getStock("warehouses", warehouse.id),
-    sourceBeforeTransfer.quantity,
-    sourceBeforeTransfer.averageCost,
+    sourceBeforeTransfer.quantityTonnes,
+    sourceBeforeTransfer.averageCostPerTonne,
     "warehouse transfer source after delete",
   );
   assertStock(
@@ -1647,14 +1471,14 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assertStock(
     await getStock("warehouses", warehouse.id),
-    sourceBeforeTransfer.quantity - 25,
-    sourceBeforeTransfer.averageCost,
+    sourceBeforeTransfer.quantityTonnes - 0.025,
+    sourceBeforeTransfer.averageCostPerTonne,
     "warehouse transfer source after restore",
   );
   assertStock(
     await getStock("warehouses", transferWarehouse.id),
-    25,
-    10,
+    0.025,
+    10_000,
     "warehouse transfer destination after restore",
   );
   const restoredWarehouseTransactions = await pool.query(
@@ -1674,15 +1498,15 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   const transferEquipment = (
     await pool.query(
       `INSERT INTO equipments
-         (name, current_balance, current_balance_tonnes, average_cost)
-       VALUES ('critical-flow-transfer-equipment', 0, 0.00000, 0)
+       (name, current_balance_tonnes, average_cost_per_tonne)
+       VALUES ('critical-flow-transfer-equipment', 0, 0)
        RETURNING id`,
     )
   ).rows[0];
-  const kilogramUnit = (
+  const tonneUnit = (
     await pool.query(
       `INSERT INTO units_of_measure (short_name, full_name)
-       VALUES ('kg-critical-flow', 'Kilogram critical flow')
+       VALUES ('t-critical-flow', 'Tonne critical flow')
        RETURNING id`,
     )
   ).rows[0];
@@ -1691,7 +1515,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       `INSERT INTO nomenclature (product_type, name, unit_id)
        VALUES ('kerosene', 'critical-flow-kerosene', $1)
        RETURNING id`,
-      [kilogramUnit.id],
+      [tonneUnit.id],
     )
   ).rows[0];
   const sourceBeforeEquipmentTransfer = await getStock("warehouses", warehouse.id);
@@ -1714,17 +1538,14 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   });
   const equipmentTransferId = equipmentTransferCreated.id;
   assert.ok(equipmentTransferId, "warehouse-to-equipment transfer is created");
-  assert.equal(equipmentTransferCreated.quantityTonnes, 0.01);
-  assert.equal(equipmentTransferCreated.quantityKg, undefined);
+  assert.equal(Number(equipmentTransferCreated.quantityTonnes), 0.01);
   assert.equal(Number(equipmentTransferCreated.costPerTonne), 10_000);
   const storedEquipmentTransfer = await pool.query(
-    `SELECT quantity_kg, quantity_tonnes, cost_per_kg, cost_per_tonne, total_cost
+    `SELECT quantity_tonnes, cost_per_tonne, total_cost
      FROM equipment_movement WHERE id = $1`,
     [equipmentTransferId],
   );
-  assert.equal(Number(storedEquipmentTransfer.rows[0].quantity_kg), 10);
   assert.equal(Number(storedEquipmentTransfer.rows[0].quantity_tonnes), 0.01);
-  assert.equal(Number(storedEquipmentTransfer.rows[0].cost_per_kg), 10);
   assert.equal(Number(storedEquipmentTransfer.rows[0].cost_per_tonne), 10_000);
   assert.equal(Number(storedEquipmentTransfer.rows[0].total_cost), 100);
   const listedEquipmentMovements = await api(
@@ -1733,18 +1554,17 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   const listedEquipmentTransfer = listedEquipmentMovements.items.find(
     (item) => item.id === equipmentTransferId,
   );
-  assert.equal(listedEquipmentTransfer.quantityTonnes, 0.01);
-  assert.equal(listedEquipmentTransfer.quantityKg, undefined);
+  assert.equal(Number(listedEquipmentTransfer.quantityTonnes), 0.01);
   assertStock(
     await getStock("warehouses", warehouse.id),
-    sourceBeforeEquipmentTransfer.quantity - 10,
-    sourceBeforeEquipmentTransfer.averageCost,
+    sourceBeforeEquipmentTransfer.quantityTonnes - 0.01,
+    sourceBeforeEquipmentTransfer.averageCostPerTonne,
     "equipment transfer warehouse source after create",
   );
   assertStock(
     await getStock("equipments", transferEquipment.id),
-    10,
-    10,
+    0.01,
+    10_000,
     "equipment transfer destination after create",
   );
 
@@ -1764,8 +1584,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       notes: "critical flow warehouse to equipment edited retroactively",
     },
   });
-  assert.equal(equipmentTransferUpdated.quantityTonnes, 0.015);
-  assert.equal(equipmentTransferUpdated.quantityKg, undefined);
+  assert.equal(Number(equipmentTransferUpdated.quantityTonnes), 0.015);
   await waitForCompletedQueue(
     "recalculation_queue",
     "warehouse_id",
@@ -1774,40 +1593,39 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assertStock(
     await getStock("warehouses", warehouse.id),
-    sourceBeforeEquipmentTransfer.quantity - 15,
-    sourceBeforeEquipmentTransfer.averageCost,
+    sourceBeforeEquipmentTransfer.quantityTonnes - 0.015,
+    sourceBeforeEquipmentTransfer.averageCostPerTonne,
     "equipment transfer warehouse source after backdated edit",
   );
   assertStock(
     await getStock("equipments", transferEquipment.id),
-    15,
-    10,
+    0.015,
+    10_000,
     "equipment transfer destination after backdated edit",
   );
   const equipmentTransferRecord = await api(
     `/api/equipment-movement/${equipmentTransferId}`,
   );
   const equipmentTransferWarehouseRow = await pool.query(
-    `SELECT transaction_type, quantity, deleted_at
+    `SELECT transaction_type, quantity_tonnes, deleted_at
      FROM warehouse_transactions WHERE id = $1`,
     [equipmentTransferRecord.sourceWarehouseTransactionId],
   );
   assert.equal(equipmentTransferWarehouseRow.rows.length, 1);
   assert.equal(equipmentTransferWarehouseRow.rows[0].transaction_type, "transfer_out");
-  assert.equal(Number(equipmentTransferWarehouseRow.rows[0].quantity), -15);
+  assert.equal(Number(equipmentTransferWarehouseRow.rows[0].quantity_tonnes), -0.015);
   assert.equal(
     equipmentTransferWarehouseRow.rows[0].deleted_at,
     null,
     "the warehouse source movement remains active",
   );
   const equipmentTransferEquipmentRow = await pool.query(
-    `SELECT transaction_type, quantity, quantity_tonnes, sum, deleted_at
+    `SELECT transaction_type, quantity_tonnes, sum, deleted_at
      FROM equipment_transactions WHERE id = $1`,
     [equipmentTransferRecord.transactionId],
   );
   assert.equal(equipmentTransferEquipmentRow.rows.length, 1);
   assert.equal(equipmentTransferEquipmentRow.rows[0].transaction_type, "transfer_in");
-  assert.equal(Number(equipmentTransferEquipmentRow.rows[0].quantity), 15);
   assert.equal(Number(equipmentTransferEquipmentRow.rows[0].quantity_tonnes), 0.015);
   assert.ok(
     Math.abs(Number(equipmentTransferEquipmentRow.rows[0].sum) - 150) < 0.011,
@@ -1833,14 +1651,14 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assertStock(
     await getStock("warehouses", warehouse.id),
-    sourceBeforeEquipmentTransfer.quantity,
-    sourceBeforeEquipmentTransfer.averageCost,
+    sourceBeforeEquipmentTransfer.quantityTonnes,
+    sourceBeforeEquipmentTransfer.averageCostPerTonne,
     "equipment transfer warehouse source after delete",
   );
   assertStock(
     await getStock("equipments", transferEquipment.id),
     0,
-    10,
+    10_000,
     "equipment transfer destination after delete",
   );
   const equipmentTransferDeleteAuditId = await latestAuditId(
@@ -1860,14 +1678,14 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assertStock(
     await getStock("warehouses", warehouse.id),
-    sourceBeforeEquipmentTransfer.quantity - 15,
-    sourceBeforeEquipmentTransfer.averageCost,
+    sourceBeforeEquipmentTransfer.quantityTonnes - 0.015,
+    sourceBeforeEquipmentTransfer.averageCostPerTonne,
     "equipment transfer warehouse source after restore",
   );
   assertStock(
     await getStock("equipments", transferEquipment.id),
-    15,
-    10,
+    0.015,
+    10_000,
     "equipment transfer destination after restore",
   );
   await waitForAuditOperations(
@@ -1899,9 +1717,9 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       nomenclatureId: keroseneNomenclature.id,
       fromWarehouseId: warehouse.id,
       toEquipmentId: transferEquipment.id,
-      quantityKg: "5",
+      quantityTonnes: "0.005",
       totalCost: 100,
-      costPerKg: 20,
+      costPerTonne: 20_000,
       isDraft: false,
       notes: "critical flow equipment cost checkpoint",
     },
@@ -1909,8 +1727,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.ok(equipmentTopUp.id, "later equipment receipt is created");
   assertStock(
     await getStock("equipments", transferEquipment.id),
-    20,
-    12.5,
+    0.02,
+    12_500,
     "equipment after later higher-cost receipt",
   );
 
@@ -1928,9 +1746,9 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       nomenclatureId: keroseneNomenclature.id,
       fromEquipmentId: transferEquipment.id,
       toWarehouseId: transferWarehouse.id,
-      quantityKg: "5",
+      quantityTonnes: "0.005",
       totalCost: 62.5,
-      costPerKg: 12.5,
+      costPerTonne: 12_500,
       isDraft: false,
       notes: "critical flow equipment to warehouse",
     },
@@ -1939,15 +1757,15 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.ok(equipmentReturnId, "equipment-to-warehouse transfer is created");
   assertStock(
     await getStock("equipments", transferEquipment.id),
-    15,
-    12.5,
+    0.015,
+    12_500,
     "equipment return source after create",
   );
   assertStock(
     await getStock("warehouses", transferWarehouse.id),
-    returnWarehouseBefore.quantity + 5,
-    (returnWarehouseBefore.quantity * returnWarehouseBefore.averageCost + 62.5) /
-      (returnWarehouseBefore.quantity + 5),
+    returnWarehouseBefore.quantityTonnes + 0.005,
+    (returnWarehouseBefore.quantityTonnes * returnWarehouseBefore.averageCostPerTonne + 62.5) /
+      (returnWarehouseBefore.quantityTonnes + 0.005),
     "equipment return warehouse destination after create",
   );
 
@@ -1960,9 +1778,9 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       nomenclatureId: keroseneNomenclature.id,
       fromEquipmentId: transferEquipment.id,
       toWarehouseId: transferWarehouse.id,
-      quantityKg: "6",
+      quantityTonnes: "0.006",
       totalCost: 75,
-      costPerKg: 12.5,
+      costPerTonne: 12_500,
       isDraft: false,
       notes: "critical flow equipment return edited retroactively",
     },
@@ -1981,15 +1799,15 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assertStock(
     await getStock("equipments", transferEquipment.id),
-    14,
-    190 / 14,
+    0.014,
+    190 / 0.014,
     "equipment return source after backdated edit",
   );
   assertStock(
     await getStock("warehouses", transferWarehouse.id),
-    returnWarehouseBefore.quantity + 6,
-    (returnWarehouseBefore.quantity * returnWarehouseBefore.averageCost + 60) /
-      (returnWarehouseBefore.quantity + 6),
+    returnWarehouseBefore.quantityTonnes + 0.006,
+    (returnWarehouseBefore.quantityTonnes * returnWarehouseBefore.averageCostPerTonne + 60) /
+      (returnWarehouseBefore.quantityTonnes + 0.006),
     "equipment return warehouse destination after backdated edit",
   );
   const equipmentReturnRecord = await api(
@@ -2004,26 +1822,26 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     "return cost uses the equipment average at the backdated date",
   );
   const equipmentReturnEquipmentRow = await pool.query(
-    `SELECT transaction_type, quantity, sum, deleted_at
+    `SELECT transaction_type, quantity_tonnes, sum, deleted_at
      FROM equipment_transactions WHERE id = $1`,
     [equipmentReturnRecord.sourceTransactionId],
   );
   assert.equal(equipmentReturnEquipmentRow.rows.length, 1);
   assert.equal(equipmentReturnEquipmentRow.rows[0].transaction_type, "transfer_out");
-  assert.equal(Number(equipmentReturnEquipmentRow.rows[0].quantity), -6);
+  assert.equal(Number(equipmentReturnEquipmentRow.rows[0].quantity_tonnes), -0.006);
   assert.ok(
     Math.abs(Number(equipmentReturnEquipmentRow.rows[0].sum) - 60) < 0.011,
     "equipment source ledger reflects the recalculated transferred cost",
   );
   assert.equal(equipmentReturnEquipmentRow.rows[0].deleted_at, null);
   const equipmentReturnWarehouseRow = await pool.query(
-    `SELECT transaction_type, quantity, sum, deleted_at
+    `SELECT transaction_type, quantity_tonnes, sum, deleted_at
      FROM warehouse_transactions WHERE id = $1`,
     [equipmentReturnRecord.warehouseTransactionId],
   );
   assert.equal(equipmentReturnWarehouseRow.rows.length, 1);
   assert.equal(equipmentReturnWarehouseRow.rows[0].transaction_type, "transfer_in");
-  assert.equal(Number(equipmentReturnWarehouseRow.rows[0].quantity), 6);
+  assert.equal(Number(equipmentReturnWarehouseRow.rows[0].quantity_tonnes), 0.006);
   assert.ok(
     Math.abs(Number(equipmentReturnWarehouseRow.rows[0].sum) - 60) < 0.011,
     "warehouse destination ledger receives the recalculated transfer cost",
@@ -2040,14 +1858,14 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assertStock(
     await getStock("equipments", transferEquipment.id),
-    20,
-    12.5,
+    0.02,
+    12_500,
     "equipment return source after delete",
   );
   assertStock(
     await getStock("warehouses", transferWarehouse.id),
-    returnWarehouseBefore.quantity,
-    returnWarehouseBefore.averageCost,
+    returnWarehouseBefore.quantityTonnes,
+    returnWarehouseBefore.averageCostPerTonne,
     "equipment return warehouse destination after delete",
   );
   const deletedReturnRows = await pool.query(
@@ -2078,15 +1896,15 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assertStock(
     await getStock("equipments", transferEquipment.id),
-    14,
-    190 / 14,
+    0.014,
+    190 / 0.014,
     "equipment return source after audit restore",
   );
   assertStock(
     await getStock("warehouses", transferWarehouse.id),
-    returnWarehouseBefore.quantity + 6,
-    (returnWarehouseBefore.quantity * returnWarehouseBefore.averageCost + 60) /
-      (returnWarehouseBefore.quantity + 6),
+    returnWarehouseBefore.quantityTonnes + 0.006,
+    (returnWarehouseBefore.quantityTonnes * returnWarehouseBefore.averageCostPerTonne + 60) /
+      (returnWarehouseBefore.quantityTonnes + 0.006),
     "equipment return warehouse destination after audit restore",
   );
   await waitForAuditOperations(
@@ -2257,24 +2075,24 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
 });
 
-test("warehouse inventory endpoint accepts tonnes and preserves kg compatibility mirrors", async () => {
+test("warehouse inventory endpoint operates on tonne-only stock fields", async () => {
   const warehouseId = (
     await pool.query(
       `INSERT INTO warehouses
-         (name, current_balance, current_balance_tonnes, average_cost,
-          pvkj_balance, pvkj_balance_tonnes, pvkj_average_cost)
-       VALUES ('warehouse-inventory-tonne-check', 1000, 1.00000, 10, 0, 0, 0)
+         (name, current_balance_tonnes, average_cost_per_tonne,
+          pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+       VALUES ('warehouse-inventory-tonne-check', 1.00000, 10000, 0, 0)
        RETURNING id`,
     )
   ).rows[0].id;
   await pool.query(
     `INSERT INTO warehouse_transactions
-       (warehouse_id, transaction_type, product_type, quantity, quantity_tonnes,
-        source_type, balance_before, balance_before_tonnes, balance_after,
-        balance_after_tonnes, average_cost_before, average_cost_after, sum, price,
-        transaction_date)
-     VALUES ($1, 'receipt', 'kerosene', 1000, 1.00000, 'inventory_test_seed',
-             0, 0.00000, 1000, 1.00000, 0, 10, 10000, 10,
+       (warehouse_id, transaction_type, product_type, quantity_tonnes,
+        source_type, balance_before_tonnes, balance_after_tonnes,
+        average_cost_before_per_tonne, average_cost_after_per_tonne,
+        sum, price_per_tonne, transaction_date)
+     VALUES ($1, 'receipt', 'kerosene', 1.00000, 'inventory_test_seed',
+             0.00000, 1.00000, 0, 10000, 10000, 10000,
              '2026-10-01T00:00:00.000Z')`,
     [warehouseId],
   );
@@ -2297,17 +2115,13 @@ test("warehouse inventory endpoint accepts tonnes and preserves kg compatibility
 
   const persisted = await pool.query(
     `SELECT
-       w.current_balance,
        w.current_balance_tonnes,
-       tx.quantity,
        tx.quantity_tonnes,
-       tx.balance_before,
        tx.balance_before_tonnes,
-       tx.balance_after,
        tx.balance_after_tonnes,
        tx.sum,
-       tx.price,
-       tx.average_cost_after
+       tx.price_per_tonne,
+       tx.average_cost_after_per_tonne
      FROM warehouses AS w
      JOIN warehouse_transactions AS tx ON tx.warehouse_id = w.id
      WHERE w.id = $1 AND tx.source_type = 'inventory'
@@ -2318,14 +2132,10 @@ test("warehouse inventory endpoint accepts tonnes and preserves kg compatibility
   const row = persisted.rows[0];
   assert.ok(row, "inventory movement is persisted");
   assert.equal(Number(row.current_balance_tonnes), 1.23456);
-  assert.equal(Number(row.current_balance), 1234.56);
   assert.equal(Number(row.quantity_tonnes), 0.23456);
-  assert.equal(Number(row.quantity), 234.56);
   assert.equal(Number(row.balance_before_tonnes), 1);
-  assert.equal(Number(row.balance_before), 1000);
   assert.equal(Number(row.balance_after_tonnes), 1.23456);
-  assert.equal(Number(row.balance_after), 1234.56);
-  assert.equal(Number(row.average_cost_after), 12.34567);
+  assert.equal(Number(row.average_cost_after_per_tonne), 12345.67);
   assert.ok(Number.isFinite(Number(row.sum)));
-  assert.ok(Number.isFinite(Number(row.price)));
+  assert.equal(Number(row.price_per_tonne), 12345.67);
 });

@@ -8,13 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   FormControl,
   FormField,
   FormItem,
@@ -28,7 +21,6 @@ import type {
   Base,
   LogisticsCarrier,
   LogisticsDeliveryLocation,
-  Price,
 } from "@shared/schema";
 import { CalculatedField } from "./calculated-field";
 import { formatCurrency } from "../utils";
@@ -37,16 +29,8 @@ import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
 import type { DeliveryCostApiRecord } from "@/pages/delivery/types";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  formatPricePerTonne,
-  formatTonnes,
-  pricePerKilogramToPerTonne,
-} from "@shared/units";
-import {
-  contractPricePerTonne,
-  type OptInputMode,
-} from "../unit-calculations";
-import { getPriceRateOptions } from "@/pages/shared/utils/price-rate";
+import { formatTonnes } from "@shared/units";
+import type { OptInputMode } from "../unit-calculations";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -178,7 +162,6 @@ export function VolumeInputSection({
     </Card>
   );
 }
-
 interface LogisticsSectionProps {
   form: UseFormReturn<OptFormData>;
   carriers?: LogisticsCarrier[];
@@ -434,154 +417,6 @@ export function LogisticsSection({
         inlineOpen={addDeliveryCostOpen}
         onInlineOpenChange={setAddDeliveryCostOpen}
       />
-    </Card>
-  );
-}
-
-export function PricingSection({
-  purchasePrice,
-  salePrice,
-  purchaseAmount,
-  saleAmount,
-  deliveryTariff,
-  deliveryCost,
-  profit,
-  matchingPurchasePrices,
-  matchingSalePrices,
-  selectedPurchasePriceId,
-  selectedSalePriceId,
-  onPurchasePriceSelect,
-  onSalePriceSelect,
-  density,
-}: {
-  purchasePrice: number | null;
-  salePrice: number | null;
-  purchaseAmount: number;
-  saleAmount: number;
-  deliveryTariff: number;
-  deliveryCost: number;
-  profit: number;
-  matchingPurchasePrices: Price[];
-  matchingSalePrices: Price[];
-  selectedPurchasePriceId: string;
-  selectedSalePriceId: string;
-  onPurchasePriceSelect: (id: string) => void;
-  onSalePriceSelect: (id: string) => void;
-  density?: string | number | null;
-}) {
-  const getPriceLabel = (price: Price) => {
-    const firstRate = getPriceRateOptions(price)[0];
-    if (!firstRate || firstRate.value === null) return "Нет цены";
-    const pricePerTonne = contractPricePerTonne(
-      firstRate.value,
-      firstRate.unit,
-      density,
-    );
-    return pricePerTonne === null
-      ? `Укажите плотность (${price.dateFrom} - ${price.dateTo})`
-      : `${formatPricePerTonne(pricePerTonne)} ₽/т (${price.dateFrom} - ${price.dateTo})`;
-  };
-
-  return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-lg">Ценообразование</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {matchingPurchasePrices.length > 1 ? (
-            <div className="space-y-2">
-              <Label>Цена закупки</Label>
-              <Select
-                value={
-                  selectedPurchasePriceId || matchingPurchasePrices[0]?.id || ""
-                }
-                onValueChange={onPurchasePriceSelect}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите цену" />
-                </SelectTrigger>
-                <SelectContent>
-                  {matchingPurchasePrices.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {getPriceLabel(p)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <CalculatedField
-              label="Цена закупки"
-              value={
-                purchasePrice !== null
-                  ? formatPricePerTonne(
-                      pricePerKilogramToPerTonne(purchasePrice),
-                    )
-                  : "нет цены!"
-              }
-              suffix={purchasePrice !== null ? " ₽/т" : ""}
-            />
-          )}
-          {matchingSalePrices.length > 1 ? (
-            <div className="space-y-2">
-              <Label>Цена продажи</Label>
-              <Select
-                value={selectedSalePriceId || matchingSalePrices[0]?.id || ""}
-                onValueChange={onSalePriceSelect}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите цену" />
-                </SelectTrigger>
-                <SelectContent>
-                  {matchingSalePrices.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {getPriceLabel(p)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <CalculatedField
-              label="Цена продажи"
-              value={
-                salePrice !== null
-                  ? formatPricePerTonne(pricePerKilogramToPerTonne(salePrice))
-                  : "нет цены!"
-              }
-              suffix={salePrice !== null ? " ₽/т" : ""}
-            />
-          )}
-          <CalculatedField
-            label="Сумма закупки"
-            value={formatCurrency(purchaseAmount)}
-            suffix=" ₽"
-          />
-          <CalculatedField
-            label="Сумма продажи"
-            value={formatCurrency(saleAmount)}
-            suffix=" ₽"
-          />
-          <CalculatedField
-            label="Тариф доставки"
-            value={formatPricePerTonne(
-              pricePerKilogramToPerTonne(deliveryTariff),
-            )}
-            suffix=" ₽/т"
-          />
-          <CalculatedField
-            label="Стоимость доставки"
-            value={formatCurrency(deliveryCost)}
-            suffix=" ₽"
-          />
-          <CalculatedField
-            label="Прибыль"
-            value={formatCurrency(profit)}
-            suffix=" ₽"
-          />
-        </div>
-      </CardContent>
     </Card>
   );
 }

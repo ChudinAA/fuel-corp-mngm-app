@@ -1,8 +1,6 @@
 import { PRODUCT_TYPE } from "@shared/constants";
 import {
   formatTonnesForInput,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -11,8 +9,12 @@ export function useWarehouseBalance(warehouseId: string | undefined, date: Date 
   return useQuery({
     queryKey: ["/api/warehouses", warehouseId, "balance", date ? format(date, "yyyy-MM-dd") : undefined, productType],
     queryFn: async () => {
-      if (productType === PRODUCT_TYPE.SERVICE) return "0";
-      if (!warehouseId || !date) return "0";
+      if (productType === PRODUCT_TYPE.SERVICE) {
+        return { balanceTonnes: "0", averageCostPerTonne: null };
+      }
+      if (!warehouseId || !date) {
+        return { balanceTonnes: "0", averageCostPerTonne: null };
+      }
       const params = new URLSearchParams({
         date: format(date, "yyyy-MM-dd"),
       });
@@ -20,19 +22,14 @@ export function useWarehouseBalance(warehouseId: string | undefined, date: Date 
       const res = await fetch(`/api/warehouses/${warehouseId}/balance?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch balance");
       const data = await res.json();
-      const balance = data.balance as string;
-      const averageCost = data.averageCost as string | null;
+      if (data.balanceTonnes == null) {
+        throw new Error("Warehouse balance response is missing balanceTonnes");
+      }
       return {
-        balance,
-        averageCost,
-        balanceTonnes: formatTonnesForInput(
-          data.balanceTonnes ?? kilogramsToTonnes(Number(balance)),
-        ),
-        averageCostPerTonne:
-          data.averageCostPerTonne ??
-          (averageCost == null
-            ? null
-            : pricePerKilogramToPerTonne(Number(averageCost)).toFixed(3)),
+        balanceTonnes: formatTonnesForInput(data.balanceTonnes),
+        averageCostPerTonne: data.averageCostPerTonne == null
+          ? null
+          : String(data.averageCostPerTonne),
       };
     },
     enabled: !!warehouseId && !!date,

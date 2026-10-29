@@ -1,12 +1,12 @@
 import type { Express } from "express";
 import { storage } from "../../../storage/index";
 import { insertOptSchema } from "@shared/schema";
+import { updateOptSchema } from "../entities/opt";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
-import { pricePerKilogramToPerTonne } from "@shared/units";
 
 class OptApiInputError extends Error {}
 
@@ -42,93 +42,18 @@ function normalizeOptInput(body: unknown): Record<string, unknown> {
     );
     normalized.quantityTonnes =
       tonnes === null ? null : Number(tonnes.toFixed(5));
-    if (Object.prototype.hasOwnProperty.call(input, "quantityKg")) {
-      normalized.quantityKg = parseOptionalMass(
-        input.quantityKg,
-        "Масса в килограммах",
-      );
-    }
-  } else if (Object.prototype.hasOwnProperty.call(input, "quantityKg")) {
-    const kilograms = parseOptionalMass(
-      input.quantityKg,
-      "Масса в килограммах",
-    );
-    normalized.quantityKg = kilograms;
   }
-  for (const [apiField, legacyField] of [
-    ["purchasePricePerTonne", "purchasePrice"],
-    ["salePricePerTonne", "salePrice"],
-    ["deliveryTariffPerTonne", "deliveryTariff"],
+  for (const apiField of [
+    "purchasePricePerTonne",
+    "salePricePerTonne",
+    "deliveryTariffPerTonne",
   ] as const) {
     if (Object.prototype.hasOwnProperty.call(input, apiField)) {
       const rate = parseOptionalRate(input[apiField], apiField);
       normalized[apiField] = rate;
     }
-    if (Object.prototype.hasOwnProperty.call(input, legacyField)) {
-      const rate = parseOptionalRate(input[legacyField], legacyField);
-      normalized[legacyField] = rate;
-    }
   }
   return normalized;
-}
-
-function legacyRateToApi(value: unknown, fieldName: string): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  const rate = Number(value);
-  if (!Number.isFinite(rate)) {
-    throw new TypeError(`Stored OPT rate ${fieldName} is not numeric`);
-  }
-  return pricePerKilogramToPerTonne(rate);
-}
-
-function optDealToApi<
-  T extends {
-    quantityKg?: unknown;
-    quantityTonnes?: unknown;
-    purchasePrice?: unknown;
-    purchasePricePerTonne?: unknown;
-    salePrice?: unknown;
-    salePricePerTonne?: unknown;
-    deliveryTariff?: unknown;
-    deliveryTariffPerTonne?: unknown;
-  },
->(deal: T) {
-  const {
-    quantityKg,
-    quantityTonnes,
-    purchasePrice,
-    purchasePricePerTonne,
-    salePrice,
-    salePricePerTonne,
-    deliveryTariff,
-    deliveryTariffPerTonne,
-    ...fields
-  } = deal;
-  const massValue =
-    quantityTonnes ?? (quantityKg == null ? null : Number(quantityKg) / 1_000);
-  if (massValue === null || massValue === undefined || massValue === "") {
-    throw new TypeError("OPT deal has no stored mass to convert");
-  }
-  const tonnes = Number(massValue);
-  if (!Number.isFinite(tonnes)) {
-    throw new TypeError("OPT deal mass is not numeric");
-  }
-  return {
-    ...fields,
-    quantityTonnes: tonnes,
-    purchasePricePerTonne:
-      purchasePricePerTonne == null
-        ? legacyRateToApi(purchasePrice, "purchasePrice")
-        : Number(purchasePricePerTonne),
-    salePricePerTonne:
-      salePricePerTonne == null
-        ? legacyRateToApi(salePrice, "salePrice")
-        : Number(salePricePerTonne),
-    deliveryTariffPerTonne:
-      deliveryTariffPerTonne == null
-        ? legacyRateToApi(deliveryTariff, "deliveryTariff")
-        : Number(deliveryTariffPerTonne),
-  };
 }
 
 export function registerOptRoutes(app: Express) {
@@ -158,7 +83,7 @@ export function registerOptRoutes(app: Express) {
       if (dateTo) filters["dateTo"] = [dateTo];
 
       const result = await (storage.opt as any).getOptDeals(offset, pageSize, search, filters);
-      res.json({ ...result, data: result.data.map(optDealToApi) });
+      res.json(result);
     }
   );
 
@@ -202,7 +127,7 @@ export function registerOptRoutes(app: Express) {
       if (!item) {
         return res.status(404).json({ message: "Сделка не найдена" });
       }
-      res.json(optDealToApi(item));
+      res.json(item);
     }
   );
 
@@ -212,7 +137,7 @@ export function registerOptRoutes(app: Express) {
     async (req, res) => {
       try {
         const isDuplicate = await storage.opt.checkDuplicate(
-          normalizeOptInput(req.body) as Parameters<
+          updateOptSchema.parse(normalizeOptInput(req.body)) as Parameters<
             typeof storage.opt.checkDuplicate
           >[0],
         );
@@ -220,6 +145,9 @@ export function registerOptRoutes(app: Express) {
       } catch (error) {
         if (error instanceof OptApiInputError) {
           return res.status(400).json({ message: error.message });
+        }
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: error.errors[0].message });
         }
         console.error("Error checking duplicate opt deal:", error);
         res.status(500).json({ message: "Ошибка проверки дубликата" });
@@ -244,7 +172,7 @@ export function registerOptRoutes(app: Express) {
         });
         const item = await storage.opt.createOpt(data);
         SSEService.notifyEntityChanged("opt", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(optDealToApi(item));
+        res.status(201).json(item);
       } catch (error) {
         if (error instanceof OptApiInputError) {
           return res.status(400).json({ message: error.message });
@@ -283,17 +211,20 @@ export function registerOptRoutes(app: Express) {
       try {
         const id = req.params.id;
         const item = await storage.opt.updateOpt(id, {
-          ...normalizeOptInput(req.body),
+          ...updateOptSchema.parse(normalizeOptInput(req.body)),
           updatedById: req.session.userId,
         });
         if (!item) {
           return res.status(404).json({ message: "Сделка не найдена" });
         }
         SSEService.notifyEntityChanged("opt", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(optDealToApi(item));
+        res.json(item);
       } catch (error) {
         if (error instanceof OptApiInputError) {
           return res.status(400).json({ message: error.message });
+        }
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: error.errors[0].message });
         }
         res.status(500).json({ message: "Ошибка обновления сделки" });
       }

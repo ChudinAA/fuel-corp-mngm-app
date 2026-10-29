@@ -424,8 +424,6 @@ export const RefuelingForm = forwardRef<
 
   // Use calculations hook
   const {
-    calculatedKg,
-    finalKg,
     finalTonnes,
     purchasePrice,
     salePrice,
@@ -1174,7 +1172,7 @@ export const RefuelingForm = forwardRef<
 
     // Если не черновик, выполняем полную валидацию основного продукта
     if (!isDraft && isPrimaryProductIncluded) {
-      if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
+      if (finalTonnes <= 0) {
         showError("Укажите корректное количество топлива.");
         return;
       }
@@ -1386,7 +1384,7 @@ export const RefuelingForm = forwardRef<
                 }
                 setInputMode(volume.inputMode);
               }}
-              kgOnly={watchProductType === PRODUCT_TYPE.SERVICE}
+              tonnesOnly={watchProductType === PRODUCT_TYPE.SERVICE}
             />
           ) : (
             <VolumeInputSection

@@ -41,7 +41,9 @@ export const ENTITY_TYPE_LABELS: Record<string, string> = {
   planning_resource: "Ресурс планирования",
 };
 
-// ─── Поля-маппинг для каждого типа сущности (точные имена из DB schema) ──────
+// ─── Поля-маппинг для каждого типа сущности ──────────────────────────────────
+// Kg-named keys are retained only to render historical audit snapshots. Do not
+// add them back to current form schemas or API contracts.
 export const FIELD_LABELS: Record<string, Record<string, string>> = {
   // ── ОПТ ──────────────────────────────────────────────────────────────────────
   opt: {
@@ -721,6 +723,7 @@ export function hasZodRegistryLabel(entityType: string, fieldName: string): bool
 
 // ─── Получить метку поля ──────────────────────────────────────────────────────
 export function getFieldLabel(entityType: string, fieldName: string): string {
+  // These old keys may occur in audit history, but are not current data fields.
   if (fieldName === "quantityKg") return "Количество (т)";
   if (fieldName === "agentFeeRate") return "Ставка агентского сбора (₽/т)";
   if (fieldName === "costPerKg") {

@@ -8,7 +8,6 @@ import { users } from "../../users/entities/users";
 export const budgetIncomeExpense = pgTable("budget_income_expense", {
   id: uuid("id").defaultRandom().primaryKey(),
   budgetMonth: timestamp("budget_month", { mode: "string" }).notNull(),
-  salesVolume: text("sales_volume"), // Объем продаж
   salesVolumeTonnes: numeric("sales_volume_tonnes", { precision: 18, scale: 5 }),
   salesRevenue: text("sales_revenue"), // Выручка от продаж
   marginality: text("marginality"), // Маржинальность
@@ -37,7 +36,8 @@ export const budgetIncomeExpenseRelations = relations(budgetIncomeExpense, ({ on
 
 // ============ INSERT SCHEMAS ============
 
-export const insertBudgetIncomeExpenseSchema = createInsertSchema(budgetIncomeExpense);
+export const insertBudgetIncomeExpenseSchema =
+  createInsertSchema(budgetIncomeExpense).strict();
 
 // ============ TYPES ============
 

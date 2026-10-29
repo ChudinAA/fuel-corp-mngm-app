@@ -62,7 +62,6 @@ export function useLikBalance({
       availableTonnes = calculateLikAvailableBalanceTonnes(
         balanceData,
         isPvkj ? wh?.pvkjBalanceTonnes : wh?.currentBalanceTonnes,
-        isPvkj ? wh?.pvkjBalance : wh?.currentBalance,
         isEditing,
         initialQuantityTonnes,
       );
@@ -73,7 +72,6 @@ export function useLikBalance({
       availableTonnes = calculateLikAvailableBalanceTonnes(
         undefined,
         isPvkj ? eq?.pvkjBalanceTonnes : eq?.currentBalanceTonnes,
-        isPvkj ? eq?.pvkjBalance : eq?.currentBalance,
         isEditing,
         initialQuantityTonnes,
       );

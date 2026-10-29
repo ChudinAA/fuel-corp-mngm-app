@@ -6,24 +6,16 @@ import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { movement } from "../../movement/entities/movement";
 import { exchangeDeals } from "../../exchange-deals/entities/exchange-deals";
-import { legacyDealMassToTonnes } from "@shared/units";
 import type { SavedReport, InsertSavedReport, IReportsStorage } from "./types";
 
 function dealWithTonnes<T extends {
-  quantityKg: number | string | null;
-  quantityLiters?: number | string | null;
-  density?: number | string | null;
+  quantityTonnes: number | string | null;
 }>(deal: T) {
-  const { quantityKg, ...fields } = deal;
-  const quantityTonnes = legacyDealMassToTonnes(
-    quantityKg,
-    deal.quantityLiters,
-    deal.density,
-  );
-  if (quantityTonnes === null) {
-    throw new TypeError("Report deal mass must be available to convert to tonnes");
+  const quantityTonnes = Number(deal.quantityTonnes);
+  if (!Number.isFinite(quantityTonnes)) {
+    throw new TypeError("Report deal mass must be available in tonnes");
   }
-  return { ...fields, quantityTonnes };
+  return { ...deal, quantityTonnes };
 }
 
 export class ReportsStorage implements IReportsStorage {
@@ -120,12 +112,7 @@ export class ReportsStorage implements IReportsStorage {
       supplier: deal.supplier ? { name: deal.supplier.name } : null,
       buyer: deal.buyer ? { name: deal.buyer.name } : null,
       basis: deal.basis,
-      quantityTonnes:
-        legacyDealMassToTonnes(
-          deal.quantityKg,
-          deal.quantityLiters,
-          deal.density,
-        ) ?? 0,
+      quantityTonnes: Number(deal.quantityTonnes ?? 0),
       purchaseAmount: deal.purchaseAmount,
       saleAmount: deal.saleAmount,
       profit: deal.profit,

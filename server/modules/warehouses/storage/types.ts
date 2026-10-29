@@ -2,7 +2,6 @@ import { InsertWarehouse, Warehouse } from "@shared/schema";
 
 export interface WarehouseDashboardStat {
   name: string;
-  current: number;
   currentTonnes: number;
 }
 

@@ -5,11 +5,6 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
-import {
-  equipmentBalanceToApi,
-  equipmentToApi,
-  equipmentTransactionToApi,
-} from "../equipment-api-adapters";
 
 export function registerEquipmentRoutes(app: Router) {
   const router = Router();
@@ -20,7 +15,7 @@ export function registerEquipmentRoutes(app: Router) {
     requirePermission("equipment", "view"),
     async (req, res) => {
       const data = await equipmentStorage.getEquipments();
-      res.json(data.map(equipmentToApi));
+      res.json(data);
     },
   );
 
@@ -31,7 +26,7 @@ export function registerEquipmentRoutes(app: Router) {
     async (req, res) => {
       const data = await equipmentStorage.getEquipment(req.params.id);
       if (!data) return res.status(404).json({ message: "Not found" });
-      res.json(equipmentToApi(data));
+      res.json(data);
     },
   );
 
@@ -56,7 +51,7 @@ export function registerEquipmentRoutes(app: Router) {
         });
 
         SSEService.notifyEntityChanged("warehouses-equipment-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(equipmentToApi(data));
+        res.status(201).json(data);
       } catch (error: any) {
         res.status(409).json({ message: error.message || "Ошибка при создании СЗ" });
       }
@@ -81,7 +76,7 @@ export function registerEquipmentRoutes(app: Router) {
         });
         if (!data) return res.status(404).json({ message: "Not found" });
         SSEService.notifyEntityChanged("warehouses-equipment-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(equipmentToApi(data));
+        res.json(data);
       } catch (error: any) {
         res.status(500).json({ message: error.message || "Ошибка при обновлении СЗ" });
       }
@@ -122,7 +117,7 @@ export function registerEquipmentRoutes(app: Router) {
         }
         const date = new Date(dateStr);
         const balanceData = await equipmentStorage.getEquipmentBalanceAtDate(id, date, productType);
-        res.json(equipmentBalanceToApi(balanceData));
+        res.json(balanceData);
       } catch (error) {
         res.status(500).json({ message: "Ошибка получения баланса СЗ" });
       }
@@ -137,10 +132,7 @@ export function registerEquipmentRoutes(app: Router) {
       const limit = parseInt(req.query.limit as string) || 25;
       const offset = parseInt(req.query.offset as string) || 0;
       const data = await equipmentStorage.getTransactions(req.params.id, limit, offset);
-      res.json({
-        ...data,
-        transactions: data.transactions.map(equipmentTransactionToApi),
-      });
+      res.json(data);
     },
   );
 

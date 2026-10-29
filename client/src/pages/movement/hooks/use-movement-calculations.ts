@@ -17,14 +17,8 @@ import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { usePriceLookup } from "@/pages/shared/hooks/use-price-lookup";
 import { getPriceRateOptions } from "@/pages/shared/utils/price-rate";
 import {
-  pricePerKilogramToPerTonne,
-} from "@shared/units";
-import { resolveWarehouseAverageCostPerTonne } from "@/pages/shared/utils/warehouse-balance-units";
-import {
   calculateMovementMassTonnes,
   calculateMovementPricePerTonne,
-  movementTonnesRateToLegacyKgRate,
-  movementTonnesToLegacyKg,
   type MovementPriceUnit,
 } from "../unit-calculations";
 
@@ -94,8 +88,6 @@ export function useMovementCalculations({
     [inputMode, watchTonnes, watchLiters, watchDensity],
   );
   const tonnesNum = calculatedTonnes ?? 0;
-  const kgNum = movementTonnesToLegacyKg(tonnesNum);
-  const calculatedKg = kgNum;
   
   // Find matching prices for supplier
   const purchaseLookup = usePriceLookup({
@@ -170,13 +162,11 @@ export function useMovementCalculations({
     const hasRate =
       fromWarehouseData &&
       typeof fromWarehouseData === "object" &&
-      (("averageCostPerTonne" in fromWarehouseData &&
-        fromWarehouseData.averageCostPerTonne != null) ||
-        ("averageCost" in fromWarehouseData &&
-          fromWarehouseData.averageCost != null));
-    return hasRate
-      ? resolveWarehouseAverageCostPerTonne(fromWarehouseData)
-      : null;
+      "averageCostPerTonne" in fromWarehouseData &&
+      fromWarehouseData.averageCostPerTonne != null;
+    if (!hasRate) return null;
+    const rate = Number(fromWarehouseData.averageCostPerTonne);
+    return Number.isFinite(rate) ? rate : null;
   }, [fromWarehouseData, isFromWarehouseLoading]);
 
   const finalPurchasePricePerTonne = useMemo(() => {
@@ -193,20 +183,9 @@ export function useMovementCalculations({
         const averageCostPerTonne = isPvkj
           ? fromWarehouse.pvkjAverageCostPerTonne
           : fromWarehouse.averageCostPerTonne;
-        const averageCostPerKilogram = isPvkj
-          ? fromWarehouse.pvkjAverageCost
-          : fromWarehouse.averageCost;
-        if (
-          averageCostPerTonne == null &&
-          averageCostPerKilogram == null
-        ) {
-          return null;
-        }
-        return resolveWarehouseAverageCostPerTonne(
-          undefined,
-          averageCostPerTonne,
-          averageCostPerKilogram,
-        );
+        if (averageCostPerTonne == null) return null;
+        const rate = Number(averageCostPerTonne);
+        return Number.isFinite(rate) ? rate : null;
       }
     }
     return selectedPurchasePricePerTonne;
@@ -432,11 +411,6 @@ export function useMovementCalculations({
     () => (tonnesNum > 0 ? totalCost / tonnesNum : 0),
     [totalCost, tonnesNum],
   );
-  const costPerKg = movementTonnesRateToLegacyKgRate(costPerTonne);
-  const purchasePricePerKg =
-    finalPurchasePricePerTonne === null
-      ? null
-      : movementTonnesRateToLegacyKgRate(finalPurchasePricePerTonne);
 
   const availablePrices = useMemo(() => {
     return availablePurchasePrices.flatMap((p) => {
@@ -462,13 +436,10 @@ export function useMovementCalculations({
   }, [watchToWarehouseId, warehouses]);
 
   return {
-    calculatedKg,
     calculatedTonnes,
     tonnesNum,
-    kgNum,
     availablePrices,
     purchasePrice: finalPurchasePricePerTonne,
-    purchasePricePerKg,
     purchasePriceId,
     purchasePriceIndex,
     purchaseAmount,
@@ -479,7 +450,6 @@ export function useMovementCalculations({
     matchedDeliveryCost,
     totalCost,
     rawTotalCost,
-    costPerKg,
     costPerTonne,
     supplierContractVolumeStatus,
     vatAdjustment,

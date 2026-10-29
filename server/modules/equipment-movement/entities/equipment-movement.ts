@@ -34,12 +34,10 @@ export const equipmentMovement = pgTable(
     toWarehouseId: uuid("to_warehouse_id").references(() => warehouses.id),
     fromEquipmentId: uuid("from_equipment_id").references(() => equipments.id),
     toEquipmentId: uuid("to_equipment_id").references(() => equipments.id),
-    quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
     quantityTonnes: decimal("quantity_tonnes", { precision: 18, scale: 5 }),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     inputMode: text("input_mode"),
-    costPerKg: decimal("cost_per_kg", { precision: 19, scale: 6 }),
     costPerTonne: decimal("cost_per_tonne", { precision: 22, scale: 6 }),
     totalCost: decimal("total_cost", { precision: 15, scale: 2 }),
     basis: text("basis"),
@@ -136,13 +134,10 @@ export const insertEquipmentMovementSchema = createInsertSchema(
   updatedAt: true,
   deletedAt: true,
   deletedById: true,
-}).superRefine((data, ctx) => {
+}).strict().superRefine((data, ctx) => {
   if (data.isDraft) return;
 
-  const quantityTonnes =
-    data.quantityTonnes == null
-      ? Number(data.quantityKg) / 1_000
-      : Number(data.quantityTonnes);
+  const quantityTonnes = Number(data.quantityTonnes);
   if (!Number.isFinite(quantityTonnes) || quantityTonnes <= 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

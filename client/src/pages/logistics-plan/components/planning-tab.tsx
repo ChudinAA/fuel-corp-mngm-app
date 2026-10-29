@@ -532,13 +532,9 @@ function LogisticsSummaryPanel({
                   </div>
                   <div className="flex items-center gap-2 pl-4 text-muted-foreground flex-wrap">
                     <span>{d.type === "income" ? "Приход" : "Расход"}</span>
-                    {(d.volumeTons != null || d.volume != null) && (
+                    {d.volumeTonnes != null && (
                       <span>
-                        {formatTonnes(
-                          d.volumeTons != null
-                            ? d.volumeTons
-                            : parseFloat(d.volume) / 1000,
-                        )} т
+                        {formatTonnes(d.volumeTonnes)} т
                       </span>
                     )}
                     {d.deliveryDeadline && (

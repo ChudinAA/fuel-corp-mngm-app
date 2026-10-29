@@ -16,8 +16,6 @@ import { formatNumber, formatDate } from "../utils";
 import {
   formatPricePerTonne,
   formatTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 import { useEquipmentMovementTable } from "../hooks/use-equipment-movement-table";
 import type { EquipmentMovementTableProps } from "../types";
@@ -237,10 +235,7 @@ export function EquipmentMovementTable({
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatTonnes(
-                      item?.quantityTonnes !== null &&
-                        item?.quantityTonnes !== undefined
-                        ? Number(item.quantityTonnes)
-                        : kilogramsToTonnes(Number(item?.quantityKg || 0)),
+                      Number(item?.quantityTonnes || 0),
                     )}
                   </TableCell>
                   <TableCell className="text-right text-muted-foreground">
@@ -255,12 +250,7 @@ export function EquipmentMovementTable({
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatPricePerTonne(
-                      item?.costPerTonne !== null &&
-                        item?.costPerTonne !== undefined
-                        ? Number(item.costPerTonne)
-                        : pricePerKilogramToPerTonne(
-                            Number(item?.costPerKg || 0),
-                          ),
+                      Number(item?.costPerTonne || 0),
                     )}
                   </TableCell>
                   <TableCell className="sticky right-0 bg-background">

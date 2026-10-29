@@ -4,11 +4,11 @@ import { Warehouse } from "lucide-react";
 import { BaseWidget } from "../base-widget";
 import { WidgetProps } from "../../types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 interface WarehouseBalance {
   name: string;
-  current: number;
+  currentTonnes: number;
 }
 
 export default function WarehouseBalancesWidget({ isEditMode, onRemove }: WidgetProps) {
@@ -35,7 +35,7 @@ export default function WarehouseBalancesWidget({ isEditMode, onRemove }: Widget
               <div key={idx} className="flex justify-between gap-3 text-sm">
                   <span className="truncate">{wh.name}</span>
                   <span className="text-muted-foreground whitespace-nowrap">
-                    {formatTonnes(kilogramsToTonnes(wh.current))} т
+                    {formatTonnes(wh.currentTonnes)} т
                   </span>
               </div>
             ))

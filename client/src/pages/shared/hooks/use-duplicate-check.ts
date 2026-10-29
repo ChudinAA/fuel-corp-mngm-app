@@ -12,7 +12,6 @@ export interface DuplicateCheckConfig {
     basisId?: string | null;
     customerBasisId?: string | null;
     deliveryLocationId?: string | null;
-    quantityKg?: number;
     quantityTonnes?: number;
   };
 }
@@ -43,7 +42,7 @@ export function useDuplicateCheck({ type, getFields }: DuplicateCheckConfig) {
       payload.dealDate = fields.date ? format(fields.date, "yyyy-MM-dd") : null;
       payload.deliveryLocationId = fields.deliveryLocationId;
     } else {
-      payload.quantityKg = fields.quantityKg;
+      payload.quantityTonnes = fields.quantityTonnes;
       payload.refuelingDate = fields.date ? format(fields.date, "yyyy-MM-dd") : null;
     }
 

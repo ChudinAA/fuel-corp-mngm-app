@@ -4,12 +4,12 @@ import { TrendingUp } from "lucide-react";
 import { BaseWidget } from "../base-widget";
 import { WidgetProps } from "../../types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 interface WeekStats {
   optDealsWeek: number;
   refuelingsWeek: number;
-  volumeSoldWeek: number;
+  volumeSoldWeekTonnes: number;
   profitWeek: number;
 }
 
@@ -52,7 +52,7 @@ export default function WeekStatsWidget({ isEditMode, onRemove }: WidgetProps) {
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Объем продаж:</span>
             <span className="font-semibold">
-              {formatTonnes(kilogramsToTonnes(data?.volumeSoldWeek ?? 0))} т
+              {formatTonnes(data?.volumeSoldWeekTonnes ?? 0)} т
             </span>
           </div>
           <div className="flex justify-between items-center pt-2 border-t">

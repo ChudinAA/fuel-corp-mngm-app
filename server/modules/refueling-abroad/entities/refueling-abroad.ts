@@ -52,7 +52,6 @@ export const refuelingAbroad = pgTable(
     }),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
-    quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }),
     quantityTonnes: decimal("quantity_tonnes", { precision: 18, scale: 5 }),
     inputMode: text("input_mode"),
     currency: text("currency").default("USD").notNull(),
@@ -80,16 +79,8 @@ export const refuelingAbroad = pgTable(
     }),
     saleExchangeRateDate: text("sale_exchange_rate_date"),
     purchaseExchangeRateDate: text("purchase_exchange_rate_date"),
-    purchasePriceUsd: decimal("purchase_price_usd", {
-      precision: 15,
-      scale: 6,
-    }),
     purchasePriceUsdPerTonne: decimal("purchase_price_usd_per_tonne", {
       precision: 22,
-      scale: 6,
-    }),
-    purchasePriceRub: decimal("purchase_price_rub", {
-      precision: 15,
       scale: 6,
     }),
     purchasePriceRubPerTonne: decimal("purchase_price_rub_per_tonne", {
@@ -98,12 +89,10 @@ export const refuelingAbroad = pgTable(
     }),
     purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
     purchasePriceIndex: integer("purchase_price_index").default(0),
-    salePriceUsd: decimal("sale_price_usd", { precision: 15, scale: 6 }),
     salePriceUsdPerTonne: decimal("sale_price_usd_per_tonne", {
       precision: 22,
       scale: 6,
     }),
-    salePriceRub: decimal("sale_price_rub", { precision: 15, scale: 6 }),
     salePriceRubPerTonne: decimal("sale_price_rub_per_tonne", {
       precision: 22,
       scale: 6,
@@ -229,7 +218,10 @@ export const refuelingAbroadRelations = relations(
 );
 
 export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
-  .omit({ id: true, createdAt: true })
+  .omit({
+    id: true,
+    createdAt: true,
+  })
   .extend({
     refuelingDate: z.string().nullable().optional(),
     productType: z.string().nullable().optional(),
@@ -244,7 +236,6 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     intermediaryCommissionRub: z.number().nullable().optional(),
     quantityLiters: z.number().nullable().optional(),
     density: z.number().nullable().optional(),
-    quantityKg: z.number().nullable().optional(),
     quantityTonnes: z.number().nullable().optional(),
     inputMode: z.string().nullable().optional(),
     currency: z.string().default("USD"),
@@ -256,15 +247,11 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     saleExchangeRateValue: z.number().nullable().optional(),
     saleExchangeRateDate: z.string().nullable().optional(),
     purchaseExchangeRateDate: z.string().nullable().optional(),
-    purchasePriceUsd: z.number().nullable().optional(),
     purchasePriceUsdPerTonne: z.number().nullable().optional(),
-    purchasePriceRub: z.number().nullable().optional(),
     purchasePriceRubPerTonne: z.number().nullable().optional(),
     purchasePriceId: z.string().nullable().optional(),
     purchasePriceIndex: z.number().nullable().optional(),
-    salePriceUsd: z.number().nullable().optional(),
     salePriceUsdPerTonne: z.number().nullable().optional(),
-    salePriceRub: z.number().nullable().optional(),
     salePriceRubPerTonne: z.number().nullable().optional(),
     salePriceId: z.string().nullable().optional(),
     salePriceIndex: z.number().nullable().optional(),
@@ -289,6 +276,7 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     currentCurrencyCode: z.string().nullable().optional(),
     currentCurrencyId: z.string().nullable().optional(),
   })
+  .strict()
   .superRefine((data, ctx) => {
     if (
       !data.isDraft &&
@@ -335,10 +323,7 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
           path: ["buyerId"],
         });
       }
-      if (
-        (data.quantityTonnes === undefined || data.quantityTonnes === null) &&
-        (data.quantityKg === undefined || data.quantityKg === null)
-      ) {
+      if (data.quantityTonnes === undefined || data.quantityTonnes === null) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Масса обязательна",

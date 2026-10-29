@@ -30,33 +30,19 @@ export const warehouses = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
     supplierId: uuid("supplier_id"), // Link to auto-created supplier
-    currentBalance: decimal("current_balance", {
-      precision: 15,
-      scale: 2,
-    }).default("0"),
     currentBalanceTonnes: decimal("current_balance_tonnes", {
       precision: 18,
       scale: 5,
-    }),
-    averageCost: decimal("average_cost", { precision: 15, scale: 6 }).default(
-      "0",
-    ),
+    }).notNull(),
     averageCostPerTonne: decimal("average_cost_per_tonne", {
       precision: 18,
       scale: 6,
     }),
     equipmentType: text("equipment_type").default("common").notNull(),
-    pvkjBalance: decimal("pvkj_balance", { precision: 15, scale: 2 }).default(
-      "0",
-    ),
     pvkjBalanceTonnes: decimal("pvkj_balance_tonnes", {
       precision: 18,
       scale: 5,
-    }),
-    pvkjAverageCost: decimal("pvkj_average_cost", {
-      precision: 15,
-      scale: 6,
-    }).default("0"),
+    }).notNull(),
     pvkjAverageCostPerTonne: decimal("pvkj_average_cost_per_tonne", {
       precision: 18,
       scale: 6,
@@ -66,7 +52,6 @@ export const warehouses = pgTable(
     isRecalculating: boolean("is_recalculating").default(false),
     isActive: boolean("is_active").default(true),
     isPinned: boolean("is_pinned").default(false),
-    limitVolume: decimal("limit_volume", { precision: 15, scale: 2 }),
     limitVolumeTonnes: decimal("limit_volume_tonnes", {
       precision: 18,
       scale: 5,
@@ -118,15 +103,12 @@ export const warehouseTransactions = pgTable(
       .references(() => warehouses.id),
     transactionType: text("transaction_type").notNull(),
     productType: text("product_type").default("kerosene"),
-    quantity: decimal("quantity", { precision: 15, scale: 2 }),
     quantityTonnes: decimal("quantity_tonnes", {
       precision: 18,
       scale: 5,
-    }),
+    }).notNull(),
     sourceType: text("source_type"),
     sourceId: uuid("source_id"),
-    balanceBefore: decimal("balance_before", { precision: 15, scale: 2 }),
-    balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
     balanceBeforeTonnes: decimal("balance_before_tonnes", {
       precision: 18,
       scale: 5,
@@ -135,16 +117,8 @@ export const warehouseTransactions = pgTable(
       precision: 18,
       scale: 5,
     }),
-    averageCostBefore: decimal("average_cost_before", {
-      precision: 15,
-      scale: 6,
-    }),
     averageCostBeforePerTonne: decimal("average_cost_before_per_tonne", {
       precision: 18,
-      scale: 6,
-    }),
-    averageCostAfter: decimal("average_cost_after", {
-      precision: 15,
       scale: 6,
     }),
     averageCostAfterPerTonne: decimal("average_cost_after_per_tonne", {
@@ -152,7 +126,6 @@ export const warehouseTransactions = pgTable(
       scale: 6,
     }),
     sum: decimal("sum", { precision: 15, scale: 2 }),
-    price: decimal("price", { precision: 15, scale: 6 }),
     pricePerTonne: decimal("price_per_tonne", {
       precision: 18,
       scale: 6,
@@ -290,20 +263,15 @@ export type InsertUserWarehouseAccess = z.infer<typeof insertUserWarehouseAccess
 export const insertWarehouseSchema = z.object({
   name: z.string().min(1),
   supplierId: z.string().uuid().optional().nullable(),
-  currentBalance: z.string().optional().nullable(),
-  currentBalanceTonnes: z.string().optional().nullable(),
-  averageCost: z.string().optional().nullable(),
+  currentBalanceTonnes: z.string().optional(),
   averageCostPerTonne: z.string().optional().nullable(),
   equipmentType: z.string().optional().default("common"),
   storageCost: z.string().optional().nullable(),
-  pvkjBalance: z.string().optional().nullable(),
-  pvkjBalanceTonnes: z.string().optional().nullable(),
-  pvkjAverageCost: z.string().optional().nullable(),
+  pvkjBalanceTonnes: z.string().optional(),
   pvkjAverageCostPerTonne: z.string().optional().nullable(),
   isExport: z.boolean().optional().default(false),
   isActive: z.boolean().optional(),
   isPinned: z.boolean().optional().default(false),
-  limitVolume: z.string().optional().nullable(),
   limitVolumeTonnes: z.string().optional().nullable(),
   limitProductType: z.string().optional().nullable(),
   limitExpiresAt: z.string().optional().nullable(),
@@ -314,11 +282,11 @@ export const insertWarehouseSchema = z.object({
     serviceType: z.string(),
     serviceValue: z.string(),
   })).optional(),
-});
+}).strict();
 
 export const insertWarehouseTransactionSchema = createInsertSchema(
   warehouseTransactions,
-).omit({ id: true });
+).omit({ id: true }).strict();
 
 // ============ TYPES ============
 

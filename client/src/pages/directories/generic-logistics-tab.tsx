@@ -28,7 +28,7 @@ import { AddLogisticsDialog } from "./logistics-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import type { Base } from "@shared/schema";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 interface GenericLogisticsTabProps {
   type: "carrier" | "delivery_location" | "vehicle" | "trailer" | "driver";
@@ -228,9 +228,7 @@ export function GenericLogisticsTab({
             <TableCell className="text-right tabular-nums text-sm">
               {item.capacityTonnes != null
                 ? formatTonnes(Number(item.capacityTonnes))
-                : item.capacityKg != null
-                  ? formatTonnes(kilogramsToTonnes(Number(item.capacityKg)))
-                  : <span className="text-muted-foreground">—</span>}
+                : <span className="text-muted-foreground">—</span>}
             </TableCell>
             {actionCell}
           </TableRow>
@@ -248,9 +246,7 @@ export function GenericLogisticsTab({
             <TableCell className="text-right tabular-nums text-sm">
               {item.capacityTonnes != null
                 ? formatTonnes(Number(item.capacityTonnes))
-                : item.capacityKg != null
-                  ? formatTonnes(kilogramsToTonnes(Number(item.capacityKg)))
-                  : <span className="text-muted-foreground">—</span>}
+                : <span className="text-muted-foreground">—</span>}
             </TableCell>
             {actionCell}
           </TableRow>

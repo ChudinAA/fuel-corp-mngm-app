@@ -1,7 +1,5 @@
 import { eq, desc, sql, isNull, and, inArray } from "drizzle-orm";
 import { db } from "server/db";
-import { normalizeWarehouseLimit } from "../warehouse-limit-units";
-import { normalizeWarehouseBalanceUnits } from "../warehouse-balance-units";
 import { format } from "date-fns";
 import {
   warehouses,
@@ -16,60 +14,6 @@ import {
 } from "@shared/schema";
 import { IWarehouseStorage } from "./types";
 import { PRODUCT_TYPE } from "@shared/constants";
-import {
-  kilogramsToTonnes,
-  tonnesToKilograms,
-  pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-} from "@shared/units";
-
-function normalizeWarehouseCostUnits(
-  data: Partial<InsertWarehouse>,
-  defaultMissing = false,
-): Partial<InsertWarehouse> {
-  const result: Record<string, string | null> = {};
-  const applyPair = (
-    tonneKey: "averageCostPerTonne" | "pvkjAverageCostPerTonne",
-    kilogramKey: "averageCost" | "pvkjAverageCost",
-  ) => {
-    const tonnes = data[tonneKey];
-    const kilograms = data[kilogramKey];
-    if (defaultMissing && tonnes === undefined && kilograms === undefined) {
-      result[tonneKey] = "0";
-      result[kilogramKey] = "0";
-      return;
-    }
-    if (tonnes !== undefined) {
-      if (tonnes === null || tonnes === "") {
-        result[tonneKey] = null;
-        result[kilogramKey] = null;
-      } else {
-        const value = Number(tonnes);
-        if (!Number.isFinite(value)) {
-          throw new TypeError(`${tonneKey} must be a finite number`);
-        }
-        result[tonneKey] = value.toFixed(6);
-        result[kilogramKey] = pricePerTonneToPerKilogram(value).toFixed(6);
-      }
-    } else if (kilograms !== undefined) {
-      if (kilograms === null || kilograms === "") {
-        result[kilogramKey] = null;
-        result[tonneKey] = null;
-      } else {
-        const value = Number(kilograms);
-        if (!Number.isFinite(value)) {
-          throw new TypeError(`${kilogramKey} must be a finite number`);
-        }
-        result[kilogramKey] = value.toFixed(6);
-        result[tonneKey] = pricePerKilogramToPerTonne(value).toFixed(6);
-      }
-    }
-  };
-
-  applyPair("averageCostPerTonne", "averageCost");
-  applyPair("pvkjAverageCostPerTonne", "pvkjAverageCost");
-  return result as Partial<InsertWarehouse>;
-}
 
 export class WarehouseStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
@@ -141,21 +85,13 @@ export class WarehouseStorage {
     data: InsertWarehouse & { baseIds?: string[]; services?: Array<{ serviceName?: string | null; serviceType: string; serviceValue: string }> },
   ): Promise<Warehouse> {
     const { baseIds, services, ...warehouseData } = data;
-    const balanceInput = {
-      currentBalance: warehouseData.currentBalance,
-      currentBalanceTonnes:
-        warehouseData.currentBalanceTonnes ??
-        (warehouseData.currentBalance === undefined ? "0" : undefined),
-      pvkjBalance: warehouseData.pvkjBalance,
-      pvkjBalanceTonnes:
-        warehouseData.pvkjBalanceTonnes ??
-        (warehouseData.pvkjBalance === undefined ? "0" : undefined),
-    };
     const normalizedWarehouseData = {
       ...warehouseData,
-      ...normalizeWarehouseCostUnits(warehouseData, true),
-      ...normalizeWarehouseLimit(warehouseData),
-      ...normalizeWarehouseBalanceUnits(balanceInput),
+      currentBalanceTonnes: warehouseData.currentBalanceTonnes ?? "0",
+      averageCostPerTonne: warehouseData.averageCostPerTonne ?? "0",
+      pvkjBalanceTonnes: warehouseData.pvkjBalanceTonnes ?? "0",
+      pvkjAverageCostPerTonne:
+        warehouseData.pvkjAverageCostPerTonne ?? "0",
     };
 
     // Check for duplicates
@@ -209,17 +145,12 @@ export class WarehouseStorage {
     data: Partial<InsertWarehouse> & { baseIds?: string[]; services?: Array<{ serviceName?: string | null; serviceType: string; serviceValue: string }> },
   ): Promise<Warehouse | undefined> {
     const { baseIds, services, ...warehouseData } = data;
-    const normalizedLimit = normalizeWarehouseLimit(warehouseData);
-    const normalizedBalances = normalizeWarehouseBalanceUnits(warehouseData);
 
     return await db.transaction(async (tx) => {
       const [updated] = await tx
         .update(warehouses)
         .set({
           ...warehouseData,
-          ...normalizeWarehouseCostUnits(warehouseData),
-          ...normalizedLimit,
-          ...normalizedBalances,
           updatedAt: sql`NOW()`,
         })
         .where(eq(warehouses.id, id))
@@ -358,19 +289,13 @@ export class WarehouseStorage {
         sourceType: tx.sourceType,
         sourceId: tx.sourceId,
         productType: tx.productType || PRODUCT_TYPE.KEROSENE,
-        quantityKg: tx.quantity,
         quantityTonnes: tx.quantityTonnes,
         sum: tx.sum,
-        price: tx.price,
         pricePerTonne: tx.pricePerTonne,
         transactionDate: tx.transactionDate,
-        balanceBefore: tx.balanceBefore || "0",
-        balanceAfter: tx.balanceAfter || "0",
         balanceBeforeTonnes: tx.balanceBeforeTonnes,
         balanceAfterTonnes: tx.balanceAfterTonnes,
-        averageCostBefore: tx.averageCostBefore || "0",
         averageCostBeforePerTonne: tx.averageCostBeforePerTonne,
-        averageCostAfter: tx.averageCostAfter || "0",
         averageCostAfterPerTonne: tx.averageCostAfterPerTonne,
         createdAt: tx.createdAt,
       })),
@@ -382,10 +307,6 @@ export class WarehouseStorage {
     warehouseId: string,
     startOfMonth: Date,
   ): Promise<{
-    income: number;
-    expense: number;
-    pvkjIncome: number;
-    pvkjExpense: number;
     incomeTonnes: number;
     expenseTonnes: number;
     pvkjIncomeTonnes: number;
@@ -400,30 +321,24 @@ export class WarehouseStorage {
       ),
     });
 
-    let income = 0;
-    let expense = 0;
-    let pvkjIncome = 0;
-    let pvkjExpense = 0;
     let incomeTonnes = 0;
     let expenseTonnes = 0;
     let pvkjIncomeTonnes = 0;
     let pvkjExpenseTonnes = 0;
 
     transactions.forEach((tx) => {
-      const qty = parseFloat(tx.quantity || "0");
-      const tonnes =
-        tx.quantityTonnes == null
-          ? kilogramsToTonnes(qty)
-          : Number.parseFloat(tx.quantityTonnes);
-      const isPvkj = tx.productType === PRODUCT_TYPE.PVKJ;
-
-      if (qty > 0) {
-        if (isPvkj) pvkjIncome += qty;
-        else income += qty;
-      } else {
-        if (isPvkj) pvkjExpense += Math.abs(qty);
-        else expense += Math.abs(qty);
+      if (tx.quantityTonnes == null) {
+        throw new Error(
+          `Warehouse transaction ${tx.id} has no saved tonne quantity`,
+        );
       }
+      const tonnes = Number.parseFloat(tx.quantityTonnes);
+      if (!Number.isFinite(tonnes)) {
+        throw new Error(
+          `Warehouse transaction ${tx.id} has an invalid tonne quantity`,
+        );
+      }
+      const isPvkj = tx.productType === PRODUCT_TYPE.PVKJ;
 
       if (tonnes > 0) {
         if (isPvkj) pvkjIncomeTonnes += tonnes;
@@ -435,10 +350,6 @@ export class WarehouseStorage {
     });
 
     return {
-      income,
-      expense,
-      pvkjIncome,
-      pvkjExpense,
       incomeTonnes,
       expenseTonnes,
       pvkjIncomeTonnes,
@@ -451,9 +362,7 @@ export class WarehouseStorage {
     date: Date,
     productType: string,
   ): Promise<{
-    balance: string;
     balanceTonnes: string;
-    averageCost: string;
     averageCostPerTonne: string;
   }> {
     const dateStr = format(date, "yyyy-MM-dd");
@@ -476,19 +385,20 @@ export class WarehouseStorage {
       )
       .limit(1);
 
+    if (!lastTransaction) {
+      return { balanceTonnes: "0", averageCostPerTonne: "0" };
+    }
+    if (
+      lastTransaction.balanceAfterTonnes == null ||
+      lastTransaction.averageCostAfterPerTonne == null
+    ) {
+      throw new Error(
+        `Warehouse transaction ${lastTransaction.id} is missing authoritative tonne balance or cost`,
+      );
+    }
     return {
-      balance: lastTransaction?.balanceAfter || "0",
-      balanceTonnes:
-        lastTransaction?.balanceAfterTonnes ??
-        kilogramsToTonnes(
-          Number.parseFloat(lastTransaction?.balanceAfter || "0"),
-        ).toFixed(5),
-      averageCost: lastTransaction?.averageCostAfter || "0",
-      averageCostPerTonne:
-        lastTransaction?.averageCostAfterPerTonne ??
-        pricePerKilogramToPerTonne(
-          Number.parseFloat(lastTransaction?.averageCostAfter || "0"),
-        ).toString(),
+      balanceTonnes: lastTransaction.balanceAfterTonnes,
+      averageCostPerTonne: lastTransaction.averageCostAfterPerTonne,
     };
   }
 
@@ -496,20 +406,16 @@ export class WarehouseStorage {
     warehouseId: string;
     productType: string;
     targetDate: string;
-    targetBalanceTonnes?: number;
-    targetAverageCostPerTonne?: number;
-    targetBalance?: number;
-    targetAverageCost?: number;
+    targetBalanceTonnes: number;
+    targetAverageCostPerTonne: number;
     userId?: string;
   }): Promise<{ message: string; limitExpiresAt?: string }> {
     const {
       warehouseId,
       productType,
       targetDate,
-      targetBalanceTonnes: requestedBalanceTonnes,
-      targetAverageCostPerTonne: requestedAverageCostPerTonne,
-      targetBalance,
-      targetAverageCost,
+      targetBalanceTonnes,
+      targetAverageCostPerTonne,
       userId,
     } = params;
     const dateObj = new Date(targetDate);
@@ -519,16 +425,8 @@ export class WarehouseStorage {
     const currentAverageCostPerTonne = Number.parseFloat(
       balanceAtDate.averageCostPerTonne,
     );
-    const targetBalanceInTonnes =
-      requestedBalanceTonnes ??
-      (targetBalance === undefined
-        ? Number.NaN
-        : kilogramsToTonnes(targetBalance));
-    const targetCostPerTonne =
-      requestedAverageCostPerTonne ??
-      (targetAverageCost === undefined
-        ? Number.NaN
-        : pricePerKilogramToPerTonne(targetAverageCost));
+    const targetBalanceInTonnes = targetBalanceTonnes;
+    const targetCostPerTonne = targetAverageCostPerTonne;
     if (
       !Number.isFinite(targetBalanceInTonnes) ||
       !Number.isFinite(targetCostPerTonne)
@@ -542,15 +440,6 @@ export class WarehouseStorage {
       currentBalanceTonnes * currentAverageCostPerTonne;
     const absQuantityTonnes = Math.abs(deltaTonnes);
     const transactionQuantityTonnes = deltaTonnes >= 0 ? absQuantityTonnes : -absQuantityTonnes;
-    const legacyTargetBalance = tonnesToKilograms(targetBalanceInTonnes);
-    const legacyCurrentBalance = tonnesToKilograms(currentBalanceTonnes);
-    const legacyTargetCost = pricePerTonneToPerKilogram(targetCostPerTonne);
-    const legacyCurrentCost = pricePerTonneToPerKilogram(currentAverageCostPerTonne);
-    const legacyQuantity = tonnesToKilograms(transactionQuantityTonnes);
-    const legacyPricePerKg =
-      absQuantityTonnes > 0
-        ? pricePerTonneToPerKilogram(Math.abs(deltaCost) / absQuantityTonnes)
-        : 0;
     const pricePerTonne =
       absQuantityTonnes > 0 ? Math.abs(deltaCost) / absQuantityTonnes : 0;
 
@@ -571,18 +460,12 @@ export class WarehouseStorage {
           productType,
           sourceType: "inventory",
           sourceId: warehouseId,
-          quantity: legacyQuantity.toFixed(2),
           quantityTonnes: transactionQuantityTonnes.toFixed(5),
           sum: deltaCost.toFixed(2),
-          price: legacyPricePerKg.toFixed(6),
           pricePerTonne: pricePerTonne.toFixed(6),
-          balanceBefore: legacyCurrentBalance.toFixed(2),
-          balanceAfter: legacyTargetBalance.toFixed(2),
           balanceBeforeTonnes: currentBalanceTonnes.toFixed(5),
           balanceAfterTonnes: targetBalanceInTonnes.toFixed(5),
-          averageCostBefore: legacyCurrentCost.toFixed(6),
           averageCostBeforePerTonne: currentAverageCostPerTonne.toFixed(6),
-          averageCostAfter: legacyTargetCost.toFixed(6),
           averageCostAfterPerTonne: targetCostPerTonne.toFixed(6),
           transactionDate: txDate,
           createdById: userId,
@@ -593,9 +476,7 @@ export class WarehouseStorage {
         await tx
           .update(warehouses)
           .set({
-            pvkjBalance: legacyTargetBalance.toFixed(2),
             pvkjBalanceTonnes: targetBalanceInTonnes.toFixed(5),
-            pvkjAverageCost: legacyTargetCost.toFixed(6),
             pvkjAverageCostPerTonne: targetCostPerTonne.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById: userId,
@@ -605,9 +486,7 @@ export class WarehouseStorage {
         await tx
           .update(warehouses)
           .set({
-            currentBalance: legacyTargetBalance.toFixed(2),
             currentBalanceTonnes: targetBalanceInTonnes.toFixed(5),
-            averageCost: legacyTargetCost.toFixed(6),
             averageCostPerTonne: targetCostPerTonne.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById: userId,
@@ -620,20 +499,23 @@ export class WarehouseStorage {
   }
 
   async getWarehouseStatsForDashboard(): Promise<
-    Array<{ name: string; current: number; currentTonnes: number }>
+    Array<{ name: string; currentTonnes: number }>
   > {
     const warehousesList = await db.query.warehouses.findMany({
       where: and(eq(warehouses.isActive, true), isNull(warehouses.deletedAt)),
     });
 
-    const stats = warehousesList.map((wh) => ({
-      name: wh.name,
-      current: parseFloat(wh.currentBalance || "0"),
-      currentTonnes:
-        wh.currentBalanceTonnes == null
-          ? kilogramsToTonnes(parseFloat(wh.currentBalance || "0"))
-          : Number.parseFloat(wh.currentBalanceTonnes),
-    }));
+    const stats = warehousesList.map((wh) => {
+      if (wh.currentBalanceTonnes == null) {
+        throw new Error(
+          `Warehouse ${wh.id} has no authoritative tonne balance`,
+        );
+      }
+      return {
+        name: wh.name,
+        currentTonnes: Number.parseFloat(wh.currentBalanceTonnes),
+      };
+    });
 
     return stats;
   }

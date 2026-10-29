@@ -13,7 +13,7 @@ export const formatCurrency = (value: string | number) => {
   }).format(num);
 };
 
-// For per-kg cost/price — up to 6 decimal places, no trailing zeros
+// For per-tonne cost/price — up to 6 decimal places, no trailing zeros
 export const formatCost = (value: string | number) => {
   const num = typeof value === 'string' ? parseFloat(value) : value;
   if (isNaN(num)) return '0';

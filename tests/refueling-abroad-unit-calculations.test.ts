@@ -4,7 +4,6 @@ import {
   calculateRefuelingAmount,
   calculateRefuelingMassTonnes,
   calculateRefuelingPricePerTonne,
-  calculateStoredRefuelingMassTonnes,
 } from "../client/src/pages/refueling-abroad/unit-calculations";
 import { insertRefuelingAbroadSchema } from "../server/modules/refueling-abroad/entities/refueling-abroad";
 
@@ -14,8 +13,8 @@ test("refueling mass is represented in tonnes for tonne and litre input", () => 
   assert.equal(calculateRefuelingMassTonnes("liters", "1000", "0"), null);
 });
 
-test("per-kilogram and per-litre rates become deal-specific per-tonne rates", () => {
-  assert.equal(calculateRefuelingPricePerTonne(2, "tonnes"), 2_000);
+test("tonne and per-litre rates use the current unit and deal density", () => {
+  assert.equal(calculateRefuelingPricePerTonne(2, "tonnes"), 2);
   assert.equal(calculateRefuelingPricePerTonne(1.6, "liters", 0.8), 2_000);
   assert.equal(calculateRefuelingPricePerTonne(1.6, "liters"), null);
 });
@@ -32,7 +31,7 @@ test("non-draft litre deals require a positive deal density", () => {
     productType: "jet",
     supplierId: "supplier",
     buyerId: "buyer",
-    quantityKg: 80,
+    quantityTonnes: 0.08,
     inputMode: "liters",
     quantityLiters: 100,
     isDraft: false,
@@ -51,26 +50,5 @@ test("non-draft litre deals require a positive deal density", () => {
   assert.equal(
     insertRefuelingAbroadSchema.safeParse({ ...payload, density: 0.8 }).success,
     true,
-  );
-});
-
-test("stored legacy litre deals use liters and deal density before the old kg field", () => {
-  assert.equal(
-    calculateStoredRefuelingMassTonnes("liters", "1000", "1000", "0.8"),
-    0.8,
-  );
-  const kilogramRecordTonnes = calculateStoredRefuelingMassTonnes(
-    "kg",
-    "1234.56",
-    null,
-    null,
-  );
-  assert.ok(
-    kilogramRecordTonnes !== null &&
-      Math.abs(kilogramRecordTonnes - 1.23456) < 1e-12,
-  );
-  assert.equal(
-    calculateStoredRefuelingMassTonnes("liters", "1000", "1000", null),
-    null,
   );
 });

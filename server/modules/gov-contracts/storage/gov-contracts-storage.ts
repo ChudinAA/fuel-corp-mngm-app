@@ -5,16 +5,6 @@ import { opt } from "../../opt/entities/opt";
 import { optMassTonnesSql } from "../../opt/opt-mass-sql";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { GovernmentContractSalesUpdate, IGovernmentContractStorage } from "./types";
-import { kilogramsToTonnes } from "@shared/units";
-
-function storedKilogramsToTonnes(value: string | null | undefined): number | null {
-  if (value == null || value.trim() === "") return null;
-  const kilograms = Number(value);
-  if (!Number.isFinite(kilograms)) {
-    throw new TypeError("Government contract mass must be a finite kilogram value");
-  }
-  return kilogramsToTonnes(kilograms);
-}
 
 export class GovernmentContractStorage implements IGovernmentContractStorage {
   async getGovernmentContract(id: string): Promise<GovernmentContract | undefined> {
@@ -122,10 +112,9 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
     // Получаем продажи ЗВС по контракту
     const [refuelingSales] = await db
       .select({
-        totalVolume: sql<string>`COALESCE(SUM(COALESCE(
-          ${aircraftRefueling.quantityTonnes},
-          CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
-        )) * 1000, 0)::text`,
+        totalVolume: sql<string>`COALESCE(SUM(
+          CAST(${aircraftRefueling.quantityTonnes} AS NUMERIC)
+        ), 0)::text`,
         totalRevenue: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
       })
       .from(aircraftRefueling)
@@ -153,19 +142,24 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
 
     // Обновляем контракт
     await this.updateGovernmentContract(contractId, {
-      actualVolume: totalActualVolume,
+      actualVolumeTonnes: totalActualVolume,
       currentAmount: totalActualRevenue,
       remainingAmount: remainingAmount,
     });
 
+    const plannedVolumeTonnes =
+      contract.plannedVolumeTonnes == null
+        ? null
+        : Number(contract.plannedVolumeTonnes);
+    const actualVolumeTonnes = Number(totalActualVolume);
     return {
       contractId,
-      plannedVolumeTonnes: storedKilogramsToTonnes(contract.plannedVolume),
-      actualVolumeTonnes: storedKilogramsToTonnes(totalActualVolume),
+      plannedVolumeTonnes,
+      actualVolumeTonnes,
       plannedAmount: contract.totalAmount,
       actualAmount: totalActualRevenue,
-      completion: contract.plannedVolume 
-        ? ((parseFloat(totalActualVolume) / parseFloat(contract.plannedVolume)) * 100).toFixed(2)
+      completion: plannedVolumeTonnes
+        ? ((actualVolumeTonnes / plannedVolumeTonnes) * 100).toFixed(2)
         : "0",
     };
   }
@@ -177,8 +171,8 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
       throw new Error("Contract not found");
     }
 
-    const plannedVolume = parseFloat(contract.plannedVolume || "0");
-    const actualVolume = parseFloat(contract.actualVolume || "0");
+    const plannedVolume = Number(contract.plannedVolumeTonnes || "0");
+    const actualVolume = Number(contract.actualVolumeTonnes || "0");
     const plannedAmount = parseFloat(contract.totalAmount || "0");
     const actualAmount = parseFloat(contract.currentAmount || "0");
 
@@ -201,15 +195,15 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
       contractNumber: contract.contractNumber,
       customerId: contract.customerId,
       planned: {
-        volumeTonnes: kilogramsToTonnes(plannedVolume),
+        volumeTonnes: plannedVolume,
         amount: plannedAmount.toString(),
       },
       actual: {
-        volumeTonnes: kilogramsToTonnes(actualVolume),
+        volumeTonnes: actualVolume,
         amount: actualAmount.toString(),
       },
       remaining: {
-        volumeTonnes: kilogramsToTonnes(remainingVolume),
+        volumeTonnes: remainingVolume,
         amount: remainingAmount.toString(),
       },
       completion: {

@@ -12,7 +12,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
-import type { Equipment, Warehouse } from "@shared/schema";
+import type { Equipment } from "@shared/schema";
+import type { WarehouseWithTonnes } from "../../warehouses/types";
 import { z } from "zod";
 
 const formSchema = z.object({
@@ -26,7 +27,7 @@ interface AddEquipmentDialogProps {
   equipmentToEdit: Equipment | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  likWarehouses: Warehouse[];
+  likWarehouses: WarehouseWithTonnes[];
 }
 
 export function AddEquipmentDialog({

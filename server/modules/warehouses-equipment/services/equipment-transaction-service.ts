@@ -4,64 +4,69 @@ import { TRANSACTION_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { EquipmentRecalculationQueueService } from "./equipment-recalculation-queue-service";
 import { format } from "date-fns";
 import { restoreStockMovement } from "server/modules/warehouses/services/stock-transaction-calculations";
-import {
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-  tonnesToKilograms,
-} from "@shared/units";
-import {
-  massMirrorFields,
-  readMassTonnes,
-} from "../equipment-balance-units";
 
 type TonneEquipmentState = {
   balanceTonnes: number;
   averageCostPerTonne: number;
 };
 
-// Equipment tables and their existing callers still use kg until the database
-// cutover; calculations in this service use tonnes and ₽/t.
+function requireTonneValue(
+  value: string | null | undefined,
+  label: string,
+): number {
+  if (value == null || value === "") {
+    throw new Error(`${label} is missing its authoritative tonne value`);
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} has an invalid tonne value`);
+  }
+  return parsed;
+}
+
 function readTonneEquipmentState(
   equipment: typeof equipments.$inferSelect,
   isPvkj: boolean,
 ): TonneEquipmentState {
-  const balanceTonnes = readMassTonnes(
-    isPvkj ? equipment.pvkjBalanceTonnes : equipment.currentBalanceTonnes,
-    isPvkj ? equipment.pvkjBalance : equipment.currentBalance,
-  );
-  const averageCostPerKg = Number.parseFloat(
-    (isPvkj ? equipment.pvkjAverageCost : equipment.averageCost) || "0",
-  );
+  const balanceValue = isPvkj
+    ? equipment.pvkjBalanceTonnes
+    : equipment.currentBalanceTonnes;
+  const averageCostValue = isPvkj
+    ? equipment.pvkjAverageCostPerTonne
+    : equipment.averageCostPerTonne;
+  if (balanceValue == null || averageCostValue == null) {
+    throw new Error(
+      `Equipment ${equipment.id} is missing authoritative tonne stock state`,
+    );
+  }
+  const balanceTonnes = Number.parseFloat(balanceValue);
+  const averageCostPerTonne = Number.parseFloat(averageCostValue);
+  if (
+    !Number.isFinite(balanceTonnes) ||
+    !Number.isFinite(averageCostPerTonne)
+  ) {
+    throw new Error(
+      `Equipment ${equipment.id} has invalid authoritative tonne stock state`,
+    );
+  }
   return {
     balanceTonnes,
-    averageCostPerTonne: pricePerKilogramToPerTonne(averageCostPerKg),
+    averageCostPerTonne,
   };
-}
-
-function legacyKg(valueTonnes: number): string {
-  return tonnesToKilograms(valueTonnes).toFixed(2);
-}
-
-function legacyPricePerKg(valuePerTonne: number): string {
-  return pricePerTonneToPerKilogram(valuePerTonne).toFixed(4);
 }
 
 function equipmentStockFields(
   isPvkj: boolean,
   state: TonneEquipmentState,
 ) {
-  const balance = massMirrorFields(state.balanceTonnes);
   return isPvkj
     ? {
-        pvkjBalanceTonnes: balance.tonnes,
-        pvkjBalance: balance.kilograms,
-        pvkjAverageCost: legacyPricePerKg(state.averageCostPerTonne),
+        pvkjBalanceTonnes: state.balanceTonnes.toFixed(5),
+        pvkjAverageCostPerTonne: state.averageCostPerTonne.toFixed(6),
       }
     : {
-        currentBalanceTonnes: balance.tonnes,
-        currentBalance: balance.kilograms,
-        averageCost: legacyPricePerKg(state.averageCostPerTonne),
+        currentBalanceTonnes: state.balanceTonnes.toFixed(5),
+        averageCostPerTonne: state.averageCostPerTonne.toFixed(6),
       };
 }
 
@@ -118,7 +123,7 @@ export class EquipmentTransactionService {
     productType: string,
     sourceType: string,
     sourceId: string,
-    quantity: number,
+    quantityTonnes: number,
     totalCost: number,
     createdById?: string,
     dealDate?: string,
@@ -132,7 +137,11 @@ export class EquipmentTransactionService {
     if (!equipment) throw new Error("Оборудование не найдено");
 
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
-    const quantityTonnes = kilogramsToTonnes(quantity);
+    if (!Number.isFinite(quantityTonnes) || quantityTonnes < 0) {
+      throw new TypeError(
+        "Equipment transaction quantity must be a non-negative tonne value",
+      );
+    }
     const oldState = readTonneEquipmentState(equipment, isPvkj);
     const oldBalance = oldState.balanceTonnes;
     const oldAvgCost = oldState.averageCostPerTonne;
@@ -182,18 +191,13 @@ export class EquipmentTransactionService {
         productType,
         sourceType,
         sourceId,
-        quantity: isReceipt
-          ? legacyKg(quantityTonnes)
-          : legacyKg(-quantityTonnes),
         quantityTonnes: (isReceipt ? quantityTonnes : -quantityTonnes).toFixed(5),
         sum: sum.toFixed(2),
-        price: legacyPricePerKg(price),
-        balanceBefore: legacyKg(oldBalance),
-        balanceAfter: legacyKg(newBalance),
         balanceBeforeTonnes: oldBalance.toFixed(5),
         balanceAfterTonnes: newBalance.toFixed(5),
-        averageCostBefore: legacyPricePerKg(oldAvgCost),
-        averageCostAfter: legacyPricePerKg(newAvgCost),
+        averageCostBeforePerTonne: oldAvgCost.toFixed(6),
+        averageCostAfterPerTonne: newAvgCost.toFixed(6),
+        pricePerTonne: price.toFixed(6),
         transactionDate: txDate,
         createdById,
       })
@@ -236,9 +240,9 @@ export class EquipmentTransactionService {
     tx: any,
     transactionId: string,
     equipmentId: string,
-    oldQty: number,
+    oldQtyTonnes: number,
     oldTotalCost: number,
-    newQty: number,
+    newQtyTonnes: number,
     newTotalCost: number,
     productType: string,
     userId?: string,
@@ -264,8 +268,16 @@ export class EquipmentTransactionService {
       transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
       transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
-    const oldQtyTonnes = kilogramsToTonnes(oldQty);
-    const newQtyTonnes = kilogramsToTonnes(newQty);
+    if (
+      !Number.isFinite(oldQtyTonnes) ||
+      oldQtyTonnes < 0 ||
+      !Number.isFinite(newQtyTonnes) ||
+      newQtyTonnes < 0
+    ) {
+      throw new TypeError(
+        "Equipment transaction quantities must be non-negative tonne values",
+      );
+    }
     const currentState = readTonneEquipmentState(equipment, isPvkj);
     const currentBalance = currentState.balanceTonnes;
     const currentCost = currentState.averageCostPerTonne;
@@ -305,15 +317,11 @@ export class EquipmentTransactionService {
     await tx
       .update(equipmentTransactions)
       .set({
-        quantity: isReceipt
-          ? legacyKg(newQtyTonnes)
-          : legacyKg(-newQtyTonnes),
         quantityTonnes: (isReceipt ? newQtyTonnes : -newQtyTonnes).toFixed(5),
         sum: sum.toFixed(2),
-        price: legacyPricePerKg(price),
-        balanceAfter: legacyKg(newBalance),
         balanceAfterTonnes: newBalance.toFixed(5),
-        averageCostAfter: legacyPricePerKg(newAverageCost),
+        averageCostAfterPerTonne: newAverageCost.toFixed(6),
+        pricePerTonne: price.toFixed(6),
         updatedAt: sql`NOW()`,
         updatedById: userId,
         transactionDate: newEffectiveDate,
@@ -356,7 +364,7 @@ export class EquipmentTransactionService {
       );
     }
 
-    return tonnesToKilograms(newBalance);
+    return newBalance;
   }
 
   /**
@@ -434,7 +442,10 @@ export class EquipmentTransactionService {
 
     const isPvkj = transaction.productType === PRODUCT_TYPE.PVKJ;
     const qtyTonnes = Math.abs(
-      readMassTonnes(transaction.quantityTonnes, transaction.quantity),
+      requireTonneValue(
+        transaction.quantityTonnes,
+        `Equipment transaction ${transactionId} quantityTonnes`,
+      ),
     );
     const isReceipt =
       transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
@@ -447,8 +458,9 @@ export class EquipmentTransactionService {
     if (isReceipt) {
       newBalance = Math.max(0, newBalance - qtyTonnes);
       if (newBalance > 0) {
-        newAvgCost = pricePerKilogramToPerTonne(
-          parseFloat(transaction.averageCostBefore || "0"),
+        newAvgCost = requireTonneValue(
+          transaction.averageCostBeforePerTonne,
+          `Equipment transaction ${transactionId} averageCostBeforePerTonne`,
         );
       }
     } else {
@@ -531,10 +543,12 @@ export class EquipmentTransactionService {
         { balance: currentBalance, averageCost: currentCost },
         {
           ...transaction,
-          quantity: readMassTonnes(
+          quantity: requireTonneValue(
             transaction.quantityTonnes,
-            transaction.quantity,
+            `Equipment transaction ${transactionId} quantityTonnes`,
           ),
+          averageCostBefore: transaction.averageCostBeforePerTonne,
+          averageCostAfter: transaction.averageCostAfterPerTonne,
         },
         transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
           transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN,

@@ -23,21 +23,18 @@ import {
 interface ManagementReportData {
   salesMetrics: {
     optSales: {
-      totalVolume?: string;
       totalVolumeTonnes?: string;
       totalRevenue: string;
       totalProfit: string;
       marginality: string;
     };
     refuelingSales: {
-      totalVolume?: string;
       totalVolumeTonnes?: string;
       totalRevenue: string;
       totalProfit: string;
       marginality: string;
     };
     combined: {
-      totalVolume?: string;
       totalVolumeTonnes?: string;
       totalRevenue: string;
       totalProfit: string;
@@ -180,7 +177,6 @@ export default function ManagementReportPage() {
       name: "ОПТ",
       volume: getManagementReportMassTonnes(
         reportData.salesMetrics.optSales.totalVolumeTonnes,
-        reportData.salesMetrics.optSales.totalVolume,
       ),
       revenue: parseFloat(reportData.salesMetrics.optSales.totalRevenue),
       profit: parseFloat(reportData.salesMetrics.optSales.totalProfit),
@@ -189,7 +185,6 @@ export default function ManagementReportPage() {
       name: "ЗВС",
       volume: getManagementReportMassTonnes(
         reportData.salesMetrics.refuelingSales.totalVolumeTonnes,
-        reportData.salesMetrics.refuelingSales.totalVolume,
       ),
       revenue: parseFloat(reportData.salesMetrics.refuelingSales.totalRevenue),
       profit: parseFloat(reportData.salesMetrics.refuelingSales.totalProfit),
@@ -356,7 +351,6 @@ export default function ManagementReportPage() {
                 <div className="text-2xl font-bold">
                   {formatManagementReportMassTonnes(
                     reportData.warehouseMetrics.totalBalanceTonnes,
-                    reportData.warehouseMetrics.totalBalance,
                   )} т
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -453,7 +447,6 @@ export default function ManagementReportPage() {
                       <TableCell className="text-right">
                         {formatManagementReportMassTonnes(
                           reportData.salesMetrics.optSales.totalVolumeTonnes,
-                          reportData.salesMetrics.optSales.totalVolume,
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -471,7 +464,6 @@ export default function ManagementReportPage() {
                       <TableCell className="text-right">
                         {formatManagementReportMassTonnes(
                           reportData.salesMetrics.refuelingSales.totalVolumeTonnes,
-                          reportData.salesMetrics.refuelingSales.totalVolume,
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -489,7 +481,6 @@ export default function ManagementReportPage() {
                       <TableCell className="text-right">
                         {formatManagementReportMassTonnes(
                           reportData.salesMetrics.combined.totalVolumeTonnes,
-                          reportData.salesMetrics.combined.totalVolume,
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -525,7 +516,6 @@ export default function ManagementReportPage() {
                       <TableCell className="text-right">
                         {formatManagementReportMassTonnes(
                           reportData.warehouseMetrics.totalBalanceTonnes,
-                          reportData.warehouseMetrics.totalBalance,
                         )} т
                       </TableCell>
                     </TableRow>

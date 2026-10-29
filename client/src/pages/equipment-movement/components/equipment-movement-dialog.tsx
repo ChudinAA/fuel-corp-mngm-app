@@ -50,7 +50,6 @@ import {
 import type { EquipmentMovementDialogProps } from "../types";
 import { TonneVolumeSection } from "@/pages/shared/components/tonne-volume-section";
 import {
-  equipmentMovementLegacyKgToTonnes,
   type EquipmentMovementInputMode,
 } from "../unit-calculations";
 import { formatPricePerTonne, formatTonnes } from "@shared/units";
@@ -150,9 +149,7 @@ export function EquipmentMovementDialog({
           editMovement.quantityTonnes !== null &&
           editMovement.quantityTonnes !== undefined
             ? String(editMovement.quantityTonnes)
-            : editMovement.quantityKg
-              ? String(equipmentMovementLegacyKgToTonnes(editMovement.quantityKg))
-              : "",
+            : "",
         notes: editMovement.notes || "",
         isDraft: editMovement.isDraft || false,
       };
@@ -181,7 +178,6 @@ export function EquipmentMovementDialog({
   }, [editMovement, form, open]);
 
   const {
-    calculatedKg,
     tonnesNum,
     purchaseAmount,
     averageCostPerTonne,
@@ -205,10 +201,7 @@ export function EquipmentMovementDialog({
 
   const initialQuantityTonnes =
     isEditing || isCopy
-      ? editMovement?.quantityTonnes !== null &&
-        editMovement?.quantityTonnes !== undefined
-        ? Number(editMovement.quantityTonnes)
-        : equipmentMovementLegacyKgToTonnes(editMovement?.quantityKg || 0) ?? 0
+      ? Number(editMovement?.quantityTonnes || 0)
       : 0;
 
   const likBalance = useLikBalance({

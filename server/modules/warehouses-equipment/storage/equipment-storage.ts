@@ -1,12 +1,43 @@
 import { eq, and, isNull, sql, desc } from "drizzle-orm";
 import { db } from "../../../db";
 import { equipments, equipmentTransactions, warehousesEquipment, type Equipment, type InsertEquipment, type EquipmentTransaction, type InsertEquipmentTransaction } from "../entities/equipment";
-import {
-  massMirrorFields,
-  normalizeEquipmentBalanceFields,
-  normalizeEquipmentTransactionMassFields,
-  readMassTonnes,
-} from "../equipment-balance-units";
+
+function normalizeEquipmentTonneFields(
+  data: Partial<InsertEquipment>,
+  defaults = false,
+): Partial<InsertEquipment> {
+  const normalized: Record<string, unknown> = { ...data };
+  for (const field of [
+    "currentBalanceTonnes",
+    "pvkjBalanceTonnes",
+    "averageCostPerTonne",
+    "pvkjAverageCostPerTonne",
+  ]) {
+    const value = normalized[field];
+    if (value == null && defaults) {
+      normalized[field] = "0";
+      continue;
+    }
+    if (value == null) continue;
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      throw new TypeError(`Equipment ${field} must be a finite tonne value`);
+    }
+    normalized[field] = String(value);
+  }
+  return normalized as Partial<InsertEquipment>;
+}
+
+function normalizeEquipmentTransactionTonneFields(
+  data: InsertEquipmentTransaction,
+): InsertEquipmentTransaction {
+  if (data.quantityTonnes == null || !Number.isFinite(Number(data.quantityTonnes))) {
+    throw new TypeError(
+      "Equipment transaction quantityTonnes must be a finite tonne value",
+    );
+  }
+  return data;
+}
 
 export class EquipmentStorage {
   async getEquipments(): Promise<Equipment[]> {
@@ -33,7 +64,7 @@ export class EquipmentStorage {
     
     const [equipment] = await db
       .insert(equipments)
-      .values(normalizeEquipmentBalanceFields(data))
+      .values(normalizeEquipmentTonneFields(data, true) as InsertEquipment)
       .returning();
     return equipment;
   }
@@ -42,7 +73,7 @@ export class EquipmentStorage {
     const [equipment] = await db
       .update(equipments)
       .set({
-        ...normalizeEquipmentBalanceFields(data),
+        ...normalizeEquipmentTonneFields(data),
         updatedAt: new Date().toISOString(),
       })
       .where(eq(equipments.id, id))
@@ -100,7 +131,7 @@ export class EquipmentStorage {
   async createTransaction(data: InsertEquipmentTransaction): Promise<EquipmentTransaction> {
     const [transaction] = await db
       .insert(equipmentTransactions)
-      .values(normalizeEquipmentTransactionMassFields(data))
+      .values(normalizeEquipmentTransactionTonneFields(data))
       .returning();
     return transaction;
   }
@@ -129,7 +160,7 @@ export class EquipmentStorage {
     equipmentId: string,
     date: Date,
     productType: string,
-  ): Promise<{ balance: string; balanceTonnes: string; averageCost: string }> {
+  ): Promise<{ balanceTonnes: string; averageCostPerTonne: string }> {
     const dateStr = date.toISOString().split("T")[0];
 
     const [lastTransaction] = await db
@@ -150,16 +181,20 @@ export class EquipmentStorage {
       )
       .limit(1);
 
-    const balance = massMirrorFields(
-      readMassTonnes(
-        lastTransaction?.balanceAfterTonnes,
-        lastTransaction?.balanceAfter,
-      ),
-    );
+    const balanceTonnes = lastTransaction
+      ? lastTransaction.balanceAfterTonnes
+      : "0";
+    const averageCostPerTonne = lastTransaction
+      ? lastTransaction.averageCostAfterPerTonne
+      : "0";
+    if (balanceTonnes == null || averageCostPerTonne == null) {
+      throw new Error(
+        `Equipment transaction ${lastTransaction.id} is missing tonne stock state`,
+      );
+    }
     return {
-      balance: balance.kilograms,
-      balanceTonnes: balance.tonnes,
-      averageCost: lastTransaction?.averageCostAfter || "0",
+      balanceTonnes,
+      averageCostPerTonne,
     };
   }
 

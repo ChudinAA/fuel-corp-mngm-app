@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 import type { PriceWithApiRate } from "../utils/price-rate";
 
 interface UseContractVolumeProps {
@@ -31,17 +31,15 @@ export function calculateRemainingContractTonnes({
 }
 
 export function getContractLimitTonnes(price: PriceWithApiRate): number {
-  if (price.contractVolume?.limitUnit === "tonne") {
-    const limit = price.contractVolume.limit;
-    return typeof limit === "number" && Number.isFinite(limit)
-      ? Math.max(0, limit)
-      : 0;
+  const limit = price.contractVolume?.limit;
+  if (
+    price.contractVolume?.limitUnit !== "tonne" ||
+    typeof limit !== "number" ||
+    !Number.isFinite(limit)
+  ) {
+    throw new Error("Contract volume limit is not stored in tonnes");
   }
-
-  const legacyLimitKilograms = Number.parseFloat(price.volume || "0");
-  return Number.isFinite(legacyLimitKilograms) && legacyLimitKilograms > 0
-    ? kilogramsToTonnes(legacyLimitKilograms)
-    : 0;
+  return Math.max(0, limit);
 }
 
 export function useContractVolume({
@@ -59,7 +57,6 @@ export function useContractVolume({
 
   const { data: usedData, isLoading: isLoadingUsed } = useQuery<{
     usedVolumeTonnes?: number;
-    usedVolume?: number;
   }>({
     queryKey: [`/api/${mode}/contract-used`, priceId],
     enabled: !!priceId && (price as any)?.limitType !== "amount",
@@ -130,33 +127,17 @@ export function useContractVolume({
     }
 
     const apiUsedVolumeTonnes = usedData?.usedVolumeTonnes;
-    let usedVolumeTonnes: number;
     if (
-      typeof apiUsedVolumeTonnes === "number" &&
-      Number.isFinite(apiUsedVolumeTonnes)
+      typeof apiUsedVolumeTonnes !== "number" ||
+      !Number.isFinite(apiUsedVolumeTonnes)
     ) {
-      usedVolumeTonnes = apiUsedVolumeTonnes;
-    } else if (
-      price.contractVolume?.usedUnit === "tonne" &&
-      typeof price.contractVolume.used === "number" &&
-      Number.isFinite(price.contractVolume.used)
-    ) {
-      usedVolumeTonnes = price.contractVolume.used;
-    } else if (
-      typeof usedData?.usedVolume === "number" &&
-      Number.isFinite(usedData.usedVolume) &&
-      (mode === "opt" || (price as any).priceUnit !== "liter")
-    ) {
-      // Older OPT responses used kg. Older domestic/foreign responses could
-      // use liters, which cannot safely be converted without deal densities.
-      usedVolumeTonnes = kilogramsToTonnes(usedData.usedVolume);
-    } else {
       return {
         remaining: 0,
         status: "error" as const,
         message: "Не удалось получить использованный объём в тоннах",
       };
     }
+    const usedVolumeTonnes = apiUsedVolumeTonnes;
 
     const availableBeforeCurrent =
       totalVolumeTonnes - usedVolumeTonnes + initialQuantityTonnes;

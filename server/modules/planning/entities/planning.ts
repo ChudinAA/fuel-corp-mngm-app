@@ -56,10 +56,7 @@ export const planEntries = pgTable(
     date: timestamp("date", { mode: "string" }).notNull(),
     type: text("type").notNull(), // 'income' | 'expense'
     counterpartyId: uuid("counterparty_id"),
-    volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
-    // Nullable during schema expansion; readers fall back to the saved kg volume until backfill.
-    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }),
-    balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
+    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }).notNull(),
     balanceAfterTonnes: decimal("balance_after_tonnes", { precision: 18, scale: 5 }),
     isManualBalance: boolean("is_manual_balance").default(false),
     basisId: uuid("basis_id").references(() => bases.id),
@@ -105,7 +102,7 @@ export const insertPlanEntrySchema = createInsertSchema(planEntries).omit({
   updatedAt: true,
   deletedAt: true,
   deletedById: true,
-});
+}).strict();
 
 export type PlanEntry = typeof planEntries.$inferSelect;
 export type InsertPlanEntry = z.infer<typeof insertPlanEntrySchema>;
@@ -121,9 +118,7 @@ export const freeVolumeAllocations = pgTable(
     date: timestamp("date", { mode: "string" }).notNull(),
     fromCounterpartyId: uuid("from_counterparty_id"),
     toCounterpartyId: uuid("to_counterparty_id"),
-    volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
-    // Nullable during schema expansion; readers fall back to the saved kg volume until backfill.
-    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }),
+    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }).notNull(),
     notes: text("notes"),
     scenarioId: uuid("scenario_id").references(() => planningScenarios.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -164,7 +159,7 @@ export const insertFreeVolumeAllocationSchema = createInsertSchema(
   updatedAt: true,
   deletedAt: true,
   deletedById: true,
-});
+}).strict();
 
 export type FreeVolumeAllocation = typeof freeVolumeAllocations.$inferSelect;
 export type InsertFreeVolumeAllocation = z.infer<
@@ -179,9 +174,7 @@ export const supplierAllocatedVolumes = pgTable(
     supplierId: uuid("supplier_id").notNull(),
     periodFrom: timestamp("period_from", { mode: "string" }).notNull(),
     periodTo: timestamp("period_to", { mode: "string" }).notNull(),
-    volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
-    // Nullable during schema expansion; readers fall back to the saved kg volume until backfill.
-    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }),
+    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }).notNull(),
     scenarioId: uuid("scenario_id").references(() => planningScenarios.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -209,7 +202,7 @@ export const insertSupplierAllocatedVolumeSchema = createInsertSchema(
   updatedAt: true,
   deletedAt: true,
   deletedById: true,
-});
+}).strict();
 
 export type SupplierAllocatedVolume =
   typeof supplierAllocatedVolumes.$inferSelect;
@@ -340,9 +333,7 @@ export const planningTopLevelVolumes = pgTable(
     periodFrom: timestamp("period_from", { mode: "string" }).notNull(),
     periodTo: timestamp("period_to", { mode: "string" }).notNull(),
     type: text("type").notNull(), // 'income' | 'expense'
-    volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
-    // Nullable during schema expansion; readers fall back to the saved kg volume until backfill.
-    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }),
+    volumeTonnes: decimal("volume_tonnes", { precision: 18, scale: 5 }).notNull(),
     counterpartyId: uuid("counterparty_id"),
     notes: text("notes"),
     scenarioId: uuid("scenario_id").references(() => planningScenarios.id),
@@ -366,7 +357,7 @@ export const insertPlanningTopLevelVolumeSchema = createInsertSchema(planningTop
   updatedAt: true,
   deletedAt: true,
   deletedById: true,
-});
+}).strict();
 
 export type PlanningTopLevelVolume = typeof planningTopLevelVolumes.$inferSelect;
 export type InsertPlanningTopLevelVolume = z.infer<typeof insertPlanningTopLevelVolumeSchema>;

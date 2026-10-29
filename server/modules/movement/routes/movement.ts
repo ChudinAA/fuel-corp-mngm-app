@@ -8,9 +8,8 @@ import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
 import {
   MovementApiInputError,
-  movementResultToApi,
   normalizeMovementInput,
-} from "../movement-api-adapters";
+} from "../movement-input-validation";
 
 export function registerMovementRoutes(app: Express) {
   app.get(
@@ -46,7 +45,7 @@ export function registerMovementRoutes(app: Express) {
         search,
         filters,
       );
-      res.json(movementResultToApi(result));
+      res.json(result);
     },
   );
 
@@ -60,7 +59,7 @@ export function registerMovementRoutes(app: Express) {
       if (!item) {
         return res.status(404).json({ message: "Перемещение не найдено" });
       }
-      res.json(movementResultToApi(item));
+      res.json(item);
     },
   );
 
@@ -83,15 +82,13 @@ export function registerMovementRoutes(app: Express) {
           createdById: req.session.userId,
         });
 
-        const quantityKgValue = data.quantityKg;
-        if (quantityKgValue === null || quantityKgValue === undefined) {
+        if (data.quantityTonnes === null || data.quantityTonnes === undefined) {
           throw new Error("Количество (т) обязательно");
         }
 
         // Преобразуем числовые поля в строки для БД
         const dbData = {
           ...data,
-          quantityKg: quantityKgValue.toString(),
           quantityTonnes:
             data.quantityTonnes === null || data.quantityTonnes === undefined
               ? null
@@ -104,18 +101,10 @@ export function registerMovementRoutes(app: Express) {
             data.density !== null && data.density !== undefined
               ? data.density.toString()
               : null,
-          purchasePrice:
-            data.purchasePrice !== null && data.purchasePrice !== undefined
-              ? data.purchasePrice.toString()
-              : null,
           purchasePricePerTonne:
             data.purchasePricePerTonne !== null &&
             data.purchasePricePerTonne !== undefined
               ? data.purchasePricePerTonne.toString()
-              : null,
-          deliveryPrice:
-            data.deliveryPrice !== null && data.deliveryPrice !== undefined
-              ? data.deliveryPrice.toString()
               : null,
           deliveryPricePerTonne:
             data.deliveryPricePerTonne !== null &&
@@ -134,10 +123,6 @@ export function registerMovementRoutes(app: Express) {
             data.totalCost !== null && data.totalCost !== undefined
               ? data.totalCost.toString()
               : null,
-          costPerKg:
-            data.costPerKg !== null && data.costPerKg !== undefined
-              ? data.costPerKg.toString()
-              : null,
           costPerTonne:
             data.costPerTonne !== null && data.costPerTonne !== undefined
               ? data.costPerTonne.toString()
@@ -146,7 +131,7 @@ export function registerMovementRoutes(app: Express) {
 
         const movementRecord = await storage.movement.createMovement(dbData);
         SSEService.notifyEntityChanged("movement", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(movementResultToApi(movementRecord));
+        res.status(201).json(movementRecord);
       } catch (error) {
         if (error instanceof MovementApiInputError) {
           return res.status(400).json({ message: error.message });
@@ -183,11 +168,6 @@ export function registerMovementRoutes(app: Express) {
         // Преобразуем числовые поля в строки для БД
         const dbData = {
           ...normalized,
-          quantityKg:
-            normalized.quantityKg !== null &&
-            normalized.quantityKg !== undefined
-              ? String(normalized.quantityKg)
-              : undefined,
           quantityTonnes:
             normalized.quantityTonnes !== null &&
             normalized.quantityTonnes !== undefined
@@ -202,21 +182,11 @@ export function registerMovementRoutes(app: Express) {
             normalized.density !== null && normalized.density !== undefined
               ? String(normalized.density)
               : null,
-          purchasePrice:
-            normalized.purchasePrice !== null &&
-            normalized.purchasePrice !== undefined
-              ? String(normalized.purchasePrice)
-              : null,
           purchasePricePerTonne:
             normalized.purchasePricePerTonne !== null &&
             normalized.purchasePricePerTonne !== undefined
               ? String(normalized.purchasePricePerTonne)
               : normalized.purchasePricePerTonne,
-          deliveryPrice:
-            normalized.deliveryPrice !== null &&
-            normalized.deliveryPrice !== undefined
-              ? String(normalized.deliveryPrice)
-              : null,
           deliveryPricePerTonne:
             normalized.deliveryPricePerTonne !== null &&
             normalized.deliveryPricePerTonne !== undefined
@@ -236,10 +206,6 @@ export function registerMovementRoutes(app: Express) {
             normalized.totalCost !== null && normalized.totalCost !== undefined
               ? String(normalized.totalCost)
               : null,
-          costPerKg:
-            normalized.costPerKg !== null && normalized.costPerKg !== undefined
-              ? String(normalized.costPerKg)
-              : null,
           costPerTonne:
             normalized.costPerTonne !== null &&
             normalized.costPerTonne !== undefined
@@ -253,7 +219,7 @@ export function registerMovementRoutes(app: Express) {
           return res.status(404).json({ message: "Перемещение не найдено" });
         }
         SSEService.notifyEntityChanged("movement", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(movementResultToApi(item));
+        res.json(item);
       } catch (error) {
         if (error instanceof MovementApiInputError) {
           return res.status(400).json({ message: error.message });

@@ -7,16 +7,6 @@ function assertFinite(value: number, label: string): number {
   return value;
 }
 
-/** Converts a mass in kilograms to metric tonnes without display rounding. */
-export function kilogramsToTonnes(kilograms: number): number {
-  return assertFinite(kilograms, "kilograms") / KILOGRAMS_PER_TON;
-}
-
-/** Converts a mass in metric tonnes to kilograms without display rounding. */
-export function tonnesToKilograms(tonnes: number): number {
-  return assertFinite(tonnes, "tonnes") * KILOGRAMS_PER_TON;
-}
-
 /** Converts liquid volume and its deal density to metric tonnes. */
 export function litresAndDensityToTonnes(
   litres: number,
@@ -29,36 +19,6 @@ export function litresAndDensityToTonnes(
     throw new RangeError("densityKilogramsPerLitre must be greater than zero");
   }
   return (litres * densityKilogramsPerLitre) / KILOGRAMS_PER_TON;
-}
-
-/**
- * Resolves a historical deal's mass from its saved legacy kilogram value.
- * Litres and density are retained in the signature for existing callers, but
- * must not be used to reconstruct a historical mass.
- */
-export function legacyDealMassToTonnes(
-  kilograms: number | string | null | undefined,
-  _litres: number | string | null | undefined,
-  _densityKilogramsPerLitre: number | string | null | undefined,
-): number | null {
-  const parseOptionalFinite = (value: number | string | null | undefined) => {
-    if (value === null || value === undefined || value === "") return null;
-    const parsed = typeof value === "number" ? value : Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  };
-
-  const massKg = parseOptionalFinite(kilograms);
-  return massKg === null ? null : kilogramsToTonnes(massKg);
-}
-
-/** Converts a unit price in currency/kg to currency/tonne. */
-export function pricePerKilogramToPerTonne(pricePerKilogram: number): number {
-  return assertFinite(pricePerKilogram, "pricePerKilogram") * KILOGRAMS_PER_TON;
-}
-
-/** Converts a unit price in currency/tonne to currency/kg. */
-export function pricePerTonneToPerKilogram(pricePerTonne: number): number {
-  return assertFinite(pricePerTonne, "pricePerTonne") / KILOGRAMS_PER_TON;
 }
 
 /**

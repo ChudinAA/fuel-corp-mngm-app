@@ -56,11 +56,9 @@ import type {
 import {
   calculatePlanningBalanceChainInTonnes,
   calculateWarehouseSummaryTonnes,
-  legacyKilogramsToTonnes,
   normalizePlanningBalanceFields,
   normalizePlanningVolumeFields,
   planningVolumeTonnes,
-  tonnesToLegacyKilograms,
 } from "../unit-calculations";
 
 function startOfDay(dateStr: string): Date {
@@ -104,12 +102,7 @@ export class PlanningStorage implements IPlanningStorage {
       .orderBy(asc(planEntries.date), asc(planEntries.createdAt));
 
     const recalculated = calculatePlanningBalanceChainInTonnes(
-      warehouse?.currentBalanceTonnes ??
-        legacyKilogramsToTonnes(
-          warehouse?.currentBalance,
-          "warehouse current balance",
-          0,
-        ),
+      warehouse?.currentBalanceTonnes ?? 0,
       entries,
     );
     const entryById = new Map(entries.map((entry) => [entry.id, entry]));
@@ -117,23 +110,17 @@ export class PlanningStorage implements IPlanningStorage {
     for (const result of recalculated) {
       if (!result.shouldPersist) continue;
       const entry = entryById.get(result.id);
-      const existingBalance =
-        entry?.balanceAfter === null || entry?.balanceAfter === undefined
-          ? Number.NaN
-          : Number(entry.balanceAfter);
       const existingBalanceTonnes =
         entry?.balanceAfterTonnes === null || entry?.balanceAfterTonnes === undefined
           ? Number.NaN
           : Number(entry.balanceAfterTonnes);
       if (
         entry &&
-        (existingBalance !== Number(result.balanceAfterKg) ||
-          existingBalanceTonnes !== Number(result.balanceAfterTonnes))
+        existingBalanceTonnes !== Number(result.balanceAfterTonnes)
       ) {
         await db
           .update(planEntries)
           .set({
-            balanceAfter: result.balanceAfterKg,
             balanceAfterTonnes: result.balanceAfterTonnes,
           })
           .where(eq(planEntries.id, result.id));
@@ -235,8 +222,8 @@ export class PlanningStorage implements IPlanningStorage {
       .update(planEntries)
       .set({
         ...data,
-        ...normalizePlanningVolumeFields(data, existing),
-        ...normalizePlanningBalanceFields(data, existing),
+        ...normalizePlanningVolumeFields(data),
+        ...normalizePlanningBalanceFields(data),
         updatedAt: sql`NOW()`,
         updatedById: userId,
       })
@@ -396,7 +383,7 @@ export class PlanningStorage implements IPlanningStorage {
         .update(supplierAllocatedVolumes)
         .set({
           ...data,
-          ...normalizePlanningVolumeFields(data, existing),
+          ...normalizePlanningVolumeFields(data),
           updatedAt: sql`NOW()`,
           updatedById: data.createdById,
         })
@@ -678,12 +665,9 @@ export class PlanningStorage implements IPlanningStorage {
         byDate.set(dateKey, {
           row: {
             date: dateKey,
-            incomeActual: "0.00",
             incomeActualTonnes: "0.00000",
-            expenseActual: "0.00",
             expenseActualTonnes: "0.00000",
-            factBalanceAfter: t.balanceAfter || null,
-            factBalanceAfterTonnes: null,
+            factBalanceAfterTonnes: t.balanceAfterTonnes || null,
             details: [],
           },
           incomeTonnes: 0,
@@ -692,34 +676,24 @@ export class PlanningStorage implements IPlanningStorage {
       }
       const daily = byDate.get(dateKey)!;
       const entry = daily.row;
-      const balanceAfterTonnes =
-        t.balanceAfterTonnes ??
-        (t.balanceAfter === null || t.balanceAfter === undefined
-          ? null
-          : legacyKilogramsToTonnes(
-              Number.parseFloat(t.balanceAfter),
-              "actual balance",
-            ).toFixed(5));
+      const balanceAfterTonnes = t.balanceAfterTonnes ?? null;
       if (balanceAfterTonnes !== null) {
-        entry.factBalanceAfter = balanceAfterTonnes;
         entry.factBalanceAfterTonnes = balanceAfterTonnes;
-        entry.factBalanceAfter = tonnesToLegacyKilograms(
-          Number(balanceAfterTonnes),
-        );
       }
 
-      const quantityValue = t.quantityTonnes ?? t.quantity;
-      if (quantityValue == null) {
+      if (t.quantityTonnes == null) {
         throw new Error(
-          `Warehouse transaction ${t.id} has no saved quantity`,
+          `Warehouse transaction ${t.id} has no saved quantityTonnes`,
         );
       }
-      const rawQty = Number.parseFloat(quantityValue);
+      const rawQty = Number.parseFloat(t.quantityTonnes);
+      if (!Number.isFinite(rawQty)) {
+        throw new Error(
+          `Warehouse transaction ${t.id} has invalid quantityTonnes`,
+        );
+      }
       const absQty = Math.abs(rawQty);
-      const quantityTonnes =
-        t.quantityTonnes == null
-          ? legacyKilogramsToTonnes(absQty, "actual quantity")
-          : absQty;
+      const quantityTonnes = absQty;
       let isExpense: boolean;
 
       if (t.transactionType === "inventory") {
@@ -773,11 +747,9 @@ export class PlanningStorage implements IPlanningStorage {
         sourceType: t.sourceType || "",
         sourceId: t.sourceId || "",
         label,
-        quantity: tonnesToLegacyKilograms(quantityTonnes),
         quantityTonnes: quantityTonnes.toFixed(5),
         date: dateKey,
         isExpense,
-        balanceAfter: t.balanceAfter || null,
         balanceAfterTonnes,
         counterpartyName,
       });
@@ -786,9 +758,7 @@ export class PlanningStorage implements IPlanningStorage {
     return Array.from(byDate.values()).map(
       ({ row, incomeTonnes, expenseTonnes }) => ({
         ...row,
-        incomeActual: tonnesToLegacyKilograms(incomeTonnes),
         incomeActualTonnes: incomeTonnes.toFixed(5),
-        expenseActual: tonnesToLegacyKilograms(expenseTonnes),
         expenseActualTonnes: expenseTonnes.toFixed(5),
       }),
     );
@@ -920,32 +890,16 @@ export class PlanningStorage implements IPlanningStorage {
         topLevelIncomeBySupplier.get(res.supplierId) || 0;
       const topLevelExpenseTonnes =
         topLevelExpenseBySupplier.get(res.supplierId) || 0;
-      const allocatedVolume = tonnesToLegacyKilograms(allocatedVolumeTonnes);
-      const demand = tonnesToLegacyKilograms(demandTonnes);
-      const balance = tonnesToLegacyKilograms(
-        allocatedVolumeTonnes - demandTonnes,
-      );
-      const topLevelIncome = tonnesToLegacyKilograms(topLevelIncomeTonnes);
-      const topLevelExpense = tonnesToLegacyKilograms(topLevelExpenseTonnes);
-      const topLevelVolume = tonnesToLegacyKilograms(
-        topLevelIncomeTonnes + topLevelExpenseTonnes,
-      );
       return {
         supplierId: res.supplierId,
         supplierName: res.supplierName,
-        allocatedVolume,
         allocatedVolumeTonnes: allocatedVolumeTonnes.toFixed(5),
-        demand,
         demandTonnes: demandTonnes.toFixed(5),
-        balance,
         balanceTonnes: (allocatedVolumeTonnes - demandTonnes).toFixed(5),
-        topLevelVolume,
         topLevelVolumeTonnes: (
           topLevelIncomeTonnes + topLevelExpenseTonnes
         ).toFixed(5),
-        topLevelIncome,
         topLevelIncomeTonnes: topLevelIncomeTonnes.toFixed(5),
-        topLevelExpense,
         topLevelExpenseTonnes: topLevelExpenseTonnes.toFixed(5),
       };
     });
@@ -954,17 +908,11 @@ export class PlanningStorage implements IPlanningStorage {
       rows.push({
         supplierId: null as any,
         supplierName: "Не указан поставщик",
-        allocatedVolume: "0.00",
         allocatedVolumeTonnes: "0.00000",
-        demand: tonnesToLegacyKilograms(unassignedDemand),
         demandTonnes: unassignedDemand.toFixed(5),
-        balance: tonnesToLegacyKilograms(-unassignedDemand),
         balanceTonnes: (-unassignedDemand).toFixed(5),
-        topLevelVolume: "0.00",
         topLevelVolumeTonnes: "0.00000",
-        topLevelIncome: "0.00",
         topLevelIncomeTonnes: "0.00000",
-        topLevelExpense: "0.00",
         topLevelExpenseTonnes: "0.00000",
         isUnassigned: true,
       } as any);
@@ -1015,26 +963,8 @@ export class PlanningStorage implements IPlanningStorage {
           0,
         );
       const lastEntry = whEntries[whEntries.length - 1];
-      const balancePlanTonnes = lastEntry
-        ? lastEntry.balanceAfterTonnes ??
-          (lastEntry.balanceAfter === null
-            ? 0
-            : legacyKilogramsToTonnes(
-                lastEntry.balanceAfter,
-                "planned warehouse balance",
-              ))
-        : 0;
-      const balancePlan = tonnesToLegacyKilograms(Number(balancePlanTonnes));
-      const balanceFactTonnes =
-        wh.currentBalanceTonnes ??
-        legacyKilogramsToTonnes(
-          wh.currentBalance || "0",
-          "warehouse current balance",
-          0,
-        );
-      const balanceFact = tonnesToLegacyKilograms(
-        Number(balanceFactTonnes),
-      );
+      const balancePlanTonnes = lastEntry?.balanceAfterTonnes ?? "0";
+      const balanceFactTonnes = wh.currentBalanceTonnes ?? "0";
       const tonneValues = calculateWarehouseSummaryTonnes(
         plannedIncome,
         plannedExpense,
@@ -1045,13 +975,9 @@ export class PlanningStorage implements IPlanningStorage {
       result.push({
         warehouseId: wh.id,
         warehouseName: wh.name,
-        plannedIncome: tonnesToLegacyKilograms(plannedIncome),
         plannedIncomeTonnes: tonneValues.plannedIncomeTonnes.toFixed(5),
-        plannedExpense: tonnesToLegacyKilograms(plannedExpense),
         plannedExpenseTonnes: tonneValues.plannedExpenseTonnes.toFixed(5),
-        balancePlan,
         balancePlanTonnes: tonneValues.balancePlanTonnes.toFixed(5),
-        balanceFact,
         balanceFactTonnes: tonneValues.balanceFactTonnes.toFixed(5),
       });
     }
@@ -1127,13 +1053,11 @@ export class PlanningStorage implements IPlanningStorage {
       const whVolumes = Array.from(whMap.entries()).map(([wid, vol]) => ({
         warehouseId: wid,
         warehouseName: warehouseNameMap.get(wid) || "—",
-        volume: tonnesToLegacyKilograms(vol),
         volumeTonnes: vol.toFixed(5),
       }));
       return {
         customerId,
         customerName: nameMap.get(customerId) || "—",
-        volume: tonnesToLegacyKilograms(volume),
         volumeTonnes: volume.toFixed(5),
         warehouses: whVolumes,
       };
@@ -1365,9 +1289,7 @@ export class PlanningStorage implements IPlanningStorage {
     return {
       warehouseId,
       warehouseName: wh?.name || "—",
-      topLevelIncome: tonnesToLegacyKilograms(topLevelIncome),
       topLevelIncomeTonnes: topLevelIncome.toFixed(5),
-      topLevelExpense: tonnesToLegacyKilograms(topLevelExpense),
       topLevelExpenseTonnes: topLevelExpense.toFixed(5),
     };
   }

@@ -1,5 +1,5 @@
 
-import { pgTable, uuid, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, index, decimal } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -18,8 +18,14 @@ export const governmentContracts = pgTable("government_contracts", {
   currentAmount: text("current_amount"), // Текущая сумма продаж
   remainingAmount: text("remaining_amount"), // Остаток
   productType: text("product_type"), // Тип продукта
-  plannedVolume: text("planned_volume"), // Плановый объем
-  actualVolume: text("actual_volume"), // Фактический объем
+  plannedVolumeTonnes: decimal("planned_volume_tonnes", {
+    precision: 18,
+    scale: 5,
+  }),
+  actualVolumeTonnes: decimal("actual_volume_tonnes", {
+    precision: 18,
+    scale: 5,
+  }),
   status: text("status").default("active").notNull(), // 'active', 'completed', 'suspended'
   notes: text("notes"),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -44,7 +50,8 @@ export const governmentContractsRelations = relations(governmentContracts, ({ on
 
 // ============ INSERT SCHEMAS ============
 
-export const insertGovernmentContractSchema = createInsertSchema(governmentContracts);
+export const insertGovernmentContractSchema =
+  createInsertSchema(governmentContracts).strict();
 
 // ============ TYPES ============
 

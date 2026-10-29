@@ -19,10 +19,7 @@ import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/cons
 import { CalculatedField } from "./calculated-field";
 import { formatCurrency } from "../utils";
 import { formatPricePerTonne, formatTonnes } from "@shared/units";
-import {
-  contractPricePerTonne,
-  optLegacyKilogramsToTonnes,
-} from "../unit-calculations";
+import { contractPricePerTonne } from "../unit-calculations";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,7 +45,6 @@ interface OptPricingSectionProps {
   profit: number | null;
   otherServiceFee?: number;
   supplierWarehouse: Warehouse | undefined;
-  finalKg: number;
   purchasePriceRequiresDensity: boolean;
   isEditing: boolean;
   contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
@@ -56,10 +52,8 @@ interface OptPricingSectionProps {
     status: "ok" | "warning" | "error";
     message: string;
   };
-  warehouseBalanceAtDate: number | null;
-  warehouseBalanceAtDateTonnes?: number | null;
+  warehouseBalanceAtDateTonnes: number | null;
   isWarehouseBalanceLoading?: boolean;
-  warehousePriceAtDate?: number | null;
   finalTonnes: number;
 }
 
@@ -78,15 +72,12 @@ export function OptPricingSection({
   profit,
   otherServiceFee = 0,
   supplierWarehouse,
-  finalKg,
   purchasePriceRequiresDensity,
   isEditing,
   contractVolumeStatus,
   supplierContractVolumeStatus,
-  warehouseBalanceAtDate,
   warehouseBalanceAtDateTonnes,
   isWarehouseBalanceLoading,
-  warehousePriceAtDate,
   finalTonnes,
 }: OptPricingSectionProps) {
   const { hasPermission } = useAuth();
@@ -122,10 +113,7 @@ export function OptPricingSection({
       return { status: "ok", message: "—" };
     }
 
-    const availableBalanceTonnes =
-      warehouseBalanceAtDateTonnes != null
-        ? warehouseBalanceAtDateTonnes
-        : optLegacyKilogramsToTonnes(warehouseBalanceAtDate ?? 0);
+    const availableBalanceTonnes = warehouseBalanceAtDateTonnes ?? 0;
 
     // Остаток на складе сейчас (без учета текущего ввода)
     if (finalTonnes <= 0) {

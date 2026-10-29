@@ -1,13 +1,11 @@
 import {
-  kilogramsToTonnes,
   formatPricePerTonne,
-  pricePerKilogramToPerTonne,
+  litresAndDensityToTonnes,
   pricePerLitreToPerTonne,
-  tonnesToKilograms,
 } from "@shared/units";
 
 export type RefuelingInputMode = "liters" | "tonnes";
-export type RefuelingPriceUnit = "kg" | "liter" | "tonne";
+export type RefuelingPriceUnit = "liter" | "tonne";
 
 export function formatRefuelingPriceOption(
   sourcePrice: number | string,
@@ -17,7 +15,7 @@ export function formatRefuelingPriceOption(
   sourceUnit?: RefuelingPriceUnit,
 ): string {
   const price = parseFinite(sourcePrice);
-  const unit = sourceUnit ?? (inputMode === "liters" ? "liter" : "kg");
+  const unit = sourceUnit ?? (inputMode === "liters" ? "liter" : "tonne");
   const pricePerTonne = calculateRefuelingPricePerTonne(
     sourcePrice,
     inputMode,
@@ -56,7 +54,7 @@ export function calculateRefuelingMassTonnes(
 
   const parsedDensity = parseFinite(density);
   if (parsedDensity === null || parsedDensity <= 0) return null;
-  return kilogramsToTonnes(parsedQuantity * parsedDensity);
+  return litresAndDensityToTonnes(parsedQuantity, parsedDensity);
 }
 
 export function calculateRefuelingPricePerTonne(
@@ -68,9 +66,8 @@ export function calculateRefuelingPricePerTonne(
   const price = parseFinite(sourcePrice);
   if (price === null || price < 0) return null;
 
-  const unit = sourceUnit ?? (inputMode === "liters" ? "liter" : "kg");
+  const unit = sourceUnit ?? (inputMode === "liters" ? "liter" : "tonne");
   if (unit === "tonne") return price;
-  if (unit === "kg") return pricePerKilogramToPerTonne(price);
 
   const parsedDensity = parseFinite(density);
   if (parsedDensity === null || parsedDensity <= 0) return null;
@@ -91,19 +88,4 @@ export function calculateRefuelingAmount(
     return null;
   }
   return pricePerTonne * quantityTonnes;
-}
-
-export function calculateStoredRefuelingMassTonnes(
-  quantityKg: number | string | null | undefined,
-  _quantityLiters: number | string | null | undefined,
-  _density: number | string | null | undefined,
-): number | null {
-  const kilograms = parseFinite(quantityKg);
-  return kilograms === null || kilograms < 0
-    ? null
-    : kilogramsToTonnes(kilograms);
-}
-
-export function refuelingTonnesToLegacyKg(tonnes: number): number {
-  return tonnesToKilograms(tonnes);
 }

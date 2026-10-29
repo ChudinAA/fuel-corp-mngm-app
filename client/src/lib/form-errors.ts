@@ -10,7 +10,7 @@ const FIELD_LABELS: Record<string, string> = {
   customerBasisId: "Базис покупателя",
   refuelingDate: "Дата заправки",
   dealDate: "Дата сделки",
-  quantityKg: "Количество (т)",
+  quantityTonnes: "Количество (т)",
   quantityLiters: "Количество (литры)",
   productType: "Вид продукта",
   inputMode: "Режим ввода",

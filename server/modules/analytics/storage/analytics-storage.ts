@@ -4,15 +4,14 @@ import { db } from "server/db";
 import { opt, aircraftRefueling, savedReports, suppliers, customers, warehouseTransactions } from "@shared/schema";
 import { IAnalyticsStorage, AnalyticsData, AnalyticsSummary } from "./types";
 import type { SavedReport } from "../../reports/storage/types";
-import { legacyDealMassToTonnes } from "@shared/units";
 import { optMassTonnesSql } from "../../opt/opt-mass-sql";
 
 const dealMassTonnes = (deal: {
-  quantityKg: string | null;
-  quantityLiters: string | null;
-  density: string | null;
-}) =>
-  legacyDealMassToTonnes(deal.quantityKg, deal.quantityLiters, deal.density) ?? 0;
+  quantityTonnes: string | null;
+}) => {
+  const tonnes = Number(deal.quantityTonnes ?? 0);
+  return Number.isFinite(tonnes) ? tonnes : 0;
+};
 
 export class AnalyticsStorage implements IAnalyticsStorage {
   async getAnalyticsData(
@@ -185,10 +184,9 @@ export class AnalyticsStorage implements IAnalyticsStorage {
 
         const [refuelingSales] = await db
           .select({
-            refuelingVolumeTonnes: sql<string>`COALESCE(SUM(COALESCE(
-              ${aircraftRefueling.quantityTonnes},
-              CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
-            )), 0)::text`,
+            refuelingVolumeTonnes: sql<string>`COALESCE(SUM(
+              CAST(${aircraftRefueling.quantityTonnes} AS NUMERIC)
+            ), 0)::text`,
             refuelingRevenue: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
           })
           .from(aircraftRefueling)

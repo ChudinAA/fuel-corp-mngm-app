@@ -1,11 +1,6 @@
 import {
   litresAndDensityToTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-  tonnesToKilograms,
 } from "@shared/units";
-import { resolveWarehouseBalanceTonnes } from "@/pages/shared/utils/warehouse-balance-units";
 
 export type EquipmentMovementInputMode = "liters" | "tonnes";
 
@@ -34,42 +29,23 @@ export function calculateEquipmentMovementTonnes(
   return litresAndDensityToTonnes(liters, density);
 }
 
-export function equipmentMovementTonnesToLegacyKg(tonnes: number): number {
-  return tonnesToKilograms(tonnes);
-}
-
-export function equipmentMovementTonnesRateToLegacyKgRate(
-  ratePerTonne: number,
-): number {
-  return pricePerTonneToPerKilogram(ratePerTonne);
-}
-
-export function equipmentMovementLegacyKgToTonnes(
-  quantityKg: string | number | null | undefined,
-): number | null {
-  const kilograms = parseFinite(quantityKg);
-  return kilograms === null ? null : kilogramsToTonnes(kilograms);
-}
-
-export function equipmentMovementLegacyPricePerKgToPerTonne(
-  pricePerKg: string | number | null | undefined,
-): number | null {
-  const price = parseFinite(pricePerKg);
-  return price === null ? null : pricePerKilogramToPerTonne(price);
-}
-
 export function calculateLikAvailableBalanceTonnes(
   balanceSnapshot: unknown,
   fallbackBalanceTonnes: string | number | null | undefined,
-  fallbackBalanceKilograms: string | number | null | undefined,
   isEditing: boolean,
   initialQuantityTonnes: number,
 ): number {
-  const currentBalanceTonnes = resolveWarehouseBalanceTonnes(
-    balanceSnapshot,
-    fallbackBalanceTonnes,
-    fallbackBalanceKilograms,
-  );
+  const snapshotBalance =
+    balanceSnapshot &&
+    typeof balanceSnapshot === "object" &&
+    "balanceTonnes" in balanceSnapshot
+      ? parseFinite((balanceSnapshot as { balanceTonnes?: unknown }).balanceTonnes as string | number)
+      : null;
+  const currentBalanceTonnes =
+    snapshotBalance ?? parseFinite(fallbackBalanceTonnes);
+  if (currentBalanceTonnes === null) {
+    throw new Error("Equipment movement source is missing balanceTonnes");
+  }
   return currentBalanceTonnes +
     (isEditing && Number.isFinite(initialQuantityTonnes)
       ? initialQuantityTonnes

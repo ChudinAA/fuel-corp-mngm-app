@@ -12,18 +12,7 @@ import { warehouses } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { RecalculationQueueService } from "../services/recalculation-queue-service";
 import { format } from "date-fns";
-import { equipmentToApi } from "../../warehouses-equipment/equipment-api-adapters";
-import { normalizeWarehouseLimit } from "../warehouse-limit-units";
-import {
-  warehouseBalanceToApi,
-  warehouseMonthlyStatsToApi,
-  warehouseTransactionToApi,
-  warehouseToApi,
-} from "../warehouse-api-adapters";
-import {
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
-} from "@shared/units";
+import { insertWarehouseSchema } from "../entities/warehouses";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get(
@@ -32,7 +21,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     requirePermission("warehouses", "view"),
     async (req, res) => {
       const data = await storage.warehouses.getAllWarehouses();
-      res.json(data.map(warehouseToApi));
+      res.json(data);
     },
   );
 
@@ -46,7 +35,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           req.session.userId as unknown as string,
         );
         const data = await storage.warehouses.getLikWarehouses(allowedIds);
-        res.json(data.map(warehouseToApi));
+        res.json(data);
       } catch (error) {
         res.status(500).json({ message: "Ошибка получения складов ОП" });
       }
@@ -63,7 +52,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       if (!warehouse) {
         return res.status(404).json({ message: "Склад не найден" });
       }
-      res.json(warehouseToApi(warehouse));
+        res.json(warehouse);
     },
   );
 
@@ -114,6 +103,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           services,
           ...warehouseData
         } = req.body;
+        const parsedWarehouse = insertWarehouseSchema.safeParse(warehouseData);
+        if (!parsedWarehouse.success) {
+          return res.status(400).json(parsedWarehouse.error);
+        }
 
         const baseIds = Array.isArray(bases)
           ? bases.map((b: { baseId: string }) => b.baseId).filter(Boolean)
@@ -124,10 +117,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           : [];
 
         const data = {
-          ...warehouseData,
+          ...parsedWarehouse.data,
           baseIds,
           services: parsedServices,
-          createdById: req.session.userId,
+          createdById: req.session.userId!,
           supplierId: warehouseData.supplierId || null,
           storageCost:
             warehouseData.storageCost === "" ? null : warehouseData.storageCost,
@@ -199,7 +192,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         }
 
         SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(warehouseToApi(item));
+        res.status(201).json(item);
       } catch (error: any) {
         console.error("Warehouse creation error:", error);
         if (error instanceof z.ZodError) {
@@ -277,15 +270,17 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           services,
           ...warehouseData
         } = req.body;
+        const parsedWarehouse = insertWarehouseSchema.partial().safeParse(warehouseData);
+        if (!parsedWarehouse.success) {
+          return res.status(400).json(parsedWarehouse.error);
+        }
 
         const updateData: any = {
-          ...warehouseData,
+          ...parsedWarehouse.data,
           updatedById: req.session.userId,
         };
 
         if (updateData.storageCost === "") updateData.storageCost = null;
-        if (updateData.pvkjBalance === "") updateData.pvkjBalance = null;
-        if (updateData.pvkjAverageCost === "") updateData.pvkjAverageCost = null;
 
         if (bases !== undefined) {
           updateData.baseIds = Array.isArray(bases)
@@ -356,7 +351,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           return res.status(404).json({ message: "Склад не найден" });
         }
         SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(warehouseToApi(item));
+        res.json(item);
       } catch (error) {
         console.error("Warehouse update error:", error);
         res.status(500).json({ message: "Ошибка обновления склада" });
@@ -441,7 +436,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         const updated = await storage.warehouses.getWarehouse(warehouseId);
         if (!updated) return res.status(404).json({ message: "Склад не найден" });
         SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(warehouseToApi(updated));
+        res.json(updated);
       } catch (error: any) {
         console.error("Pin warehouse error:", error);
         res.status(500).json({ message: "Ошибка закрепления склада", error: error.message });
@@ -458,7 +453,6 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       try {
         const warehouseId = req.params.id;
         const inputSchema = z.object({
-          limitVolume: z.union([z.string(), z.number()]).nullable().optional(),
           limitVolumeTonnes: z
             .union([z.string(), z.number()])
             .nullable()
@@ -469,23 +463,29 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         if (!parsed.success) {
           return res.status(400).json({ message: "Неверные параметры лимита" });
         }
-        if (
-          parsed.data.limitVolume === undefined &&
-          parsed.data.limitVolumeTonnes === undefined
-        ) {
+        if (parsed.data.limitVolumeTonnes === undefined) {
           return res.status(400).json({ message: "Не указан объём лимита" });
         }
-        let normalizedLimit: ReturnType<typeof normalizeWarehouseLimit>;
-        try {
-          normalizedLimit = normalizeWarehouseLimit(parsed.data);
-        } catch (error) {
+        const rawLimit = parsed.data.limitVolumeTonnes;
+        let limitVolumeTonnes: string | null;
+        if (rawLimit === null) {
+          limitVolumeTonnes = null;
+        } else {
+          const rawValue = String(rawLimit).trim();
+          const numericValue = Number(rawValue);
+          if (
+            !/^\d+(?:\.\d{1,5})?$/.test(rawValue) ||
+            !Number.isFinite(numericValue) ||
+            numericValue < 0
+          ) {
           return res.status(400).json({
             message: "Лимит должен быть неотрицательным числом с точностью до 5 знаков",
-            error: error instanceof Error ? error.message : String(error),
           });
+          }
+          limitVolumeTonnes = numericValue.toFixed(5);
         }
         const { limitProductType } = parsed.data;
-        const hasLimit = normalizedLimit.limitVolumeTonnes != null;
+        const hasLimit = limitVolumeTonnes != null;
         const userId = req.session.userId ? String(req.session.userId) : undefined;
 
         let limitExpiresAt: string | null = null;
@@ -498,7 +498,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         await db
           .update(warehouses)
           .set({
-            ...normalizedLimit,
+            limitVolumeTonnes,
             limitProductType: hasLimit
               ? limitProductType || PRODUCT_TYPE.KEROSENE
               : null,
@@ -511,7 +511,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         const updated = await storage.warehouses.getWarehouse(warehouseId);
         if (!updated) return res.status(404).json({ message: "Склад не найден" });
         SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(warehouseToApi(updated));
+        res.json(updated);
       } catch (error: any) {
         console.error("Set limit error:", error);
         res.status(500).json({ message: "Ошибка установки лимита", error: error.message });
@@ -532,35 +532,21 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           targetDate,
           targetBalanceTonnes,
           targetAverageCostPerTonne,
-          targetBalance,
-          targetAverageCost,
         } = req.body;
         const userId = req.session.userId ? String(req.session.userId) : undefined;
 
-        const rawBalance =
-          targetBalanceTonnes !== undefined
-            ? targetBalanceTonnes
-            : targetBalance;
-        const rawCost =
-          targetAverageCostPerTonne !== undefined
-            ? targetAverageCostPerTonne
-            : targetAverageCost;
-        const parsedBalance =
-          rawBalance === undefined || rawBalance === null || String(rawBalance).trim() === ""
-            ? Number.NaN
-            : Number(rawBalance);
-        const parsedCost =
-          rawCost === undefined || rawCost === null || String(rawCost).trim() === ""
-            ? Number.NaN
-            : Number(rawCost);
         const balanceTonnes =
-          targetBalanceTonnes !== undefined
-            ? parsedBalance
-            : kilogramsToTonnes(parsedBalance);
+          targetBalanceTonnes === undefined ||
+          targetBalanceTonnes === null ||
+          String(targetBalanceTonnes).trim() === ""
+            ? Number.NaN
+            : Number(targetBalanceTonnes);
         const averageCostPerTonne =
-          targetAverageCostPerTonne !== undefined
-            ? parsedCost
-            : pricePerKilogramToPerTonne(parsedCost);
+          targetAverageCostPerTonne === undefined ||
+          targetAverageCostPerTonne === null ||
+          String(targetAverageCostPerTonne).trim() === ""
+            ? Number.NaN
+            : Number(targetAverageCostPerTonne);
 
         if (
           !productType ||
@@ -619,7 +605,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         );
         res.json({
           ...result,
-          transactions: result.transactions.map(warehouseTransactionToApi),
+          transactions: result.transactions,
         });
       } catch (error) {
         console.error("Error fetching transactions:", error);
@@ -642,7 +628,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           id,
           startOfMonth,
         );
-        res.json(warehouseMonthlyStatsToApi(stats));
+        res.json(stats);
       } catch (error) {
         console.error("Error calculating monthly stats:", error);
         res.status(500).json({ message: "Ошибка получения статистики склада" });
@@ -669,7 +655,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           date,
           productType,
         );
-        res.json(warehouseBalanceToApi(balanceData));
+        res.json(balanceData);
       } catch (error) {
         res.status(500).json({ message: "Ошибка получения остатка склада" });
       }
@@ -684,7 +670,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       try {
         const id = req.params.id;
         const equipment = await storage.equipment.getEquipmentsByWarehouse(id);
-        res.json(equipment.map(equipmentToApi));
+        res.json(equipment);
       } catch (error: any) {
         console.error("Error fetching warehouse equipment:", error);
         res

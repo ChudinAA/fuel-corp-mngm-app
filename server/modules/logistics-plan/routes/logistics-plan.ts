@@ -762,7 +762,7 @@ export function registerLogisticsPlanRoutes(app: Express) {
           if (!wbPrimary.has(wb.warehouseId)) wbPrimary.set(wb.warehouseId, wb.baseId);
         }
 
-        // Enrich each unassigned plan_entry with from/to names, entity ids/types, volumeTons and deliveryDeadline
+        // Enrich each unassigned plan_entry with names, entity types, volumeTonnes and deadline.
         const DTYPE = { BASE: "base", WAREHOUSE: "warehouse" };
         const unassignedDemands = unassignedEntries.map((entry: any) => {
           const wBasisId = wbPrimary.get(entry.warehouseId);
@@ -791,8 +791,8 @@ export function registerLogisticsPlanRoutes(app: Express) {
           // deliveryDeadline = entry.date - 2 days
           const d = new Date(entry.date);
           d.setUTCDate(d.getUTCDate() - 2);
-          // volume is stored in kg — convert to tonnes for display
-          const volumeTons = entry.volume != null ? (parseFloat(entry.volume) / 1000) : null;
+          const volumeTonnes =
+            entry.volumeTonnes == null ? null : Number(entry.volumeTonnes);
           // Explain why from/to entity might be missing
           let missingDataReason: string | null = null;
           if (entry.type === "income" && !entry.basisId) {
@@ -808,7 +808,7 @@ export function registerLogisticsPlanRoutes(app: Express) {
             fromEntityId,
             toEntityType,
             toEntityId,
-            volumeTons,
+            volumeTonnes,
             missingDataReason,
             deliveryDeadline: d.toISOString(),
           };

@@ -37,8 +37,6 @@ import type { EquipmentApi, EquipmentTransactionApi } from "../types";
 import {
   formatPricePerTonne,
   formatTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { ProductTypeBadge } from "@/components/product-type-badge";
@@ -137,40 +135,24 @@ export function EquipmentDetailsDialog({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Керосин: {formatTonnes(
-                  equipment.currentBalanceTonnes !== undefined
-                    ? Number(equipment.currentBalanceTonnes)
-                    : kilogramsToTonnes(Number(equipment.currentBalance || 0)),
-                )} т
+                Керосин: {formatTonnes(equipment.currentBalanceTonnes)} т
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Себест: {formatPricePerTonne(
-                  equipment.averageCostPerTonne != null
-                    ? Number(equipment.averageCostPerTonne)
-                    : pricePerKilogramToPerTonne(Number(equipment.averageCost || 0)),
-                )} ₽/т
+                Себест: {formatPricePerTonne(equipment.averageCostPerTonne ?? 0)} ₽/т
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                ПВКЖ: {formatTonnes(
-                  equipment.pvkjBalanceTonnes !== undefined
-                    ? Number(equipment.pvkjBalanceTonnes)
-                    : kilogramsToTonnes(Number(equipment.pvkjBalance || 0)),
-                )} т
+                ПВКЖ: {formatTonnes(equipment.pvkjBalanceTonnes)} т
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Себест: {formatPricePerTonne(
-                  equipment.pvkjAverageCostPerTonne != null
-                    ? Number(equipment.pvkjAverageCostPerTonne)
-                    : pricePerKilogramToPerTonne(Number(equipment.pvkjAverageCost || 0)),
-                )} ₽/т
+                Себест: {formatPricePerTonne(equipment.pvkjAverageCostPerTonne ?? 0)} ₽/т
               </p>
             </CardContent>
           </Card>
@@ -201,8 +183,9 @@ export function EquipmentDetailsDialog({
               </TableHeader>
               <TableBody>
                 {transactions.map((tx) => {
-                  const costChanged =
-                    tx.averageCostBefore !== tx.averageCostAfter;
+                    const costChanged =
+                      tx.averageCostBeforePerTonne !==
+                      tx.averageCostAfterPerTonne;
                   return (
                   <TableRow key={tx.id}>
                     <TableCell className="text-xs">
@@ -234,34 +217,19 @@ export function EquipmentDetailsDialog({
                       className={`text-right font-medium text-sm ${isReceipt(tx.transactionType) ? "text-green-600" : "text-red-600"}`}
                     >
                       {isReceipt(tx.transactionType) ? "+" : ""}
-                      {formatTonnes(
-                        tx.quantityTonnes ??
-                          kilogramsToTonnes(Number(tx.quantity)),
-                      )}
+                      {formatTonnes(tx.quantityTonnes)}
                     </TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground">
-                      {formatTonnes(
-                        tx.balanceBeforeTonnes ??
-                          kilogramsToTonnes(Number(tx.balanceBefore || 0)),
-                      )} т
+                      {formatTonnes(tx.balanceBeforeTonnes ?? 0)} т
                     </TableCell>
                     <TableCell className="text-right text-xs font-medium">
-                      {formatTonnes(
-                        tx.balanceAfterTonnes ??
-                          kilogramsToTonnes(Number(tx.balanceAfter || 0)),
-                      )} т
+                      {formatTonnes(tx.balanceAfterTonnes ?? 0)} т
                     </TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground">
-                      {formatPricePerTonne(
-                        tx.averageCostBeforePerTonne ??
-                          pricePerKilogramToPerTonne(Number(tx.averageCostBefore || 0)),
-                      )}
+                      {formatPricePerTonne(tx.averageCostBeforePerTonne ?? 0)}
                     </TableCell>
                     <TableCell className={`text-right text-xs font-medium ${costChanged ? "text-primary" : ""}`}>
-                      {formatPricePerTonne(
-                        tx.averageCostAfterPerTonne ??
-                          pricePerKilogramToPerTonne(Number(tx.averageCostAfter || 0)),
-                      )}
+                      {formatPricePerTonne(tx.averageCostAfterPerTonne ?? 0)}
                     </TableCell>
                   </TableRow>
                   );

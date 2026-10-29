@@ -170,7 +170,7 @@ export class TransportationStorage {
   }
 
   async createTransportation(data: InsertTransportation): Promise<Transportation> {
-    if (!data.buyerId || !data.dealDate || data.quantityKg == null) {
+    if (!data.buyerId || !data.dealDate || data.quantityTonnes == null) {
       throw new Error("Buyer, deal date, and quantity are required");
     }
     const dbValues = Object.fromEntries(
@@ -178,11 +178,7 @@ export class TransportationStorage {
         ...data,
         buyerId: data.buyerId!,
         dealDate: data.dealDate!,
-        quantityKg: String(data.quantityKg),
-          quantityTonnes:
-            data.quantityTonnes === null || data.quantityTonnes === undefined
-              ? null
-              : String(data.quantityTonnes),
+        quantityTonnes: String(data.quantityTonnes),
       }).map(([key, value]) => [key, typeof value === "number" ? String(value) : value]),
     );
     const [created] = await db
@@ -250,7 +246,7 @@ export class TransportationStorage {
     basisId?: string | null;
     customerBasisId?: string | null;
     deliveryLocationId?: string | null;
-    quantityKg: number;
+    quantityTonnes: number;
   }): Promise<boolean> {
     const existing = await db.query.transportation.findFirst({
       where: and(
@@ -269,7 +265,7 @@ export class TransportationStorage {
         data.deliveryLocationId
           ? eq(transportation.deliveryLocationId, data.deliveryLocationId)
           : isNull(transportation.deliveryLocationId),
-        eq(transportation.quantityKg, data.quantityKg.toString()),
+        eq(transportation.quantityTonnes, data.quantityTonnes.toString()),
         isNull(transportation.deletedAt),
         eq(transportation.isDraft, false),
       ),

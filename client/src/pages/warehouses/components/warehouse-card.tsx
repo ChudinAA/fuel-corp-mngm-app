@@ -47,14 +47,12 @@ import { AuditPanel } from "@/components/audit-panel";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
-import type { Warehouse, Base } from "@shared/schema";
+import type { Base } from "@shared/schema";
 import type { WarehouseTransaction, WarehouseWithTonnes } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
 import {
   formatPricePerTonne,
   formatTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 import { BASE_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
@@ -64,8 +62,8 @@ import { SetLimitDialog } from "./set-limit-dialog";
 
 interface WarehouseCardProps {
   warehouse: WarehouseWithTonnes;
-  onEdit: (warehouse: Warehouse) => void;
-  onViewDetails: (warehouse: Warehouse) => void;
+  onEdit: (warehouse: WarehouseWithTonnes) => void;
+  onViewDetails: (warehouse: WarehouseWithTonnes) => void;
   isBase?: boolean;
   showPinButton?: boolean;
 }
@@ -86,13 +84,8 @@ function formatServiceValue(serviceType: string, serviceValue: string): string {
   return serviceValue;
 }
 
-function isLimitActive(warehouse: Warehouse): boolean {
-  if (
-    warehouse.limitVolumeTonnes == null &&
-    warehouse.limitVolume == null
-  ) {
-    return false;
-  }
+function isLimitActive(warehouse: WarehouseWithTonnes): boolean {
+  if (warehouse.limitVolumeTonnes == null) return false;
   if (!warehouse.limitExpiresAt) return false;
   const expires = new Date(warehouse.limitExpiresAt);
   const today = new Date();
@@ -114,26 +107,10 @@ export function WarehouseCard({
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [limitOpen, setLimitOpen] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
-  const balance = parseFloat(warehouse.currentBalance || "0");
-  const cost = parseFloat(warehouse.averageCost || "0");
-  const pvkjBalance = parseFloat(warehouse.pvkjBalance || "0");
-  const pvkjCost = parseFloat(warehouse.pvkjAverageCost || "0");
-  const balanceTonnes =
-    warehouse.currentBalanceTonnes != null
-      ? Number(warehouse.currentBalanceTonnes)
-      : kilogramsToTonnes(balance);
-  const costPerTonne =
-    warehouse.averageCostPerTonne != null
-      ? Number(warehouse.averageCostPerTonne)
-      : pricePerKilogramToPerTonne(cost);
-  const pvkjBalanceTonnes =
-    warehouse.pvkjBalanceTonnes != null
-      ? Number(warehouse.pvkjBalanceTonnes)
-      : kilogramsToTonnes(pvkjBalance);
-  const pvkjCostPerTonne =
-    warehouse.pvkjAverageCostPerTonne != null
-      ? Number(warehouse.pvkjAverageCostPerTonne)
-      : pricePerKilogramToPerTonne(pvkjCost);
+  const balanceTonnes = Number(warehouse.currentBalanceTonnes ?? 0);
+  const costPerTonne = Number(warehouse.averageCostPerTonne ?? 0);
+  const pvkjBalanceTonnes = Number(warehouse.pvkjBalanceTonnes ?? 0);
+  const pvkjCostPerTonne = Number(warehouse.pvkjAverageCostPerTonne ?? 0);
   const isInactive = !warehouse.isActive;
   const { hasPermission } = useAuth();
 
@@ -146,9 +123,7 @@ export function WarehouseCard({
 
   const limitActive = isLimitActive(warehouse);
   const limitVolumeTonnes =
-    warehouse.limitVolumeTonnes != null
-      ? Number(warehouse.limitVolumeTonnes)
-      : kilogramsToTonnes(Number(warehouse.limitVolume || "0"));
+    Number(warehouse.limitVolumeTonnes ?? 0);
   const limitProductType = warehouse.limitProductType || PRODUCT_TYPE.KEROSENE;
 
   const { data: allBases } = useQuery<Base[]>({
@@ -171,10 +146,10 @@ export function WarehouseCard({
     expense: number;
     pvkjIncome: number;
     pvkjExpense: number;
-    incomeTonnes?: number;
-    expenseTonnes?: number;
-    pvkjIncomeTonnes?: number;
-    pvkjExpenseTonnes?: number;
+    incomeTonnes: number;
+    expenseTonnes: number;
+    pvkjIncomeTonnes: number;
+    pvkjExpenseTonnes: number;
   }>({
     queryKey: [`/api/warehouses/${warehouse.id}/monthly-stats`],
   });
@@ -183,9 +158,8 @@ export function WarehouseCard({
   const limitUsedTonnes = !limitActive
     ? 0
     : limitProductType === PRODUCT_TYPE.PVKJ
-      ? monthStats.pvkjIncomeTonnes ??
-        kilogramsToTonnes(monthStats.pvkjIncome)
-      : monthStats.incomeTonnes ?? kilogramsToTonnes(monthStats.income);
+      ? monthStats.pvkjIncomeTonnes
+      : monthStats.incomeTonnes;
   const limitRemainingTonnes = limitVolumeTonnes - limitUsedTonnes;
   const limitExceeded = limitRemainingTonnes < 0;
 
@@ -440,17 +414,11 @@ export function WarehouseCard({
                 <div className="flex items-center gap-2">
                   <span className="text-green-600">
                     +
-                    {formatTonnes(
-                      monthStats.incomeTonnes ??
-                        kilogramsToTonnes(monthStats.income),
-                    )}
+                    {formatTonnes(monthStats.incomeTonnes)}
                   </span>
                   <span className="text-red-600">
                     -
-                    {formatTonnes(
-                      monthStats.expenseTonnes ??
-                        kilogramsToTonnes(monthStats.expense),
-                    )}
+                    {formatTonnes(monthStats.expenseTonnes)}
                   </span>
                 </div>
               </div>
@@ -479,17 +447,11 @@ export function WarehouseCard({
                   <div className="flex items-center gap-2">
                     <span className="text-green-600">
                       +
-                      {formatTonnes(
-                        monthStats.pvkjIncomeTonnes ??
-                          kilogramsToTonnes(monthStats.pvkjIncome),
-                      )}
+                      {formatTonnes(monthStats.pvkjIncomeTonnes)}
                     </span>
                     <span className="text-red-600">
                       -
-                      {formatTonnes(
-                        monthStats.pvkjExpenseTonnes ??
-                          kilogramsToTonnes(monthStats.pvkjExpense),
-                      )}
+                      {formatTonnes(monthStats.pvkjExpenseTonnes)}
                     </span>
                   </div>
                 </div>

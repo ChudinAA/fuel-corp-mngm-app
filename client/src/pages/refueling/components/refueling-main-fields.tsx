@@ -29,7 +29,6 @@ import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
-import { resolveWarehouseBalanceTonnes } from "@/pages/shared/utils/warehouse-balance-units";
 
 interface RefuelingMainFieldsProps {
   preserveLegacySelection?: boolean;
@@ -170,12 +169,11 @@ export function RefuelingMainFields({
         const equipmentWithTonnes = equipment as Equipment & {
           currentBalanceTonnes?: string | null;
         };
-        setEquipmentBalanceTonnes?.(
-          resolveWarehouseBalanceTonnes({
-            balanceTonnes: equipmentWithTonnes.currentBalanceTonnes,
-            balance: equipment.currentBalance,
-          }),
-        );
+        const balanceTonnes = Number(equipmentWithTonnes.currentBalanceTonnes);
+        if (!Number.isFinite(balanceTonnes)) {
+          throw new Error("Equipment is missing currentBalanceTonnes");
+        }
+        setEquipmentBalanceTonnes?.(balanceTonnes);
       }
     }
   }, [selectedEquipmentId, likEquipmentList, isLik, setEquipmentBalanceTonnes]);
@@ -458,12 +456,13 @@ export function RefuelingMainFields({
                   const equipmentWithTonnes = equipment as Equipment & {
                     currentBalanceTonnes?: string | null;
                   };
-                  setEquipmentBalanceTonnes?.(
-                    resolveWarehouseBalanceTonnes({
-                      balanceTonnes: equipmentWithTonnes.currentBalanceTonnes,
-                      balance: equipment.currentBalance,
-                    }),
+                  const balanceTonnes = Number(
+                    equipmentWithTonnes.currentBalanceTonnes,
                   );
+                  if (!Number.isFinite(balanceTonnes)) {
+                    throw new Error("Equipment is missing currentBalanceTonnes");
+                  }
+                  setEquipmentBalanceTonnes?.(balanceTonnes);
                 }
               }}
               placeholder="Выберите СЗ"

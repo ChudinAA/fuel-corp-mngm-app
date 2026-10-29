@@ -25,7 +25,6 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { tonsToKg } from "../utils/planning-utils";
 import { cn } from "@/lib/utils";
 
 interface FiveDayPeriod {
@@ -243,11 +242,10 @@ export function QuickPlanDialog({
           type,
           counterpartyId: e.counterpartyId || undefined,
           basisId: e.basisId && e.basisId !== NO_BASIS ? e.basisId : undefined,
-          volume: tonsToKg(e.volume),
           volumeTonnes: e.volume,
           notes: e.notes || undefined,
           isManualBalance: false,
-          balanceAfter: null,
+          balanceAfterTonnes: null,
         });
       }
       toast({

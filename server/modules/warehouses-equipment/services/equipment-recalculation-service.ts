@@ -9,15 +9,20 @@ import {
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { WarehouseRecalculationService } from "server/modules/warehouses/services/warehouse-recalculation-service";
 import { calculateStockMovement } from "server/modules/warehouses/services/stock-transaction-calculations";
-import {
-  pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-  tonnesToKilograms,
-} from "@shared/units";
-import {
-  massMirrorFields,
-  readMassTonnes,
-} from "../equipment-balance-units";
+
+function requireEquipmentTonneValue(
+  value: unknown,
+  label: string,
+): number {
+  if (value === null || value === undefined || value === "") {
+    throw new Error(`${label} is missing its authoritative tonne value`);
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} has an invalid tonne value`);
+  }
+  return parsed;
+}
 
 export class EquipmentRecalculationService {
   static async recalculateEquipmentFromDate(
@@ -93,13 +98,18 @@ export class EquipmentRecalculationService {
       )
       .limit(1);
 
-    let currentBalance = readMassTonnes(
-      lastBefore?.balanceAfterTonnes,
-      lastBefore?.balanceAfter,
-    );
-    let currentAverageCost = pricePerKilogramToPerTonne(
-      parseFloat(lastBefore?.averageCostAfter || "0"),
-    );
+    let currentBalance = lastBefore
+      ? requireEquipmentTonneValue(
+          lastBefore.balanceAfterTonnes,
+          `Equipment transaction ${lastBefore.id} balanceAfterTonnes`,
+        )
+      : 0;
+    let currentAverageCost = lastBefore
+      ? requireEquipmentTonneValue(
+          lastBefore.averageCostAfterPerTonne,
+          `Equipment transaction ${lastBefore.id} averageCostAfterPerTonne`,
+        )
+      : 0;
 
     console.log(
       `  Initial state before ${afterDate}: balance=${currentBalance}, avgCost=${currentAverageCost}`,
@@ -141,11 +151,10 @@ export class EquipmentRecalculationService {
     console.log(`  Found ${transactions.length} transactions to recalculate`);
 
     for (const transaction of transactions) {
-      const quantity = readMassTonnes(
+      const quantity = requireEquipmentTonneValue(
         transaction.quantityTonnes,
-        transaction.quantity,
+        `Equipment transaction ${transaction.id} quantityTonnes`,
       );
-      const quantityKg = Math.abs(tonnesToKilograms(quantity));
       const isReceipt =
         transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
         transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
@@ -161,8 +170,8 @@ export class EquipmentRecalculationService {
           tx,
           transaction.sourceType,
           transaction.sourceId,
-          quantityKg,
-          pricePerTonneToPerKilogram(currentAverageCost),
+          quantity,
+          currentAverageCost,
         );
       }
 
@@ -190,7 +199,7 @@ export class EquipmentRecalculationService {
             tx,
             transaction.sourceType,
             transaction.sourceId,
-            pricePerTonneToPerKilogram(currentAverageCost),
+            currentAverageCost,
             updatedById,
           );
         }
@@ -211,18 +220,12 @@ export class EquipmentRecalculationService {
       await tx
         .update(equipmentTransactions)
         .set({
-          balanceBefore: tonnesToKilograms(currentBalance).toFixed(2),
-          balanceAfter: tonnesToKilograms(newBalance).toFixed(2),
           balanceBeforeTonnes: currentBalance.toFixed(5),
           balanceAfterTonnes: newBalance.toFixed(5),
-          averageCostBefore: pricePerTonneToPerKilogram(
-            currentAverageCost,
-          ).toFixed(4),
-          averageCostAfter: pricePerTonneToPerKilogram(
-            newAverageCost,
-          ).toFixed(4),
+          averageCostBeforePerTonne: currentAverageCost.toFixed(6),
+          averageCostAfterPerTonne: newAverageCost.toFixed(6),
           sum: newSum.toFixed(2),
-          price: pricePerTonneToPerKilogram(newPrice).toFixed(4),
+          pricePerTonne: newPrice.toFixed(6),
           updatedAt: sql`NOW()`,
           updatedById,
         })
@@ -238,20 +241,13 @@ export class EquipmentRecalculationService {
 
     // 3. Update equipment's current state
     const updateData: any = { updatedAt: sql`NOW()`, updatedById };
-    const balance = massMirrorFields(currentBalance);
 
     if (isPvkj) {
-      updateData.pvkjBalanceTonnes = balance.tonnes;
-      updateData.pvkjBalance = balance.kilograms;
-      updateData.pvkjAverageCost = pricePerTonneToPerKilogram(
-        currentAverageCost,
-      ).toFixed(4);
+      updateData.pvkjBalanceTonnes = currentBalance.toFixed(5);
+      updateData.pvkjAverageCostPerTonne = currentAverageCost.toFixed(6);
     } else {
-      updateData.currentBalanceTonnes = balance.tonnes;
-      updateData.currentBalance = balance.kilograms;
-      updateData.averageCost = pricePerTonneToPerKilogram(
-        currentAverageCost,
-      ).toFixed(4);
+      updateData.currentBalanceTonnes = currentBalance.toFixed(5);
+      updateData.averageCostPerTonne = currentAverageCost.toFixed(6);
     }
 
     await tx
@@ -268,10 +264,10 @@ export class EquipmentRecalculationService {
     tx: any,
     sourceType: string | null | undefined,
     sourceId: string | null | undefined,
-    quantity: number,
-    fallbackAverageCost: number,
+    quantityTonnes: number,
+    fallbackAverageCostPerTonne: number,
   ): Promise<number> {
-    if (!sourceId) return quantity * fallbackAverageCost;
+    if (!sourceId) return quantityTonnes * fallbackAverageCostPerTonne;
 
     if (sourceType === SOURCE_TYPE.MOVEMENT) {
       const move = await tx.query.equipmentMovement?.findFirst({
@@ -281,12 +277,12 @@ export class EquipmentRecalculationService {
       if (move) {
         const totalCost = parseFloat(move.totalCost || "0");
         if (totalCost > 0) return totalCost;
-        const costPerTonne = parseFloat(move.costPerTonne || "0");
-        if (costPerTonne > 0) {
-          return costPerTonne * (quantity / 1_000);
+        if (move.costPerTonne != null) {
+          const costPerTonne = Number(move.costPerTonne);
+          if (Number.isFinite(costPerTonne)) {
+            return costPerTonne * quantityTonnes;
+          }
         }
-        const costPerKg = parseFloat(move.costPerKg || "0");
-        if (costPerKg > 0) return costPerKg * quantity;
       }
 
       const sourceTx = await tx
@@ -306,15 +302,15 @@ export class EquipmentRecalculationService {
         .limit(1);
 
       if (sourceTx.length > 0) {
-        const srcQty = Math.abs(parseFloat(sourceTx[0].quantity));
-        const srcCost = parseFloat(
-          sourceTx[0].averageCostAfter || sourceTx[0].averageCostBefore || "0",
+        const srcCostPerTonne = requireEquipmentTonneValue(
+          sourceTx[0].averageCostAfterPerTonne,
+          `Equipment transaction ${sourceTx[0].id} averageCostAfterPerTonne`,
         );
-        return srcQty > 0 ? srcCost * quantity : quantity * fallbackAverageCost;
+        return srcCostPerTonne * quantityTonnes;
       }
     }
 
-    return quantity * fallbackAverageCost;
+    return quantityTonnes * fallbackAverageCostPerTonne;
   }
 
   private static async updateEquipmentMovement(
@@ -339,17 +335,15 @@ export class EquipmentRecalculationService {
 
     if (!move) return;
 
-    const quantityTonnes =
-      move.quantityTonnes === null || move.quantityTonnes === undefined
-        ? Number(move.quantityKg || 0) / 1_000
-        : Number(move.quantityTonnes);
+    const quantityTonnes = requireEquipmentTonneValue(
+      move.quantityTonnes,
+      `Equipment movement ${movementId} quantityTonnes`,
+    );
     const totalCost = quantityTonnes * newAverageCost;
-    const costPerKg = pricePerTonneToPerKilogram(newAverageCost);
     await tx
       .update(equipmentMovement)
       .set({
         costPerTonne: newAverageCost.toFixed(6),
-        costPerKg: costPerKg.toFixed(6),
         totalCost: totalCost.toFixed(2),
         updatedAt: sql`NOW()`,
         updatedById,

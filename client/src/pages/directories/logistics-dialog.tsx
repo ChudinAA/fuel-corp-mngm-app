@@ -48,7 +48,7 @@ import {
   Warehouse,
 } from "lucide-react";
 import type { LogisticsCarrier, Base } from "@shared/schema";
-import { formatTonnesForInput, kilogramsToTonnes } from "@shared/units";
+import { formatTonnesForInput } from "@shared/units";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import { AddBaseDialog } from "./bases-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -348,11 +348,7 @@ export function AddLogisticsDialog({
         formData.capacityTonnes =
           data.capacityTonnes != null
             ? formatTonnesForInput(String(data.capacityTonnes))
-            : data.capacityKg != null
-              ? formatTonnesForInput(
-                  kilogramsToTonnes(Number(data.capacityKg)),
-                )
-              : "";
+            : "";
       } else if (editItem.type === "trailer") {
         formData.name = "";
         formData.plateNumber = data.regNumber;
@@ -360,11 +356,7 @@ export function AddLogisticsDialog({
         formData.capacityTonnes =
           data.capacityTonnes != null
             ? formatTonnesForInput(String(data.capacityTonnes))
-            : data.capacityKg != null
-              ? formatTonnesForInput(
-                  kilogramsToTonnes(Number(data.capacityKg)),
-                )
-              : "";
+            : "";
       } else if (editItem.type === "driver") {
         formData.name = data.fullName;
         formData.carrierId = data.carrierId || undefined;

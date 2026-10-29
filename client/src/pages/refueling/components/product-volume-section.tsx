@@ -17,7 +17,7 @@ interface ProductVolumeSectionProps {
   productLabel: string;
   value: RefuelingVolume;
   onChange: (value: RefuelingVolume) => void;
-  kgOnly?: boolean;
+  tonnesOnly?: boolean;
 }
 
 function getTonnes(volume: RefuelingVolume): number {
@@ -36,10 +36,10 @@ export function ProductVolumeSection({
   productLabel,
   value,
   onChange,
-  kgOnly = false,
+  tonnesOnly = false,
 }: ProductVolumeSectionProps) {
   const calculatedTonnes = useMemo(() => getTonnes(value), [value]);
-  const mode = kgOnly ? "tonnes" : value.inputMode;
+  const mode = tonnesOnly ? "tonnes" : value.inputMode;
 
   const setMode = (nextMode: "liters" | "tonnes") => {
     if (nextMode === mode) return;
@@ -71,7 +71,7 @@ export function ProductVolumeSection({
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between gap-4">
           <CardTitle className="text-base">Объем топлива · {productLabel}</CardTitle>
-          {!kgOnly && (
+          {!tonnesOnly && (
             <div className="flex items-center gap-2">
               <Label className="text-sm text-muted-foreground">Литры/Плотность</Label>
               <Switch
@@ -87,7 +87,7 @@ export function ProductVolumeSection({
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 md:grid-cols-3">
-          {!kgOnly && (
+          {!tonnesOnly && (
             <>
               <div className="space-y-2">
                 <Label>Литры</Label>

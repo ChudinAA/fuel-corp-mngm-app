@@ -46,8 +46,6 @@ import { formatCurrency } from "../utils";
 import {
   formatPricePerTonne,
   formatTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 import {
   BASE_TYPE,
@@ -169,15 +167,9 @@ export function WarehouseDetailsDialog({
         return a.id.localeCompare(b.id);
       });
 
-      const qtyTonnes =
-        tx.quantityTonnes != null
-          ? Number(tx.quantityTonnes)
-          : kilogramsToTonnes(parseFloat(tx.quantityKg));
+      const qtyTonnes = Number(tx.quantityTonnes);
       const sum = parseFloat(tx.sum || "0");
-      const pricePerTonne =
-        tx.pricePerTonne != null
-          ? Number(tx.pricePerTonne)
-          : pricePerKilogramToPerTonne(parseFloat(tx.price || "0"));
+      const pricePerTonne = Number(tx.pricePerTonne || 0);
 
       if (
         tx.transactionType === TRANSACTION_TYPE.RECEIPT ||
@@ -204,16 +196,10 @@ export function WarehouseDetailsDialog({
 
       // Всегда берем balanceAfter и averageCostAfter из транзакции, которая является последней по времени создания
       const lastTx = pData.transactions[pData.transactions.length - 1];
-      pData.avgCostPerTonne =
-        lastTx.averageCostAfterPerTonne != null
-          ? Number(lastTx.averageCostAfterPerTonne)
-          : pricePerKilogramToPerTonne(
-              parseFloat(lastTx.averageCostAfter || "0"),
-            );
-      pData.balanceTonnes =
-        lastTx.balanceAfterTonnes != null
-          ? Number(lastTx.balanceAfterTonnes)
-          : kilogramsToTonnes(parseFloat(lastTx.balanceAfter || "0"));
+      pData.avgCostPerTonne = Number(
+        lastTx.averageCostAfterPerTonne || 0,
+      );
+      pData.balanceTonnes = Number(lastTx.balanceAfterTonnes);
     });
 
     return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
@@ -285,9 +271,7 @@ export function WarehouseDetailsDialog({
             <CardContent>
               <p className="text-xl font-semibold">
                 {formatTonnes(
-                  warehouse.currentBalanceTonnes != null
-                    ? Number(warehouse.currentBalanceTonnes)
-                    : kilogramsToTonnes(Number(warehouse.currentBalance || 0)),
+                  Number(warehouse.currentBalanceTonnes || 0),
                 )} т
               </p>
             </CardContent>
@@ -301,11 +285,7 @@ export function WarehouseDetailsDialog({
             <CardContent>
               <p className="text-xl font-semibold">
                 {formatPricePerTonne(
-                  warehouse.averageCostPerTonne != null
-                    ? Number(warehouse.averageCostPerTonne)
-                    : pricePerKilogramToPerTonne(
-                        Number(warehouse.averageCost || 0),
-                      ),
+                  Number(warehouse.averageCostPerTonne || 0),
                 )} ₽/т
               </p>
             </CardContent>
@@ -319,9 +299,7 @@ export function WarehouseDetailsDialog({
             <CardContent>
               <p className="text-xl font-semibold">
                 {formatTonnes(
-                  warehouse.pvkjBalanceTonnes != null
-                    ? Number(warehouse.pvkjBalanceTonnes)
-                    : kilogramsToTonnes(Number(warehouse.pvkjBalance || 0)),
+                  Number(warehouse.pvkjBalanceTonnes || 0),
                 )} т
               </p>
             </CardContent>
@@ -335,11 +313,7 @@ export function WarehouseDetailsDialog({
             <CardContent>
               <p className="text-xl font-semibold">
                 {formatPricePerTonne(
-                  warehouse.pvkjAverageCostPerTonne != null
-                    ? Number(warehouse.pvkjAverageCostPerTonne)
-                    : pricePerKilogramToPerTonne(
-                        Number(warehouse.pvkjAverageCost || 0),
-                      ),
+                  Number(warehouse.pvkjAverageCostPerTonne || 0),
                 )} ₽/т
               </p>
             </CardContent>
@@ -606,10 +580,10 @@ function DailyRowGroup({
                           <ProductTypeBadge type={tx.productType} />
                         </TableCell>
                         <TableCell
-                          className={`text-right py-1 font-medium text-xs ${(tx.quantityTonnes != null ? Number(tx.quantityTonnes) : kilogramsToTonnes(Number(tx.quantityKg))) > 0 ? "text-green-600" : "text-red-600"}`}
+                          className={`text-right py-1 font-medium text-xs ${Number(tx.quantityTonnes) > 0 ? "text-green-600" : "text-red-600"}`}
                         >
-                          {(tx.quantityTonnes != null ? Number(tx.quantityTonnes) : kilogramsToTonnes(Number(tx.quantityKg))) > 0 ? "+" : ""}
-                          {formatTonnes(tx.quantityTonnes != null ? Number(tx.quantityTonnes) : kilogramsToTonnes(Number(tx.quantityKg)))} т
+                          {Number(tx.quantityTonnes) > 0 ? "+" : ""}
+                          {formatTonnes(Number(tx.quantityTonnes))} т
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
                           {tx.sum ? formatCurrency(tx.sum) : "—"}
@@ -617,21 +591,27 @@ function DailyRowGroup({
                         <TableCell className="text-right py-1 text-xs">
                           {tx.pricePerTonne != null
                             ? formatPricePerTonne(Number(tx.pricePerTonne))
-                            : tx.price
-                              ? formatPricePerTonne(pricePerKilogramToPerTonne(Number(tx.price)))
-                              : "—"}
+                            : "—"}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatTonnes(tx.balanceBeforeTonnes != null ? Number(tx.balanceBeforeTonnes) : kilogramsToTonnes(Number(tx.balanceBefore)))} т
+                          {formatTonnes(Number(tx.balanceBeforeTonnes))} т
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatTonnes(tx.balanceAfterTonnes != null ? Number(tx.balanceAfterTonnes) : kilogramsToTonnes(Number(tx.balanceAfter)))} т
+                          {formatTonnes(Number(tx.balanceAfterTonnes))} т
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatPricePerTonne(tx.averageCostBeforePerTonne != null ? Number(tx.averageCostBeforePerTonne) : pricePerKilogramToPerTonne(Number(tx.averageCostBefore)))}
+                          {tx.averageCostBeforePerTonne != null
+                            ? formatPricePerTonne(
+                                Number(tx.averageCostBeforePerTonne),
+                              )
+                            : "—"}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatPricePerTonne(tx.averageCostAfterPerTonne != null ? Number(tx.averageCostAfterPerTonne) : pricePerKilogramToPerTonne(Number(tx.averageCostAfter)))}
+                          {tx.averageCostAfterPerTonne != null
+                            ? formatPricePerTonne(
+                                Number(tx.averageCostAfterPerTonne),
+                              )
+                            : "—"}
                         </TableCell>
                       </TableRow>
                     ))}

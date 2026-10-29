@@ -60,7 +60,6 @@ export class StorageCardsStorage {
         return {
           ...card,
           latestPrice: null,
-          kgAmount: null,
           tonnesAmount: null,
           weightedAverageRate: rate,
           localCurrencyBalance: localBalance,
@@ -74,7 +73,6 @@ export class StorageCardsStorage {
           return {
             ...card,
             latestPrice: null,
-            kgAmount: null,
             tonnesAmount: null,
             weightedAverageRate: parseFloat(card.weightedAverageRate || "0"),
           };
@@ -117,7 +115,7 @@ export class StorageCardsStorage {
           }
         }
 
-        const priceUnit = latestPrice?.priceUnit || "kg";
+        const priceUnit = latestPrice?.priceUnit || "tonne";
         const balance = parseFloat(card.currentBalance || "0");
         const tonnesAmount = calculateBalanceMassEquivalentTonnes(
           balance,
@@ -130,8 +128,6 @@ export class StorageCardsStorage {
           ...card,
           latestPrice: latestPrice
             ? {
-                // Keep `price` in its stored source unit for older clients;
-                // new clients use the explicit unit and pricePerTonne fields.
                 price: pricePerUnit,
                 priceUnit,
                 pricePerTonne,
@@ -139,7 +135,6 @@ export class StorageCardsStorage {
                 isExpired: new Date(latestPrice.dateTo) < new Date(),
               }
             : null,
-          kgAmount: tonnesAmount === null ? null : tonnesAmount * 1_000,
           tonnesAmount,
           weightedAverageRate: parseFloat(card.weightedAverageRate || "0"),
         };
@@ -266,9 +261,7 @@ export class StorageCardsStorage {
             where: inArray(refuelingAbroad.id, refuelingIds),
             columns: {
               id: true,
-              quantityKg: true,
-              quantityLiters: true,
-              density: true,
+              quantityTonnes: true,
             },
           })
         : [];
@@ -283,9 +276,7 @@ export class StorageCardsStorage {
       }
 
       const massEquivalentTonnes = calculateDealMassTonnes(
-        deal.quantityKg,
-        deal.quantityLiters,
-        deal.density,
+        deal.quantityTonnes,
       );
       const pricePerTonne = calculateDealPricePerTonne(
         row.quantity,

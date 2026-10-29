@@ -69,7 +69,7 @@ function formatRefuelingPriceOption(
   sourceUnit?: RefuelingPriceUnit,
 ): string {
   const price = Number.parseFloat(String(sourcePrice));
-  const unit = sourceUnit ?? (inputMode === "liters" ? "liter" : "kg");
+  const unit = sourceUnit ?? (inputMode === "liters" ? "liter" : "tonne");
   const pricePerTonne = calculateRefuelingPricePerTonne(
     price,
     inputMode,

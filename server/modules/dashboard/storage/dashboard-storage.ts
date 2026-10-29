@@ -11,7 +11,7 @@ import {
 import { widgetDefinitions, dashboardConfigurations, dashboardTemplates } from "../entities/dashboard";
 import { IDashboardStorage, WidgetDefinition, DashboardConfiguration, DashboardLayout, DashboardWidget } from "./types";
 import { MOVEMENT_TYPE, SOURCE_TYPE } from "@shared/constants";
-import { formatTonnes, tonnesToKilograms } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 import { optMassTonnesSql } from "../../opt/opt-mass-sql";
 
 export class DashboardStorage implements IDashboardStorage {
@@ -21,8 +21,6 @@ export class DashboardStorage implements IDashboardStorage {
     warehouseAlerts: number;
     totalProfitMonth: number;
     pendingDeliveries: number;
-    totalVolumeSold: number;
-    totalVolumeSoldTonnes: number;
   }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -82,23 +80,12 @@ export class DashboardStorage implements IDashboardStorage {
     const pendingDeliveries = Number(movementsResult?.count || 0);
 
     // Общий объем продаж за месяц
-    const [volumeResult] = await db
-      .select({
-        totalTonnes: sql<number>`COALESCE(SUM(${optMassTonnesSql()}), 0)`,
-      })
-      .from(opt)
-      .where(and(sql`${opt.createdAt} >= ${monthStartStr}`, isNull(opt.deletedAt)));
-    const totalVolumeSoldTonnes = Number(volumeResult?.totalTonnes || 0);
-    const totalVolumeSold = tonnesToKilograms(totalVolumeSoldTonnes);
-
     return {
       optDealsToday,
       refuelingToday,
       warehouseAlerts,
       totalProfitMonth,
       pendingDeliveries,
-      totalVolumeSold,
-      totalVolumeSoldTonnes,
     };
   }
 
@@ -226,7 +213,6 @@ export class DashboardStorage implements IDashboardStorage {
   async getWeekStats(): Promise<{
     optDealsWeek: number;
     refuelingsWeek: number;
-    volumeSoldWeek: number;
     volumeSoldWeekTonnes: number;
     profitWeek: number;
   }> {
@@ -267,7 +253,6 @@ export class DashboardStorage implements IDashboardStorage {
         isNull(opt.deletedAt)
       ));
     const volumeSoldWeekTonnes = Number(volumeWeekResult?.totalTonnes || 0);
-    const volumeSoldWeek = tonnesToKilograms(volumeSoldWeekTonnes);
 
     // Прибыль за неделю
     const [optProfitWeek] = await db
@@ -295,7 +280,6 @@ export class DashboardStorage implements IDashboardStorage {
     return {
       optDealsWeek,
       refuelingsWeek,
-      volumeSoldWeek,
       volumeSoldWeekTonnes,
       profitWeek,
     };
@@ -524,7 +508,7 @@ export class DashboardStorage implements IDashboardStorage {
 
     return warehousesList.map(wh => ({
       name: wh.name,
-      current: parseFloat(wh.currentBalance || "0"),
+      currentTonnes: Number(wh.currentBalanceTonnes),
     }));
   }
 }

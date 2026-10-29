@@ -7,10 +7,9 @@ import { auditLog } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
 import {
-  equipmentMovementResultToApi,
   EquipmentMovementApiInputError,
   normalizeEquipmentMovementInput,
-} from "../equipment-movement-api-adapters";
+} from "../equipment-movement-input-validation";
 
 async function validateNomenclature(data: { productType: string; nomenclatureId?: string | null }, required: boolean) {
   if (!data.nomenclatureId) {
@@ -59,7 +58,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
         filters,
         allowedWarehouseIds,
       );
-      res.json(equipmentMovementResultToApi(result));
+      res.json(result);
     }
   );
 
@@ -70,7 +69,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
     async (req, res) => {
       const item = await (storage as any).equipmentMovement.getMovement(req.params.id);
       if (!item) return res.status(404).json({ message: "Запись не найдена" });
-       res.json(equipmentMovementResultToApi(item));
+       res.json(item);
     }
   );
 
@@ -117,10 +116,6 @@ export function registerEquipmentMovementRoutes(app: Express) {
         const normalized = normalizeEquipmentMovementInput(body);
         const data = insertEquipmentMovementSchema.parse({
           ...normalized,
-          quantityKg:
-            normalized.quantityKg == null
-              ? undefined
-              : String(normalized.quantityKg),
           quantityTonnes:
             normalized.quantityTonnes == null
               ? normalized.quantityTonnes
@@ -129,10 +124,6 @@ export function registerEquipmentMovementRoutes(app: Express) {
             normalized.totalCost == null
               ? normalized.totalCost
               : String(normalized.totalCost),
-          costPerKg:
-            normalized.costPerKg == null
-              ? normalized.costPerKg
-              : String(normalized.costPerKg),
           costPerTonne:
             normalized.costPerTonne == null
               ? normalized.costPerTonne
@@ -149,7 +140,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
         if (nomenclatureError) return res.status(400).json({ message: nomenclatureError });
         const record = await (storage as any).equipmentMovement.createMovement(data);
         SSEService.notifyEntityChanged("equipment-movement", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.status(201).json(equipmentMovementResultToApi(record));
+        res.status(201).json(record);
       } catch (error) {
         if (error instanceof EquipmentMovementApiInputError) {
           return res.status(400).json({ message: error.message });
@@ -204,10 +195,6 @@ export function registerEquipmentMovementRoutes(app: Express) {
         const normalized = normalizeEquipmentMovementInput(body);
         const data = insertEquipmentMovementSchema.parse({
           ...normalized,
-          quantityKg:
-            normalized.quantityKg == null
-              ? undefined
-              : String(normalized.quantityKg),
           quantityTonnes:
             normalized.quantityTonnes == null
               ? normalized.quantityTonnes
@@ -216,10 +203,6 @@ export function registerEquipmentMovementRoutes(app: Express) {
             normalized.totalCost == null
               ? normalized.totalCost
               : String(normalized.totalCost),
-          costPerKg:
-            normalized.costPerKg == null
-              ? normalized.costPerKg
-              : String(normalized.costPerKg),
           costPerTonne:
             normalized.costPerTonne == null
               ? normalized.costPerTonne
@@ -243,7 +226,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
         const item = await (storage as any).equipmentMovement.updateMovement(req.params.id, data);
         if (!item) return res.status(404).json({ message: "Запись не найдена" });
         SSEService.notifyEntityChanged("equipment-movement", SSEService.extractClientId(req.headers["x-client-id"]));
-        res.json(equipmentMovementResultToApi(item));
+        res.json(item);
       } catch (error) {
         if (error instanceof EquipmentMovementApiInputError) {
           return res.status(400).json({ message: error.message });

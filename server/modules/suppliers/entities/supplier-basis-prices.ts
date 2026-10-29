@@ -35,9 +35,6 @@ export const supplierBasisPrices = pgTable(
       precision: 22,
       scale: 6,
     }),
-    servicePrice: decimal("service_price", { precision: 12, scale: 6 }),
-    pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 6 }),
-    agentFee: decimal("agent_fee", { precision: 12, scale: 6 }),
     otherServiceType: text("other_service_type"),
     otherServiceValue: decimal("other_service_value", { precision: 15, scale: 6 }),
     otherServiceName: text("other_service_name"),
@@ -78,9 +75,6 @@ export const insertSupplierBasisPriceSchema = createInsertSchema(supplierBasisPr
   .extend({
     supplierId: z.string().min(1),
     basisId: z.string().min(1),
-    servicePrice: z.coerce.number().optional().nullable(),
-    pvkjPrice: z.coerce.number().optional().nullable(),
-    agentFee: z.coerce.number().optional().nullable(),
     servicePricePerTonne: z.coerce.number().optional().nullable(),
     pvkjPricePerTonne: z.coerce.number().optional().nullable(),
     agentFeePerTonne: z.coerce.number().optional().nullable(),
@@ -88,7 +82,8 @@ export const insertSupplierBasisPriceSchema = createInsertSchema(supplierBasisPr
     otherServiceValue: z.coerce.number().optional().nullable(),
     otherServiceName: z.string().optional().nullable(),
     otherServiceQuantity: z.coerce.number().optional().nullable(),
-  });
+  })
+  .strict();
 
 export type SupplierBasisPrice = typeof supplierBasisPrices.$inferSelect;
 export type InsertSupplierBasisPrice = z.infer<typeof insertSupplierBasisPriceSchema>;

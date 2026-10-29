@@ -15,7 +15,6 @@ import {
   calculateRefuelingMassTonnes,
   calculateRefuelingPricePerTonne,
 } from "../unit-calculations";
-import { tonnesToKilograms } from "@shared/units";
 
 interface UseRefuelingAbroadCalculationsProps {
   inputMode: "liters" | "tonnes";
@@ -58,7 +57,6 @@ export function useRefuelingAbroadCalculations({
       inputMode === "liters" ? quantityLiters : quantityTonnes,
       density,
     ) ?? 0;
-  const finalKg = tonnesToKilograms(finalTonnes);
   const {
     purchasePrice: extractedPurchasePrice,
     purchasePriceUnit,
@@ -224,7 +222,6 @@ export function useRefuelingAbroadCalculations({
 
   return {
     finalTonnes,
-    finalKg,
     purchasePrice,
     salePrice,
     purchasePricePerTonne,

@@ -8,17 +8,14 @@ import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 import { useEquipmentBalance } from "@/hooks/use-equipment-balance";
 import {
   formatTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 import { normalizeCurrencyForDisplay } from "../utils";
 import {
   calculateRefuelingAmount,
   calculateRefuelingMassTonnes,
   calculateRefuelingPricePerTonne,
-  refuelingTonnesToLegacyKg,
   type RefuelingPriceUnit,
 } from "../unit-calculations";
-import { resolveWarehouseBalanceTonnes } from "@/pages/shared/utils/warehouse-balance-units";
 import { getStoredBasisPriceRate } from "@/pages/shared/utils/basis-price-units";
 
 interface UseRefuelingCalculationsProps {
@@ -85,8 +82,6 @@ export function useRefuelingCalculations({
   const quantityInput = inputMode === "liters" ? quantityLiters : quantityTonnes;
   const finalTonnes =
     calculateRefuelingMassTonnes(inputMode, quantityInput, density) ?? 0;
-  const finalKg = refuelingTonnesToLegacyKg(finalTonnes);
-  const calculatedKg = finalTonnes > 0 ? String(finalKg) : "";
   const normalizedInitialQuantityTonnes = Math.max(
     0,
     Number.isFinite(initialQuantityTonnes) ? initialQuantityTonnes : 0,
@@ -115,24 +110,16 @@ export function useRefuelingCalculations({
 
   const warehouseBalanceAtDate = useMemo(() => {
     if (isHistoricalLoading || isCurrentLoading) return null;
-    const fallbackBalanceTonnes =
-      productType === PRODUCT_TYPE.PVKJ
-        ? (supplierWarehouse as any)?.pvkjBalanceTonnes
-        : (supplierWarehouse as any)?.currentBalanceTonnes;
-    const fallbackBalanceKilograms =
-      productType === PRODUCT_TYPE.PVKJ
-        ? supplierWarehouse?.pvkjBalance
-        : supplierWarehouse?.currentBalance;
-    const histTonnes = resolveWarehouseBalanceTonnes(
-      warehouseData,
-      fallbackBalanceTonnes,
-      fallbackBalanceKilograms,
+    const histTonnes = Number(
+      (warehouseData as { balanceTonnes?: unknown } | null)?.balanceTonnes,
     );
-    const currTonnes = resolveWarehouseBalanceTonnes(
-      currentWarehouseData,
-      fallbackBalanceTonnes,
-      fallbackBalanceKilograms,
+    const currTonnes = Number(
+      (currentWarehouseData as { balanceTonnes?: unknown } | null)
+        ?.balanceTonnes,
     );
+    if (!Number.isFinite(histTonnes) || !Number.isFinite(currTonnes)) {
+      return null;
+    }
     const baseBalanceTonnes = Math.min(
       Math.max(0, histTonnes),
       Math.max(0, currTonnes),
@@ -140,7 +127,7 @@ export function useRefuelingCalculations({
     return isEditing
       ? baseBalanceTonnes + initialQuantityTonnes
       : baseBalanceTonnes;
-  }, [warehouseData, currentWarehouseData, isHistoricalLoading, isCurrentLoading, isEditing, initialQuantityTonnes, supplierWarehouse, productType]);
+  }, [warehouseData, currentWarehouseData, isHistoricalLoading, isCurrentLoading, isEditing, initialQuantityTonnes]);
 
   const warehousePriceAtDate = useMemo(() => {
     if (isHistoricalLoading) return null;
@@ -151,9 +138,11 @@ export function useRefuelingCalculations({
     ) {
       return Number(warehouseData.averageCostPerTonne);
     }
-    return "averageCost" in warehouseData && warehouseData.averageCost
-      ? pricePerKilogramToPerTonne(Number(warehouseData.averageCost))
-      : null;
+    const rate = Number(
+      (warehouseData as { averageCostPerTonne?: unknown })
+        .averageCostPerTonne,
+    );
+    return Number.isFinite(rate) ? rate : null;
   }, [warehouseData, isHistoricalLoading]);
 
   const isBalanceLoading = isHistoricalLoading || isCurrentLoading;
@@ -182,9 +171,11 @@ export function useRefuelingCalculations({
     if ("averageCostPerTonne" in equipmentData && equipmentData.averageCostPerTonne != null) {
       return Number(equipmentData.averageCostPerTonne);
     }
-    return "averageCost" in equipmentData && equipmentData.averageCost
-      ? pricePerKilogramToPerTonne(Number(equipmentData.averageCost))
-      : null;
+    const rate = Number(
+      (equipmentData as { averageCostPerTonne?: unknown })
+        .averageCostPerTonne,
+    );
+    return Number.isFinite(rate) ? rate : null;
   }, [isLikMode, equipmentData, isEquipmentLoading]);
 
   // Если поставщик задал basis-specific pvkjPrice, используем его напрямую (как для SERVICE)
@@ -447,8 +438,6 @@ export function useRefuelingCalculations({
   });
 
   return {
-    calculatedKg,
-    finalKg,
     finalTonnes,
     purchasePrice,
     salePrice,

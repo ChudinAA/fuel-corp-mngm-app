@@ -34,52 +34,40 @@ import { AllocatedVolumeDialog } from "./allocated-volume-dialog";
 import { FieldCommentPopover } from "./field-comment-popover";
 import { TopLevelResourceDetail } from "./top-level-resource-detail";
 import { WarehouseSupplyTagsBadges, WarehouseSupplyTagsDialog } from "./warehouse-supply-tags-dialog";
-import { fmtTons, fmtTonnes } from "../utils/planning-utils";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { fmtTonnes } from "../utils/planning-utils";
+import { formatTonnes } from "@shared/units";
 
 interface ResourceSummaryRow {
   supplierId: string | null;
   supplierName: string;
-  allocatedVolume: string;
-  allocatedVolumeTonnes?: string;
-  demand: string;
-  demandTonnes?: string;
-  balance: string;
-  balanceTonnes?: string;
-  topLevelVolume: string;
-  topLevelVolumeTonnes?: string;
-  topLevelIncome: string;
-  topLevelIncomeTonnes?: string;
-  topLevelExpense: string;
-  topLevelExpenseTonnes?: string;
+  allocatedVolumeTonnes: string;
+  demandTonnes: string;
+  balanceTonnes: string;
+  topLevelVolumeTonnes: string;
+  topLevelIncomeTonnes: string;
+  topLevelExpenseTonnes: string;
   isUnassigned?: boolean;
 }
 
 interface WarehouseSummaryRow {
   warehouseId: string;
   warehouseName: string;
-  plannedIncome: string;
-  plannedIncomeTonnes?: string;
-  plannedExpense: string;
-  plannedExpenseTonnes?: string;
-  balancePlan: string;
-  balancePlanTonnes?: string;
-  balanceFact: string;
-  balanceFactTonnes?: string;
+  plannedIncomeTonnes: string;
+  plannedExpenseTonnes: string;
+  balancePlanTonnes: string;
+  balanceFactTonnes: string;
 }
 
 interface CustomerWarehouseVolume {
   warehouseId: string;
   warehouseName: string;
-  volume: string;
-  volumeTonnes?: string;
+  volumeTonnes: string;
 }
 
 interface CustomerSummaryRow {
   customerId: string;
   customerName: string;
-  volume: string;
-  volumeTonnes?: string;
+  volumeTonnes: string;
   warehouses: CustomerWarehouseVolume[];
 }
 
@@ -97,16 +85,13 @@ function fmtPeriod(period: PlanningPeriod) {
   };
 }
 
-function summaryMassTonnes(tonnes: string | undefined, legacyKg: string): number {
-  return tonnes === undefined
-    ? kilogramsToTonnes(Number(legacyKg))
-    : Number(tonnes);
+function summaryMassTonnes(tonnes: string | undefined): number {
+  const value = Number(tonnes ?? "0");
+  return Number.isFinite(value) ? value : 0;
 }
 
-function formatSummaryMass(tonnes: string | undefined, legacyKg: string): string {
-  return tonnes === undefined
-    ? fmtTons(legacyKg)
-    : `${formatTonnes(tonnes)} т`;
+function formatSummaryMass(tonnes: string | undefined): string {
+  return `${formatTonnes(tonnes ?? "0")} т`;
 }
 
 export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; scenarioId: string | null }) {
@@ -258,29 +243,11 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                 <>
                   {resources.map((res) => {
                     const summary = summaryBySupplier.get(res.supplierId ?? "");
-                    const allocatedKg = summary?.allocatedVolume || "0";
-                    const demandKg = summary?.demand || "0";
-                    const balanceKg = summary?.balance || "0";
-                    const allocatedTonnes = summaryMassTonnes(
-                      summary?.allocatedVolumeTonnes,
-                      allocatedKg,
-                    );
-                    const demandTonnes = summaryMassTonnes(
-                      summary?.demandTonnes,
-                      demandKg,
-                    );
-                    const balanceTonnes = summaryMassTonnes(
-                      summary?.balanceTonnes,
-                      balanceKg,
-                    );
-                    const topLevelIncomeTonnes = summaryMassTonnes(
-                      summary?.topLevelIncomeTonnes,
-                      summary?.topLevelIncome || "0",
-                    );
-                    const topLevelExpenseTonnes = summaryMassTonnes(
-                      summary?.topLevelExpenseTonnes,
-                      summary?.topLevelExpense || "0",
-                    );
+                    const allocatedTonnes = summaryMassTonnes(summary?.allocatedVolumeTonnes);
+                    const demandTonnes = summaryMassTonnes(summary?.demandTonnes);
+                    const balanceTonnes = summaryMassTonnes(summary?.balanceTonnes);
+                    const topLevelIncomeTonnes = summaryMassTonnes(summary?.topLevelIncomeTonnes);
+                    const topLevelExpenseTonnes = summaryMassTonnes(summary?.topLevelExpenseTonnes);
                     const balNum = balanceTonnes;
                     const isExpanded = expandedTopLevel === res.supplierId;
                     const hasTopLevel =
@@ -364,10 +331,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                               <span className={(res as any).isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : ""}>
                                 {fmtTonnes(
                                   (res as any).isUnassigned
-                                    ? summaryMassTonnes(
-                                        (res as any).demandTonnes,
-                                        (res as any).demand || "0",
-                                      )
+                                    ? summaryMassTonnes((res as any).demandTonnes)
                                     : demandTonnes,
                                 )}
                               </span>
@@ -398,10 +362,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                               >
                                 {(res as any).isUnassigned
                                   ? `−${fmtTonnes(
-                                      summaryMassTonnes(
-                                        (res as any).demandTonnes,
-                                        (res as any).demand || "0",
-                                      ),
+                                      summaryMassTonnes((res as any).demandTonnes),
                                     )}`
                                   : `${balNum > 0 ? "+" : ""}${fmtTonnes(balanceTonnes)}`}
                               </span>
@@ -486,12 +447,12 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                         <TableCell><span className="text-muted-foreground">—</span></TableCell>
                         <TableCell>
                           <span className="font-medium text-amber-700 dark:text-amber-400">
-                            {fmtTonnes(summaryMassTonnes(s.demandTonnes, s.demand))}
+                            {fmtTonnes(summaryMassTonnes(s.demandTonnes))}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span className="text-destructive font-medium">
-                            −{fmtTonnes(summaryMassTonnes(s.demandTonnes, s.demand))}
+                            −{fmtTonnes(summaryMassTonnes(s.demandTonnes))}
                           </span>
                         </TableCell>
                         <TableCell />
@@ -536,8 +497,8 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                 </TableRow>
               ) : (
                 warehousesSummary.map((row) => {
-                  const balPlan = summaryMassTonnes(row.balancePlanTonnes, row.balancePlan);
-                  const balFact = summaryMassTonnes(row.balanceFactTonnes, row.balanceFact);
+                  const balPlan = summaryMassTonnes(row.balancePlanTonnes);
+                  const balFact = summaryMassTonnes(row.balanceFactTonnes);
                   return (
                     <TableRow key={row.warehouseId} data-testid={`row-warehouse-${row.warehouseId}`}>
                       <TableCell className="font-medium">
@@ -556,7 +517,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           <span className="text-emerald-600">
-                            {formatSummaryMass(row.plannedIncomeTonnes, row.plannedIncome)}
+                            {formatSummaryMass(row.plannedIncomeTonnes)}
                           </span>
                           <FieldCommentPopover
                             entityType="warehouse_plan"
@@ -568,7 +529,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           <span className="text-amber-600">
-                            {formatSummaryMass(row.plannedExpenseTonnes, row.plannedExpense)}
+                            {formatSummaryMass(row.plannedExpenseTonnes)}
                           </span>
                           <FieldCommentPopover
                             entityType="warehouse_plan"
@@ -587,7 +548,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                 : "text-muted-foreground"
                           }
                         >
-                          {balPlan > 0 ? "+" : ""}{formatSummaryMass(row.balancePlanTonnes, row.balancePlan)}
+                          {balPlan > 0 ? "+" : ""}{formatSummaryMass(row.balancePlanTonnes)}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -600,7 +561,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                 : "text-muted-foreground"
                           }
                         >
-                          {balFact > 0 ? "+" : ""}{formatSummaryMass(row.balanceFactTonnes, row.balanceFact)}
+                          {balFact > 0 ? "+" : ""}{formatSummaryMass(row.balanceFactTonnes)}
                         </span>
                       </TableCell>
                     </TableRow>
@@ -663,7 +624,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
-                            <span>{formatSummaryMass(row.volumeTonnes, row.volume)}</span>
+                            <span>{formatSummaryMass(row.volumeTonnes)}</span>
                             <span onClick={(e) => e.stopPropagation()}>
                               <FieldCommentPopover
                                 entityType="customer_plan"
@@ -696,7 +657,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                   <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                                   <span className="font-medium">{wh.warehouseName}</span>
                                   <Badge variant="secondary" className="text-xs">
-                                    {formatSummaryMass(wh.volumeTonnes, wh.volume)}
+                                    {formatSummaryMass(wh.volumeTonnes)}
                                   </Badge>
                                 </div>
                               ))}

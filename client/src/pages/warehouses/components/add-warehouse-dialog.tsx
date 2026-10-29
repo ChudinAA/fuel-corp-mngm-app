@@ -15,16 +15,19 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
-import type { Warehouse, Base, Supplier } from "@shared/schema";
+import type { Base, Supplier } from "@shared/schema";
 import { EQUIPMENT_TYPE } from "@shared/constants";
 import { newWarehouseFormSchema } from "../schemas";
-import type { NewWarehouseFormValues } from "../types";
+import type {
+  NewWarehouseFormValues,
+  WarehouseWithTonnes,
+} from "../types";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 
 interface AddWarehouseDialogProps {
-  warehouseToEdit: Warehouse | null;
+  warehouseToEdit: WarehouseWithTonnes | null;
   onSave: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;

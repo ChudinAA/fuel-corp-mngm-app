@@ -579,13 +579,9 @@ export function RoutePlanDialog({
                             {demand.toEntityName || "—"}
                           </span>
                         </div>
-                        {(demand.volumeTons != null || demand.volume != null) && (
+                        {demand.volumeTonnes != null && (
                           <span className="text-[10px] text-muted-foreground">
-                            Объём: {formatTonnes(
-                              demand.volumeTons != null
-                                ? demand.volumeTons
-                                : parseFloat(demand.volume) / 1000,
-                            )} т
+                            Объём: {formatTonnes(demand.volumeTonnes)} т
                           </span>
                         )}
                         {demand.missingDataReason && (

@@ -4,12 +4,10 @@ export type InputMode = "liters" | "tonnes";
 
 export type EquipmentMovementApiRecord = Omit<
   EquipmentMovement,
-  "quantityKg" | "costPerKg"
+  "quantityTonnes" | "costPerTonne"
 > & {
   quantityTonnes: number | string | null;
   costPerTonne: number | string | null;
-  quantityKg?: number | string | null;
-  costPerKg?: number | string | null;
 };
 
 export interface EquipmentMovementDialogProps {

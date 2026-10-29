@@ -1,25 +1,17 @@
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 export function getManagementReportMassTonnes(
   tonnesValue: string | number | null | undefined,
-  legacyKilogramsValue: string | number | null | undefined,
 ): number {
-  if (tonnesValue !== null && tonnesValue !== undefined) {
-    const tonnes = Number(tonnesValue);
-    if (!Number.isFinite(tonnes)) {
-      throw new TypeError("Management report tonnes must be a finite number");
-    }
-    return tonnes;
+  const tonnes = Number(tonnesValue ?? 0);
+  if (!Number.isFinite(tonnes)) {
+    throw new TypeError("Management report tonnes must be a finite number");
   }
-
-  return kilogramsToTonnes(Number(legacyKilogramsValue ?? 0));
+  return tonnes;
 }
 
 export function formatManagementReportMassTonnes(
   tonnesValue: string | number | null | undefined,
-  legacyKilogramsValue: string | number | null | undefined,
 ): string {
-  return formatTonnes(
-    getManagementReportMassTonnes(tonnesValue, legacyKilogramsValue),
-  );
+  return formatTonnes(getManagementReportMassTonnes(tonnesValue));
 }

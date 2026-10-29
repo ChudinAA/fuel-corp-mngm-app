@@ -4,91 +4,60 @@ import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { RecalculationQueueService } from "./recalculation-queue-service";
 import { format } from "date-fns";
 import { restoreStockMovement } from "./stock-transaction-calculations";
-import {
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-  tonnesToKilograms,
-} from "@shared/units";
 
 type TonneStockState = {
   balanceTonnes: number;
   averageCostPerTonne: number;
 };
 
-// The database and older callers still use kg for this transition stage.
-// Convert at the boundary so stock calculations themselves use tonnes and ₽/t.
 function readTonneStockState(
   warehouse: typeof warehouses.$inferSelect,
   isPvkj: boolean,
 ): TonneStockState {
-  const balanceKg = Number.parseFloat(
-    (isPvkj ? warehouse.pvkjBalance : warehouse.currentBalance) || "0",
-  );
-  const storedBalanceTonnes = isPvkj
+  const balanceTonnes = isPvkj
     ? warehouse.pvkjBalanceTonnes
     : warehouse.currentBalanceTonnes;
-  const averageCostPerKg = Number.parseFloat(
-    (isPvkj ? warehouse.pvkjAverageCost : warehouse.averageCost) || "0",
-  );
-  const storedAverageCostPerTonne = isPvkj
+  const averageCostPerTonne = isPvkj
     ? warehouse.pvkjAverageCostPerTonne
     : warehouse.averageCostPerTonne;
+  if (balanceTonnes == null || averageCostPerTonne == null) {
+    throw new Error(
+      `Warehouse ${warehouse.id} is missing authoritative tonne stock state`,
+    );
+  }
+  const parsedBalance = Number.parseFloat(balanceTonnes);
+  const parsedCost = Number.parseFloat(averageCostPerTonne);
+  if (!Number.isFinite(parsedBalance) || !Number.isFinite(parsedCost)) {
+    throw new Error(
+      `Warehouse ${warehouse.id} has invalid authoritative tonne stock state`,
+    );
+  }
   return {
-    balanceTonnes:
-      storedBalanceTonnes == null
-        ? kilogramsToTonnes(balanceKg)
-        : Number.parseFloat(storedBalanceTonnes),
-    averageCostPerTonne:
-      storedAverageCostPerTonne == null
-        ? pricePerKilogramToPerTonne(averageCostPerKg)
-        : Number.parseFloat(storedAverageCostPerTonne),
+    balanceTonnes: parsedBalance,
+    averageCostPerTonne: parsedCost,
   };
 }
 
-function legacyKg(valueTonnes: number): string {
-  return tonnesToKilograms(valueTonnes).toFixed(2);
-}
-
-function legacyPricePerKg(valuePerTonne: number): string {
-  return pricePerTonneToPerKilogram(valuePerTonne).toFixed(6);
-}
-
-function transactionRatePerTonne(
-  perTonne: string | null,
-  perKilogram: string | null,
-): number {
-  return perTonne == null
-    ? pricePerKilogramToPerTonne(Number.parseFloat(perKilogram || "0"))
-    : Number.parseFloat(perTonne);
-}
-
-async function writeLegacyStockState(
+async function writeTonneStockState(
   tx: any,
   warehouseId: string,
   isPvkj: boolean,
   state: TonneStockState,
   updatedById?: string,
 ) {
-  const balance = legacyKg(state.balanceTonnes);
   const balanceTonnes = state.balanceTonnes.toFixed(5);
-  const averageCost = legacyPricePerKg(state.averageCostPerTonne);
   await tx
     .update(warehouses)
     .set(
       isPvkj
         ? {
-            pvkjBalance: balance,
             pvkjBalanceTonnes: balanceTonnes,
-            pvkjAverageCost: averageCost,
             pvkjAverageCostPerTonne: state.averageCostPerTonne.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById,
           }
         : {
-            currentBalance: balance,
             currentBalanceTonnes: balanceTonnes,
-            averageCost,
             averageCostPerTonne: state.averageCostPerTonne.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById,
@@ -146,7 +115,7 @@ export class WarehouseTransactionService {
     productType: string,
     sourceType: string,
     sourceId: string,
-    quantity: number,
+    quantityTonnes: number,
     totalCost: number,
     createdById?: string,
     dealDate?: string,
@@ -161,7 +130,9 @@ export class WarehouseTransactionService {
       throw new Error(`Warehouse ${warehouseId} not found`);
     }
 
-    const quantityTonnes = kilogramsToTonnes(quantity);
+    if (!Number.isFinite(quantityTonnes) || quantityTonnes < 0) {
+      throw new TypeError("Transaction quantity must be a non-negative tonne value");
+    }
     const currentStock = readTonneStockState(warehouse, isPvkj);
     const currentBalance = currentStock.balanceTonnes;
     const currentCost = currentStock.averageCostPerTonne;
@@ -184,7 +155,7 @@ export class WarehouseTransactionService {
       newAverageCost = currentCost;
     }
 
-    await writeLegacyStockState(
+    await writeTonneStockState(
       tx,
       warehouseId,
       isPvkj,
@@ -213,19 +184,11 @@ export class WarehouseTransactionService {
         productType,
         sourceType,
         sourceId,
-        quantity: isReceipt
-          ? legacyKg(quantityTonnes)
-          : legacyKg(-quantityTonnes),
         quantityTonnes: (isReceipt ? quantityTonnes : -quantityTonnes).toFixed(5),
         sum: sum.toString(),
-        price: legacyPricePerKg(price),
-        balanceBefore: legacyKg(currentBalance),
-        balanceAfter: legacyKg(newBalance),
         balanceBeforeTonnes: currentBalance.toFixed(5),
         balanceAfterTonnes: newBalance.toFixed(5),
-        averageCostBefore: legacyPricePerKg(currentCost),
         averageCostBeforePerTonne: currentCost.toFixed(6),
-        averageCostAfter: legacyPricePerKg(newAverageCost),
         averageCostAfterPerTonne: newAverageCost.toFixed(6),
         pricePerTonne: price.toFixed(6),
         createdById,
@@ -247,8 +210,8 @@ export class WarehouseTransactionService {
 
     return {
       transaction,
-      newAverageCost: pricePerTonneToPerKilogram(newAverageCost),
-      newBalance: tonnesToKilograms(newBalance),
+      newAverageCostPerTonne: newAverageCost,
+      newBalanceTonnes: newBalance,
     };
   }
 
@@ -256,9 +219,9 @@ export class WarehouseTransactionService {
     tx: any,
     transactionId: string,
     warehouseId: string,
-    oldQuantity: number,
+    oldQuantityTonnes: number,
     oldTotalCost: number,
-    newQuantity: number,
+    newQuantityTonnes: number,
     newTotalCost: number,
     productType: string,
     updatedById?: string,
@@ -286,8 +249,14 @@ export class WarehouseTransactionService {
       throw new Error(`Warehouse ${warehouseId} not found`);
     }
 
-    const oldQuantityTonnes = kilogramsToTonnes(oldQuantity);
-    const newQuantityTonnes = kilogramsToTonnes(newQuantity);
+    if (
+      !Number.isFinite(oldQuantityTonnes) ||
+      oldQuantityTonnes < 0 ||
+      !Number.isFinite(newQuantityTonnes) ||
+      newQuantityTonnes < 0
+    ) {
+      throw new TypeError("Transaction quantities must be non-negative tonne values");
+    }
     const currentStock = readTonneStockState(warehouse, isPvkj);
     const currentBalance = currentStock.balanceTonnes;
     const currentCost = currentStock.averageCostPerTonne;
@@ -325,7 +294,7 @@ export class WarehouseTransactionService {
       price = newQuantityTonnes > 0 ? newTotalCost / newQuantityTonnes : 0;
     }
 
-    await writeLegacyStockState(
+    await writeTonneStockState(
       tx,
       warehouseId,
       isPvkj,
@@ -352,16 +321,10 @@ export class WarehouseTransactionService {
     await tx
       .update(warehouseTransactions)
       .set({
-        quantity: isReceipt
-          ? legacyKg(newQuantityTonnes)
-          : legacyKg(-newQuantityTonnes),
         quantityTonnes: (isReceipt ? newQuantityTonnes : -newQuantityTonnes).toFixed(5),
         sum: sum.toString(),
-        price: legacyPricePerKg(price),
         pricePerTonne: price.toFixed(6),
-        balanceAfter: legacyKg(newBalance),
         balanceAfterTonnes: newBalance.toFixed(5),
-        averageCostAfter: legacyPricePerKg(newAverageCost),
         averageCostAfterPerTonne: newAverageCost.toFixed(6),
         updatedAt: sql`NOW()`,
         updatedById,
@@ -382,8 +345,8 @@ export class WarehouseTransactionService {
     }
 
     return {
-      newAverageCost: pricePerTonneToPerKilogram(newAverageCost),
-      newBalance: tonnesToKilograms(newBalance),
+      newAverageCostPerTonne: newAverageCost,
+      newBalanceTonnes: newBalance,
     };
   }
 
@@ -464,10 +427,17 @@ export class WarehouseTransactionService {
       throw new Error(`Warehouse ${transaction.warehouseId} not found`);
     }
 
-    const quantityTonnes =
-      transaction.quantityTonnes == null
-        ? kilogramsToTonnes(Number.parseFloat(transaction.quantity))
-        : Number.parseFloat(transaction.quantityTonnes);
+    if (transaction.quantityTonnes == null) {
+      throw new Error(
+        `Warehouse transaction ${transactionId} has no authoritative tonne quantity`,
+      );
+    }
+    const quantityTonnes = Number.parseFloat(transaction.quantityTonnes);
+    if (!Number.isFinite(quantityTonnes)) {
+      throw new Error(
+        `Warehouse transaction ${transactionId} has an invalid tonne quantity`,
+      );
+    }
     const totalCost = parseFloat(transaction.sum || "0");
     const currentStock = readTonneStockState(warehouse, isPvkj);
     const currentBalance = currentStock.balanceTonnes;
@@ -475,13 +445,19 @@ export class WarehouseTransactionService {
     const newBalance = Math.max(0, currentBalance - quantityTonnes);
     let newAverageCost = currentCost;
 
-    const averageCostBeforePerTonne = transactionRatePerTonne(
+    if (
+      transaction.averageCostBeforePerTonne == null ||
+      transaction.averageCostAfterPerTonne == null
+    ) {
+      throw new Error(
+        `Warehouse transaction ${transactionId} is missing authoritative tonne rates`,
+      );
+    }
+    const averageCostBeforePerTonne = Number.parseFloat(
       transaction.averageCostBeforePerTonne,
-      transaction.averageCostBefore,
     );
-    const averageCostAfterPerTonne = transactionRatePerTonne(
+    const averageCostAfterPerTonne = Number.parseFloat(
       transaction.averageCostAfterPerTonne,
-      transaction.averageCostAfter,
     );
     if (averageCostBeforePerTonne !== averageCostAfterPerTonne) {
       const totalCostBeforeRemoval = currentBalance * currentCost;
@@ -489,7 +465,7 @@ export class WarehouseTransactionService {
       newAverageCost = newBalance > 0 ? newTotalCost / newBalance : 0;
     }
 
-    await writeLegacyStockState(
+    await writeTonneStockState(
       tx,
       transaction.warehouseId,
       isPvkj,
@@ -526,8 +502,8 @@ export class WarehouseTransactionService {
     }
 
     return {
-      newAverageCost: pricePerTonneToPerKilogram(newAverageCost),
-      newBalance: tonnesToKilograms(newBalance),
+      newAverageCostPerTonne: newAverageCost,
+      newBalanceTonnes: newBalance,
     };
   }
 
@@ -554,10 +530,12 @@ export class WarehouseTransactionService {
       throw new Error(`Warehouse ${transaction.warehouseId} not found`);
     }
 
-    const quantityTonnes =
-      transaction.quantityTonnes == null
-        ? kilogramsToTonnes(Number.parseFloat(transaction.quantity))
-        : Number.parseFloat(transaction.quantityTonnes);
+    if (transaction.quantityTonnes == null) {
+      throw new Error(
+        `Warehouse transaction ${transactionId} has no authoritative tonne quantity`,
+      );
+    }
+    const quantityTonnes = Number.parseFloat(transaction.quantityTonnes);
     const totalCost = parseFloat(transaction.sum || "0");
     const currentStock = readTonneStockState(warehouse, isPvkj);
     const currentBalance = currentStock.balanceTonnes;
@@ -569,10 +547,12 @@ export class WarehouseTransactionService {
         {
           ...transaction,
           quantity: quantityTonnes,
+          averageCostBefore: transaction.averageCostBeforePerTonne,
+          averageCostAfter: transaction.averageCostAfterPerTonne,
         },
       );
 
-    await writeLegacyStockState(
+    await writeTonneStockState(
       tx,
       transaction.warehouseId,
       isPvkj,
@@ -609,8 +589,8 @@ export class WarehouseTransactionService {
     }
 
     return {
-      newAverageCost: pricePerTonneToPerKilogram(newAverageCost),
-      newBalance: tonnesToKilograms(newBalance),
+      newAverageCostPerTonne: newAverageCost,
+      newBalanceTonnes: newBalance,
     };
   }
 }

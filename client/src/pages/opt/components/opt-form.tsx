@@ -51,8 +51,6 @@ import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 import {
-  optLegacyKilogramsToTonnes,
-  optTonnesToLegacyKilograms,
   type OptInputMode,
 } from "../unit-calculations";
 
@@ -73,7 +71,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
     const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
       useState<string>("");
     const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-    const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
+    const [initialQuantityTonnes, setInitialQuantityTonnes] =
+      useState<number>(0);
     const isEditing = !!editData && !!editData.id;
 
     const initialValuesRef = useRef<OptFormData | null>(null);
@@ -213,7 +212,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
     const {
       calculatedTonnes,
       finalTonnes,
-      finalKg,
       purchasePricePerTonne,
       salePricePerTonne,
       purchasePriceRequiresDensity,
@@ -227,10 +225,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       deliveryTariffPerTonne,
       contractVolumeStatus,
       supplierContractVolumeStatus,
-      warehouseBalanceAtDate,
       warehouseBalanceAtDateTonnes,
       isWarehouseBalanceLoading,
-      warehousePriceAtDate,
     } = useOptCalculations({
       inputMode,
       quantityLiters: watchLiters || "",
@@ -248,7 +244,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       carrierId: watchCarrierId || "",
       deliveryLocationId: watchDeliveryLocationId || "",
       isEditing: isEditing,
-      initialQuantityKg: initialQuantityKg,
+      initialQuantityTonnes,
       dealDate: watchDealDate,
       productType: watchProductType || PRODUCT_TYPE.KEROSENE,
       selectedSupplier,
@@ -289,10 +285,10 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       // Если тариф базис→базис найден — точка поставки не обязательна
       if (!watchDeliveryLocationId && !hasBaseTariff) return "Не выбрана точка поставки";
       if (!watchCarrierId) return "Не выбран перевозчик";
-      if (deliveryCost === null && finalKg > 0)
+      if (deliveryCost === null && finalTonnes > 0)
         return "Тариф доставки не найден для выбранного маршрута";
       return null;
-    }, [isEditing, watchCarrierId, watchDeliveryLocationId, hasBaseTariff, deliveryCost, finalKg]);
+    }, [isEditing, watchCarrierId, watchDeliveryLocationId, hasBaseTariff, deliveryCost, finalTonnes]);
 
     // Автоматический выбор базиса при выборе поставщика
     useEffect(() => {
@@ -440,9 +436,9 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         setNoDeliveryRequired((editData as any).isNoDeliveryRequired || false);
         setSelectedPurchasePriceId(purchasePriceCompositeId);
         setSelectedSalePriceId(salePriceCompositeId);
-        setInitialQuantityKg(
+        setInitialQuantityTonnes(
           isEditing && !editData.isDraft
-            ? optTonnesToLegacyKilograms(Number(editData.quantityTonnes || 0))
+            ? Number(editData.quantityTonnes || 0)
             : 0,
         );
 
@@ -789,10 +785,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
 
         // Проверяем достаточность объема на складе для складских поставщиков
         if (isWarehouseSupplier && supplierWarehouse) {
-          const availableBalanceTonnes =
-            warehouseBalanceAtDateTonnes != null
-              ? warehouseBalanceAtDateTonnes
-              : optLegacyKilogramsToTonnes(warehouseBalanceAtDate ?? 0);
+          const availableBalanceTonnes = warehouseBalanceAtDateTonnes ?? 0;
 
           // ВАЖНО: При проверке перед сохранением мы должны убедиться, что
           // остаток БЕЗ учета текущей сделки достаточен для нового объема
@@ -929,15 +922,12 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               profit={profit}
               otherServiceFee={otherServiceFee}
               supplierWarehouse={supplierWarehouse}
-              finalKg={finalKg}
               purchasePriceRequiresDensity={purchasePriceRequiresDensity}
               isEditing={isEditing}
               contractVolumeStatus={contractVolumeStatus}
               supplierContractVolumeStatus={supplierContractVolumeStatus}
-              warehouseBalanceAtDate={warehouseBalanceAtDate}
               warehouseBalanceAtDateTonnes={warehouseBalanceAtDateTonnes}
               isWarehouseBalanceLoading={isWarehouseBalanceLoading}
-              warehousePriceAtDate={warehousePriceAtDate}
               finalTonnes={finalTonnes}
             />
 

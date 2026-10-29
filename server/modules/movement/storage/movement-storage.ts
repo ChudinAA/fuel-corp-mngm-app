@@ -19,24 +19,17 @@ import {
   SOURCE_TYPE,
 } from "@shared/constants";
 import { WarehouseTransactionService } from "../../warehouses/services/warehouse-transaction-service";
-import {
-  pricePerTonneToPerKilogram,
-  tonnesToKilograms,
-} from "@shared/units";
-
 function movementQuantityTonnes(
-  record: { quantityTonnes?: string | number | null; quantityKg?: string | number | null },
+  record: { quantityTonnes?: string | number | null },
 ): number {
-  if (record.quantityTonnes !== null && record.quantityTonnes !== undefined) {
-    return Number(record.quantityTonnes);
+  if (record.quantityTonnes == null || record.quantityTonnes === "") {
+    throw new Error("Movement is missing its authoritative tonne quantity");
   }
-  return Number(record.quantityKg || 0) / 1_000;
-}
-
-function movementQuantityKg(
-  record: { quantityTonnes?: string | number | null; quantityKg?: string | number | null },
-): number {
-  return Number(tonnesToKilograms(movementQuantityTonnes(record)).toFixed(2));
+  const quantityTonnes = Number(record.quantityTonnes);
+  if (!Number.isFinite(quantityTonnes) || quantityTonnes < 0) {
+    throw new Error("Movement has an invalid tonne quantity");
+  }
+  return quantityTonnes;
 }
 
 export class MovementStorage implements IMovementStorage {
@@ -229,7 +222,7 @@ export class MovementStorage implements IMovementStorage {
         return created;
       }
 
-      const quantityKg = movementQuantityKg(created);
+      const quantityTonnes = movementQuantityTonnes(created);
       const totalCost = parseFloat(created.totalCost || "0");
 
       // Обработка склада назначения (приход)
@@ -244,7 +237,7 @@ export class MovementStorage implements IMovementStorage {
             created.productType,
             SOURCE_TYPE.MOVEMENT,
             created.id,
-            quantityKg,
+            quantityTonnes,
             totalCost,
             data.createdById,
             data.movementDate,
@@ -269,7 +262,7 @@ export class MovementStorage implements IMovementStorage {
             created.productType,
             SOURCE_TYPE.MOVEMENT,
             created.id,
-            quantityKg,
+            quantityTonnes,
             0, // При расходе totalCost = 0
             data.createdById,
             data.movementDate,
@@ -307,16 +300,14 @@ export class MovementStorage implements IMovementStorage {
         );
       }
 
-      const oldQuantityTonnes = movementQuantityTonnes(currentMovement);
-      const oldQuantityKg = movementQuantityKg(currentMovement);
+      const oldQuantityTonnes = currentMovement.isDraft
+        ? 0
+        : movementQuantityTonnes(currentMovement);
       const oldTotalCost = parseFloat(currentMovement.totalCost || "0");
       const newQuantityTonnes =
         data.quantityTonnes !== undefined && data.quantityTonnes !== null
           ? Number(data.quantityTonnes)
-          : data.quantityKg !== undefined && data.quantityKg !== null
-            ? Number(data.quantityKg) / 1_000
             : oldQuantityTonnes;
-      const newQuantityKg = Number(tonnesToKilograms(newQuantityTonnes).toFixed(2));
       const oldDeliveryCost = parseFloat(currentMovement.deliveryCost || "0");
       const oldStorageCost = parseFloat(currentMovement.storageCost || "0");
       const newDeliveryCost =
@@ -357,15 +348,11 @@ export class MovementStorage implements IMovementStorage {
           newQuantityTonnes > 0
             ? (newTotalCost / newQuantityTonnes).toFixed(6)
             : "0";
-        data.costPerKg =
-          newQuantityTonnes > 0
-            ? pricePerTonneToPerKilogram(Number(data.costPerTonne)).toFixed(6)
-            : "0";
       }
       
       // Создаем транзакции при переходе из черновика
       if (transitioningFromDraft) {
-        const quantityKg = newQuantityKg;
+        const quantityTonnes = newQuantityTonnes;
         const totalCost = newTotalCost;
 
         // Обработка склада назначения (приход)
@@ -380,7 +367,7 @@ export class MovementStorage implements IMovementStorage {
               data.productType,
               SOURCE_TYPE.MOVEMENT,
               currentMovement.id,
-              quantityKg,
+              quantityTonnes,
               totalCost,
               data.updatedById,
               data.movementDate,
@@ -401,7 +388,7 @@ export class MovementStorage implements IMovementStorage {
               data.productType,
               SOURCE_TYPE.MOVEMENT,
               currentMovement.id,
-              quantityKg,
+              quantityTonnes,
               0,
               data.updatedById,
               data.movementDate,
@@ -432,9 +419,9 @@ export class MovementStorage implements IMovementStorage {
             tx,
             currentMovement.transactionId,
             currentMovement.toWarehouseId,
-            oldQuantityKg,
+            oldQuantityTonnes,
             oldTotalCost,
-            newQuantityKg,
+            newQuantityTonnes,
             newTotalCost,
             currentMovement.productType,
             data.updatedById || undefined,
@@ -459,9 +446,9 @@ export class MovementStorage implements IMovementStorage {
             tx,
             currentMovement.sourceTransactionId,
             currentMovement.fromWarehouseId,
-            oldQuantityKg,
+            oldQuantityTonnes,
             0, // При расходе totalCost = 0
-            newQuantityKg,
+            newQuantityTonnes,
             0, // При расходе totalCost = 0
             currentMovement.productType,
             data.updatedById || undefined,

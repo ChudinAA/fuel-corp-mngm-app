@@ -70,7 +70,6 @@ export const logisticsVehicles = pgTable("logistics_vehicles", {
   regNumber: text("reg_number").notNull(),
   model: text("model"),
   capacityTonnes: decimal("capacity_tonnes", { precision: 15, scale: 5 }),
-  capacityKg: decimal("capacity_kg", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -92,7 +91,6 @@ export const logisticsTrailers = pgTable("logistics_trailers", {
   }),
   regNumber: text("reg_number").notNull(),
   capacityTonnes: decimal("capacity_tonnes", { precision: 15, scale: 5 }),
-  capacityKg: decimal("capacity_kg", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -178,28 +176,26 @@ export const logisticsDriversRelations = relations(
 // ============ INSERT SCHEMAS ============
 
 export const insertLogisticsCarrierSchema = createInsertSchema(
-  logisticsCarriers
-).omit({ id: true });
+  logisticsCarriers,
+).omit({ id: true }).strict();
 export const insertLogisticsDeliveryLocationSchema = createInsertSchema(
-  logisticsDeliveryLocations
-).omit({ id: true });
+  logisticsDeliveryLocations,
+).omit({ id: true }).strict();
 export const insertLogisticsVehicleSchema = createInsertSchema(
   logisticsVehicles,
   {
     capacityTonnes: z.coerce.string().optional().nullable(),
-    capacityKg: z.coerce.string().optional().nullable(),
   }
-).omit({ id: true });
+).omit({ id: true }).strict();
 export const insertLogisticsTrailerSchema = createInsertSchema(
   logisticsTrailers,
   {
     capacityTonnes: z.coerce.string().optional().nullable(),
-    capacityKg: z.coerce.string().optional().nullable(),
   }
-).omit({ id: true });
+).omit({ id: true }).strict();
 export const insertLogisticsDriverSchema = createInsertSchema(
-  logisticsDrivers
-).omit({ id: true });
+  logisticsDrivers,
+).omit({ id: true }).strict();
 
 // ============ TYPES ============
 

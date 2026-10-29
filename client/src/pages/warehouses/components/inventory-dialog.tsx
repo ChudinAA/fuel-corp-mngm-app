@@ -34,27 +34,24 @@ import { Loader2, ClipboardList } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
-import type { Warehouse } from "@shared/schema";
 import { PRODUCT_TYPE } from "@shared/constants";
 import {
   formatPricePerTonne,
   formatTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
-import { inventoryInputToWarehouseTonnesPayload } from "../unit-calculations";
+import type { WarehouseWithTonnes } from "../types";
 
 const inventorySchema = z.object({
   productType: z.string().min(1, "Выберите тип продукта"),
   targetDate: z.string().min(1, "Укажите дату"),
-  targetBalance: z
+  targetBalanceTonnes: z
     .string()
     .min(1, "Укажите целевой остаток")
     .refine(
       (v) => /^\d+(?:\.\d{1,5})?$/.test(v) && Number.isFinite(Number(v)),
       "Введите массу с точностью до 5 знаков после запятой",
     ),
-  targetAverageCost: z
+  targetAverageCostPerTonne: z
     .string()
     .min(1, "Укажите целевую себестоимость")
     .refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) >= 0, "Некорректное значение"),
@@ -63,7 +60,7 @@ const inventorySchema = z.object({
 type InventoryFormValues = z.infer<typeof inventorySchema>;
 
 interface InventoryDialogProps {
-  warehouse: Warehouse;
+  warehouse: WarehouseWithTonnes;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -77,8 +74,8 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
     defaultValues: {
       productType: PRODUCT_TYPE.KEROSENE,
       targetDate: new Date().toISOString().slice(0, 10),
-      targetBalance: "",
-      targetAverageCost: "",
+      targetBalanceTonnes: "",
+      targetAverageCostPerTonne: "",
     },
   });
 
@@ -86,10 +83,8 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
   const watchProductType = form.watch("productType");
 
   const { data: balanceAtDate, isFetching: isLoadingBalance } = useQuery<{
-    balance: string;
-    averageCost: string;
-    balanceTonnes?: string;
-    averageCostPerTonne?: string | null;
+    balanceTonnes: string;
+    averageCostPerTonne: string;
   }>({
     queryKey: [
       `/api/warehouses/${warehouse.id}/balance`,
@@ -106,26 +101,26 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
     enabled: open && !!watchDate && !!watchProductType,
   });
 
-  const currentBalanceKg = parseFloat(balanceAtDate?.balance || "0");
-  const currentCostPerKilogram = parseFloat(balanceAtDate?.averageCost || "0");
-  const currentBalanceTonnes =
-    balanceAtDate?.balanceTonnes != null
-      ? Number(balanceAtDate.balanceTonnes)
-      : kilogramsToTonnes(currentBalanceKg);
-  const currentCostPerTonne =
-    balanceAtDate?.averageCostPerTonne != null
-      ? Number(balanceAtDate.averageCostPerTonne)
-      : pricePerKilogramToPerTonne(currentCostPerKilogram);
+  const currentBalanceTonnes = Number(balanceAtDate?.balanceTonnes ?? 0);
+  const currentCostPerTonne = Number(
+    balanceAtDate?.averageCostPerTonne ?? 0,
+  );
 
-  const watchTargetBalance = form.watch("targetBalance");
-  const watchTargetCost = form.watch("targetAverageCost");
+  const watchTargetBalance = form.watch("targetBalanceTonnes");
+  const watchTargetCost = form.watch("targetAverageCostPerTonne");
 
   const targetBalanceTonnes = parseFloat(watchTargetBalance || "0");
   const deltaTonnes = targetBalanceTonnes - currentBalanceTonnes;
 
   const mutation = useMutation({
     mutationFn: async (data: InventoryFormValues) => {
-      const payload = inventoryInputToWarehouseTonnesPayload(data);
+      const payload = {
+        ...data,
+        targetBalanceTonnes: Number(data.targetBalanceTonnes).toFixed(5),
+        targetAverageCostPerTonne: String(
+          Number(data.targetAverageCostPerTonne),
+        ),
+      };
       const res = await apiRequest("POST", `/api/warehouses/${warehouse.id}/inventory`, payload);
       if (!res.ok) {
         const err = await res.json();
@@ -145,8 +140,8 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
       form.reset({
         productType: PRODUCT_TYPE.KEROSENE,
         targetDate: new Date().toISOString().slice(0, 10),
-        targetBalance: "",
-        targetAverageCost: "",
+        targetBalanceTonnes: "",
+        targetAverageCostPerTonne: "",
       });
       onOpenChange(false);
     },
@@ -251,7 +246,7 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
 
               <FormField
                 control={form.control}
-                name="targetBalance"
+                name="targetBalanceTonnes"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Целевой остаток (т)</FormLabel>
@@ -272,7 +267,7 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
 
               <FormField
                 control={form.control}
-                name="targetAverageCost"
+                name="targetAverageCostPerTonne"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Целевая себестоимость (₽/т)</FormLabel>

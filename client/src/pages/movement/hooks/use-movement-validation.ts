@@ -1,9 +1,9 @@
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { formatTonnes } from "@shared/units";
 import {
-  resolveWarehouseAverageCostPerTonne,
-  resolveWarehouseBalanceTonnes,
-} from "@/pages/shared/utils/warehouse-balance-units";
+  readAverageCostPerTonne,
+  readBalanceTonnes,
+} from "@/pages/shared/utils/tonne-balance-values";
 
 interface UseMovementValidationProps {
   watchMovementType: string;
@@ -51,20 +51,22 @@ export function useMovementValidation({
       }
 
       const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-      const currentBalanceTonnes = resolveWarehouseBalanceTonnes(
-        null,
-        isPvkj
+      const currentBalanceTonnes = readBalanceTonnes({
+        balanceTonnes: isPvkj
           ? fromWarehouse.pvkjBalanceTonnes
           : fromWarehouse.currentBalanceTonnes,
-        isPvkj ? fromWarehouse.pvkjBalance : fromWarehouse.currentBalance,
-      );
-      const currentCostPerTonne = resolveWarehouseAverageCostPerTonne(
-        null,
-        isPvkj
+      });
+      const currentCostPerTonne = readAverageCostPerTonne({
+        averageCostPerTonne: isPvkj
           ? fromWarehouse.pvkjAverageCostPerTonne
           : fromWarehouse.averageCostPerTonne,
-        isPvkj ? fromWarehouse.pvkjAverageCost : fromWarehouse.averageCost,
-      );
+      });
+      if (currentBalanceTonnes === null) {
+        throw new Error("Склад не содержит authoritative balanceTonnes");
+      }
+      if (currentCostPerTonne === null) {
+        throw new Error("Склад не содержит authoritative averageCostPerTonne");
+      }
 
       if (currentBalanceTonnes < tonnesNum) {
         throw new Error(

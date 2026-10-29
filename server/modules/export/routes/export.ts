@@ -4,7 +4,6 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { ExcelService } from "../services/excel-service";
 import { storage } from "../../../storage/index";
 import { exportConfigRegistry } from "../config/modules-config";
-import { transportationResultToApi } from "../../transportation/transportation-api-adapters";
 
 const excelService = new ExcelService();
 
@@ -106,8 +105,10 @@ export function registerExportRoutes(app: Express) {
             // Добавляем вычислимое поле "Сумма"
             data = result.data.map((r: any) => ({
               ...r,
-              _purchaseAmount: r.purchasePrice && r.quantityKg
-                ? parseFloat(r.purchasePrice) * parseFloat(r.quantityKg)
+              _purchaseAmount: r.purchasePricePerTonne != null &&
+                  r.quantityTonnes != null
+                ? parseFloat(r.purchasePricePerTonne) *
+                  parseFloat(r.quantityTonnes)
                 : null,
             }));
             break;
@@ -149,7 +150,7 @@ export function registerExportRoutes(app: Express) {
           case "transportation": {
             const result = await storage.transportation.getTransportationDeals(0, limit, search, columnFilters);
             data = (
-              transportationResultToApi(result) as { data: any[] }
+              result as { data: any[] }
             ).data;
             break;
           }

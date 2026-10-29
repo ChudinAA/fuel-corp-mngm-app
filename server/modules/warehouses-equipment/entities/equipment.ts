@@ -18,27 +18,21 @@ export const equipments = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
-    currentBalance: decimal("current_balance", {
-      precision: 15,
-      scale: 2,
-    }).default("0"),
     currentBalanceTonnes: decimal("current_balance_tonnes", {
       precision: 18,
       scale: 5,
-    }),
-    averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default(
-      "0",
-    ),
-    pvkjBalance: decimal("pvkj_balance", { precision: 15, scale: 2 }).default(
-      "0",
-    ),
+    }).notNull().default("0"),
+    averageCostPerTonne: decimal("average_cost_per_tonne", {
+      precision: 22,
+      scale: 6,
+    }).default("0"),
     pvkjBalanceTonnes: decimal("pvkj_balance_tonnes", {
       precision: 18,
       scale: 5,
-    }),
-    pvkjAverageCost: decimal("pvkj_average_cost", {
-      precision: 12,
-      scale: 4,
+    }).notNull().default("0"),
+    pvkjAverageCostPerTonne: decimal("pvkj_average_cost_per_tonne", {
+      precision: 22,
+      scale: 6,
     }).default("0"),
     isActive: text("is_active").default("true"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -64,13 +58,14 @@ export const equipmentTransactions = pgTable(
     productType: text("product_type").default("kerosene"),
     sourceType: text("source_type"),
     sourceId: uuid("source_id"),
-    quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
     quantityTonnes: decimal("quantity_tonnes", {
       precision: 18,
       scale: 5,
+    }).notNull(),
+    pricePerTonne: decimal("price_per_tonne", {
+      precision: 22,
+      scale: 6,
     }),
-    balanceBefore: decimal("balance_before", { precision: 15, scale: 2 }),
-    balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
     balanceBeforeTonnes: decimal("balance_before_tonnes", {
       precision: 18,
       scale: 5,
@@ -79,16 +74,15 @@ export const equipmentTransactions = pgTable(
       precision: 18,
       scale: 5,
     }),
-    averageCostBefore: decimal("average_cost_before", {
-      precision: 12,
-      scale: 4,
+    averageCostBeforePerTonne: decimal("average_cost_before_per_tonne", {
+      precision: 22,
+      scale: 6,
     }),
-    averageCostAfter: decimal("average_cost_after", {
-      precision: 12,
-      scale: 4,
+    averageCostAfterPerTonne: decimal("average_cost_after_per_tonne", {
+      precision: 22,
+      scale: 6,
     }),
     sum: decimal("sum", { precision: 15, scale: 2 }),
-    price: decimal("price", { precision: 12, scale: 4 }),
     transactionDate: timestamp("transaction_date", { mode: "string" }),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -227,10 +221,15 @@ export const insertEquipmentSchema = createInsertSchema(equipments).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-});
+}).strict();
 export const insertEquipmentTransactionSchema = createInsertSchema(
   equipmentTransactions,
-).omit({ id: true, createdAt: true });
+)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .strict();
 
 export type Equipment = typeof equipments.$inferSelect;
 export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;

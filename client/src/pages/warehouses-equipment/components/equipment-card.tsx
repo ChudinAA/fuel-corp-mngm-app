@@ -13,8 +13,6 @@ import type { EquipmentApi } from "../types";
 import {
   formatPricePerTonne,
   formatTonnes,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 import { useAuth } from "@/hooks/use-auth";
 import { ProductTypeBadge } from "@/components/product-type-badge";
@@ -38,26 +36,10 @@ export function EquipmentCard({
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const balance = parseFloat(equipment.currentBalance || "0");
-  const cost = parseFloat(equipment.averageCost || "0");
-  const pvkjBalance = parseFloat(equipment.pvkjBalance || "0");
-  const pvkjCost = parseFloat(equipment.pvkjAverageCost || "0");
-  const balanceTonnes =
-    equipment.currentBalanceTonnes !== undefined
-      ? Number(equipment.currentBalanceTonnes)
-      : kilogramsToTonnes(balance);
-  const costPerTonne =
-    equipment.averageCostPerTonne != null
-      ? Number(equipment.averageCostPerTonne)
-      : pricePerKilogramToPerTonne(cost);
-  const pvkjBalanceTonnes =
-    equipment.pvkjBalanceTonnes !== undefined
-      ? Number(equipment.pvkjBalanceTonnes)
-      : kilogramsToTonnes(pvkjBalance);
-  const pvkjCostPerTonne =
-    equipment.pvkjAverageCostPerTonne != null
-      ? Number(equipment.pvkjAverageCostPerTonne)
-      : pricePerKilogramToPerTonne(pvkjCost);
+  const balanceTonnes = Number(equipment.currentBalanceTonnes);
+  const costPerTonne = Number(equipment.averageCostPerTonne ?? 0);
+  const pvkjBalanceTonnes = Number(equipment.pvkjBalanceTonnes);
+  const pvkjCostPerTonne = Number(equipment.pvkjAverageCostPerTonne ?? 0);
   const isInactive = equipment.isActive === "false";
   const { hasPermission } = useAuth();
 
@@ -157,7 +139,7 @@ export function EquipmentCard({
           </div>
         </div>
 
-        {pvkjBalance > 0 && (
+        {pvkjBalanceTonnes > 0 && (
           <>
             <Separator />
             <div className="space-y-2">

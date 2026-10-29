@@ -25,7 +25,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRefuelingFilters } from "../hooks/use-refueling-filters";
 import { useRefuelingCalculations } from "../hooks/use-refueling-calculations";
 import { formatRefuelingPriceOption } from "../unit-calculations";
-import { formatPricePerTonne, pricePerKilogramToPerTonne } from "@shared/units";
+import { formatPricePerTonne } from "@shared/units";
 import { CalculatedField } from "../calculated-field";
 import { formatNumber, formatPrice, formatCurrency } from "../utils";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
@@ -210,7 +210,6 @@ export const AdditionalProductSection = forwardRef<
 
     // Calculations for this product
     const {
-      calculatedKg,
       finalTonnes,
       purchasePrice,
       salePrice,
@@ -267,12 +266,12 @@ export const AdditionalProductSection = forwardRef<
     const basisServicePrice =
       selectedSupplier?.basisPrices?.find(
         (bp) => bp.basisId === selectedBasisId,
-      )?.servicePrice ?? null;
+      )?.servicePricePerTonne ?? null;
 
     const basisPvkjPrice =
       selectedSupplier?.basisPrices?.find(
         (bp) => bp.basisId === selectedBasisId,
-      )?.pvkjPrice ?? null;
+      )?.pvkjPricePerTonne ?? null;
 
     const otherServiceTypeLabel = otherServiceType
       ? (OTHER_SERVICE_TYPE_LABELS[otherServiceType] ?? otherServiceType)
@@ -358,8 +357,7 @@ export const AdditionalProductSection = forwardRef<
       validate: (isDraft: boolean): string | null => {
         if (isDraft) return null;
         if (!nomenclatureId) return `Продукт "${productLabel}": выберите номенклатуру.`;
-        const qty = calculatedKg ? parseFloat(calculatedKg) : 0;
-        if (qty <= 0) {
+        if (finalTonnes <= 0) {
           return `Продукт "${productLabel}": укажите объём топлива.`;
         }
         if (
@@ -413,7 +411,7 @@ export const AdditionalProductSection = forwardRef<
             productLabel={productLabel}
             value={volume}
             onChange={onVolumeChange}
-            kgOnly={productType === PRODUCT_TYPE.SERVICE}
+            tonnesOnly={productType === PRODUCT_TYPE.SERVICE}
           />
           <div className="space-y-2">
             <label className="text-sm font-medium">Номенклатура</label>
@@ -434,7 +432,7 @@ export const AdditionalProductSection = forwardRef<
                   </span>
                   <span className="text-sm font-medium">
                     {formatPricePerTonne(
-                      pricePerKilogramToPerTonne(Number(basisPvkjPrice)),
+                      Number(basisPvkjPrice),
                     )} ₽/т
                   </span>
                 </div>
@@ -465,7 +463,7 @@ export const AdditionalProductSection = forwardRef<
                   </span>
                   <span className="text-sm font-medium">
                     {formatPricePerTonne(
-                      pricePerKilogramToPerTonne(Number(basisServicePrice)),
+                      Number(basisServicePrice),
                     )} ₽/т
                   </span>
                 </div>

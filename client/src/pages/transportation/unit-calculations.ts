@@ -1,13 +1,11 @@
 import {
   formatPricePerTonne,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
+  litresAndDensityToTonnes,
   pricePerLitreToPerTonne,
-  tonnesToKilograms,
 } from "@shared/units";
 
 export type TransportationInputMode = "liters" | "tonnes";
-export type TransportationPriceUnit = "kg" | "liter" | "tonne";
+export type TransportationPriceUnit = "liter" | "tonne";
 
 function parseFinite(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -27,7 +25,7 @@ export function calculateTransportationMassTonnes(
 
   const parsedDensity = parseFinite(density);
   if (parsedDensity === null || parsedDensity <= 0) return null;
-  return kilogramsToTonnes(parsedQuantity * parsedDensity);
+  return litresAndDensityToTonnes(parsedQuantity, parsedDensity);
 }
 
 export function calculateTransportationPricePerTonne(
@@ -38,7 +36,6 @@ export function calculateTransportationPricePerTonne(
   const price = parseFinite(sourcePrice);
   if (price === null || price < 0) return null;
   if (sourceUnit === "tonne") return price;
-  if (sourceUnit === "kg") return pricePerKilogramToPerTonne(price);
 
   const parsedDensity = parseFinite(density);
   if (parsedDensity === null || parsedDensity <= 0) return null;
@@ -59,21 +56,6 @@ export function calculateTransportationAmount(
     return null;
   }
   return pricePerTonne * quantityTonnes;
-}
-
-export function transportationTonnesToLegacyKg(tonnes: number): number {
-  return tonnesToKilograms(tonnes);
-}
-
-export function calculateStoredTransportationMassTonnes(
-  quantityKg: number | string | null | undefined,
-  _quantityLiters: number | string | null | undefined,
-  _density: number | string | null | undefined,
-): number | null {
-  const kilograms = parseFinite(quantityKg);
-  return kilograms === null || kilograms < 0
-    ? null
-    : kilogramsToTonnes(kilograms);
 }
 
 export function formatTransportationPriceOption(

@@ -37,7 +37,7 @@ function makeDeal(
   supplierId: string,
   customerId: string,
   warehouseId: string,
-  quantityKg: number,
+  quantityTonnes: number,
   options: { isDraft?: boolean; refuelingDate?: string } = {},
 ) {
   return {
@@ -46,11 +46,11 @@ function makeDeal(
     supplierId,
     buyerId: customerId,
     warehouseId,
-    quantityKg,
-    purchasePrice: 10,
-    purchaseAmount: quantityKg * 10,
-    salePrice: 15,
-    saleAmount: quantityKg * 15,
+    quantityTonnes,
+    purchasePricePerTonne: 10,
+    purchaseAmount: quantityTonnes * 10,
+    salePricePerTonne: 15,
+    saleAmount: quantityTonnes * 15,
     isDraft: options.isDraft ?? false,
   } as any;
 }
@@ -83,10 +83,10 @@ async function createFixture(
         { length: options.createSecondWarehouse ? 2 : 1 },
         (_, index) => ({
           name: `refueling-atomicity-warehouse-${index}-${crypto.randomUUID()}`,
-          currentBalance: "100",
-          averageCost: "10",
-          pvkjBalance: "100",
-          pvkjAverageCost: "10",
+          currentBalanceTonnes: "100",
+          averageCostPerTonne: "10",
+          pvkjBalanceTonnes: "100",
+          pvkjAverageCostPerTonne: "10",
         }),
       ),
     )
@@ -103,10 +103,10 @@ async function createFixture(
             { length: options.createSecondEquipment ? 2 : 1 },
             () => ({
               name: `refueling-atomicity-equipment-${crypto.randomUUID()}`,
-              currentBalance: "100",
-              averageCost: "10",
-              pvkjBalance: "100",
-              pvkjAverageCost: "10",
+              currentBalanceTonnes: "100",
+              averageCostPerTonne: "10",
+              pvkjBalanceTonnes: "100",
+              pvkjAverageCostPerTonne: "10",
             }),
           ),
         )
@@ -231,12 +231,12 @@ async function readSnapshot(fixture: Fixture) {
   };
 }
 
-function editDeal(deal: any, quantityKg: number, refuelingDate: string, warehouseId = deal.warehouseId) {
+function editDeal(deal: any, quantityTonnes: number, refuelingDate: string, warehouseId = deal.warehouseId) {
   return {
     ...deal,
-    quantityKg,
-    purchaseAmount: quantityKg * 10,
-    saleAmount: quantityKg * 15,
+    quantityTonnes,
+    purchaseAmount: quantityTonnes * 10,
+    saleAmount: quantityTonnes * 15,
     refuelingDate,
     warehouseId,
   };
@@ -281,7 +281,7 @@ test("refueling order edits and failures preserve deals, movements, and stock at
           const quantities = new Map(
             currentDeals.map((deal) => [
               deal.productType,
-              Number(deal.quantityKg) + editIndex + 1,
+              Number(deal.quantityTonnes) + editIndex + 1,
             ]),
           );
           const updated = await storage.updateRefuelingOrder(
@@ -300,7 +300,7 @@ test("refueling order edits and failures preserve deals, movements, and stock at
           const reloaded = await storage.getRefuelingOrder(fixture.deals[0].id);
           for (const deal of reloaded) {
             assert.equal(new Date(deal.refuelingDate).toISOString(), date);
-            assert.equal(Number(deal.quantityKg), quantities.get(deal.productType));
+            assert.equal(Number(deal.quantityTonnes), quantities.get(deal.productType));
             if (
               deal.productType === PRODUCT_TYPE.KEROSENE ||
               deal.productType === PRODUCT_TYPE.PVKJ
@@ -310,7 +310,10 @@ test("refueling order edits and failures preserve deals, movements, and stock at
                 .from(warehouseTransactions)
                 .where(sql`${warehouseTransactions.id} = ${deal.transactionId}`);
               assert.ok(transaction, `${deal.productType} movement exists`);
-              assert.equal(Number(transaction.quantity), -Number(deal.quantityKg));
+              assert.equal(
+                Number(transaction.quantityTonnes),
+                -Number(deal.quantityTonnes),
+              );
               assert.equal(
                 new Date(transaction.transactionDate!).toISOString(),
                 date,
@@ -325,11 +328,11 @@ test("refueling order edits and failures preserve deals, movements, and stock at
             where: sql`${warehouses.id} = ${fixture.warehouseIds[0]}`,
           });
           const expectedKerosene = 100 -
-            Number(reloaded.find((deal) => deal.productType === PRODUCT_TYPE.KEROSENE)?.quantityKg || 0);
+            Number(reloaded.find((deal) => deal.productType === PRODUCT_TYPE.KEROSENE)?.quantityTonnes || 0);
           const expectedPvkj = 100 -
-            Number(reloaded.find((deal) => deal.productType === PRODUCT_TYPE.PVKJ)?.quantityKg || 0);
-          assert.equal(Number(warehouse?.currentBalance), expectedKerosene);
-          assert.equal(Number(warehouse?.pvkjBalance), expectedPvkj);
+            Number(reloaded.find((deal) => deal.productType === PRODUCT_TYPE.PVKJ)?.quantityTonnes || 0);
+          assert.equal(Number(warehouse?.currentBalanceTonnes), expectedKerosene);
+          assert.equal(Number(warehouse?.pvkjBalanceTonnes), expectedPvkj);
         }
       } finally {
         await cleanupFixture(fixture);
@@ -346,7 +349,7 @@ test("refueling order edits and failures preserve deals, movements, and stock at
       const updated = await storage.updateRefuelingOrder(
         fixture.deals[0].id,
         fixture.deals.map((deal) =>
-          editDeal(deal, Number(deal.quantityKg) + 2, "2026-10-23T10:00:00.000Z", fixture.warehouseIds[1]),
+          editDeal(deal, Number(deal.quantityTonnes) + 2, "2026-10-23T10:00:00.000Z", fixture.warehouseIds[1]),
         ),
       );
       const [oldWarehouse, newWarehouse] = await Promise.all(
@@ -357,10 +360,10 @@ test("refueling order edits and failures preserve deals, movements, and stock at
         ),
       );
 
-      assert.equal(Number(oldWarehouse?.currentBalance), 100);
-      assert.equal(Number(oldWarehouse?.pvkjBalance), 100);
-      assert.equal(Number(newWarehouse?.currentBalance), 88);
-      assert.equal(Number(newWarehouse?.pvkjBalance), 88);
+      assert.equal(Number(oldWarehouse?.currentBalanceTonnes), 100);
+      assert.equal(Number(oldWarehouse?.pvkjBalanceTonnes), 100);
+      assert.equal(Number(newWarehouse?.currentBalanceTonnes), 88);
+      assert.equal(Number(newWarehouse?.pvkjBalanceTonnes), 88);
       for (const deal of updated.deals) {
         assert.equal(deal.warehouseId, fixture.warehouseIds[1]);
         const [transaction] = await db
@@ -394,14 +397,14 @@ test("refueling order edits and failures preserve deals, movements, and stock at
       const updateSource = async (
         warehouseId: string | null,
         equipmentId: string | null,
-        quantityKg: number,
+        quantityTonnes: number,
         date: string,
       ) => {
         const currentDeals = await storage.getRefuelingOrder(fixture.deals[0].id);
         return storage.updateRefuelingOrder(
           fixture.deals[0].id,
           currentDeals.map((deal) => ({
-            ...editDeal(deal, quantityKg, date),
+            ...editDeal(deal, quantityTonnes, date),
             warehouseId,
             equipmentId,
           })),
@@ -411,7 +414,7 @@ test("refueling order edits and failures preserve deals, movements, and stock at
       const assertMovementLinks = async (
         deals: any[],
         expectedSource: { warehouseId: string | null; equipmentId: string | null },
-        quantityKg: number,
+        quantityTonnes: number,
       ) => {
         for (const deal of deals) {
           assert.equal(deal.warehouseId, expectedSource.warehouseId);
@@ -432,7 +435,7 @@ test("refueling order edits and failures preserve deals, movements, and stock at
             assert.ok(movement);
             assert.equal(movement.equipmentId, expectedSource.equipmentId);
             assert.equal(movement.sourceId, deal.id);
-            assert.equal(Number(movement.quantity), -quantityKg);
+            assert.equal(Number(movement.quantityTonnes), -quantityTonnes);
             assert.equal(movement.deletedAt, null);
           } else {
             assert.equal(deal.equipmentTransactionId, null);
@@ -444,7 +447,7 @@ test("refueling order edits and failures preserve deals, movements, and stock at
             assert.ok(movement);
             assert.equal(movement.warehouseId, expectedSource.warehouseId);
             assert.equal(movement.sourceId, deal.id);
-            assert.equal(Number(movement.quantity), -quantityKg);
+            assert.equal(Number(movement.quantityTonnes), -quantityTonnes);
             assert.equal(movement.deletedAt, null);
           }
         }
@@ -464,12 +467,12 @@ test("refueling order edits and failures preserve deals, movements, and stock at
             where: sql`${equipments.id} = ${fixture.equipmentIds[1]}`,
           }),
         ]);
-        assert.equal(Number(warehouse?.currentBalance), expected.warehouse);
-        assert.equal(Number(warehouse?.pvkjBalance), expected.warehouse);
-        assert.equal(Number(firstEquipment?.currentBalance), expected.firstEquipment);
-        assert.equal(Number(firstEquipment?.pvkjBalance), expected.firstEquipment);
-        assert.equal(Number(secondEquipment?.currentBalance), expected.secondEquipment);
-        assert.equal(Number(secondEquipment?.pvkjBalance), expected.secondEquipment);
+        assert.equal(Number(warehouse?.currentBalanceTonnes), expected.warehouse);
+        assert.equal(Number(warehouse?.pvkjBalanceTonnes), expected.warehouse);
+        assert.equal(Number(firstEquipment?.currentBalanceTonnes), expected.firstEquipment);
+        assert.equal(Number(firstEquipment?.pvkjBalanceTonnes), expected.firstEquipment);
+        assert.equal(Number(secondEquipment?.currentBalanceTonnes), expected.secondEquipment);
+        assert.equal(Number(secondEquipment?.pvkjBalanceTonnes), expected.secondEquipment);
       };
 
       const warehouseEdit = await updateSource(
@@ -565,14 +568,14 @@ test("refueling order edits and failures preserve deals, movements, and stock at
       const updated = await storage.updateRefuelingOrder(
         fixture.deals[0].id,
         fixture.deals.map((deal) =>
-          editDeal(deal, Number(deal.quantityKg) + 4, "2026-10-24T10:00:00.000Z"),
+          editDeal(deal, Number(deal.quantityTonnes) + 4, "2026-10-24T10:00:00.000Z"),
         ),
       );
       assert.ok(updated.deals.every((deal) => deal.isDraft));
       const snapshot = await readSnapshot(fixture);
       assert.equal(snapshot.transactions.length, 0);
-      assert.equal(Number(snapshot.warehouses[0].currentBalance), 100);
-      assert.equal(Number(snapshot.warehouses[0].pvkjBalance), 100);
+      assert.equal(Number(snapshot.warehouses[0].currentBalanceTonnes), 100);
+      assert.equal(Number(snapshot.warehouses[0].pvkjBalanceTonnes), 100);
     } finally {
       await cleanupFixture(fixture);
     }
@@ -595,7 +598,7 @@ test("refueling order edits and failures preserve deals, movements, and stock at
       );
       assert.equal(updated.deals.length, 1);
       assert.equal(updated.deals[0].id, legacyDeal.id);
-      assert.equal(Number(updated.deals[0].quantityKg), 17);
+      assert.equal(Number(updated.deals[0].quantityTonnes), 17);
       assert.equal(
         new Date(updated.deals[0].refuelingDate).toISOString(),
         "2026-10-25T10:00:00.000Z",
@@ -603,7 +606,7 @@ test("refueling order edits and failures preserve deals, movements, and stock at
       const warehouse = await db.query.warehouses.findFirst({
         where: sql`${warehouses.id} = ${fixture.warehouseIds[0]}`,
       });
-      assert.equal(Number(warehouse?.currentBalance), 83);
+      assert.equal(Number(warehouse?.currentBalanceTonnes), 83);
     } finally {
       await cleanupFixture(fixture);
     }
@@ -634,7 +637,7 @@ test("refueling order edits and failures preserve deals, movements, and stock at
         storage.updateRefuelingOrder(
           fixture.deals[0].id,
           fixture.deals.map((deal) =>
-            editDeal(deal, Number(deal.quantityKg) + 5, "2026-10-26T10:00:00.000Z"),
+            editDeal(deal, Number(deal.quantityTonnes) + 5, "2026-10-26T10:00:00.000Z"),
           ),
         ),
         /Simulated failure/,
@@ -690,7 +693,7 @@ test("refueling order edits and failures preserve deals, movements, and stock at
           fixture.deals.map((deal) =>
             editDeal(
               deal,
-              Number(deal.quantityKg) + 5,
+              Number(deal.quantityTonnes) + 5,
               "2026-10-26T10:00:00.000Z",
             ),
           ),

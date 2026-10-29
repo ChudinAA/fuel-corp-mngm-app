@@ -12,7 +12,6 @@
     "test:restore-stock": "npm run test:restore-stock-guards && node scripts/test-restore-stock.mjs",
     "test:restore-stock-guards": "node --test tests/test-restore-stock-runner.test.mjs",
     "test:critical-flows": "node scripts/test-critical-flows.mjs",
-    "db:backfill-budget-sales-volume": "node scripts/backfill-budget-sales-volume.mjs",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

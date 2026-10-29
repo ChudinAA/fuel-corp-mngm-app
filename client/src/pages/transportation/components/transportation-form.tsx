@@ -69,7 +69,7 @@ import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 import { CalculatedField } from "@/pages/opt/components/calculated-field";
 import { formatCurrency, formatPrice } from "@/pages/opt/utils";
-import { formatPricePerTonne, formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatPricePerTonne, formatTonnes } from "@shared/units";
 import {
   calculateTransportationMassTonnes,
   formatTransportationPriceOption,
@@ -212,14 +212,11 @@ export const TransportationForm = forwardRef<
   });
 
   const {
-    calculatedKg,
-    finalKg,
     finalTonnes,
     salePrice,
     salePricePerTonne,
     deliveryCost,
     matchedDeliveryCost,
-    deliveryTariff,
     deliveryTariffPerTonne,
     saleAmount,
     profit: calculatedProfit,
@@ -358,9 +355,7 @@ export const TransportationForm = forwardRef<
           editData.quantityTonnes !== null &&
           editData.quantityTonnes !== undefined
             ? Number(editData.quantityTonnes)
-            : editData.quantityKg
-              ? kilogramsToTonnes(parseFloat(editData.quantityKg))
-              : null,
+            : null,
         inputMode:
           editData.inputMode === "liters" ||
           Number.parseFloat(editData.quantityLiters || "0") > 0
@@ -404,7 +399,6 @@ export const TransportationForm = forwardRef<
       quantityLiters: data.quantityLiters || null,
       density: data.density || null,
       inputMode: data.inputMode,
-      purchasePrice: null,
       purchasePriceId: null,
       purchasePriceIndex: null,
       salePricePerTonne:

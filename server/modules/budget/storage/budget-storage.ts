@@ -90,7 +90,6 @@ export class BudgetStorage implements IBudgetStorage {
       : "0";
 
     await this.updateBudgetEntry(budgetId, {
-      salesVolume: salesTotals.totalVolumeKg,
       salesVolumeTonnes: salesTotals.totalVolumeTonnes,
       marginality,
     });
@@ -173,7 +172,6 @@ export class BudgetStorage implements IBudgetStorage {
 
     if (existing) {
       return this.updateBudgetEntry(existing.id, {
-        salesVolume: salesTotals.totalVolumeKg,
         salesVolumeTonnes: salesTotals.totalVolumeTonnes,
         salesRevenue: salesTotals.totalRevenue,
         marginality: marginality,
@@ -184,7 +182,6 @@ export class BudgetStorage implements IBudgetStorage {
   }
 
   private async getMonthlySalesTotals(budgetMonth: string): Promise<{
-    totalVolumeKg: string;
     totalVolumeTonnes: string;
     totalRevenue: string;
     totalProfit: string;
@@ -215,10 +212,7 @@ export class BudgetStorage implements IBudgetStorage {
               AND CAST(COALESCE(${aircraftRefueling.density}, '0') AS NUMERIC) > 0
             THEN CAST(${aircraftRefueling.quantityLiters} AS NUMERIC)
               * CAST(${aircraftRefueling.density} AS NUMERIC) / 1000
-            ELSE COALESCE(
-              ${aircraftRefueling.quantityTonnes},
-              CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
-            )
+            ELSE ${aircraftRefueling.quantityTonnes}
           END AS volume_tonnes,
           CAST(${aircraftRefueling.saleAmount} AS NUMERIC) AS revenue,
           CAST(${aircraftRefueling.profit} AS NUMERIC) AS profit
@@ -229,13 +223,11 @@ export class BudgetStorage implements IBudgetStorage {
       )
       SELECT
         COALESCE(ROUND(SUM(monthly_sales.volume_tonnes), 5), 0)::text AS total_volume_tonnes,
-        COALESCE(ROUND(SUM(monthly_sales.volume_tonnes), 5) * 1000, 0)::text AS total_volume_kg,
         COALESCE(SUM(monthly_sales.revenue), 0)::text AS total_revenue,
         COALESCE(SUM(monthly_sales.profit), 0)::text AS total_profit
       FROM monthly_sales
     `);
     const totals = result.rows?.[0] as {
-      total_volume_kg?: string;
       total_volume_tonnes?: string;
       total_revenue?: string;
       total_profit?: string;
@@ -246,7 +238,6 @@ export class BudgetStorage implements IBudgetStorage {
     }
 
     return {
-      totalVolumeKg: totals.total_volume_kg ?? "0",
       totalVolumeTonnes: totals.total_volume_tonnes ?? "0",
       totalRevenue: totals.total_revenue ?? "0",
       totalProfit: totals.total_profit ?? "0",

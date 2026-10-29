@@ -23,6 +23,6 @@ export interface ITransportationStorage {
     basisId?: string | null;
     customerBasisId?: string | null;
     deliveryLocationId?: string | null;
-    quantityKg: number;
+    quantityTonnes: number;
   }): Promise<boolean>;
 }

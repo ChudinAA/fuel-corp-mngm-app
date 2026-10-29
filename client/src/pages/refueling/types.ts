@@ -3,7 +3,10 @@ import type { AircraftRefueling } from "@shared/schema";
 
 export type RefuelingApi = Omit<
   AircraftRefueling,
-  "quantityKg" | "purchasePrice" | "salePrice" | "agentFeeRate"
+  | "quantityTonnes"
+  | "purchasePricePerTonne"
+  | "salePricePerTonne"
+  | "agentFeeRatePerTonne"
 > & {
   quantityTonnes: number | null;
   purchasePricePerTonne: number | null;

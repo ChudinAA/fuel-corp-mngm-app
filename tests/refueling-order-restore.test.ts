@@ -78,8 +78,10 @@ test("rolling back a deleted multi-product refueling order restores original row
       .insert(warehouses)
       .values({
         name: `restore-order-test-warehouse-${crypto.randomUUID()}`,
-        currentBalance: "100",
-        averageCost: "10",
+        currentBalanceTonnes: "100",
+        averageCostPerTonne: "10",
+        pvkjBalanceTonnes: "0",
+        pvkjAverageCostPerTonne: "0",
       })
       .returning();
     warehouseId = warehouse.id;
@@ -88,8 +90,10 @@ test("rolling back a deleted multi-product refueling order restores original row
       .insert(equipments)
       .values({
         name: `restore-order-test-equipment-${crypto.randomUUID()}`,
-        pvkjBalance: "60",
-        pvkjAverageCost: "12",
+        currentBalanceTonnes: "0",
+        averageCostPerTonne: "0",
+        pvkjBalanceTonnes: "60",
+        pvkjAverageCostPerTonne: "12",
       })
       .returning();
     equipmentId = equipment.id;
@@ -101,10 +105,10 @@ test("rolling back a deleted multi-product refueling order restores original row
         supplierId,
         buyerId: customerId,
         warehouseId,
-        quantityKg: 12,
-        purchasePrice: 10,
+        quantityTonnes: 12,
+        purchasePricePerTonne: 10,
         purchaseAmount: 120,
-        salePrice: 15,
+        salePricePerTonne: 15,
         saleAmount: 180,
         isDraft: false,
       } as any,
@@ -114,10 +118,10 @@ test("rolling back a deleted multi-product refueling order restores original row
         supplierId,
         buyerId: customerId,
         equipmentId,
-        quantityKg: 7,
-        purchasePrice: 12,
+        quantityTonnes: 7,
+        purchasePricePerTonne: 12,
         purchaseAmount: 84,
-        salePrice: 18,
+        salePricePerTonne: 18,
         saleAmount: 126,
         isDraft: false,
       } as any,
@@ -137,8 +141,8 @@ test("rolling back a deleted multi-product refueling order restores original row
     );
     assert.equal(warehouseTransactionIds.length, 1);
     assert.equal(equipmentTransactionIds.length, 1);
-    assert.equal(Number(createdDeals.find((deal) => deal.productType === PRODUCT_TYPE.KEROSENE)?.quantityKg), 12);
-    assert.equal(Number(createdDeals.find((deal) => deal.productType === PRODUCT_TYPE.PVKJ)?.quantityKg), 7);
+    assert.equal(Number(createdDeals.find((deal) => deal.productType === PRODUCT_TYPE.KEROSENE)?.quantityTonnes), 12);
+    assert.equal(Number(createdDeals.find((deal) => deal.productType === PRODUCT_TYPE.PVKJ)?.quantityTonnes), 7);
 
     const deletedDeals = await storage.deleteRefuelingOrder(createdDeals[0].id);
     assert.deepEqual(
@@ -165,8 +169,8 @@ test("rolling back a deleted multi-product refueling order restores original row
     const deletedEquipment = await db.query.equipments.findFirst({
       where: sql`${equipments.id} = ${equipmentId}`,
     });
-    assert.equal(Number(deletedWarehouse?.currentBalance), 100);
-    assert.equal(Number(deletedEquipment?.pvkjBalance), 60);
+    assert.equal(Number(deletedWarehouse?.currentBalanceTonnes), 100);
+    assert.equal(Number(deletedEquipment?.pvkjBalanceTonnes), 60);
 
     const deletedWarehouseTransactions = await db
       .select()
@@ -206,11 +210,11 @@ test("rolling back a deleted multi-product refueling order restores original row
     );
     assert.deepEqual(
       restoredDeals
-        .map((deal) => [deal.productType, deal.quantityKg])
+        .map((deal) => [deal.productType, deal.quantityTonnes])
         .sort(([typeA], [typeB]) => String(typeA).localeCompare(String(typeB))),
       [
-        [PRODUCT_TYPE.KEROSENE, "12.00"],
-        [PRODUCT_TYPE.PVKJ, "7.00"],
+        [PRODUCT_TYPE.KEROSENE, "12.00000"],
+        [PRODUCT_TYPE.PVKJ, "7.00000"],
       ].sort(([typeA], [typeB]) => String(typeA).localeCompare(String(typeB))),
     );
     assert.deepEqual(
@@ -247,8 +251,8 @@ test("rolling back a deleted multi-product refueling order restores original row
     const restoredEquipment = await db.query.equipments.findFirst({
       where: sql`${equipments.id} = ${equipmentId}`,
     });
-    assert.equal(Number(restoredWarehouse?.currentBalance), 88);
-    assert.equal(Number(restoredEquipment?.pvkjBalance), 53);
+    assert.equal(Number(restoredWarehouse?.currentBalanceTonnes), 88);
+    assert.equal(Number(restoredEquipment?.pvkjBalanceTonnes), 53);
 
     const repeatedRollback = await RollbackService.rollback({
       auditLogId: auditEntries[0].id,
@@ -262,8 +266,8 @@ test("rolling back a deleted multi-product refueling order restores original row
     const finalEquipment = await db.query.equipments.findFirst({
       where: sql`${equipments.id} = ${equipmentId}`,
     });
-    assert.equal(Number(finalWarehouse?.currentBalance), 88);
-    assert.equal(Number(finalEquipment?.pvkjBalance), 53);
+    assert.equal(Number(finalWarehouse?.currentBalanceTonnes), 88);
+    assert.equal(Number(finalEquipment?.pvkjBalanceTonnes), 53);
 
     const finalAuditEntries = await db
       .select()
@@ -361,8 +365,10 @@ test("an audit-write failure rolls back the entire refueling order restoration",
       .insert(warehouses)
       .values({
         name: `restore-audit-failure-warehouse-${crypto.randomUUID()}`,
-        currentBalance: "100",
-        averageCost: "10",
+        currentBalanceTonnes: "100",
+        averageCostPerTonne: "10",
+        pvkjBalanceTonnes: "0",
+        pvkjAverageCostPerTonne: "0",
       })
       .returning();
     warehouseId = warehouse.id;
@@ -371,8 +377,10 @@ test("an audit-write failure rolls back the entire refueling order restoration",
       .insert(equipments)
       .values({
         name: `restore-audit-failure-equipment-${crypto.randomUUID()}`,
-        pvkjBalance: "60",
-        pvkjAverageCost: "12",
+        currentBalanceTonnes: "0",
+        averageCostPerTonne: "0",
+        pvkjBalanceTonnes: "60",
+        pvkjAverageCostPerTonne: "12",
       })
       .returning();
     equipmentId = equipment.id;
@@ -384,10 +392,10 @@ test("an audit-write failure rolls back the entire refueling order restoration",
         supplierId,
         buyerId: customerId,
         warehouseId,
-        quantityKg: 12,
-        purchasePrice: 10,
+        quantityTonnes: 12,
+        purchasePricePerTonne: 10,
         purchaseAmount: 120,
-        salePrice: 15,
+        salePricePerTonne: 15,
         saleAmount: 180,
         isDraft: false,
       } as any,
@@ -397,10 +405,10 @@ test("an audit-write failure rolls back the entire refueling order restoration",
         supplierId,
         buyerId: customerId,
         equipmentId,
-        quantityKg: 7,
-        purchasePrice: 12,
+        quantityTonnes: 7,
+        purchasePricePerTonne: 12,
         purchaseAmount: 84,
-        salePrice: 18,
+        salePricePerTonne: 18,
         saleAmount: 126,
         isDraft: false,
       } as any,
@@ -465,8 +473,8 @@ test("an audit-write failure rolls back the entire refueling order restoration",
       db.query.warehouses.findFirst({ where: eq(warehouses.id, warehouseId) }),
       db.query.equipments.findFirst({ where: eq(equipments.id, equipmentId) }),
     ]);
-    assert.equal(Number(unchangedWarehouse?.currentBalance), 100);
-    assert.equal(Number(unchangedEquipment?.pvkjBalance), 60);
+    assert.equal(Number(unchangedWarehouse?.currentBalanceTonnes), 100);
+    assert.equal(Number(unchangedEquipment?.pvkjBalanceTonnes), 60);
   } finally {
     AuditService.log = originalAuditLog;
     if (auditEntryIds.length) {
@@ -536,8 +544,10 @@ test("rolling back a legacy deleted single refueling restores only its original 
       .insert(warehouses)
       .values({
         name: `legacy-restore-test-warehouse-${crypto.randomUUID()}`,
-        currentBalance: "100",
-        averageCost: "10",
+        currentBalanceTonnes: "100",
+        averageCostPerTonne: "10",
+        pvkjBalanceTonnes: "0",
+        pvkjAverageCostPerTonne: "0",
       })
       .returning();
     warehouseId = warehouse.id;
@@ -548,10 +558,10 @@ test("rolling back a legacy deleted single refueling restores only its original 
       supplierId,
       buyerId: customerId,
       warehouseId,
-      quantityKg: 12,
-      purchasePrice: 10,
+      quantityTonnes: 12,
+      purchasePricePerTonne: 10,
       purchaseAmount: 120,
-      salePrice: 15,
+      salePricePerTonne: 15,
       saleAmount: 180,
       isDraft: false,
     } as any);
@@ -562,10 +572,10 @@ test("rolling back a legacy deleted single refueling restores only its original 
       supplierId,
       buyerId: customerId,
       warehouseId,
-      quantityKg: 5,
-      purchasePrice: 10,
+      quantityTonnes: 5,
+      purchasePricePerTonne: 10,
       purchaseAmount: 50,
-      salePrice: 15,
+      salePricePerTonne: 15,
       saleAmount: 75,
       isDraft: false,
     } as any);
@@ -646,7 +656,7 @@ test("rolling back a legacy deleted single refueling restores only its original 
     assert.ok(unchangedUnrelatedDeal);
     assert.equal(unchangedUnrelatedDeal.deletedAt, null);
     assert.equal(unchangedUnrelatedDeal.transactionId, unrelatedDeal.transactionId);
-    assert.equal(unchangedUnrelatedDeal.quantityKg, unrelatedDeal.quantityKg);
+    assert.equal(unchangedUnrelatedDeal.quantityTonnes, unrelatedDeal.quantityTonnes);
 
     const restoredMovements = await db
       .select()
@@ -670,7 +680,7 @@ test("rolling back a legacy deleted single refueling restores only its original 
     const finalWarehouse = await db.query.warehouses.findFirst({
       where: eq(warehouses.id, warehouseId),
     });
-    assert.equal(Number(finalWarehouse?.currentBalance), 83);
+    assert.equal(Number(finalWarehouse?.currentBalanceTonnes), 83);
 
     const finalAuditEntry = await db.query.auditLog.findFirst({
       where: eq(auditLog.id, auditEntry.id),
@@ -761,8 +771,10 @@ test("rolling back a legacy deleted equipment refueling restores its original mo
       .insert(equipments)
       .values({
         name: `legacy-equipment-restore-equipment-${crypto.randomUUID()}`,
-        pvkjBalance: "60",
-        pvkjAverageCost: "12",
+        currentBalanceTonnes: "0",
+        averageCostPerTonne: "0",
+        pvkjBalanceTonnes: "60",
+        pvkjAverageCostPerTonne: "12",
       })
       .returning();
     equipmentId = equipment.id;
@@ -773,10 +785,10 @@ test("rolling back a legacy deleted equipment refueling restores its original mo
       supplierId,
       buyerId: customerId,
       equipmentId,
-      quantityKg: 7,
-      purchasePrice: 12,
+      quantityTonnes: 7,
+      purchasePricePerTonne: 12,
       purchaseAmount: 84,
-      salePrice: 18,
+      salePricePerTonne: 18,
       saleAmount: 126,
       isDraft: false,
     } as any);
@@ -820,7 +832,7 @@ test("rolling back a legacy deleted equipment refueling restores its original mo
     const deletedEquipment = await db.query.equipments.findFirst({
       where: eq(equipments.id, equipmentId),
     });
-    assert.equal(Number(deletedEquipment?.pvkjBalance), 60);
+    assert.equal(Number(deletedEquipment?.pvkjBalanceTonnes), 60);
 
     const rollback = await RollbackService.rollback({
       auditLogId: auditEntry.id,
@@ -851,7 +863,7 @@ test("rolling back a legacy deleted equipment refueling restores its original mo
     const restoredEquipment = await db.query.equipments.findFirst({
       where: eq(equipments.id, equipmentId),
     });
-    assert.equal(Number(restoredEquipment?.pvkjBalance), 53);
+    assert.equal(Number(restoredEquipment?.pvkjBalanceTonnes), 53);
   } finally {
     if (auditEntryId) {
       await db.delete(auditLog).where(eq(auditLog.id, auditEntryId));
@@ -938,8 +950,10 @@ test("rolling back a deleted order fails without restoring any item when a movem
       .insert(warehouses)
       .values({
         name: `restore-missing-movement-warehouse-${crypto.randomUUID()}`,
-        currentBalance: "100",
-        averageCost: "10",
+        currentBalanceTonnes: "100",
+        averageCostPerTonne: "10",
+        pvkjBalanceTonnes: "0",
+        pvkjAverageCostPerTonne: "0",
       })
       .returning();
     warehouseId = warehouse.id;
@@ -948,8 +962,10 @@ test("rolling back a deleted order fails without restoring any item when a movem
       .insert(equipments)
       .values({
         name: `restore-missing-movement-equipment-${crypto.randomUUID()}`,
-        pvkjBalance: "60",
-        pvkjAverageCost: "12",
+        currentBalanceTonnes: "0",
+        averageCostPerTonne: "0",
+        pvkjBalanceTonnes: "60",
+        pvkjAverageCostPerTonne: "12",
       })
       .returning();
     equipmentId = equipment.id;
@@ -962,10 +978,10 @@ test("rolling back a deleted order fails without restoring any item when a movem
           supplierId,
           buyerId: customerId,
           warehouseId,
-          quantityKg: 12,
-          purchasePrice: 10,
+          quantityTonnes: 12,
+          purchasePricePerTonne: 10,
           purchaseAmount: 120,
-          salePrice: 15,
+          salePricePerTonne: 15,
           saleAmount: 180,
           isDraft: false,
         } as any,
@@ -975,10 +991,10 @@ test("rolling back a deleted order fails without restoring any item when a movem
           supplierId,
           buyerId: customerId,
           equipmentId,
-          quantityKg: 7,
-          purchasePrice: 12,
+          quantityTonnes: 7,
+          purchasePricePerTonne: 12,
           purchaseAmount: 84,
-          salePrice: 18,
+          salePricePerTonne: 18,
           saleAmount: 126,
           isDraft: false,
         } as any,
@@ -1052,8 +1068,8 @@ test("rolling back a deleted order fails without restoring any item when a movem
             where: eq(equipments.id, equipmentId!),
           }),
         ]);
-        assert.equal(Number(unchangedWarehouse?.currentBalance), 100);
-        assert.equal(Number(unchangedEquipment?.pvkjBalance), 60);
+        assert.equal(Number(unchangedWarehouse?.currentBalanceTonnes), 100);
+        assert.equal(Number(unchangedEquipment?.pvkjBalanceTonnes), 60);
 
         const [remainingWarehouseTransactions, remainingEquipmentTransactions, unchangedAudits] =
           await Promise.all([

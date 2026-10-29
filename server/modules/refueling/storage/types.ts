@@ -13,13 +13,13 @@ export interface IAircraftRefuelingStorage {
   deleteRefueling(id: string): Promise<boolean>;
   getUsedVolumeByPrice(
     priceId: string,
-  ): Promise<{ usedVolumeTonnes: number; usedVolume: number }>;
+  ): Promise<{ usedVolumeTonnes: number }>;
   getUsedAmountByPrice(priceId: string): Promise<number>;
   checkDuplicate(data: {
     refuelingDate: string;
     supplierId: string;
     buyerId: string;
     basis: string;
-    quantityKg: number;
+    quantityTonnes: number;
   }): Promise<boolean>;
 }

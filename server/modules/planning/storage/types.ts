@@ -49,11 +49,9 @@ export interface ActualDetailItem {
   sourceType: string;
   sourceId: string;
   label: string;
-  quantity: string;
   quantityTonnes: string;
   date: string;
   isExpense: boolean;
-  balanceAfter: string | null;
   balanceAfterTonnes: string | null;
   counterpartyName?: string | null;
 }
@@ -69,11 +67,8 @@ export interface PlanningResourceWithBasis {
 
 export interface ActualsByDate {
   date: string;
-  incomeActual: string;
   incomeActualTonnes: string;
-  expenseActual: string;
   expenseActualTonnes: string;
-  factBalanceAfter: string | null;
   factBalanceAfterTonnes: string | null;
   details: ActualDetailItem[];
 }
@@ -81,17 +76,11 @@ export interface ActualsByDate {
 export interface ResourceSummaryRow {
   supplierId: string | null;
   supplierName: string;
-  allocatedVolume: string;
   allocatedVolumeTonnes: string;
-  demand: string;
   demandTonnes: string;
-  balance: string;
   balanceTonnes: string;
-  topLevelVolume: string;
   topLevelVolumeTonnes: string;
-  topLevelIncome: string;
   topLevelIncomeTonnes: string;
-  topLevelExpense: string;
   topLevelExpenseTonnes: string;
   isUnassigned?: boolean;
 }
@@ -99,27 +88,21 @@ export interface ResourceSummaryRow {
 export interface WarehouseSummaryRow {
   warehouseId: string;
   warehouseName: string;
-  plannedIncome: string;
   plannedIncomeTonnes: string;
-  plannedExpense: string;
   plannedExpenseTonnes: string;
-  balancePlan: string;
   balancePlanTonnes: string;
-  balanceFact: string;
   balanceFactTonnes: string;
 }
 
 export interface CustomerWarehouseVolume {
   warehouseId: string;
   warehouseName: string;
-  volume: string;
   volumeTonnes: string;
 }
 
 export interface CustomerSummaryRow {
   customerId: string;
   customerName: string;
-  volume: string;
   volumeTonnes: string;
   warehouses: CustomerWarehouseVolume[];
 }
@@ -140,9 +123,7 @@ export interface PlanningTopLevelVolumeWithNames extends PlanningTopLevelVolume 
 export interface TopLevelWarehouseSummary {
   warehouseId: string;
   warehouseName: string;
-  topLevelIncome: string;
   topLevelIncomeTonnes: string;
-  topLevelExpense: string;
   topLevelExpenseTonnes: string;
 }
 

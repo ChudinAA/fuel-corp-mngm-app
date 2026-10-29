@@ -17,7 +17,7 @@ test("contract remaining mass is calculated in tonnes", () => {
   assert.ok(Math.abs(remaining - 0.6) < 0.0000001);
 });
 
-test("contract limit prefers the tonne API field and adapts legacy kilograms", () => {
+test("contract limit requires authoritative tonne data", () => {
   const apiPrice = {
     volume: "999999",
     contractVolume: {
@@ -27,8 +27,9 @@ test("contract limit prefers the tonne API field and adapts legacy kilograms", (
       used: 0.25,
     },
   } as PriceWithApiRate;
-  const legacyPrice = { volume: "1234.56" } as PriceWithApiRate;
-
   assert.ok(Math.abs(getContractLimitTonnes(apiPrice) - 1.23456) < 1e-12);
-  assert.ok(Math.abs(getContractLimitTonnes(legacyPrice) - 1.23456) < 1e-12);
+  assert.throws(
+    () => getContractLimitTonnes({ volume: "1234.56" } as PriceWithApiRate),
+    /not stored in tonnes/,
+  );
 });

@@ -2,11 +2,9 @@ import { useMemo } from "react";
 import { EQUIPMENT_MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import {
   calculateEquipmentMovementTonnes,
-  equipmentMovementTonnesToLegacyKg,
   type EquipmentMovementInputMode,
 } from "../unit-calculations";
 import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
-import { resolveWarehouseAverageCostPerTonne } from "@/pages/shared/utils/warehouse-balance-units";
 
 interface UseLikCalculationsProps {
   form: any;
@@ -49,8 +47,6 @@ export function useLikCalculations({
     [inputMode, watchTonnes, watchLiters, watchDensity],
   );
   const tonnesNum = calculatedTonnes ?? 0;
-  const calculatedKg = equipmentMovementTonnesToLegacyKg(tonnesNum);
-  const kgNum = calculatedKg;
 
   // Live balance API gives real-time averageCost — avoids stale warehouse list props
   const isStorageToTzk = watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK;
@@ -75,32 +71,19 @@ export function useLikCalculations({
       : watchProductType === PRODUCT_TYPE.PVKJ
         ? sourceEquipment?.pvkjAverageCostPerTonne
         : sourceEquipment?.averageCostPerTonne;
-    const legacySourceRate = isStorageToTzk
-      ? watchProductType === PRODUCT_TYPE.PVKJ
-        ? sourceWarehouse?.pvkjAverageCost
-        : sourceWarehouse?.averageCost
-      : watchProductType === PRODUCT_TYPE.PVKJ
-        ? sourceEquipment?.pvkjAverageCost
-        : sourceEquipment?.averageCost;
-
     if (isStorageToTzk) {
       const liveRate =
         balanceData &&
         typeof balanceData === "object" &&
-        (("averageCostPerTonne" in balanceData &&
-          balanceData.averageCostPerTonne != null) ||
-          ("averageCost" in balanceData && balanceData.averageCost != null))
-          ? resolveWarehouseAverageCostPerTonne(balanceData)
+        "averageCostPerTonne" in balanceData
+          ? Number(balanceData.averageCostPerTonne)
           : null;
-      if (liveRate !== null) return liveRate;
+      if (liveRate !== null && Number.isFinite(liveRate)) return liveRate;
     }
 
-    if (explicitSourceRate == null && legacySourceRate == null) return 0;
-    return resolveWarehouseAverageCostPerTonne(
-      undefined,
-      explicitSourceRate,
-      legacySourceRate,
-    );
+    if (explicitSourceRate == null) return 0;
+    const rate = Number(explicitSourceRate);
+    return Number.isFinite(rate) ? rate : 0;
   }, [
     isStorageToTzk,
     balanceData,
@@ -114,10 +97,8 @@ export function useLikCalculations({
   const purchaseAmount = tonnesNum * averageCostPerTonne;
 
   return {
-    calculatedKg,
     calculatedTonnes,
     tonnesNum,
-    kgNum,
     averageCostPerTonne,
     purchaseAmount,
   };

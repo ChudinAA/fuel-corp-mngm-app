@@ -8,21 +8,18 @@ import { eq, and, isNull, desc, or, ilike, sql, inArray, isNotNull } from "drizz
 import { TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentTransactionService } from "../../warehouses-equipment/services/equipment-transaction-service";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
-import { tonnesToKilograms } from "@shared/units";
 
 function movementQuantityTonnes(
-  movement: { quantityTonnes?: string | number | null; quantityKg?: string | number | null },
+  movement: { quantityTonnes?: string | number | null },
 ): number {
-  if (movement.quantityTonnes !== null && movement.quantityTonnes !== undefined) {
-    return Number(movement.quantityTonnes);
+  if (movement.quantityTonnes == null || movement.quantityTonnes === "") {
+    throw new Error("Equipment movement is missing its tonne quantity");
   }
-  return Number(movement.quantityKg || 0) / 1_000;
-}
-
-function movementQuantityKg(
-  movement: { quantityTonnes?: string | number | null; quantityKg?: string | number | null },
-): number {
-  return Number(tonnesToKilograms(movementQuantityTonnes(movement)).toFixed(2));
+  const quantityTonnes = Number(movement.quantityTonnes);
+  if (!Number.isFinite(quantityTonnes) || quantityTonnes < 0) {
+    throw new Error("Equipment movement has an invalid tonne quantity");
+  }
+  return quantityTonnes;
 }
 
 export class EquipmentMovementStorage {
@@ -104,12 +101,10 @@ export class EquipmentMovementStorage {
         toWarehouseId: equipmentMovement.toWarehouseId,
         fromEquipmentId: equipmentMovement.fromEquipmentId,
         toEquipmentId: equipmentMovement.toEquipmentId,
-        quantityKg: equipmentMovement.quantityKg,
         quantityTonnes: equipmentMovement.quantityTonnes,
         quantityLiters: equipmentMovement.quantityLiters,
         density: equipmentMovement.density,
         inputMode: equipmentMovement.inputMode,
-        costPerKg: equipmentMovement.costPerKg,
         costPerTonne: equipmentMovement.costPerTonne,
         totalCost: equipmentMovement.totalCost,
         notes: equipmentMovement.notes,
@@ -160,7 +155,7 @@ export class EquipmentMovementStorage {
         return item;
       }
 
-      const quantityKg = movementQuantityKg(item);
+      const quantityTonnes = movementQuantityTonnes(item);
       const totalCost = parseFloat(item.totalCost || "0");
 
       // Destination equipment (income)
@@ -173,7 +168,7 @@ export class EquipmentMovementStorage {
             item.productType,
             SOURCE_TYPE.MOVEMENT,
             item.id,
-            quantityKg,
+            quantityTonnes,
             totalCost,
             item.createdById || undefined,
             item.movementDate,
@@ -195,7 +190,7 @@ export class EquipmentMovementStorage {
             item.productType,
             SOURCE_TYPE.MOVEMENT,
             item.id,
-            quantityKg,
+            quantityTonnes,
             totalCost,
             item.createdById || undefined,
             item.movementDate,
@@ -217,7 +212,7 @@ export class EquipmentMovementStorage {
             item.productType,
             SOURCE_TYPE.MOVEMENT,
             item.id,
-            quantityKg,
+            quantityTonnes,
             0,
             item.createdById || undefined,
             item.movementDate,
@@ -239,7 +234,7 @@ export class EquipmentMovementStorage {
             item.productType,
             SOURCE_TYPE.MOVEMENT,
             item.id,
-            quantityKg,
+            quantityTonnes,
             0,
             item.createdById || undefined,
             item.movementDate,
@@ -276,7 +271,7 @@ export class EquipmentMovementStorage {
       }
 
       if (transitioningFromDraft) {
-        const quantityKg = movementQuantityKg(data);
+        const quantityTonnes = movementQuantityTonnes(data);
         const totalCost = parseFloat(data.totalCost || "0");
 
         if (data.toEquipmentId) {
@@ -288,7 +283,7 @@ export class EquipmentMovementStorage {
               data.productType,
               SOURCE_TYPE.MOVEMENT,
               current.id,
-              quantityKg,
+              quantityTonnes,
               totalCost,
               data.updatedById || undefined,
               data.movementDate,
@@ -305,7 +300,7 @@ export class EquipmentMovementStorage {
               data.productType,
               SOURCE_TYPE.MOVEMENT,
               current.id,
-              quantityKg,
+              quantityTonnes,
               totalCost,
               data.updatedById || undefined,
               data.movementDate,
@@ -322,7 +317,7 @@ export class EquipmentMovementStorage {
               data.productType,
               SOURCE_TYPE.MOVEMENT,
               current.id,
-              quantityKg,
+              quantityTonnes,
               0,
               data.updatedById || undefined,
               data.movementDate,
@@ -339,7 +334,7 @@ export class EquipmentMovementStorage {
               data.productType,
               SOURCE_TYPE.MOVEMENT,
               current.id,
-              quantityKg,
+              quantityTonnes,
               0,
               data.updatedById || undefined,
               data.movementDate,
@@ -347,20 +342,23 @@ export class EquipmentMovementStorage {
           data.sourceTransactionId = sourceTransaction.id;
         }
       } else if (!data.isDraft && !current.isDraft) {
-        const oldQty = movementQuantityKg(current);
-        const newQty = movementQuantityKg(data);
+        const oldQtyTonnes = movementQuantityTonnes(current);
+        const newQtyTonnes = movementQuantityTonnes(data);
         const oldCost = parseFloat(current.totalCost || "0");
         const newCost = parseFloat(data.totalCost || "0");
 
-        if (oldQty !== newQty || oldCost !== newCost) {
+        if (
+          oldQtyTonnes !== newQtyTonnes ||
+          oldCost !== newCost
+        ) {
           if (current.transactionId && current.toEquipmentId) {
             await EquipmentTransactionService.updateTransactionAndRecalculateEquipment(
               tx,
               current.transactionId,
               current.toEquipmentId,
-              oldQty,
+              oldQtyTonnes,
               oldCost,
-              newQty,
+              newQtyTonnes,
               newCost,
               current.productType,
               data.updatedById || undefined,
@@ -373,9 +371,9 @@ export class EquipmentMovementStorage {
               tx,
               current.warehouseTransactionId,
               current.toWarehouseId,
-              oldQty,
+              oldQtyTonnes,
               oldCost,
-              newQty,
+              newQtyTonnes,
               newCost,
               current.productType,
               data.updatedById || undefined,
@@ -388,9 +386,9 @@ export class EquipmentMovementStorage {
               tx,
               current.sourceWarehouseTransactionId,
               current.fromWarehouseId,
-              oldQty,
+              oldQtyTonnes,
               0,
-              newQty,
+              newQtyTonnes,
               0,
               current.productType,
               data.updatedById || undefined,
@@ -403,9 +401,9 @@ export class EquipmentMovementStorage {
               tx,
               current.sourceTransactionId,
               current.fromEquipmentId,
-              oldQty,
+              oldQtyTonnes,
               0,
-              newQty,
+              newQtyTonnes,
               0,
               current.productType,
               data.updatedById || undefined,

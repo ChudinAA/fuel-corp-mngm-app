@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { kgToTons, tonsToKg } from "../utils/planning-utils";
 import type { PlanningPeriod } from "../planning-page";
 
 interface SupplierAllocatedVolume {
@@ -22,8 +21,7 @@ interface SupplierAllocatedVolume {
   supplierId: string;
   periodFrom: string;
   periodTo: string;
-  volume: string;
-  volumeTonnes?: string | null;
+  volumeTonnes: string;
 }
 
 interface AllocatedVolumeDialogProps {
@@ -98,7 +96,7 @@ export function AllocatedVolumeDialog({
         v.periodTo.slice(0, 10) === selectedMonthData?.to,
     );
     if (existing) {
-      setVolume(existing.volumeTonnes ?? kgToTons(existing.volume));
+      setVolume(existing.volumeTonnes);
     } else {
       setVolume("");
     }
@@ -118,7 +116,6 @@ export function AllocatedVolumeDialog({
         supplierId,
         periodFrom: selectedMonthData.from,
         periodTo: selectedMonthData.to,
-        volume: tonsToKg(volume),
         volumeTonnes: volume,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });

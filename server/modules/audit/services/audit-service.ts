@@ -10,10 +10,10 @@ import {
   nomenclatureTypes,
   unitsOfMeasure,
 } from "@shared/schema";
-import {
-  formatPricePerTonne,
-  pricePerKilogramToPerTonne,
-} from "@shared/units";
+import { formatPricePerTonne } from "@shared/units";
+
+// Audit payloads may preserve old rates for historical comparison only.
+const historicalPricePerKilogramToPerTonne = (rate: number) => rate * 1_000;
 
 export interface AuditContext {
   userId?: string;
@@ -224,27 +224,15 @@ export class AuditService {
         } catch { /* ignore */ }
       }
       const prices: string[] = [];
-      const displayBasisRate = (tonneValue: unknown, legacyValue: unknown) => {
-        if (tonneValue != null) {
-          const tonneAmount = Number(tonneValue);
-          if (Number.isFinite(tonneAmount)) {
-            return formatPricePerTonne(tonneAmount);
-          }
-        }
-        const legacyAmount = Number(legacyValue);
-        return Number.isFinite(legacyAmount)
-          ? formatPricePerTonne(pricePerKilogramToPerTonne(legacyAmount))
-          : String(legacyValue);
-      };
-      const serviceRate = bp.servicePricePerTonne ?? bp.servicePrice;
-      const pvkjRate = bp.pvkjPricePerTonne ?? bp.pvkjPrice;
-      const agentRate = bp.agentFeePerTonne ?? bp.agentFee;
+      const serviceRate = bp.servicePricePerTonne;
+      const pvkjRate = bp.pvkjPricePerTonne;
+      const agentRate = bp.agentFeePerTonne;
       if (serviceRate != null && serviceRate !== 0 && serviceRate !== '0')
-        prices.push(`сервис: ${displayBasisRate(bp.servicePricePerTonne, bp.servicePrice)} ₽/т`);
+        prices.push(`сервис: ${formatPricePerTonne(Number(serviceRate))} ₽/т`);
       if (pvkjRate != null && pvkjRate !== 0 && pvkjRate !== '0')
-        prices.push(`ПВКЖ: ${displayBasisRate(bp.pvkjPricePerTonne, bp.pvkjPrice)} ₽/т`);
+        prices.push(`ПВКЖ: ${formatPricePerTonne(Number(pvkjRate))} ₽/т`);
       if (agentRate != null && agentRate !== 0 && agentRate !== '0')
-        prices.push(`агент: ${displayBasisRate(bp.agentFeePerTonne, bp.agentFee)} ₽/т`);
+        prices.push(`агент: ${formatPricePerTonne(Number(agentRate))} ₽/т`);
       if (bp.otherServiceValue != null && bp.otherServiceValue !== 0 && bp.otherServiceValue !== '0') {
         const label = bp.otherServiceName || 'прочее';
         const serviceType = String(bp.otherServiceType || "");
@@ -252,7 +240,7 @@ export class AuditService {
         const value = Number.isFinite(amount)
           ? formatPricePerTonne(
               serviceType === "per_kg"
-                ? pricePerKilogramToPerTonne(amount)
+                ? historicalPricePerKilogramToPerTonne(amount)
                 : amount,
             )
           : String(bp.otherServiceValue);
@@ -413,7 +401,7 @@ export class AuditService {
               const displayedValue = Number.isFinite(rawRate)
                 ? formatPricePerTonne(
                     s.serviceType === "per_kg"
-                      ? pricePerKilogramToPerTonne(rawRate)
+                      ? historicalPricePerKilogramToPerTonne(rawRate)
                       : rawRate,
                   )
                 : String(s.serviceValue);

@@ -30,7 +30,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
-import { tonsToKg, kgToTons } from "../utils/planning-utils";
 
 const formSchema = z.object({
   date: z.string().min(1, "Дата обязательна"),
@@ -49,11 +48,9 @@ export interface PlanEntryFormEntry {
   type: "income" | "expense";
   counterpartyId: string | null;
   basisId?: string | null;
-  volume: string;
-  volumeTonnes?: string | null;
+  volumeTonnes: string;
   isManualBalance: boolean | null;
-  balanceAfter: string | null;
-  balanceAfterTonnes?: string | null;
+  balanceAfterTonnes: string | null;
   notes: string | null;
 }
 
@@ -137,9 +134,7 @@ export function PlanEntryDialog({
         type: entry?.type || defaultType || "income",
         counterpartyId: entry?.counterpartyId || "",
         basisId: entry?.basisId || "",
-        volume: entry
-          ? entry.volumeTonnes ?? kgToTons(entry.volume)
-          : "",
+        volume: entry ? entry.volumeTonnes : "",
         notes: entry?.notes || "",
       });
     }
@@ -162,10 +157,9 @@ export function PlanEntryDialog({
         ...values,
         counterpartyId: values.counterpartyId || null,
         basisId: values.basisId || null,
-        volume: tonsToKg(values.volume),
         volumeTonnes: values.volume,
         isManualBalance: false,
-        balanceAfter: null,
+        balanceAfterTonnes: null,
       });
       onOpenChange(false);
     } finally {

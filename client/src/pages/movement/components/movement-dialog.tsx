@@ -29,8 +29,6 @@ import { Plus, Loader2 } from "lucide-react";
 import { movementFormSchema, type MovementFormData } from "../schemas";
 import type { MovementDialogProps } from "../types";
 import {
-  movementStoredKgToTonnes,
-  movementTonnesRateToLegacyKgRate,
   type MovementInputMode,
 } from "../unit-calculations";
 import { TonneVolumeSection } from "@/pages/shared/components/tonne-volume-section";
@@ -124,7 +122,7 @@ export function MovementDialog({
           editMovement.quantityTonnes !== null &&
             editMovement.quantityTonnes !== undefined
             ? Number(editMovement.quantityTonnes)
-            : movementStoredKgToTonnes(editMovement.quantityKg) ?? 0,
+            : 0,
         );
       } else {
         setInitialQuantityTonnes(0);
@@ -158,16 +156,12 @@ export function MovementDialog({
           editMovement.quantityTonnes !== null &&
           editMovement.quantityTonnes !== undefined
             ? String(editMovement.quantityTonnes)
-            : editMovement.quantityKg
-              ? String(movementStoredKgToTonnes(editMovement.quantityKg) ?? "")
-              : undefined,
+            : undefined,
         purchasePrice:
           editMovement.purchasePricePerTonne !== null &&
           editMovement.purchasePricePerTonne !== undefined
             ? String(editMovement.purchasePricePerTonne)
-            : editMovement.purchasePrice
-              ? String(Number(editMovement.purchasePrice) * 1_000)
-              : "",
+            : "",
         selectedPurchasePriceId: editMovement.purchasePriceId
           ? `${editMovement.purchasePriceId}-${editMovement.purchasePriceIndex || 0}`
           : "",
@@ -193,7 +187,7 @@ export function MovementDialog({
           ? editMovement.quantityTonnes !== null &&
             editMovement.quantityTonnes !== undefined
             ? Number(editMovement.quantityTonnes)
-            : movementStoredKgToTonnes(editMovement.quantityKg) ?? 0
+            : 0
           : 0,
       );
     } else {
@@ -239,13 +233,10 @@ export function MovementDialog({
 
   // Use custom hooks for calculations and logic
   const {
-    calculatedKg,
     calculatedTonnes,
     tonnesNum,
-    kgNum,
     availablePrices,
     purchasePrice,
-    purchasePricePerKg,
     purchasePriceId,
     purchasePriceIndex,
     purchaseAmount,
@@ -256,7 +247,6 @@ export function MovementDialog({
     matchedDeliveryCost,
     totalCost,
     rawTotalCost,
-    costPerKg,
     costPerTonne,
     supplierContractVolumeStatus,
     vatAdjustment,
@@ -281,19 +271,22 @@ export function MovementDialog({
     selectedPurchasePriceId,
     setSelectedPurchasePriceId,
     initialQuantityTonnes,
-    initialPurchaseAmount: editMovement && !isCopy
-      ? editMovement.purchaseAmount !== null &&
-        editMovement.purchaseAmount !== undefined
-        ? Number(editMovement.purchaseAmount)
-        : editMovement.purchasePricePerTonne !== null &&
-        editMovement.purchasePricePerTonne !== undefined &&
-        editMovement.quantityTonnes !== null &&
-        editMovement.quantityTonnes !== undefined
-        ? Number(editMovement.purchasePricePerTonne) *
+    initialPurchaseAmount: (() => {
+      if (!editMovement || isCopy) return 0;
+      if (editMovement.purchaseAmount != null) {
+        return Number(editMovement.purchaseAmount);
+      }
+      if (
+        editMovement.purchasePricePerTonne != null &&
+        editMovement.quantityTonnes != null
+      ) {
+        return (
+          Number(editMovement.purchasePricePerTonne) *
           Number(editMovement.quantityTonnes)
-        : parseFloat(String(editMovement.purchasePrice || "0")) *
-          parseFloat(String(editMovement.quantityKg || "0"))
-          : 0,
+        );
+      }
+      return 0;
+    })(),
   });
 
   const availableCarriers = useAvailableCarriers({
