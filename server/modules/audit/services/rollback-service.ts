@@ -8,6 +8,7 @@ import { warehouseTransactions, warehouses } from "@shared/schema";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { formatTonnes, legacyDealMassToTonnes } from "@shared/units";
 import { priceSnapshotToCurrentUnits } from "./price-snapshot-units";
+import { supplierBasisPriceSnapshotToCurrentUnits } from "./supplier-basis-price-history";
 
 export interface RollbackOptions {
   auditLogId: string;
@@ -192,9 +193,12 @@ export class RollbackService {
 
       // Normalize oldData: convert empty strings to null for UUID fields
       const normalized = this.normalizeData(oldData);
-      const normalizedOldData = entityType === "prices"
-        ? priceSnapshotToCurrentUnits(normalized)
-        : normalized;
+      const normalizedOldData =
+        entityType === "prices"
+          ? priceSnapshotToCurrentUnits(normalized)
+          : entityType === "suppliers"
+            ? supplierBasisPriceSnapshotToCurrentUnits(normalized)
+            : normalized;
 
       // Write the rollback history first. If this fails, leave the entity and
       // original audit entry untouched rather than reporting a partial rollback.
@@ -322,7 +326,17 @@ export class RollbackService {
 
       await db.transaction(async (tx) => {
         // Restore the entity, its related records, and both audit changes as one unit.
-        await this.restoreEntity(entityType, entityId, oldData, context.userId, tx);
+        const restoredData =
+          entityType === "suppliers"
+            ? supplierBasisPriceSnapshotToCurrentUnits(oldData)
+            : oldData;
+        await this.restoreEntity(
+          entityType,
+          entityId,
+          restoredData,
+          context.userId,
+          tx,
+        );
 
         const restoredAt = new Date().toISOString();
         await tx

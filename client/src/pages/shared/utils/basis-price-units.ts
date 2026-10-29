@@ -1,13 +1,9 @@
-import {
-  formatPricePerTonne,
-  pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-} from "@shared/units";
+import { formatPricePerTonne } from "@shared/units";
 
 export type NumericValue = string | number | null | undefined;
 export type StoredBasisPriceRate = {
   value: number;
-  unit: "tonne" | "kg";
+  unit: "tonne";
 };
 
 function finiteNumber(value: NumericValue): number | null {
@@ -19,73 +15,28 @@ function finiteNumber(value: NumericValue): number | null {
 }
 
 export function getStoredBasisPriceRate(
-  tonneValue: NumericValue,
-  legacyKilogramValue: NumericValue,
+  perTonneValue: NumericValue,
 ): StoredBasisPriceRate | null {
-  const tonneRate = finiteNumber(tonneValue);
-  if (tonneRate !== null) return { value: tonneRate, unit: "tonne" };
-  const legacyRate = finiteNumber(legacyKilogramValue);
-  return legacyRate === null ? null : { value: legacyRate, unit: "kg" };
+  const rate = finiteNumber(perTonneValue);
+  return rate === null ? null : { value: rate, unit: "tonne" };
 }
 
 export function formTonnesRateToNumber(value: string): number | null {
   return finiteNumber(value);
 }
 
-export function legacyKilogramRateToFormTonnes(value: NumericValue): string {
-  const rate = finiteNumber(value);
-  return rate === null
-    ? ""
-    : pricePerKilogramToPerTonne(rate).toFixed(2);
-}
-
 export function storedBasisRateToFormTonnes(
-  tonneValue: NumericValue,
-  legacyKilogramValue: NumericValue,
+  perTonneValue: NumericValue,
 ): string {
-  const tonneRate = finiteNumber(tonneValue);
-  return tonneRate === null
-    ? legacyKilogramRateToFormTonnes(legacyKilogramValue)
-    : tonneRate.toFixed(2);
-}
-
-export function formTonnesRateToLegacyKilograms(
-  value: string,
-  originalLegacyValue?: NumericValue,
-): string | null {
-  const ratePerTonne = finiteNumber(value);
-  if (ratePerTonne === null) return null;
-
-  const originalRatePerTonne = legacyKilogramRateToFormTonnes(
-    originalLegacyValue,
-  );
-  if (
-    originalLegacyValue != null &&
-    originalRatePerTonne !== "" &&
-    ratePerTonne.toFixed(2) === originalRatePerTonne
-  ) {
-    return String(originalLegacyValue);
-  }
-
-  return String(pricePerTonneToPerKilogram(ratePerTonne));
-}
-
-export function formatLegacyKilogramRatePerTonne(
-  value: NumericValue,
-): string {
-  const rate = finiteNumber(value);
-  return rate === null
-    ? ""
-    : formatPricePerTonne(pricePerKilogramToPerTonne(rate));
+  const rate = finiteNumber(perTonneValue);
+  return rate === null ? "" : rate.toFixed(2);
 }
 
 export function formatStoredBasisRatePerTonne(
-  tonneValue: NumericValue,
-  legacyKilogramValue: NumericValue,
+  perTonneValue: NumericValue,
 ): string {
-  const tonneRate = finiteNumber(tonneValue);
-  if (tonneRate !== null) return formatPricePerTonne(tonneRate);
-  return formatLegacyKilogramRatePerTonne(legacyKilogramValue);
+  const rate = finiteNumber(perTonneValue);
+  return rate === null ? "" : formatPricePerTonne(rate);
 }
 
 export function formatOtherBasisServiceValue(

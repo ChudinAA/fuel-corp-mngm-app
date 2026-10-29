@@ -47,7 +47,6 @@ export function usePriceExtraction({
         const serviceRate = basisPrice
           ? getStoredBasisPriceRate(
               basisPrice.servicePricePerTonne,
-              basisPrice.servicePrice,
             )
           : null;
         if (serviceRate?.value) {
@@ -65,7 +64,6 @@ export function usePriceExtraction({
         const pvkjRate = basisPrice
           ? getStoredBasisPriceRate(
               basisPrice.pvkjPricePerTonne,
-              basisPrice.pvkjPrice,
             )
           : null;
         if (pvkjRate?.value) {

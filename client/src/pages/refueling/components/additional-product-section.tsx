@@ -25,7 +25,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRefuelingFilters } from "../hooks/use-refueling-filters";
 import { useRefuelingCalculations } from "../hooks/use-refueling-calculations";
 import { formatRefuelingPriceOption } from "../unit-calculations";
-import { formatPricePerTonne, pricePerKilogramToPerTonne } from "@shared/units";
+import { formatPricePerTonne } from "@shared/units";
 import { CalculatedField } from "../calculated-field";
 import { formatNumber, formatPrice, formatCurrency } from "../utils";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
@@ -267,12 +267,12 @@ export const AdditionalProductSection = forwardRef<
     const basisServicePrice =
       selectedSupplier?.basisPrices?.find(
         (bp) => bp.basisId === selectedBasisId,
-      )?.servicePrice ?? null;
+      )?.servicePricePerTonne ?? null;
 
     const basisPvkjPrice =
       selectedSupplier?.basisPrices?.find(
         (bp) => bp.basisId === selectedBasisId,
-      )?.pvkjPrice ?? null;
+      )?.pvkjPricePerTonne ?? null;
 
     const otherServiceTypeLabel = otherServiceType
       ? (OTHER_SERVICE_TYPE_LABELS[otherServiceType] ?? otherServiceType)
@@ -433,9 +433,7 @@ export const AdditionalProductSection = forwardRef<
                     Цена, установленная поставщиком
                   </span>
                   <span className="text-sm font-medium">
-                    {formatPricePerTonne(
-                      pricePerKilogramToPerTonne(Number(basisPvkjPrice)),
-                    )} ₽/т
+                    {formatPricePerTonne(Number(basisPvkjPrice))} ₽/т
                   </span>
                 </div>
               )}
@@ -464,9 +462,7 @@ export const AdditionalProductSection = forwardRef<
                     Цена, установленная поставщиком
                   </span>
                   <span className="text-sm font-medium">
-                    {formatPricePerTonne(
-                      pricePerKilogramToPerTonne(Number(basisServicePrice)),
-                    )} ₽/т
+                    {formatPricePerTonne(Number(basisServicePrice))} ₽/т
                   </span>
                 </div>
               )}

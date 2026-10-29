@@ -192,7 +192,7 @@ export function useRefuelingCalculations({
     if (productType !== PRODUCT_TYPE.PVKJ || !selectedBasisId || !selectedSupplier?.basisPrices) return false;
     const bp = selectedSupplier.basisPrices.find((b) => b.basisId === selectedBasisId);
     const rate = bp
-      ? getStoredBasisPriceRate(bp.pvkjPricePerTonne, bp.pvkjPrice)
+      ? getStoredBasisPriceRate(bp.pvkjPricePerTonne)
       : null;
     return !!rate?.value;
   }, [productType, selectedBasisId, selectedSupplier]);
@@ -276,7 +276,6 @@ export function useRefuelingCalculations({
       if (basisPrice) {
         return getStoredBasisPriceRate(
           basisPrice.agentFeePerTonne,
-          basisPrice.agentFee,
         );
       }
     }

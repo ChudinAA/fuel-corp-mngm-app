@@ -18,7 +18,7 @@ import type { Price, Supplier } from "@shared/schema";
 import type { RefuelingFormData } from "../schemas";
 import { CalculatedField } from "../calculated-field";
 import { formatNumber, formatPrice, formatCurrency } from "../utils";
-import { formatPricePerTonne, pricePerKilogramToPerTonne } from "@shared/units";
+import { formatPricePerTonne } from "@shared/units";
 import {
   formatRefuelingPriceOption,
   type RefuelingPriceUnit,
@@ -139,11 +139,11 @@ export function RefuelingPricingSection({
 
   const basisServicePrice = selectedSupplier?.basisPrices?.find(
     (bp) => bp.basisId === watchBasisId
-  )?.servicePrice ?? null;
+  )?.servicePricePerTonne ?? null;
 
   const basisPvkjPrice = selectedSupplier?.basisPrices?.find(
     (bp) => bp.basisId === watchBasisId
-  )?.pvkjPrice ?? null;
+  )?.pvkjPricePerTonne ?? null;
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
@@ -199,9 +199,7 @@ export function RefuelingPricingSection({
                   Цена, установленная поставщиком
                 </span>
                 <span className="text-sm font-medium">
-                  {formatPricePerTonne(
-                    pricePerKilogramToPerTonne(Number(basisPvkjPrice)),
-                  )} ₽/т
+                  {formatPricePerTonne(Number(basisPvkjPrice))} ₽/т
                 </span>
               </div>
             )}
@@ -235,9 +233,7 @@ export function RefuelingPricingSection({
                   Цена, установленная поставщиком
                 </span>
                 <span className="text-sm font-medium">
-                  {formatPricePerTonne(
-                    pricePerKilogramToPerTonne(Number(basisServicePrice)),
-                  )} ₽/т
+                  {formatPricePerTonne(Number(basisServicePrice))} ₽/т
                 </span>
               </div>
             )}
