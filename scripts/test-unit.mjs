@@ -9,6 +9,7 @@ const integrationOwnedTests = new Set([
   "tests/critical-user-flows.test.mjs",
   "tests/sse-recalculation.test.mjs",
   "tests/planning-logistics-flow.test.mjs",
+  "tests/ui-core-pages.test.mjs",
   "tests/refueling-order-atomicity.test.ts",
   "tests/refueling-order-restore.test.ts",
   "tests/refueling-restore-recalculation.test.ts",

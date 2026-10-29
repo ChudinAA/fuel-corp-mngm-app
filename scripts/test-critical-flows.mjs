@@ -102,6 +102,11 @@ async function main({ createDatabase, run }) {
       ["--test", "tests/planning-logistics-flow.test.mjs"],
       appEnv,
     );
+    await run(
+      process.execPath,
+      ["--test", "tests/ui-core-pages.test.mjs"],
+      appEnv,
+    );
     await stopApp();
 
     console.log("Running the existing stock restoration suite in a second disposable database...");
