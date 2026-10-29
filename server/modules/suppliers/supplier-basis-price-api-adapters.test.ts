@@ -1,12 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  normalizeSupplierBasisPriceRates,
-  SupplierBasisPriceRateInputError,
-  supplierBasisPriceToApi,
-} from "./supplier-basis-price-api-adapters";
+import { normalizeSupplierBasisPriceRates } from "./supplier-basis-price-api-adapters";
 
-test("supplier basis rates store only tonne-authoritative values", () => {
+test("tonne rates write kilogram compatibility mirrors", () => {
   const normalized = normalizeSupplierBasisPriceRates({
     servicePricePerTonne: 12345.67,
     pvkjPricePerTonne: "250.25",
@@ -14,46 +10,90 @@ test("supplier basis rates store only tonne-authoritative values", () => {
   });
 
   assert.equal(normalized.servicePricePerTonne, "12345.670000");
+  assert.equal(normalized.servicePrice, "12.345670");
   assert.equal(normalized.pvkjPricePerTonne, "250.250000");
+  assert.equal(normalized.pvkjPrice, "0.250250");
   assert.equal(normalized.agentFeePerTonne, "1234.560000");
-  assert.equal("servicePrice" in normalized, false);
-  assert.equal("pvkjPrice" in normalized, false);
-  assert.equal("agentFee" in normalized, false);
+  assert.equal(normalized.agentFee, "1.234560");
 });
 
-test("obsolete kilogram basis-rate payloads are rejected", () => {
-  for (const legacyKey of ["servicePrice", "pvkjPrice", "agentFee"]) {
-    assert.throws(
-      () => normalizeSupplierBasisPriceRates({ [legacyKey]: 1 }),
-      SupplierBasisPriceRateInputError,
-    );
-  }
+test("legacy kilogram inputs derive per-tonne values", () => {
+  const normalized = normalizeSupplierBasisPriceRates({
+    servicePrice: "0.123456",
+    pvkjPrice: 0.25,
+    agentFee: "1.000001",
+  });
+
+  assert.equal(normalized.servicePrice, "0.123456");
+  assert.equal(normalized.servicePricePerTonne, "123.456000");
+  assert.equal(normalized.pvkjPrice, "0.25");
+  assert.equal(normalized.pvkjPricePerTonne, "250.000000");
+  assert.equal(normalized.agentFee, "1.000001");
+  assert.equal(normalized.agentFeePerTonne, "1000.001000");
 });
 
-test("invalid tonne rates fail and explicit null clears only the tonne value", () => {
-  assert.throws(
-    () => normalizeSupplierBasisPriceRates({ servicePricePerTonne: "invalid" }),
-    /Некорректное значение/,
-  );
-  assert.equal(
-    normalizeSupplierBasisPriceRates({ servicePricePerTonne: null })
-      .servicePricePerTonne,
-    null,
-  );
-});
-
-test("unchanged displayed rates preserve saved tonne precision", () => {
+test("unchanged displayed tonne rates preserve both stored precisions", () => {
   const normalized = normalizeSupplierBasisPriceRates(
-    { servicePricePerTonne: "123.46" },
-    { servicePricePerTonne: "123.456789" },
+    {
+      servicePricePerTonne: "12345.68",
+      servicePrice: "12.345679",
+    },
+    {
+      servicePricePerTonne: "12345.678901",
+      servicePrice: "12.345679",
+    },
   );
-  assert.equal(normalized.servicePricePerTonne, "123.456789");
 
-  const edited = normalizeSupplierBasisPriceRates(
-    { servicePricePerTonne: "123.47" },
-    { servicePricePerTonne: "123.456789" },
+  assert.equal(normalized.servicePricePerTonne, "12345.678901");
+  assert.equal(normalized.servicePrice, "12.345679");
+});
+
+test("a high-precision tonne edit stays authoritative within the same display cent", () => {
+  const normalized = normalizeSupplierBasisPriceRates(
+    {
+      pvkjPricePerTonne: "250.004",
+      pvkjPrice: "0.300000",
+    },
+    {
+      pvkjPricePerTonne: "250.000000",
+      pvkjPrice: "0.250000",
+    },
   );
-  assert.equal(edited.servicePricePerTonne, "123.470000");
+
+  assert.equal(normalized.pvkjPricePerTonne, "250.004000");
+  assert.equal(normalized.pvkjPrice, "0.250004");
+});
+
+test("a kg-only edit wins when the tonne value is the unchanged display value", () => {
+  const normalized = normalizeSupplierBasisPriceRates(
+    {
+      agentFeePerTonne: "250.25",
+      agentFee: "0.300000",
+    },
+    {
+      agentFeePerTonne: "250.250000",
+      agentFee: "0.250250",
+    },
+  );
+
+  assert.equal(normalized.agentFeePerTonne, "300.000000");
+  assert.equal(normalized.agentFee, "0.300000");
+});
+
+test("a changed tonne rate wins over a stale legacy mirror", () => {
+  const normalized = normalizeSupplierBasisPriceRates(
+    {
+      agentFeePerTonne: "250.00",
+      agentFee: "0.200000",
+    },
+    {
+      agentFeePerTonne: "200.000000",
+      agentFee: "0.200000",
+    },
+  );
+
+  assert.equal(normalized.agentFeePerTonne, "250.000000");
+  assert.equal(normalized.agentFee, "0.250000");
 });
 
 test("non-rate service fields are returned unchanged", () => {
@@ -67,20 +107,4 @@ test("non-rate service fields are returned unchanged", () => {
   assert.equal(normalized.otherServiceType, "fixed");
   assert.equal(normalized.otherServiceValue, "25.50");
   assert.equal(normalized.otherServiceQuantity, "3");
-});
-
-test("supplier API responses omit legacy kilogram rate fields", () => {
-  const api = supplierBasisPriceToApi({
-    servicePrice: "1",
-    servicePricePerTonne: "1000",
-    pvkjPrice: null,
-    pvkjPricePerTonne: "250",
-    basisId: "basis-1",
-  });
-
-  assert.deepEqual(api, {
-    servicePricePerTonne: "1000",
-    pvkjPricePerTonne: "250",
-    basisId: "basis-1",
-  });
 });

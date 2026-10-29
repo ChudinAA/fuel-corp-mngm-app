@@ -225,9 +225,9 @@ export function SuppliersTab() {
                               <div className="space-y-1">
                                 {supplier.basisPrices.map((bp) => {
                                   const base = bases.find((b) => b.id === bp.basisId);
-                                  const serviceRate = bp.servicePricePerTonne;
-                                  const pvkjRate = bp.pvkjPricePerTonne;
-                                  const agentRate = bp.agentFeePerTonne;
+                                  const serviceRate = bp.servicePricePerTonne ?? bp.servicePrice;
+                                  const pvkjRate = bp.pvkjPricePerTonne ?? bp.pvkjPrice;
+                                  const agentRate = bp.agentFeePerTonne ?? bp.agentFee;
                                   const hasPrices = serviceRate || pvkjRate || agentRate || bp.otherServiceType;
                                   if (!hasPrices) return null;
                                   const otherServiceLabel = bp.otherServiceType === "royalty_per_ton"
@@ -245,17 +245,17 @@ export function SuppliersTab() {
                                       <div className="flex flex-wrap gap-2 pl-1">
                                         {serviceRate && (
                                           <span className="text-blue-600 dark:text-blue-400">
-                                            Услуга: {formatStoredBasisRatePerTonne(bp.servicePricePerTonne)} ₽/т
+                                            Услуга: {formatStoredBasisRatePerTonne(bp.servicePricePerTonne, bp.servicePrice)} ₽/т
                                           </span>
                                         )}
                                         {pvkjRate && (
                                           <span className="text-purple-600 dark:text-purple-400">
-                                            ПВКЖ: {formatStoredBasisRatePerTonne(bp.pvkjPricePerTonne)} ₽/т
+                                            ПВКЖ: {formatStoredBasisRatePerTonne(bp.pvkjPricePerTonne, bp.pvkjPrice)} ₽/т
                                           </span>
                                         )}
                                         {agentRate && (
                                           <span className="text-amber-600 dark:text-amber-400">
-                                            Агентские: {formatStoredBasisRatePerTonne(bp.agentFeePerTonne)} ₽/т
+                                            Агентские: {formatStoredBasisRatePerTonne(bp.agentFeePerTonne, bp.agentFee)} ₽/т
                                           </span>
                                         )}
                                         {otherServiceLabel && bp.otherServiceValue && (

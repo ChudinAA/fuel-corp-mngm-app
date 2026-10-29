@@ -1,3 +1,7 @@
+import {
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 import { z } from "zod";
 
 const rateInputSchema = z
@@ -14,7 +18,7 @@ const volumeInputSchema = z
   })
   .strict();
 
-type StoredPriceShape = {
+type LegacyPriceShape = {
   priceUnit?: string | null;
   volumeUnit?: string | null;
   priceValues?: string[] | null;
@@ -65,9 +69,23 @@ export function normalizePriceValuesForStorage(
   });
 }
 
-function normalizeVolumeUnit(value: unknown): "tonne" {
-  if (value === "tonne") return "tonne";
-  throw new TypeError(`Неизвестная единица массы лимита цены: ${value}`);
+function normalizeVolumeUnit(value: unknown): "kg" | "tonne" {
+  const unit = value ?? "kg";
+  if (unit === "kg" || unit === "tonne") return unit;
+  throw new TypeError(`Неизвестная единица массы лимита цены: ${unit}`);
+}
+
+export function kilogramsToPriceStoredVolume(
+  kilograms: number,
+  volumeUnit: unknown,
+): number {
+  if (!Number.isFinite(kilograms)) {
+    throw new TypeError("Некорректная масса использованного объёма");
+  }
+  const unit = normalizeVolumeUnit(volumeUnit);
+  return unit === "kg"
+    ? kilograms
+    : Number(kilogramsToTonnes(kilograms).toFixed(5));
 }
 
 function storedRateOrNull(value: string): number | null {
@@ -83,34 +101,41 @@ function storedRateOrNull(value: string): number | null {
   }
 }
 
-export function priceToApi<T extends StoredPriceShape>(price: T) {
+export function priceToApi<T extends LegacyPriceShape>(price: T) {
   const {
     needsRecalculation: _needsRecalculation,
     oldPriceValues: _oldPriceValues,
     ...priceForApi
   } = price;
-  const storedUnit = price.priceUnit;
-  if (storedUnit !== "tonne" && storedUnit !== "liter") {
-    throw new TypeError(`Тариф содержит недопустимую единицу цены: ${storedUnit}`);
+  const storedUnit = price.priceUnit ?? "kg";
+  if (!["kg", "tonne", "liter"].includes(storedUnit)) {
+    throw new TypeError(`Неизвестная сохранённая единица цены: ${storedUnit}`);
   }
-  const unit = storedUnit;
+  const unit = storedUnit === "liter" ? "liter" : "tonne";
+  const storedAsKilograms = storedUnit === "kg";
   const storedVolumeUnit = normalizeVolumeUnit(price.volumeUnit);
   const rates = (price.priceValues ?? []).map((value) => {
-    return storedRateOrNull(value);
+    const storedRate = storedRateOrNull(value);
+    return storedRate === null || !storedAsKilograms
+      ? storedRate
+      : pricePerKilogramToPerTonne(storedRate);
   });
   const volumeLimit = numericOrNull(price.volume);
   const volumeUsed = numericOrNull(price.soldVolume);
+  const volumeToTonnes = (value: number | null) =>
+    value === null || storedVolumeUnit === "tonne"
+      ? value
+      : kilogramsToTonnes(value);
 
   return {
     ...priceForApi,
-    priceUnit: unit,
     volumeUnit: storedVolumeUnit,
     priceRate: { unit, values: rates },
     contractVolume: {
       limitUnit: "tonne",
-      limit: volumeLimit,
+      limit: volumeToTonnes(volumeLimit),
       usedUnit: "tonne",
-      used: volumeUsed,
+      used: volumeToTonnes(volumeUsed),
     },
   };
 }
@@ -123,7 +148,7 @@ export function priceResponseToApi(value: unknown): unknown {
 
   const record = value as Record<string, unknown>;
   if ("priceValues" in record || "priceUnit" in record) {
-    return priceToApi(record as StoredPriceShape);
+    return priceToApi(record as LegacyPriceShape);
   }
 
   const adapted = { ...record };
@@ -137,21 +162,21 @@ export function priceResponseToApi(value: unknown): unknown {
 
 export function priceUnitFilterToStorage(value: unknown): string[] | undefined {
   if (value === undefined || value === null || value === "") return undefined;
-  if (value === "tonne") return ["tonne"];
+  if (value === "tonne" || value === "kg") return ["kg", "tonne"];
   if (value === "liter") return ["liter"];
   throw new TypeError("Неизвестная единица цены");
 }
 
-export function priceSelectionVolumeToApi(totalVolumeTonnes: number): {
+export function priceSelectionVolumeToApi(totalVolumeKilograms: number): {
   value: string;
   unit: "tonne";
 } {
-  if (!Number.isFinite(totalVolumeTonnes) || totalVolumeTonnes < 0) {
+  if (!Number.isFinite(totalVolumeKilograms) || totalVolumeKilograms < 0) {
     throw new TypeError("Некорректный тоннаж выборки");
   }
 
   return {
-    value: totalVolumeTonnes.toFixed(5),
+    value: kilogramsToTonnes(totalVolumeKilograms).toFixed(5),
     unit: "tonne",
   };
 }
@@ -169,20 +194,13 @@ export function priceWriteFromApi<T extends Record<string, unknown>>(
     soldVolume: _computedSoldVolume,
     ...safeInput
   } = input;
+  if (!hasRate && !hasContractVolume) return safeInput as T;
   if (!hasRate) {
-    const hasLegacyRateFields =
-      "priceValues" in input ||
-      "priceUnit" in input ||
-      "volumeUnit" in input ||
-      "volume" in input;
-    if (!hasContractVolume && !hasLegacyRateFields) {
-      return safeInput as T;
-    }
     throw new z.ZodError([
       {
         code: z.ZodIssueCode.custom,
         path: ["priceRate"],
-        message: "Передавайте ставку через поле priceRate в ₽/т или ₽/л",
+        message: "Укажите единицу и ставки цены вместе с объёмом договора",
       },
     ]);
   }

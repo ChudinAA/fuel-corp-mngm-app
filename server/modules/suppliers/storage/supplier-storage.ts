@@ -1,9 +1,6 @@
 import { eq, asc, sql, isNull, and, inArray } from "drizzle-orm";
 import { db } from "server/db";
-import {
-  normalizeSupplierBasisPriceRates,
-  supplierBasisPriceToApi,
-} from "../supplier-basis-price-api-adapters";
+import { normalizeSupplierBasisPriceRates } from "../supplier-basis-price-api-adapters";
 import {
   suppliers,
   supplierBases,
@@ -18,8 +15,11 @@ import type { ISupplierStorage } from "./types";
 
 export type SupplierBasisPriceInput = {
   basisId: string;
+  servicePrice?: string | number | null;
   servicePricePerTonne?: string | number | null;
+  pvkjPrice?: string | number | null;
   pvkjPricePerTonne?: string | number | null;
+  agentFee?: string | number | null;
   agentFeePerTonne?: string | number | null;
   otherServiceType?: string | null;
   otherServiceValue?: string | number | null;
@@ -27,25 +27,17 @@ export type SupplierBasisPriceInput = {
   otherServiceQuantity?: string | number | null;
 };
 
-type SupplierBasisPriceApi = Omit<
-  SupplierBasisPrice,
-  "servicePrice" | "pvkjPrice" | "agentFee"
->;
-
 function decimalOrNull(value: unknown): string | null {
   return value == null ? null : String(value);
 }
 
 export class SupplierStorage implements ISupplierStorage {
-  private async loadBasisPrices(
-    supplierIds: string[],
-  ): Promise<SupplierBasisPriceApi[]> {
+  private async loadBasisPrices(supplierIds: string[]): Promise<SupplierBasisPrice[]> {
     if (supplierIds.length === 0) return [];
-    const rows = await db
+    return db
       .select()
       .from(supplierBasisPrices)
       .where(inArray(supplierBasisPrices.supplierId, supplierIds));
-    return rows.map(supplierBasisPriceToApi);
   }
 
   async getAllSuppliers(): Promise<Supplier[]> {
@@ -68,7 +60,7 @@ export class SupplierStorage implements ISupplierStorage {
     });
 
     const allBasisPrices = await this.loadBasisPrices(suppliersList.map((s) => s.id));
-    const basisPricesBySupplier = new Map<string, SupplierBasisPriceApi[]>();
+    const basisPricesBySupplier = new Map<string, SupplierBasisPrice[]>();
     for (const bp of allBasisPrices) {
       if (!basisPricesBySupplier.has(bp.supplierId)) {
         basisPricesBySupplier.set(bp.supplierId, []);
@@ -181,8 +173,11 @@ export class SupplierStorage implements ISupplierStorage {
             return {
               supplierId: created.id,
               basisId: bp.basisId,
+              servicePrice: decimalOrNull(rates.servicePrice),
               servicePricePerTonne: decimalOrNull(rates.servicePricePerTonne),
+              pvkjPrice: decimalOrNull(rates.pvkjPrice),
               pvkjPricePerTonne: decimalOrNull(rates.pvkjPricePerTonne),
+              agentFee: decimalOrNull(rates.agentFee),
               agentFeePerTonne: decimalOrNull(rates.agentFeePerTonne),
               otherServiceType: bp.otherServiceType || null,
               otherServiceValue: decimalOrNull(bp.otherServiceValue),
@@ -292,8 +287,11 @@ export class SupplierStorage implements ISupplierStorage {
               return {
                 supplierId: id,
                 basisId: bp.basisId,
+                servicePrice: decimalOrNull(rates.servicePrice),
                 servicePricePerTonne: decimalOrNull(rates.servicePricePerTonne),
+                pvkjPrice: decimalOrNull(rates.pvkjPrice),
                 pvkjPricePerTonne: decimalOrNull(rates.pvkjPricePerTonne),
+                agentFee: decimalOrNull(rates.agentFee),
                 agentFeePerTonne: decimalOrNull(rates.agentFeePerTonne),
                 otherServiceType: bp.otherServiceType || null,
                 otherServiceValue: decimalOrNull(bp.otherServiceValue),

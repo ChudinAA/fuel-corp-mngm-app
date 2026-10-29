@@ -49,6 +49,7 @@ import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   formTonnesRateToNumber,
+  formTonnesRateToLegacyKilograms,
   storedBasisRateToFormTonnes,
 } from "../shared/utils/basis-price-units";
 
@@ -185,11 +186,26 @@ export function AddSupplierDialog({
       );
       const basisPricesArray = filteredBaseIds.map((basisId) => {
         const entry = basisPricesMap[basisId] || defaultBasisPriceEntry();
+        const originalBasisPrice = (editItem as any)?.basisPrices?.find(
+          (price: any) => price.basisId === basisId,
+        );
         return {
           basisId,
           servicePricePerTonne: formTonnesRateToNumber(entry.servicePrice),
+          servicePrice: formTonnesRateToLegacyKilograms(
+            entry.servicePrice,
+            originalBasisPrice?.servicePrice,
+          ),
           pvkjPricePerTonne: formTonnesRateToNumber(entry.pvkjPrice),
+          pvkjPrice: formTonnesRateToLegacyKilograms(
+            entry.pvkjPrice,
+            originalBasisPrice?.pvkjPrice,
+          ),
           agentFeePerTonne: formTonnesRateToNumber(entry.agentFee),
+          agentFee: formTonnesRateToLegacyKilograms(
+            entry.agentFee,
+            originalBasisPrice?.agentFee,
+          ),
           otherServiceType: entry.otherServiceType || null,
           otherServiceValue: entry.otherServiceValue ? entry.otherServiceValue : null,
           otherServiceName: entry.otherServiceName || null,
@@ -328,11 +344,20 @@ export function AddSupplierDialog({
       });
       const pricesMap: Record<string, BasisPriceEntry> = {};
       if (editItem.basisPrices && Array.isArray(editItem.basisPrices)) {
-        editItem.basisPrices.forEach((bp: { basisId: string; servicePricePerTonne?: string | null; pvkjPricePerTonne?: string | null; agentFeePerTonne?: string | null; otherServiceType?: string | null; otherServiceValue?: string | null }) => {
+        editItem.basisPrices.forEach((bp: { basisId: string; servicePrice?: string | null; servicePricePerTonne?: string | null; pvkjPrice?: string | null; pvkjPricePerTonne?: string | null; agentFee?: string | null; agentFeePerTonne?: string | null; otherServiceType?: string | null; otherServiceValue?: string | null }) => {
           pricesMap[bp.basisId] = {
-            servicePrice: storedBasisRateToFormTonnes(bp.servicePricePerTonne),
-            pvkjPrice: storedBasisRateToFormTonnes(bp.pvkjPricePerTonne),
-            agentFee: storedBasisRateToFormTonnes(bp.agentFeePerTonne),
+            servicePrice: storedBasisRateToFormTonnes(
+              bp.servicePricePerTonne,
+              bp.servicePrice,
+            ),
+            pvkjPrice: storedBasisRateToFormTonnes(
+              bp.pvkjPricePerTonne,
+              bp.pvkjPrice,
+            ),
+            agentFee: storedBasisRateToFormTonnes(
+              bp.agentFeePerTonne,
+              bp.agentFee,
+            ),
             otherServiceType: bp.otherServiceType || "",
             otherServiceValue: bp.otherServiceValue || "",
             otherServiceName: (bp as any).otherServiceName || "",

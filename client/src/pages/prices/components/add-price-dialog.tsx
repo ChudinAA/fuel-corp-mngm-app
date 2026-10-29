@@ -30,6 +30,7 @@ import {
 import {
   formatTonnesForInput,
   kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
   tonnesToKilograms,
 } from "@shared/units";
 import { priceFormSchema } from "../schemas";
@@ -121,7 +122,10 @@ export function AddPriceDialog({
             const parsed = JSON.parse(pv);
             const storedPrice = Number(parsed.price);
             if (!Number.isFinite(storedPrice)) return { price: "" };
-            return { price: storedPrice.toFixed(2) };
+            const displayPrice = editPrice.priceUnit === "kg" || !editPrice.priceUnit
+              ? pricePerKilogramToPerTonne(storedPrice)
+              : storedPrice;
+            return { price: displayPrice.toFixed(2) };
           });
         } catch (e) {
           console.error("Failed to parse priceValues:", e);

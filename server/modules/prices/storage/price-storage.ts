@@ -12,6 +12,8 @@ import {
 import {
   COUNTERPARTY_TYPE,
 } from "@shared/constants";
+import { kilogramsToPriceStoredVolume } from "../price-unit-adapters";
+import { optMassTonnesSql } from "../../opt/opt-mass-sql";
 
 export class PriceStorage {
   async findActivePrices(filters: {
@@ -165,16 +167,25 @@ export class PriceStorage {
     id: string,
     data: Partial<InsertPrice>,
   ): Promise<Price | undefined> {
-    if (data.volumeUnit !== undefined && data.volumeUnit !== "tonne") {
-      throw new TypeError("Объём тарифа должен быть задан в тоннах");
-    }
-    if (data.priceUnit !== undefined && data.priceUnit !== "tonne" && data.priceUnit !== "liter") {
-      throw new TypeError("Цена тарифа должна быть задана в ₽/т или ₽/л");
-    }
+    const rebaseSoldVolume =
+      data.volumeUnit !== undefined && !Object.prototype.hasOwnProperty.call(data, "soldVolume");
     const [updated] = await db
       .update(prices)
       .set({
         ...data,
+        ...(rebaseSoldVolume
+          ? {
+              soldVolume: sql`
+                CASE
+                  WHEN ${prices.volumeUnit} = 'kg' AND ${data.volumeUnit} = 'tonne'
+                    THEN ${prices.soldVolume} / 1000
+                  WHEN ${prices.volumeUnit} = 'tonne' AND ${data.volumeUnit} = 'kg'
+                    THEN ${prices.soldVolume} * 1000
+                  ELSE ${prices.soldVolume}
+                END
+              `,
+            }
+          : {}),
         updatedAt: sql`NOW()`,
       })
       .where(eq(prices.id, id))
@@ -256,7 +267,7 @@ export class PriceStorage {
       } else {
         const [optVolume] = await db
           .select({
-            total: sql<string>`COALESCE(SUM(${opt.quantityTonnes}), 0)`,
+            total: sql<string>`COALESCE(SUM(${optMassTonnesSql()}) * 1000, 0)`,
           })
           .from(opt)
           .where(
@@ -269,7 +280,10 @@ export class PriceStorage {
 
         const [movementVolume] = await db
           .select({
-            total: sql<string>`COALESCE(SUM(${movement.quantityTonnes}), 0)`,
+            total: sql<string>`COALESCE(SUM(COALESCE(
+              ${movement.quantityTonnes},
+              CAST(${movement.quantityKg} AS NUMERIC) / 1000
+            )) * 1000, 0)`,
           })
           .from(movement)
           .where(
@@ -305,7 +319,10 @@ export class PriceStorage {
       } else {
         const [result] = await db
           .select({
-            total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityTonnes}), 0)`,
+            total: sql<string>`COALESCE(SUM(COALESCE(
+              ${aircraftRefueling.quantityTonnes},
+              CAST(${aircraftRefueling.quantityKg} AS NUMERIC) / 1000
+            )) * 1000, 0)`,
           })
           .from(aircraftRefueling)
           .where(
@@ -323,10 +340,14 @@ export class PriceStorage {
     }
 
     // Обновляем значения в базе данных
+    const soldVolume = kilogramsToPriceStoredVolume(
+      totalVolume,
+      price.volumeUnit,
+    );
     await db
       .update(prices)
       .set({
-        soldVolume: totalVolume.toFixed(5),
+        soldVolume: soldVolume.toString(),
         soldAmount: totalAmount.toString(),
       })
       .where(eq(prices.id, priceId));

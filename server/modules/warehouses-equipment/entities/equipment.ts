@@ -29,10 +29,6 @@ export const equipments = pgTable(
     averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default(
       "0",
     ),
-    averageCostPerTonne: decimal("average_cost_per_tonne", {
-      precision: 22,
-      scale: 6,
-    }),
     pvkjBalance: decimal("pvkj_balance", { precision: 15, scale: 2 }).default(
       "0",
     ),
@@ -44,10 +40,6 @@ export const equipments = pgTable(
       precision: 12,
       scale: 4,
     }).default("0"),
-    pvkjAverageCostPerTonne: decimal("pvkj_average_cost_per_tonne", {
-      precision: 22,
-      scale: 6,
-    }),
     isActive: text("is_active").default("true"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -91,21 +83,12 @@ export const equipmentTransactions = pgTable(
       precision: 12,
       scale: 4,
     }),
-    averageCostBeforePerTonne: decimal("average_cost_before_per_tonne", {
-      precision: 22,
-      scale: 6,
-    }),
     averageCostAfter: decimal("average_cost_after", {
       precision: 12,
       scale: 4,
     }),
-    averageCostAfterPerTonne: decimal("average_cost_after_per_tonne", {
-      precision: 22,
-      scale: 6,
-    }),
     sum: decimal("sum", { precision: 15, scale: 2 }),
     price: decimal("price", { precision: 12, scale: 4 }),
-    pricePerTonne: decimal("price_per_tonne", { precision: 22, scale: 6 }),
     transactionDate: timestamp("transaction_date", { mode: "string" }),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),

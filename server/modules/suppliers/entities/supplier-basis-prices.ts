@@ -74,16 +74,13 @@ export const supplierBasisPricesRelations = relations(supplierBasisPrices, ({ on
 }));
 
 export const insertSupplierBasisPriceSchema = createInsertSchema(supplierBasisPrices)
-  .omit({
-    id: true,
-    createdAt: true,
-    servicePrice: true,
-    pvkjPrice: true,
-    agentFee: true,
-  })
+  .omit({ id: true, createdAt: true })
   .extend({
     supplierId: z.string().min(1),
     basisId: z.string().min(1),
+    servicePrice: z.coerce.number().optional().nullable(),
+    pvkjPrice: z.coerce.number().optional().nullable(),
+    agentFee: z.coerce.number().optional().nullable(),
     servicePricePerTonne: z.coerce.number().optional().nullable(),
     pvkjPricePerTonne: z.coerce.number().optional().nullable(),
     agentFeePerTonne: z.coerce.number().optional().nullable(),

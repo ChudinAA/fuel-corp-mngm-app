@@ -5,6 +5,7 @@ import { PRODUCT_TYPE } from "@shared/constants";
 import {
   formatPricePerTonne,
   formatTonnes,
+  pricePerKilogramToPerTonne,
 } from "@shared/units";
 import type { PriceApi } from "./types";
 
@@ -35,6 +36,7 @@ export const formatDate = (dateStr: string | null) => {
 export const getPriceDisplay = (
   priceValues: string[] | null,
   symbol: string,
+  priceUnit: "kg" | "tonne" | "liter" = "kg",
 ) => {
   if (!priceValues || priceValues.length === 0) return "—";
   try {
@@ -42,7 +44,9 @@ export const getPriceDisplay = (
       const parsed = JSON.parse(pv);
       const storedPrice = Number(parsed.price);
       if (!Number.isFinite(storedPrice)) throw new TypeError("Invalid stored price");
-      return storedPrice;
+      return priceUnit === "liter" || priceUnit === "tonne"
+        ? storedPrice
+        : pricePerKilogramToPerTonne(storedPrice);
     });
     if (prices.length === 1) {
       return `${formatPricePerTonne(prices[0])} ${symbol}`;

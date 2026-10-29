@@ -54,8 +54,11 @@ import {
 interface SupplierInfo {
   id: string;
   name: string;
+  servicePrice?: string | null;
   servicePricePerTonne?: string | null;
+  pvkjPrice?: string | null;
   pvkjPricePerTonne?: string | null;
+  agentFee?: string | null;
   agentFeePerTonne?: string | null;
   otherServiceType?: string | null;
   otherServiceValue?: string | null;
@@ -93,8 +96,11 @@ export function BasesTab() {
         return {
           id: s.id,
           name: s.name,
+          servicePrice: bp?.servicePrice,
           servicePricePerTonne: bp?.servicePricePerTonne,
+          pvkjPrice: bp?.pvkjPrice,
           pvkjPricePerTonne: bp?.pvkjPricePerTonne,
+          agentFee: bp?.agentFee,
           agentFeePerTonne: bp?.agentFeePerTonne,
           otherServiceType: bp?.otherServiceType,
           otherServiceValue: bp?.otherServiceValue,
@@ -236,20 +242,20 @@ export function BasesTab() {
                               {baseSuppliers.map((s) => (
                                 <div key={s.id} className="text-sm">
                                   <span className="font-medium">{s.name}</span>
-                                      {(s.servicePricePerTonne || s.pvkjPricePerTonne || s.agentFeePerTonne || s.otherServiceType) && (
+                                      {(s.servicePricePerTonne || s.servicePrice || s.pvkjPricePerTonne || s.pvkjPrice || s.agentFeePerTonne || s.agentFee || s.otherServiceType) && (
                                     <span className="ml-2 text-xs text-muted-foreground">
-                                          {s.servicePricePerTonne && (
-                                            <span>Услуга: {formatStoredBasisRatePerTonne(s.servicePricePerTonne)} ₽/т</span>
+                                          {(s.servicePricePerTonne || s.servicePrice) && (
+                                            <span>Услуга: {formatStoredBasisRatePerTonne(s.servicePricePerTonne, s.servicePrice)} ₽/т</span>
                                       )}
-                                          {s.servicePricePerTonne && s.pvkjPricePerTonne && <span> · </span>}
-                                          {s.pvkjPricePerTonne && (
-                                            <span>ПВКЖ: {formatStoredBasisRatePerTonne(s.pvkjPricePerTonne)} ₽/т</span>
+                                          {(s.servicePricePerTonne || s.servicePrice) && (s.pvkjPricePerTonne || s.pvkjPrice) && <span> · </span>}
+                                          {(s.pvkjPricePerTonne || s.pvkjPrice) && (
+                                            <span>ПВКЖ: {formatStoredBasisRatePerTonne(s.pvkjPricePerTonne, s.pvkjPrice)} ₽/т</span>
                                       )}
-                                          {(s.servicePricePerTonne || s.pvkjPricePerTonne) && s.agentFeePerTonne && <span> · </span>}
-                                          {s.agentFeePerTonne && (
-                                            <span>Агент.: {formatStoredBasisRatePerTonne(s.agentFeePerTonne)} ₽/т</span>
+                                          {(s.servicePricePerTonne || s.servicePrice || s.pvkjPricePerTonne || s.pvkjPrice) && (s.agentFeePerTonne || s.agentFee) && <span> · </span>}
+                                          {(s.agentFeePerTonne || s.agentFee) && (
+                                            <span>Агент.: {formatStoredBasisRatePerTonne(s.agentFeePerTonne, s.agentFee)} ₽/т</span>
                                       )}
-                                          {(s.servicePricePerTonne || s.pvkjPricePerTonne || s.agentFeePerTonne) && s.otherServiceType && <span> · </span>}
+                                          {(s.servicePricePerTonne || s.servicePrice || s.pvkjPricePerTonne || s.pvkjPrice || s.agentFeePerTonne || s.agentFee) && s.otherServiceType && <span> · </span>}
                                       {s.otherServiceType && s.otherServiceValue && (
                                         <span>Прочие: {formatOtherBasisServiceValue(s.otherServiceValue, s.otherServiceType)}</span>
                                       )}

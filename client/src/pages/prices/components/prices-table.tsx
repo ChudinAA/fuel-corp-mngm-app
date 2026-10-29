@@ -539,6 +539,11 @@ export function PricesTable({
                             : getPriceDisplay(
                                 price.priceValues,
                                 price.currencySymbol || "₽",
+                                price.priceUnit === "liter"
+                                  ? "liter"
+                                  : price.priceUnit === "tonne"
+                                    ? "tonne"
+                                    : "kg",
                               )}
                         </span>
                         <span className="text-[11px] text-muted-foreground font-normal border rounded px-1 py-0.5 leading-none">

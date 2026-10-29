@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Price } from "@shared/schema";
-import { formatTonnes } from "@shared/units";
+import { formatTonnes, kilogramsToTonnes } from "@shared/units";
 
 export function usePriceSelection() {
   const { toast } = useToast();
@@ -28,11 +28,16 @@ export function usePriceSelection() {
       queryClient.invalidateQueries({ queryKey: ["/api/prices/list"] });
       const isAmountLimit = (price as any).limitType === "amount";
       const calculatedVolume = data.volume as
-        | { value: string | number; unit: "tonne" }
+        | { value: string | number; unit: "tonne" | "liter" }
         | undefined;
-      const volumeDescription = `${formatTonnes(
-        Number(calculatedVolume?.value ?? data.totalVolume ?? 0),
-      )} т`;
+      const volumeDescription = calculatedVolume
+        ? calculatedVolume.unit === "tonne"
+          ? `${formatTonnes(Number(calculatedVolume.value))} т`
+          : `${new Intl.NumberFormat("ru-RU", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(Number(calculatedVolume.value))} л`
+        : `${formatTonnes(kilogramsToTonnes(Number(data.totalVolume || 0)))} т`;
       const description = isAmountLimit
         ? `Общая сумма: ${data.totalAmount} ₽`
         : `Общий объём: ${volumeDescription}`;
