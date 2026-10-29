@@ -56,13 +56,47 @@
 
 ### План для Replit-managed production
 
-1. **Target сверять перед каждой production-операцией:** пользователь подтвердил Replit-managed Production; свежий dump через временный read-only экспорт совпал с Production по отсутствию тоннажных колонок и основным counts (2,892 aircraft refuelings, 162 OPT, 488 foreign refuelings, 800 prices). Runtime приложения и тесты используют только `DATABASE_URL` для dev; временный экспортный секрет не является второй runtime-БД. Перед Publish/backfill повторно сверить production target и свежий backup; не выводить URL и credentials.
-2. **Повторить preflight непосредственно перед cutover:** требовать отсутствия `TRUNCATE`, удаления таблиц/колонок и неразобранных переименований. Schema-only definitions сохраняют legacy-объекты до отдельной чистки; проверить constraints и FK-предупреждения в Publish UI.
-3. **Сначала подготовить только безопасное расширение схемы:** поля массы и тоннажа, которые добавляются в заполненные таблицы, оставить nullable; runtime читает тонны с fallback на сохранённые kg, а новые записи пишет в тоннах и legacy-зеркалах. После post-merge обновления dev повторить `explainSchemaDiff()` и требовать отсутствия потери данных.
-4. **Отделить backfill от Publish:** Replit Publish управляет структурным diff для managed DB, но не запускает бизнес-преобразование `0086`–`0103`. Не добавлять миграции в build/pre-deploy/startup. После backup владелец может отдельно инициировать проверенные файлы в поддерживаемом Replit Shell-процессе. Текущие миграции используют транзакции и сверки; `0096`–`0099` оставляют массовые колонки nullable. Агент не будет писать или выполнять production SQL.
-5. **Проверить результат, затем отдельно ужесточить схему:** после backfill выполнить утверждённые read-only сверки масс, ставок и сумм. До отдельного этапа source schema и production остаются nullable; только после подтверждения отсутствия пропусков отдельный релиз выставляет `NOT NULL`. Deployment Preview показывает только schema diff, не результат data-backfill.
-6. **Наблюдать tonne-first релиз до удаления совместимости:** провести авторизованные smoke-проверки и оставить kg-зеркала/read-fallback до конца периода наблюдения. Затем отдельными изменениями удалить fallback, зеркала и миграционные адаптеры.
-7. **Не смешивать внешний-DB сценарий с managed Publish:** если настройки изменятся и подтвердят независимую внешнюю БД, нужен отдельный ручной runbook для точной production-цели с явным разрешением.
+#### До Publish
+
+1. **Я проверяю** свежий `explainSchemaDiff()` после изменений: нет `TRUNCATE`, удаления таблиц/колонок, неизвестных rename или warnings. Последний результат: 211 statements, `hasStructuralDataLoss=false`; `maybeNonBackwardsCompatible=true` из-за 41 замены constraints и 85 FK additions. Перед разрешением Publish я сверю их с production-поведением и пришлю итог.
+2. **Вы делаете backup и проверяете target:** в Replit Database выберите Production и сделайте свежую полную копию. Если нужен Shell preflight, используйте Shell именно в Production environment, не обычный Workspace Shell. Replit задаёт `DATABASE_URL` отдельно для dev и production; URL не печатайте. До любых команд проверьте:
+
+   ```bash
+   psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atc 'SELECT current_database()'
+   ```
+
+   Сверьте результат с Production в Replit Database. Если target неочевиден или Shell доступен только в dev — остановитесь, backfill не запускайте.
+3. **Вы проверяете Publish diff/Deployment Preview:** в нём не должно быть `TRUNCATE`, `DROP TABLE`, `DROP COLUMN` или неизвестного переименования. Отдельно просмотрите constraint/FK изменения; если Replit показывает неожиданный destructive action, не подтверждайте Publish и передайте мне текст/скрин diff.
+
+#### Publish и проверка расширенной схемы
+
+4. **Вы нажимаете Publish только после зелёных проверок выше.** Publish применяет структуру и публикует код, но не запускает бизнес-backfill `0086`–`0103`. Новая версия читает старые kg-строки через совместимый адаптер, а новые записи пишет в тоннах и legacy-зеркалах.
+5. **После Publish мы останавливаемся на контрольной точке.** Я read-only проверяю production: нужные колонки появились с ожидаемыми типами и nullable-режимом, `prices.volume_unit` добавлен с transitional default, данные и число строк не изменились. До этой проверки data-backfill не запускайте.
+
+#### Одноразовый data-backfill
+
+6. **Вы запускаете файлы только из Production Shell** (официальная документация Replit допускает ручные миграции из Shell production environment). Проверьте, что файлы `migrations/0086_*.sql`…`migrations/0103_*.sql` доступны в текущем project root. Затем выполните строго по порядку:
+
+   ```bash
+   set -euo pipefail
+   for f in \
+     migrations/0086_*.sql migrations/0087_*.sql migrations/0088_*.sql \
+     migrations/0089_*.sql migrations/0090_*.sql migrations/0091_*.sql \
+     migrations/0092_*.sql migrations/0093_*.sql migrations/0094_*.sql \
+     migrations/0095_*.sql migrations/0096_*.sql migrations/0097_*.sql \
+     migrations/0098_*.sql migrations/0099_*.sql migrations/0100_*.sql \
+     migrations/0101_*.sql migrations/0102_*.sql migrations/0103_*.sql
+   do
+     echo "Running $f"
+     psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f "$f"
+   done
+   ```
+
+   Каждый файл содержит собственные `BEGIN`/`COMMIT`; ошибка останавливает цикл. Если любой файл завершается ошибкой, остановитесь, сохраните имя файла и текст ошибки, не запускайте цикл повторно и не переходите к следующим файлам — я проверю частичное состояние read-only и подскажу безопасное продолжение. Не используйте обычный Workspace Shell: там `DATABASE_URL` указывает на dev.
+7. **После успешного цикла сообщаете мне результат.** Я выполняю read-only проверку заполненности тоннажных значений, единиц ставок, сохранности связей/знаков и денежных итогов по backup baseline. В этом cutover новые поля остаются nullable, чтобы schema source и production не расходились.
+8. **Отдельный следующий релиз:** после подтверждения сверок источник схемы переводится на `NOT NULL`, выполняется post-merge и ещё один безопасный Publish. После периода наблюдения отдельными изменениями убираются kg-fallback, kg-зеркала и миграционные адаптеры.
+
+Публикация, production backfill и tightening требуют ваших отдельных действий; агент не публикует приложение и не выполняет production SQL. Если настройки когда-либо подтвердят независимую внешнюю БД вместо Replit-managed, этот порядок не применять — сначала нужен отдельный runbook для её точного target.
 
 ### План удаления временной kg-совместимости после cutover
 

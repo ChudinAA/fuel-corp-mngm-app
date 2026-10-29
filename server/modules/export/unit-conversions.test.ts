@@ -13,6 +13,50 @@ test("legacy deal mass uses saved kilograms and never reconstructs from liters",
   assert.equal(legacyDealMassToTonnes(null, "1000", "0.8"), null);
 });
 
+test("OPT exports legacy mass in tonnes and derives the per-tonne rate from the saved amount", async () => {
+  const sheet = await exportSheet(
+    "opt",
+    ["quantityKg", "salePrice", "saleAmount"],
+    [{
+      quantityKg: "1234.5",
+      quantityLiters: "1500",
+      density: "0.8230",
+      salePrice: "75",
+      saleAmount: "123450",
+    }],
+  );
+
+  assert.equal(sheet.getCell("A1").value, "Масса (т)");
+  assert.equal(sheet.getCell("A2").value, 1.2345);
+  assert.equal(sheet.getCell("B1").value, "Цена продажи (₽/т)");
+  assert.equal(sheet.getCell("B2").value, 100000);
+  assert.equal(sheet.getCell("C2").value, 123450);
+  assert.equal(sheet.getCell("A2").numFmt, "#,##0.00000");
+  assert.equal(sheet.getCell("B2").numFmt, "#,##0.00");
+});
+
+test("foreign refueling exports saved deal mass and preserves the USD amount", async () => {
+  const sheet = await exportSheet(
+    "refueling-abroad",
+    ["quantityKg", "purchasePriceUsd", "purchaseAmountUsd"],
+    [{
+      quantityKg: "750",
+      quantityLiters: "900",
+      density: "0.8333",
+      purchasePriceUsd: "2.5",
+      purchaseAmountUsd: "1875",
+    }],
+  );
+
+  assert.equal(sheet.getCell("A1").value, "Масса (т)");
+  assert.equal(sheet.getCell("A2").value, 0.75);
+  assert.equal(sheet.getCell("B1").value, "Цена закупки (USD/т)");
+  assert.equal(sheet.getCell("B2").value, 2500);
+  assert.equal(sheet.getCell("C2").value, 1875);
+  assert.equal(sheet.getCell("A2").numFmt, "#,##0.00000");
+  assert.equal(sheet.getCell("B2").numFmt, "#,##0.00");
+});
+
 async function exportSheet(
   moduleName: string,
   selectedColumns: string[],
