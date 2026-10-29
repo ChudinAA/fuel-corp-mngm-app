@@ -14,7 +14,7 @@ const volumeInputSchema = z
   })
   .strict();
 
-type LegacyPriceShape = {
+type StoredPriceShape = {
   priceUnit?: string | null;
   volumeUnit?: string | null;
   priceValues?: string[] | null;
@@ -83,7 +83,7 @@ function storedRateOrNull(value: string): number | null {
   }
 }
 
-export function priceToApi<T extends LegacyPriceShape>(price: T) {
+export function priceToApi<T extends StoredPriceShape>(price: T) {
   const {
     needsRecalculation: _needsRecalculation,
     oldPriceValues: _oldPriceValues,
@@ -123,7 +123,7 @@ export function priceResponseToApi(value: unknown): unknown {
 
   const record = value as Record<string, unknown>;
   if ("priceValues" in record || "priceUnit" in record) {
-    return priceToApi(record as LegacyPriceShape);
+    return priceToApi(record as StoredPriceShape);
   }
 
   const adapted = { ...record };

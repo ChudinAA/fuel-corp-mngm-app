@@ -3,6 +3,14 @@ name: Mass units and precision
 description: Product decisions for converting mass, prices, and litre-based rates to tonnes.
 ---
 
+## Current post-production cleanup policy
+
+«КГ не нужны, везде используем Тонны, можно удалять kg-совместимость». The user explicitly approved cleanup now, without an observation-period delay.
+
+**Why:** The user confirmed that tonnes are the application's only business mass unit after production cutover.
+
+**How to apply:** Remove current kg API inputs, legacy read fallbacks and dual-write paths by coordinated module batches, preserving amounts and UI behavior. Do not wait for a 7/14/30-day window. Decode immutable historical audit snapshots into current units before restoring them; never reinterpret old kg values as tonnes. Density in kg/l and reusable per-litre source tariffs remain physically valid. Physical legacy-column deletion is a separate destructive schema step requiring backup and Publish-diff review.
+
 - Masses are represented in tonnes and shown with up to five decimal places, trimming trailing zeroes. This preserves legacy precision of 0.01 kg as 0.00001 t without noisy fixed zeros.
 - Prices per tonne are shown with two decimal places. Keep calculation/storage precision sufficient to preserve existing transaction totals; do not round unit rates early.
 - When an unchanged legacy rate is shown rounded as ₽/т, preserve the exact stored ₽/кг value on save; display rounding must not rewrite stored precision.
@@ -12,17 +20,20 @@ description: Product decisions for converting mass, prices, and litre-based rate
 - Historical БДР `salesVolume` values must be recomputed by month from non-deleted OPT and refueling quantities; only this field is replaced, while `salesRevenue` and other budget fields remain unchanged.
 - Management-report government-contract summaries must keep financial amounts in ₽ separate from planned, actual, and remaining mass in tonnes.
 - Monetary totals and the signs/directions of stock movements must not change during unit conversion.
-- During staged rollout, keep untagged legacy mass fields in kg. For prices, `price_unit` labels the stored rate array while `volume_unit` independently labels contract mass and usage; update each unit marker atomically with its values.
-- For logistics capacities, warehouse monthly limits, warehouse/equipment balances and ledger masses, and transportation/ordinary/equipment movement masses and rates, treat tonne columns as authoritative and synchronize legacy kg mirrors until old readers are removed. Every historical transaction mass comes from saved kg, never liters × density.
-- When an edit submits both tonne and legacy kg values, compare each with the saved row: if only kg changed, preserve that legacy edit and recompute tonnes; otherwise tonnes lead. Continue accepting kg-only legacy writes during staged rollout.
+- `price_unit` labels the stored rate array while `volume_unit` independently labels contract mass and usage. Historical records must be decoded using their original unit markers, never reinterpreted in place.
+- Tonne columns are authoritative. Historical transaction mass must derive from the saved mass, never be reconstructed from liters × density.
 - Only normalize a raw numeric `prices.price_values` scalar as a rate when its unit/meaning has been explicitly reviewed; the approved dev anomaly was exactly one `75` value in a `kg` row, converted to a standard `75000` per-tonne rate.
 - Dashboard warehouse balances show only the current balance in tonnes. Do not treat `storageCost` (₽/т) or `limitVolume` (monthly throughput) as physical capacity; disable capacity alerts until a real capacity field exists.
 
-**Post-backfill default rule:** Default new price rates and contract masses to tonnes after production backfill, but retain legacy kg reads during the observation and rollback period.
+**Post-backfill default rule:** Default new price rates and contract masses to tonnes. The previously proposed observation period is superseded by the user's approval to remove kg compatibility now.
 
-**Why:** An omitted unit could otherwise create a newly stored tonne value with a kg label; immediately removing kg readers could make rollback or stale rows unsafe.
+**Why:** An omitted unit must never create a tonne value with a kg label. Historical snapshots still need explicit decoding so rollback cannot reintroduce obsolete units.
 
-**How to apply:** Update database/schema defaults and write adapters to tonnes. Keep legacy read adapters until production smoke tests and the agreed observation period pass, then remove kg compatibility in a coordinated release.
+**How to apply:** Update schema defaults and current writers to tonnes, reject obsolete business inputs, and remove compatibility in dependency order. Preserve immutable history with a separately tested historical decoder until history itself is converted.
+
+## Prior staged-rollout rationale
+
+The rollout notes below explain earlier safeguards; their dual-write and observation instructions are superseded by the current cleanup policy above.
 
 **Why:** The user requires mass precision to remain at five decimal places after conversion, while prices display two decimals, and explicitly chose to preserve existing totals for historical per-litre deals. Per-litre rates cannot be converted to a universal per-tonne value without the deal's density. Where a saved total exists, the app already exposes total divided by saved mass as the effective rate; retaining that value avoids changing the established UI while preserving the total. Use density only when a historical per-litre rate has no saved total. Rounded rate displays must not cause no-op edits to overwrite higher-precision legacy rates. Price rates and contract masses need separate unit markers because a price may be quoted per litre while its limit and used quantity are masses. Existing consumers may rely on legacy kg properties for logistics capacity, warehouse limits, and warehouse/equipment stock and ledger fields during staged rollout, so new tonne fields are authoritative while synchronized mirrors preserve compatibility. Older clients or restored records may submit a stale tonne value alongside a changed kg value; blindly preferring tonnes can silently discard the edit. Historical deal mass can differ from liters multiplied by density; every historical transaction mass must use saved kg, while density is used only to convert a per-liter rate with no saved total or process new liter input. The dashboard's former capacity display compared a mass balance with a per-tonne price, so the user chose to show only actual balances until physical capacity is modeled. One БДР auto-fill path has stored revenue in the mass field, so the user chose to rebuild that field from transaction quantities. The user also chose to see both money and tonnes as separate government-contract metrics, and asked that each migration stage record completed work, remaining work, and new findings to preserve context. The raw scalar was interpreted as a rate only after the user approved this specific known value; that approval does not authorize converting other malformed rows.
 

@@ -50,8 +50,8 @@ test("liter-denominated rates remain per liter while used mass is exposed in ton
     priceUnit: "liter",
     volumeUnit: "tonne",
     priceValues: ['{"price":"12.345678"}'],
-    volume: "4000",
-    soldVolume: "125.5",
+    volume: "4",
+    soldVolume: "0.1255",
   });
 
   assert.deepEqual(result.priceRate, {
@@ -137,7 +137,7 @@ test("raw numeric tonne rates are not converted again", () => {
 test("unknown stored price units fail explicitly", () => {
   assert.throws(
     () => priceToApi({ priceUnit: "gallon", volumeUnit: "tonne", priceValues: [] }),
-    /Неизвестная сохранённая единица цены/,
+    /недопустимую единицу цены/,
   );
 });
 
@@ -281,8 +281,9 @@ test("legacy kg writes are rejected instead of stored", () => {
   assert.throws(
     () =>
       priceWriteFromApi({
+        contractLimitEnabled: false,
         priceRate: { unit: "kg", values: [75] },
       }),
-    /Invalid option/,
+    /Invalid enum value/,
   );
 });

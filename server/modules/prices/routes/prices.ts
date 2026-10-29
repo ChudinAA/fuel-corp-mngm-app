@@ -433,6 +433,9 @@ export function registerPricesRoutes(app: Express) {
         SSEService.notifyEntityChanged("prices", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(priceResponseToApi(item));
       } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: error.errors[0].message });
+        }
         console.error("Price update error:", error);
         res.status(500).json({ message: "Ошибка обновления цены" });
       }

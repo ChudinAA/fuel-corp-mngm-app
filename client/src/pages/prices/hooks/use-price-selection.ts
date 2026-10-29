@@ -30,14 +30,9 @@ export function usePriceSelection() {
       const calculatedVolume = data.volume as
         | { value: string | number; unit: "tonne" }
         | undefined;
-      const volumeDescription = calculatedVolume
-        ? calculatedVolume.unit === "tonne"
-          ? `${formatTonnes(Number(calculatedVolume.value))} т`
-          : `${new Intl.NumberFormat("ru-RU", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(Number(calculatedVolume.value))} л`
-        : `${formatTonnes(Number(data.totalVolume || 0))} т`;
+      const volumeDescription = `${formatTonnes(
+        Number(calculatedVolume?.value ?? data.totalVolume ?? 0),
+      )} т`;
       const description = isAmountLimit
         ? `Общая сумма: ${data.totalAmount} ₽`
         : `Общий объём: ${volumeDescription}`;
