@@ -1,7 +1,3 @@
-import {
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
-} from "@shared/units";
 import { z } from "zod";
 
 const rateInputSchema = z
@@ -69,23 +65,9 @@ export function normalizePriceValuesForStorage(
   });
 }
 
-function normalizeVolumeUnit(value: unknown): "kg" | "tonne" {
-  const unit = value ?? "kg";
-  if (unit === "kg" || unit === "tonne") return unit;
-  throw new TypeError(`Неизвестная единица массы лимита цены: ${unit}`);
-}
-
-export function kilogramsToPriceStoredVolume(
-  kilograms: number,
-  volumeUnit: unknown,
-): number {
-  if (!Number.isFinite(kilograms)) {
-    throw new TypeError("Некорректная масса использованного объёма");
-  }
-  const unit = normalizeVolumeUnit(volumeUnit);
-  return unit === "kg"
-    ? kilograms
-    : Number(kilogramsToTonnes(kilograms).toFixed(5));
+function normalizeVolumeUnit(value: unknown): "tonne" {
+  if (value === "tonne") return "tonne";
+  throw new TypeError(`Неизвестная единица массы лимита цены: ${value}`);
 }
 
 function storedRateOrNull(value: string): number | null {
@@ -107,35 +89,28 @@ export function priceToApi<T extends LegacyPriceShape>(price: T) {
     oldPriceValues: _oldPriceValues,
     ...priceForApi
   } = price;
-  const storedUnit = price.priceUnit ?? "kg";
-  if (!["kg", "tonne", "liter"].includes(storedUnit)) {
-    throw new TypeError(`Неизвестная сохранённая единица цены: ${storedUnit}`);
+  const storedUnit = price.priceUnit;
+  if (storedUnit !== "tonne" && storedUnit !== "liter") {
+    throw new TypeError(`Тариф содержит недопустимую единицу цены: ${storedUnit}`);
   }
-  const unit = storedUnit === "liter" ? "liter" : "tonne";
-  const storedAsKilograms = storedUnit === "kg";
+  const unit = storedUnit;
   const storedVolumeUnit = normalizeVolumeUnit(price.volumeUnit);
   const rates = (price.priceValues ?? []).map((value) => {
-    const storedRate = storedRateOrNull(value);
-    return storedRate === null || !storedAsKilograms
-      ? storedRate
-      : pricePerKilogramToPerTonne(storedRate);
+    return storedRateOrNull(value);
   });
   const volumeLimit = numericOrNull(price.volume);
   const volumeUsed = numericOrNull(price.soldVolume);
-  const volumeToTonnes = (value: number | null) =>
-    value === null || storedVolumeUnit === "tonne"
-      ? value
-      : kilogramsToTonnes(value);
 
   return {
     ...priceForApi,
+    priceUnit: unit,
     volumeUnit: storedVolumeUnit,
     priceRate: { unit, values: rates },
     contractVolume: {
       limitUnit: "tonne",
-      limit: volumeToTonnes(volumeLimit),
+      limit: volumeLimit,
       usedUnit: "tonne",
-      used: volumeToTonnes(volumeUsed),
+      used: volumeUsed,
     },
   };
 }
@@ -162,21 +137,21 @@ export function priceResponseToApi(value: unknown): unknown {
 
 export function priceUnitFilterToStorage(value: unknown): string[] | undefined {
   if (value === undefined || value === null || value === "") return undefined;
-  if (value === "tonne" || value === "kg") return ["kg", "tonne"];
+  if (value === "tonne") return ["tonne"];
   if (value === "liter") return ["liter"];
   throw new TypeError("Неизвестная единица цены");
 }
 
-export function priceSelectionVolumeToApi(totalVolumeKilograms: number): {
+export function priceSelectionVolumeToApi(totalVolumeTonnes: number): {
   value: string;
   unit: "tonne";
 } {
-  if (!Number.isFinite(totalVolumeKilograms) || totalVolumeKilograms < 0) {
+  if (!Number.isFinite(totalVolumeTonnes) || totalVolumeTonnes < 0) {
     throw new TypeError("Некорректный тоннаж выборки");
   }
 
   return {
-    value: kilogramsToTonnes(totalVolumeKilograms).toFixed(5),
+    value: totalVolumeTonnes.toFixed(5),
     unit: "tonne",
   };
 }
@@ -194,13 +169,20 @@ export function priceWriteFromApi<T extends Record<string, unknown>>(
     soldVolume: _computedSoldVolume,
     ...safeInput
   } = input;
-  if (!hasRate && !hasContractVolume) return safeInput as T;
   if (!hasRate) {
+    const hasLegacyRateFields =
+      "priceValues" in input ||
+      "priceUnit" in input ||
+      "volumeUnit" in input ||
+      "volume" in input;
+    if (!hasContractVolume && !hasLegacyRateFields) {
+      return safeInput as T;
+    }
     throw new z.ZodError([
       {
         code: z.ZodIssueCode.custom,
         path: ["priceRate"],
-        message: "Укажите единицу и ставки цены вместе с объёмом договора",
+        message: "Передавайте ставку через поле priceRate в ₽/т или ₽/л",
       },
     ]);
   }

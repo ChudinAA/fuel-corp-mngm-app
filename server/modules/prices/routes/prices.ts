@@ -53,8 +53,8 @@ export function registerPricesRoutes(app: Express) {
         );
 
         res.json({
-          totalVolume: totalVolume.toFixed(2),
-          totalVolumeUnit: "kg",
+          totalVolume: totalVolume.toFixed(5),
+          totalVolumeUnit: "tonne",
           volume: priceSelectionVolumeToApi(totalVolume),
           totalAmount: totalAmount.toFixed(2),
         });
