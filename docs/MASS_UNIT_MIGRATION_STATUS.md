@@ -1006,23 +1006,5 @@
 - API и writers/recalculation уже заполняют новые rate-поля; чтение временно предпочитает ₽/т и fallback-читает прежнее kg-поле, чтобы этот релиз можно было безопасно опубликовать до production backfill. Runtime-cutover ещё не выполнен.
 - Обновлены устаревшие critical-flow ожидания supplier/price API: только тонные поля, sold volume хранится как 0.34567 т, kg-only supplier input отклоняется.
 - Проверки: `npm run check`, `npm run build`, 40 целевых тестов и `npm run test:critical-flows` (33/33) прошли. `runPostMergeSetup()` успешно применил additive/nullable schema в development. Production не менялась.
-- После Publish этого expansion владельцу нужно выполнить в Production SQL Console и проверить следующий backfill. Он не меняет старые значения и сохраняет уже записанные тонные ставки:
-
-  ```sql
-  BEGIN;
-  UPDATE warehouses
-  SET average_cost_per_tonne =
-        COALESCE(average_cost_per_tonne, COALESCE(average_cost, 0) * 1000),
-      pvkj_average_cost_per_tonne =
-        COALESCE(pvkj_average_cost_per_tonne, COALESCE(pvkj_average_cost, 0) * 1000);
-
-  UPDATE warehouse_transactions
-  SET price_per_tonne = COALESCE(price_per_tonne, price * 1000),
-      average_cost_before_per_tonne =
-        COALESCE(average_cost_before_per_tonne, average_cost_before * 1000),
-      average_cost_after_per_tonne =
-        COALESCE(average_cost_after_per_tonne, average_cost_after * 1000);
-  COMMIT;
-  ```
-
-- После SQL backfill требуется read-only сверка: у каждого склада новые rates совпадают с legacy rate × 1000 (NULL legacy warehouse rate считается 0); у каждой транзакции с сохранённой legacy ставкой новое значение совпадает с × 1000; тоннажные остатки и количества не изменились. После успешной сверки сразу продолжается runtime-cutover — периода наблюдения нет. Физическое удаление legacy-колонок и исторических SQL-файлов остаётся последним отдельным шагом, после проверки всех оставшихся читателей/rollback-путей.
+- После Publish этого expansion владелец выполняет `migrations/0104_warehouse_cost_rates_per_tonne_backfill.sql` в Production SQL Console. Скрипт требует опубликованную схему, идемпотентно заполняет только NULL в новых полях, сохраняет тонные ставки, уже записанные после Publish, и откатывает транзакцию, если после backfill остаются пропуски.
+- После SQL backfill требуется read-only сверка: новые ставки заполнены; тонные остатки и количества не изменились; число строк и денежные суммы остались прежними. Из-за допустимого округления старого kg-зеркала нельзя требовать точного равенства каждой уже dual-written ставки формуле `legacy_rate × 1000`; authoritative является сохранённое tonne-поле. После успешной сверки сразу продолжается runtime-cutover — периода наблюдения нет. Физическое удаление legacy-колонок и исторических SQL-файлов остаётся последним отдельным шагом, после проверки всех оставшихся читателей/rollback-путей.
