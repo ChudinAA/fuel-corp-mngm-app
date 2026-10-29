@@ -23,6 +23,54 @@ import {
   pricePerTonneToPerKilogram,
 } from "@shared/units";
 
+function normalizeWarehouseCostUnits(
+  data: Partial<InsertWarehouse>,
+  defaultMissing = false,
+): Partial<InsertWarehouse> {
+  const result: Record<string, string | null> = {};
+  const applyPair = (
+    tonneKey: "averageCostPerTonne" | "pvkjAverageCostPerTonne",
+    kilogramKey: "averageCost" | "pvkjAverageCost",
+  ) => {
+    const tonnes = data[tonneKey];
+    const kilograms = data[kilogramKey];
+    if (defaultMissing && tonnes === undefined && kilograms === undefined) {
+      result[tonneKey] = "0";
+      result[kilogramKey] = "0";
+      return;
+    }
+    if (tonnes !== undefined) {
+      if (tonnes === null || tonnes === "") {
+        result[tonneKey] = null;
+        result[kilogramKey] = null;
+      } else {
+        const value = Number(tonnes);
+        if (!Number.isFinite(value)) {
+          throw new TypeError(`${tonneKey} must be a finite number`);
+        }
+        result[tonneKey] = value.toFixed(6);
+        result[kilogramKey] = pricePerTonneToPerKilogram(value).toFixed(6);
+      }
+    } else if (kilograms !== undefined) {
+      if (kilograms === null || kilograms === "") {
+        result[kilogramKey] = null;
+        result[tonneKey] = null;
+      } else {
+        const value = Number(kilograms);
+        if (!Number.isFinite(value)) {
+          throw new TypeError(`${kilogramKey} must be a finite number`);
+        }
+        result[kilogramKey] = value.toFixed(6);
+        result[tonneKey] = pricePerKilogramToPerTonne(value).toFixed(6);
+      }
+    }
+  };
+
+  applyPair("averageCostPerTonne", "averageCost");
+  applyPair("pvkjAverageCostPerTonne", "pvkjAverageCost");
+  return result as Partial<InsertWarehouse>;
+}
+
 export class WarehouseStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
     const warehousesList = await db.query.warehouses.findMany({
@@ -105,6 +153,7 @@ export class WarehouseStorage {
     };
     const normalizedWarehouseData = {
       ...warehouseData,
+      ...normalizeWarehouseCostUnits(warehouseData, true),
       ...normalizeWarehouseLimit(warehouseData),
       ...normalizeWarehouseBalanceUnits(balanceInput),
     };
@@ -168,6 +217,7 @@ export class WarehouseStorage {
         .update(warehouses)
         .set({
           ...warehouseData,
+          ...normalizeWarehouseCostUnits(warehouseData),
           ...normalizedLimit,
           ...normalizedBalances,
           updatedAt: sql`NOW()`,
@@ -312,13 +362,16 @@ export class WarehouseStorage {
         quantityTonnes: tx.quantityTonnes,
         sum: tx.sum,
         price: tx.price,
+        pricePerTonne: tx.pricePerTonne,
         transactionDate: tx.transactionDate,
         balanceBefore: tx.balanceBefore || "0",
         balanceAfter: tx.balanceAfter || "0",
         balanceBeforeTonnes: tx.balanceBeforeTonnes,
         balanceAfterTonnes: tx.balanceAfterTonnes,
         averageCostBefore: tx.averageCostBefore || "0",
+        averageCostBeforePerTonne: tx.averageCostBeforePerTonne,
         averageCostAfter: tx.averageCostAfter || "0",
+        averageCostAfterPerTonne: tx.averageCostAfterPerTonne,
         createdAt: tx.createdAt,
       })),
       hasMore,
@@ -431,9 +484,11 @@ export class WarehouseStorage {
           Number.parseFloat(lastTransaction?.balanceAfter || "0"),
         ).toFixed(5),
       averageCost: lastTransaction?.averageCostAfter || "0",
-      averageCostPerTonne: pricePerKilogramToPerTonne(
-        Number.parseFloat(lastTransaction?.averageCostAfter || "0"),
-      ).toString(),
+      averageCostPerTonne:
+        lastTransaction?.averageCostAfterPerTonne ??
+        pricePerKilogramToPerTonne(
+          Number.parseFloat(lastTransaction?.averageCostAfter || "0"),
+        ).toString(),
     };
   }
 
@@ -496,6 +551,8 @@ export class WarehouseStorage {
       absQuantityTonnes > 0
         ? pricePerTonneToPerKilogram(Math.abs(deltaCost) / absQuantityTonnes)
         : 0;
+    const pricePerTonne =
+      absQuantityTonnes > 0 ? Math.abs(deltaCost) / absQuantityTonnes : 0;
 
     const { format } = await import("date-fns");
     const txDate = format(
@@ -518,12 +575,15 @@ export class WarehouseStorage {
           quantityTonnes: transactionQuantityTonnes.toFixed(5),
           sum: deltaCost.toFixed(2),
           price: legacyPricePerKg.toFixed(6),
+          pricePerTonne: pricePerTonne.toFixed(6),
           balanceBefore: legacyCurrentBalance.toFixed(2),
           balanceAfter: legacyTargetBalance.toFixed(2),
           balanceBeforeTonnes: currentBalanceTonnes.toFixed(5),
           balanceAfterTonnes: targetBalanceInTonnes.toFixed(5),
           averageCostBefore: legacyCurrentCost.toFixed(6),
+          averageCostBeforePerTonne: currentAverageCostPerTonne.toFixed(6),
           averageCostAfter: legacyTargetCost.toFixed(6),
+          averageCostAfterPerTonne: targetCostPerTonne.toFixed(6),
           transactionDate: txDate,
           createdById: userId,
         });
@@ -536,6 +596,7 @@ export class WarehouseStorage {
             pvkjBalance: legacyTargetBalance.toFixed(2),
             pvkjBalanceTonnes: targetBalanceInTonnes.toFixed(5),
             pvkjAverageCost: legacyTargetCost.toFixed(6),
+            pvkjAverageCostPerTonne: targetCostPerTonne.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById: userId,
           })
@@ -547,6 +608,7 @@ export class WarehouseStorage {
             currentBalance: legacyTargetBalance.toFixed(2),
             currentBalanceTonnes: targetBalanceInTonnes.toFixed(5),
             averageCost: legacyTargetCost.toFixed(6),
+            averageCostPerTonne: targetCostPerTonne.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById: userId,
           })

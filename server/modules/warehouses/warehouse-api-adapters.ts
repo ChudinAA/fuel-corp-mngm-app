@@ -9,6 +9,7 @@ export interface WarehouseBalanceSnapshot {
   balance: NumericValue;
   balanceTonnes?: NumericValue;
   averageCost: NumericValue;
+  averageCostPerTonne?: NumericValue;
   [key: string]: unknown;
 }
 
@@ -18,7 +19,9 @@ export interface WarehouseRecordSnapshot {
   pvkjBalance: NumericValue;
   pvkjBalanceTonnes?: NumericValue;
   averageCost: NumericValue;
+  averageCostPerTonne?: NumericValue;
   pvkjAverageCost: NumericValue;
+  pvkjAverageCostPerTonne?: NumericValue;
   [key: string]: unknown;
 }
 
@@ -30,8 +33,11 @@ export interface WarehouseTransactionSnapshot {
   balanceAfter: NumericValue;
   balanceAfterTonnes?: NumericValue;
   price: NumericValue;
+  pricePerTonne?: NumericValue;
   averageCostBefore: NumericValue;
+  averageCostBeforePerTonne?: NumericValue;
   averageCostAfter: NumericValue;
+  averageCostAfterPerTonne?: NumericValue;
   [key: string]: unknown;
 }
 
@@ -75,10 +81,12 @@ export function warehouseToApi<T extends WarehouseRecordSnapshot>(
       kilogramsAsTonnes(warehouse.currentBalance),
     pvkjBalanceTonnes:
       warehouse.pvkjBalanceTonnes ?? kilogramsAsTonnes(warehouse.pvkjBalance),
-    averageCostPerTonne: perKilogramAsPerTonne(warehouse.averageCost),
-    pvkjAverageCostPerTonne: perKilogramAsPerTonne(
-      warehouse.pvkjAverageCost,
-    ),
+    averageCostPerTonne:
+      warehouse.averageCostPerTonne ??
+      perKilogramAsPerTonne(warehouse.averageCost),
+    pvkjAverageCostPerTonne:
+      warehouse.pvkjAverageCostPerTonne ??
+      perKilogramAsPerTonne(warehouse.pvkjAverageCost),
   };
 }
 
@@ -89,7 +97,9 @@ export function warehouseBalanceToApi<T extends WarehouseBalanceSnapshot>(
     ...balance,
     balanceTonnes:
       balance.balanceTonnes ?? kilogramsAsTonnes(balance.balance),
-    averageCostPerTonne: perKilogramAsPerTonne(balance.averageCost),
+    averageCostPerTonne:
+      balance.averageCostPerTonne ??
+      perKilogramAsPerTonne(balance.averageCost),
   };
 }
 
@@ -107,13 +117,15 @@ export function warehouseTransactionToApi<
     balanceAfterTonnes:
       transaction.balanceAfterTonnes ??
       kilogramsAsTonnes(transaction.balanceAfter),
-    pricePerTonne: perKilogramAsPerTonne(transaction.price),
-    averageCostBeforePerTonne: perKilogramAsPerTonne(
-      transaction.averageCostBefore,
-    ),
-    averageCostAfterPerTonne: perKilogramAsPerTonne(
-      transaction.averageCostAfter,
-    ),
+    pricePerTonne:
+      transaction.pricePerTonne ??
+      perKilogramAsPerTonne(transaction.price),
+    averageCostBeforePerTonne:
+      transaction.averageCostBeforePerTonne ??
+      perKilogramAsPerTonne(transaction.averageCostBefore),
+    averageCostAfterPerTonne:
+      transaction.averageCostAfterPerTonne ??
+      perKilogramAsPerTonne(transaction.averageCostAfter),
   };
 }
 

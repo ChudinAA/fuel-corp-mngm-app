@@ -31,12 +31,18 @@ function readTonneStockState(
   const averageCostPerKg = Number.parseFloat(
     (isPvkj ? warehouse.pvkjAverageCost : warehouse.averageCost) || "0",
   );
+  const storedAverageCostPerTonne = isPvkj
+    ? warehouse.pvkjAverageCostPerTonne
+    : warehouse.averageCostPerTonne;
   return {
     balanceTonnes:
       storedBalanceTonnes == null
         ? kilogramsToTonnes(balanceKg)
         : Number.parseFloat(storedBalanceTonnes),
-    averageCostPerTonne: pricePerKilogramToPerTonne(averageCostPerKg),
+    averageCostPerTonne:
+      storedAverageCostPerTonne == null
+        ? pricePerKilogramToPerTonne(averageCostPerKg)
+        : Number.parseFloat(storedAverageCostPerTonne),
   };
 }
 
@@ -46,6 +52,15 @@ function legacyKg(valueTonnes: number): string {
 
 function legacyPricePerKg(valuePerTonne: number): string {
   return pricePerTonneToPerKilogram(valuePerTonne).toFixed(6);
+}
+
+function transactionRatePerTonne(
+  perTonne: string | null,
+  perKilogram: string | null,
+): number {
+  return perTonne == null
+    ? pricePerKilogramToPerTonne(Number.parseFloat(perKilogram || "0"))
+    : Number.parseFloat(perTonne);
 }
 
 async function writeLegacyStockState(
@@ -66,6 +81,7 @@ async function writeLegacyStockState(
             pvkjBalance: balance,
             pvkjBalanceTonnes: balanceTonnes,
             pvkjAverageCost: averageCost,
+            pvkjAverageCostPerTonne: state.averageCostPerTonne.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById,
           }
@@ -73,6 +89,7 @@ async function writeLegacyStockState(
             currentBalance: balance,
             currentBalanceTonnes: balanceTonnes,
             averageCost,
+            averageCostPerTonne: state.averageCostPerTonne.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById,
           },
@@ -207,7 +224,10 @@ export class WarehouseTransactionService {
         balanceBeforeTonnes: currentBalance.toFixed(5),
         balanceAfterTonnes: newBalance.toFixed(5),
         averageCostBefore: legacyPricePerKg(currentCost),
+        averageCostBeforePerTonne: currentCost.toFixed(6),
         averageCostAfter: legacyPricePerKg(newAverageCost),
+        averageCostAfterPerTonne: newAverageCost.toFixed(6),
+        pricePerTonne: price.toFixed(6),
         createdById,
         transactionDate: txDate,
       })
@@ -338,9 +358,11 @@ export class WarehouseTransactionService {
         quantityTonnes: (isReceipt ? newQuantityTonnes : -newQuantityTonnes).toFixed(5),
         sum: sum.toString(),
         price: legacyPricePerKg(price),
+        pricePerTonne: price.toFixed(6),
         balanceAfter: legacyKg(newBalance),
         balanceAfterTonnes: newBalance.toFixed(5),
         averageCostAfter: legacyPricePerKg(newAverageCost),
+        averageCostAfterPerTonne: newAverageCost.toFixed(6),
         updatedAt: sql`NOW()`,
         updatedById,
         transactionDate: newEffectiveDate,
@@ -453,7 +475,15 @@ export class WarehouseTransactionService {
     const newBalance = Math.max(0, currentBalance - quantityTonnes);
     let newAverageCost = currentCost;
 
-    if (transaction.averageCostBefore !== transaction.averageCostAfter) {
+    const averageCostBeforePerTonne = transactionRatePerTonne(
+      transaction.averageCostBeforePerTonne,
+      transaction.averageCostBefore,
+    );
+    const averageCostAfterPerTonne = transactionRatePerTonne(
+      transaction.averageCostAfterPerTonne,
+      transaction.averageCostAfter,
+    );
+    if (averageCostBeforePerTonne !== averageCostAfterPerTonne) {
       const totalCostBeforeRemoval = currentBalance * currentCost;
       const newTotalCost = Math.max(0, totalCostBeforeRemoval - totalCost);
       newAverageCost = newBalance > 0 ? newTotalCost / newBalance : 0;

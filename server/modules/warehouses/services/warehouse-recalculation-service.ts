@@ -297,9 +297,12 @@ export class WarehouseRecalculationService {
                 parseFloat(transaction.balanceAfter || "0"),
               )
             : Number.parseFloat(transaction.balanceAfterTonnes);
-        newAverageCost = pricePerKilogramToPerTonne(
-          parseFloat(transaction.averageCostAfter || "0"),
-        );
+        newAverageCost =
+          transaction.averageCostAfterPerTonne == null
+            ? pricePerKilogramToPerTonne(
+                parseFloat(transaction.averageCostAfter || "0"),
+              )
+            : Number.parseFloat(transaction.averageCostAfterPerTonne);
         const delta = newBalance - currentBalance;
         newSum = delta * newAverageCost;
         newPrice = newAverageCost;
@@ -318,10 +321,13 @@ export class WarehouseRecalculationService {
             averageCostBefore: pricePerTonneToPerKilogram(
               currentAverageCost,
             ).toFixed(6),
+            averageCostBeforePerTonne: currentAverageCost.toFixed(6),
             // The inventory checkpoint stays user-set in both mass units.
             // averageCostAfter remains stored in the legacy ₽/kg unit for now.
             sum: newSum.toFixed(2),
             price: pricePerTonneToPerKilogram(newPrice).toFixed(6),
+            pricePerTonne: newPrice.toFixed(6),
+            averageCostAfterPerTonne: newAverageCost.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById,
           })
@@ -372,8 +378,11 @@ export class WarehouseRecalculationService {
             averageCostAfter: pricePerTonneToPerKilogram(
               newAverageCost,
             ).toFixed(6),
+            averageCostBeforePerTonne: currentAverageCost.toFixed(6),
+            averageCostAfterPerTonne: newAverageCost.toFixed(6),
             sum: newSum.toFixed(2),
             price: pricePerTonneToPerKilogram(newPrice).toFixed(6),
+            pricePerTonne: newPrice.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById,
           })
@@ -445,12 +454,14 @@ export class WarehouseRecalculationService {
       updateData.pvkjAverageCost = pricePerTonneToPerKilogram(
         currentAverageCost,
       ).toFixed(6);
+      updateData.pvkjAverageCostPerTonne = currentAverageCost.toFixed(6);
     } else {
       updateData.currentBalance = tonnesToKilograms(currentBalance).toFixed(2);
       updateData.currentBalanceTonnes = currentBalance.toFixed(5);
       updateData.averageCost = pricePerTonneToPerKilogram(
         currentAverageCost,
       ).toFixed(6);
+      updateData.averageCostPerTonne = currentAverageCost.toFixed(6);
     }
 
     await tx
@@ -542,9 +553,14 @@ export class WarehouseRecalculationService {
                 parseFloat(lastTransaction[0].balanceAfter || "0"),
               )
             : Number.parseFloat(lastTransaction[0].balanceAfterTonnes),
-        averageCost: pricePerKilogramToPerTonne(
-          parseFloat(lastTransaction[0].averageCostAfter || "0"),
-        ),
+        averageCost:
+          lastTransaction[0].averageCostAfterPerTonne == null
+            ? pricePerKilogramToPerTonne(
+                parseFloat(lastTransaction[0].averageCostAfter || "0"),
+              )
+            : Number.parseFloat(
+                lastTransaction[0].averageCostAfterPerTonne,
+              ),
       };
     }
 

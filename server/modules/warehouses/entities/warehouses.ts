@@ -41,6 +41,10 @@ export const warehouses = pgTable(
     averageCost: decimal("average_cost", { precision: 15, scale: 6 }).default(
       "0",
     ),
+    averageCostPerTonne: decimal("average_cost_per_tonne", {
+      precision: 18,
+      scale: 6,
+    }),
     equipmentType: text("equipment_type").default("common").notNull(),
     pvkjBalance: decimal("pvkj_balance", { precision: 15, scale: 2 }).default(
       "0",
@@ -53,6 +57,10 @@ export const warehouses = pgTable(
       precision: 15,
       scale: 6,
     }).default("0"),
+    pvkjAverageCostPerTonne: decimal("pvkj_average_cost_per_tonne", {
+      precision: 18,
+      scale: 6,
+    }),
     storageCost: decimal("storage_cost", { precision: 15, scale: 6 }),
     isExport: boolean("is_export").default(false),
     isRecalculating: boolean("is_recalculating").default(false),
@@ -131,12 +139,24 @@ export const warehouseTransactions = pgTable(
       precision: 15,
       scale: 6,
     }),
+    averageCostBeforePerTonne: decimal("average_cost_before_per_tonne", {
+      precision: 18,
+      scale: 6,
+    }),
     averageCostAfter: decimal("average_cost_after", {
       precision: 15,
       scale: 6,
     }),
+    averageCostAfterPerTonne: decimal("average_cost_after_per_tonne", {
+      precision: 18,
+      scale: 6,
+    }),
     sum: decimal("sum", { precision: 15, scale: 2 }),
     price: decimal("price", { precision: 15, scale: 6 }),
+    pricePerTonne: decimal("price_per_tonne", {
+      precision: 18,
+      scale: 6,
+    }),
     transactionDate: timestamp("transaction_date", { mode: "string" }),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -272,11 +292,14 @@ export const insertWarehouseSchema = z.object({
   supplierId: z.string().uuid().optional().nullable(),
   currentBalance: z.string().optional().nullable(),
   currentBalanceTonnes: z.string().optional().nullable(),
+  averageCost: z.string().optional().nullable(),
+  averageCostPerTonne: z.string().optional().nullable(),
   equipmentType: z.string().optional().default("common"),
   storageCost: z.string().optional().nullable(),
   pvkjBalance: z.string().optional().nullable(),
   pvkjBalanceTonnes: z.string().optional().nullable(),
   pvkjAverageCost: z.string().optional().nullable(),
+  pvkjAverageCostPerTonne: z.string().optional().nullable(),
   isExport: z.boolean().optional().default(false),
   isActive: z.boolean().optional(),
   isPinned: z.boolean().optional().default(false),

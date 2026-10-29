@@ -37,6 +37,22 @@ test("warehouse API prefers authoritative tonne balance fields", () => {
   assert.equal(result.pvkjBalanceTonnes, "0.00002");
 });
 
+test("warehouse API prefers stored per-tonne costs", () => {
+  const result = warehouseToApi({
+    currentBalance: "1234.56",
+    currentBalanceTonnes: "1.23456",
+    pvkjBalance: "0",
+    pvkjBalanceTonnes: "0",
+    averageCost: "12.345678",
+    averageCostPerTonne: "15000.125000",
+    pvkjAverageCost: "9.876543",
+    pvkjAverageCostPerTonne: "8500.250000",
+  });
+
+  assert.equal(result.averageCostPerTonne, "15000.125000");
+  assert.equal(result.pvkjAverageCostPerTonne, "8500.250000");
+});
+
 test("warehouse balance API adds tonne fields without changing legacy values", () => {
   const result = warehouseBalanceToApi({
     balance: "1234.56",
@@ -94,6 +110,27 @@ test("warehouse transaction API prefers tonne ledger values", () => {
   assert.equal(result.quantityTonnes, "0.12500");
   assert.equal(result.balanceBeforeTonnes, "3.50000");
   assert.equal(result.balanceAfterTonnes, "3.62500");
+});
+
+test("warehouse transaction API prefers stored per-tonne ledger rates", () => {
+  const result = warehouseTransactionToApi({
+    quantityKg: "-1000.00",
+    quantityTonnes: "-1.00000",
+    balanceBefore: "2000.00",
+    balanceBeforeTonnes: "2.00000",
+    balanceAfter: "1000.00",
+    balanceAfterTonnes: "1.00000",
+    price: "9.876543",
+    pricePerTonne: "12500.250000",
+    averageCostBefore: "8.123456",
+    averageCostBeforePerTonne: "8200.125000",
+    averageCostAfter: "8.234567",
+    averageCostAfterPerTonne: "8300.375000",
+  });
+
+  assert.equal(result.pricePerTonne, "12500.250000");
+  assert.equal(result.averageCostBeforePerTonne, "8200.125000");
+  assert.equal(result.averageCostAfterPerTonne, "8300.375000");
 });
 
 test("warehouse API adapters reject malformed numeric values", () => {
