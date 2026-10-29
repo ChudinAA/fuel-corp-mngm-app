@@ -31,6 +31,14 @@ description: Product decisions for converting mass, prices, and litre-based rate
 
 **How to apply:** Update schema defaults and current writers to tonnes, reject obsolete business inputs, and remove compatibility in dependency order. Preserve immutable history with a separately tested historical decoder until history itself is converted.
 
+## Warehouse and equipment rate cutover order
+
+Do not make API or balance readers prefer tonne-native cost columns until every transaction, inventory correction, rollback, and recalculation writer in that module updates those columns in the same change. During the short backfill handoff, keep tonne columns authoritative when present and dual-write any temporary legacy mirror; remove the mirror after the coordinated cutover.
+
+**Why:** A recalculation or edit that updates only the old rate column can leave a populated tonne column stale, causing the API to report a cost that no longer matches the ledger.
+
+**How to apply:** Map all read/write paths for warehouses and equipment before switching; test ordinary transactions, date snapshots, inventory adjustments, deletions/rollback, and background recalculation together. Do not ship a reader-only partial switch.
+
 ## Prior staged-rollout rationale
 
 The rollout notes below explain earlier safeguards; their dual-write and observation instructions are superseded by the current cleanup policy above.
