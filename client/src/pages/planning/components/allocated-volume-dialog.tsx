@@ -164,7 +164,7 @@ export function AllocatedVolumeDialog({
               step="0.00001"
               value={volume}
               onChange={(e) => setVolume(e.target.value)}
-              placeholder="0.00000"
+              placeholder="0"
               data-testid="input-allocated-volume"
             />
             {existingVolumes.find(

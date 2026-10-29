@@ -15,7 +15,7 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { Pencil, Trash2, Plus, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { formatTonnes } from "@shared/units";
+import { formatTonnes, formatTonnesForInput } from "@shared/units";
 
 interface Customer {
   id: string;
@@ -198,7 +198,7 @@ export default function GovContractsPage() {
       totalAmount: contract.totalAmount || "",
       productType: contract.productType || "",
       plannedVolumeTonnes: contract.plannedVolumeTonnes !== null && contract.plannedVolumeTonnes !== undefined
-        ? Number(contract.plannedVolumeTonnes).toFixed(5)
+        ? formatTonnesForInput(Number(contract.plannedVolumeTonnes))
         : "",
       status: contract.status,
       notes: contract.notes || "",

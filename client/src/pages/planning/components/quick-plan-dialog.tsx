@@ -372,7 +372,7 @@ export function QuickPlanDialog({
                       type="number"
                       step="0.00001"
                       min="0"
-                      placeholder="0.00000"
+                      placeholder="0"
                       value={entry.volume}
                       onChange={(e) => updateEntry(entry.id, "volume", e.target.value)}
                       className={cn(

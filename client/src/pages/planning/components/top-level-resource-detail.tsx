@@ -470,7 +470,7 @@ export function TopLevelResourceDetail({
                 step="0.00001"
                 value={form.volume}
                 onChange={(e) => setForm((f) => ({ ...f, volume: e.target.value }))}
-                placeholder="0.00000"
+                placeholder="0"
                 data-testid="input-top-level-volume"
               />
             </div>

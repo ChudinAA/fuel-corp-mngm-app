@@ -707,7 +707,7 @@ export function getEntitySummary(
 
     case "exchange_deals": {
       const wt = normalizeNum(data.weightTon);
-      const wtStr = wt ? `${wt.toLocaleString("ru-RU")} т` : null;
+      const wtStr = wt ? `${formatTonnes(wt)} т` : null;
       // Продавец: FK supplierId или денормализованное имя
       const seller = resolveName(data.sellerId) || (data.sellerName ? String(data.sellerName) : null);
       // Покупатель: buyerSupplierId (поставщик-покупатель) или buyerId (клиент-покупатель)
@@ -839,7 +839,7 @@ export function getEntitySummary(
         ? (ENUM_MAP.type[String(data.type)] || String(data.type))
         : null;
       const vol = normalizeNum(data.volume);
-      return p(shortDate(data.date), tp, vol ? `${vol.toLocaleString("ru-RU")} т` : null);
+      return p(shortDate(data.date), tp, vol ? `${formatTonnes(vol)} т` : null);
     }
 
     case "logistics_plan_routes":

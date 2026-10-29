@@ -47,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { RoutePlanDialog } from "./route-plan-dialog";
 import { SyncStatusBanner } from "./sync-status-banner";
 import { useToast } from "@/hooks/use-toast";
+import { formatTonnes } from "@shared/units";
 
 interface PlanningTabProps {
   periodFrom: string;
@@ -532,7 +533,13 @@ function LogisticsSummaryPanel({
                   <div className="flex items-center gap-2 pl-4 text-muted-foreground flex-wrap">
                     <span>{d.type === "income" ? "Приход" : "Расход"}</span>
                     {(d.volumeTons != null || d.volume != null) && (
-                      <span>{(d.volumeTons != null ? d.volumeTons : parseFloat(d.volume) / 1000).toLocaleString("ru-RU", { maximumFractionDigits: 3 })} т</span>
+                      <span>
+                        {formatTonnes(
+                          d.volumeTons != null
+                            ? d.volumeTons
+                            : parseFloat(d.volume) / 1000,
+                        )} т
+                      </span>
                     )}
                     {d.deliveryDeadline && (
                       <span>дедлайн: {d.deliveryDeadline.slice(0, 10)}</span>

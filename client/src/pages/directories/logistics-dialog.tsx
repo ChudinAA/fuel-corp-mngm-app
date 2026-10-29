@@ -48,7 +48,7 @@ import {
   Warehouse,
 } from "lucide-react";
 import type { LogisticsCarrier, Base } from "@shared/schema";
-import { kilogramsToTonnes } from "@shared/units";
+import { formatTonnesForInput, kilogramsToTonnes } from "@shared/units";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import { AddBaseDialog } from "./bases-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -347,9 +347,11 @@ export function AddLogisticsDialog({
         formData.vehicleType = data.model || "";
         formData.capacityTonnes =
           data.capacityTonnes != null
-            ? String(data.capacityTonnes)
+            ? formatTonnesForInput(String(data.capacityTonnes))
             : data.capacityKg != null
-              ? kilogramsToTonnes(Number(data.capacityKg)).toFixed(5)
+              ? formatTonnesForInput(
+                  kilogramsToTonnes(Number(data.capacityKg)),
+                )
               : "";
       } else if (editItem.type === "trailer") {
         formData.name = "";
@@ -357,9 +359,11 @@ export function AddLogisticsDialog({
         formData.carrierId = data.carrierId || undefined;
         formData.capacityTonnes =
           data.capacityTonnes != null
-            ? String(data.capacityTonnes)
+            ? formatTonnesForInput(String(data.capacityTonnes))
             : data.capacityKg != null
-              ? kilogramsToTonnes(Number(data.capacityKg)).toFixed(5)
+              ? formatTonnesForInput(
+                  kilogramsToTonnes(Number(data.capacityKg)),
+                )
               : "";
       } else if (editItem.type === "driver") {
         formData.name = data.fullName;
@@ -690,7 +694,7 @@ export function AddLogisticsDialog({
                         type="number"
                         min="0"
                         step="0.00001"
-                        placeholder="0.00000"
+                        placeholder="0"
                         data-testid="input-logistics-capacity"
                         {...field}
                       />

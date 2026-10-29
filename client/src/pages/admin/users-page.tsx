@@ -488,8 +488,13 @@ export default function UsersPage() {
   const getRoleName = (roleId: string | null) =>
     roles?.find((r) => r.id === roleId)?.name || "Не назначена";
 
-  const formatDate = (dateStr: string | null) =>
-    dateStr ? format(new Date(dateStr), "dd.MM.yyyy HH:mm", { locale: ru }) : "—";
+  const formatDate = (dateValue: Date | string | null | undefined) => {
+    if (!dateValue) return "—";
+    const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+    return Number.isNaN(date.getTime())
+      ? "—"
+      : format(date, "dd.MM.yyyy HH:mm", { locale: ru });
+  };
 
   const filteredUsers =
     users?.filter((u) => {
@@ -659,7 +664,7 @@ export default function UsersPage() {
                           <Badge variant="outline">{getRoleName(user.roleId)}</Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(user.lastLoginAt?.toISOString() ?? null)}
+                          {formatDate(user.lastLoginAt)}
                         </TableCell>
                         <TableCell>
                           {user.isActive ? (

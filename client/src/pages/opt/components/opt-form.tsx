@@ -45,7 +45,7 @@ import type { OptFormProps } from "../types";
 import { useOptCalculations } from "../hooks/use-opt-calculations";
 import { useOptFilters } from "../hooks/use-opt-filters";
 import { BASE_TYPE, PRODUCT_TYPE } from "@shared/constants";
-import { formatTonnes } from "@shared/units";
+import { formatTonnes, formatTonnesForInput } from "@shared/units";
 import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
@@ -415,7 +415,9 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           nomenclatureId: (editData as any).nomenclatureId || "",
           quantityLiters: editData.quantityLiters?.toString() || "",
           density: editData.density?.toString() || "",
-          quantityTonnes: Number(editData.quantityTonnes || 0).toFixed(5),
+          quantityTonnes: formatTonnesForInput(
+            Number(editData.quantityTonnes || 0),
+          ),
           carrierId: editData.carrierId || "",
           deliveryLocationId: editData.deliveryLocationId || "",
           notes: editData.notes || "",

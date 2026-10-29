@@ -1,5 +1,9 @@
 import { PRODUCT_TYPE } from "@shared/constants";
-import { kilogramsToTonnes, pricePerKilogramToPerTonne } from "@shared/units";
+import {
+  formatTonnesForInput,
+  kilogramsToTonnes,
+  pricePerKilogramToPerTonne,
+} from "@shared/units";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 
@@ -21,9 +25,9 @@ export function useWarehouseBalance(warehouseId: string | undefined, date: Date 
       return {
         balance,
         averageCost,
-        balanceTonnes:
-          data.balanceTonnes ??
-          kilogramsToTonnes(Number(balance)).toFixed(5),
+        balanceTonnes: formatTonnesForInput(
+          data.balanceTonnes ?? kilogramsToTonnes(Number(balance)),
+        ),
         averageCostPerTonne:
           data.averageCostPerTonne ??
           (averageCost == null

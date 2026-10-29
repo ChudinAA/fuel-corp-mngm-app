@@ -37,7 +37,7 @@ import type { Warehouse } from "@shared/schema";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { format, addMonths, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
-import { kilogramsToTonnes } from "@shared/units";
+import { formatTonnesForInput, kilogramsToTonnes } from "@shared/units";
 
 const limitSchema = z.object({
   limitVolumeTonnes: z
@@ -73,9 +73,11 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
     defaultValues: {
       limitVolumeTonnes:
         warehouse.limitVolumeTonnes != null
-          ? String(warehouse.limitVolumeTonnes)
+          ? formatTonnesForInput(String(warehouse.limitVolumeTonnes))
           : warehouse.limitVolume != null
-            ? kilogramsToTonnes(Number(warehouse.limitVolume)).toFixed(5)
+            ? formatTonnesForInput(
+                kilogramsToTonnes(Number(warehouse.limitVolume)),
+              )
             : "",
       limitProductType: warehouse.limitProductType || PRODUCT_TYPE.KEROSENE,
     },

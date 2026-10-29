@@ -3,7 +3,7 @@ name: Mass units and precision
 description: Product decisions for converting mass, prices, and litre-based rates to tonnes.
 ---
 
-- Masses are represented in tonnes and shown with five decimal places. This preserves the legacy precision of 0.01 kg as 0.00001 t.
+- Masses are represented in tonnes and shown with up to five decimal places, trimming trailing zeroes. This preserves legacy precision of 0.01 kg as 0.00001 t without noisy fixed zeros.
 - Prices per tonne are shown with two decimal places. Keep calculation/storage precision sufficient to preserve existing transaction totals; do not round unit rates early.
 - When an unchanged legacy rate is shown rounded as ₽/т, preserve the exact stored ₽/кг value on save; display rounding must not rewrite stored precision.
 - Convert rates per kilogram to rates per tonne by multiplying by 1,000.

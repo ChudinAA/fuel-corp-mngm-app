@@ -2,6 +2,7 @@ import { PRODUCT_TYPE } from "@shared/constants";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
+  formatTonnesForInput,
   kilogramsToTonnes,
   pricePerKilogramToPerTonne,
 } from "@shared/units";
@@ -23,7 +24,7 @@ export function useEquipmentBalance(
        if (productType === PRODUCT_TYPE.SERVICE) {
          return {
            balance: "0",
-           balanceTonnes: "0.00000",
+            balanceTonnes: "0",
            averageCost: "0",
            averageCostPerTonne: "0.000",
          };
@@ -31,7 +32,7 @@ export function useEquipmentBalance(
        if (!equipmentId || !date) {
          return {
            balance: "0",
-           balanceTonnes: "0.00000",
+            balanceTonnes: "0",
            averageCost: "0",
            averageCostPerTonne: "0.000",
          };
@@ -50,10 +51,11 @@ export function useEquipmentBalance(
          data.averageCost == null ? null : String(data.averageCost);
       return {
          balance,
-         balanceTonnes:
-           data.balanceTonnes == null
-             ? kilogramsToTonnes(Number(balance)).toFixed(5)
-             : String(data.balanceTonnes),
+          balanceTonnes: formatTonnesForInput(
+            data.balanceTonnes == null
+              ? kilogramsToTonnes(Number(balance))
+              : String(data.balanceTonnes),
+          ),
          averageCost,
          averageCostPerTonne:
            data.averageCostPerTonne == null

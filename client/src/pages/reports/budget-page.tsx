@@ -13,7 +13,7 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { Pencil, Trash2, Plus, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { formatTonnes } from "@shared/units";
+import { formatTonnes, formatTonnesForInput } from "@shared/units";
 
 interface BudgetEntry {
   id: string;
@@ -208,7 +208,7 @@ export default function BudgetPage() {
     setFormData({
       budgetMonth: entry.budgetMonth.substring(0, 7),
       salesVolumeTonnes: entry.salesVolumeTonnes !== null && entry.salesVolumeTonnes !== undefined
-        ? Number(entry.salesVolumeTonnes).toFixed(5)
+        ? formatTonnesForInput(Number(entry.salesVolumeTonnes))
         : "",
       salesRevenue: entry.salesRevenue || "",
       marginality: entry.marginality || "",

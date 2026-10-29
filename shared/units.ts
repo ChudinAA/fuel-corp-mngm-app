@@ -77,14 +77,22 @@ export function pricePerLitreToPerTonne(
   return (pricePerLitre * KILOGRAMS_PER_TON) / densityKilogramsPerLitre;
 }
 
-/** Displays tonnes to five decimal places; this is formatting, not calculation rounding. */
+/** Displays tonnes to at most five decimal places, without trailing zeroes. */
 export function formatTonnes(value: number | string): string {
   const tonnes = typeof value === "number" ? value : Number(value);
   assertFinite(tonnes, "tonnes");
   return new Intl.NumberFormat("ru-RU", {
-    minimumFractionDigits: 5,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 5,
   }).format(tonnes);
+}
+
+/** Formats tonnes for numeric inputs, preserving dot decimals and at most five places. */
+export function formatTonnesForInput(value: number | string): string {
+  const tonnes = typeof value === "number" ? value : Number(value);
+  assertFinite(tonnes, "tonnes");
+  const formatted = tonnes.toFixed(5).replace(/\.?0+$/, "");
+  return formatted === "-0" ? "0" : formatted;
 }
 
 /** Displays a price per tonne to two decimal places. */

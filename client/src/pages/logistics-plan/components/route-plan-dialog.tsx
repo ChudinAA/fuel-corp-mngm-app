@@ -34,7 +34,7 @@ import { format, isSameDay, parseISO, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { formatPricePerTonne } from "@shared/units";
+import { formatPricePerTonne, formatTonnes } from "@shared/units";
 import {
   AlertTriangle,
   Clock,
@@ -581,10 +581,11 @@ export function RoutePlanDialog({
                         </div>
                         {(demand.volumeTons != null || demand.volume != null) && (
                           <span className="text-[10px] text-muted-foreground">
-                            Объём: {(demand.volumeTons != null
-                              ? demand.volumeTons
-                              : parseFloat(demand.volume) / 1000
-                            ).toLocaleString("ru-RU", { maximumFractionDigits: 3 })} т
+                            Объём: {formatTonnes(
+                              demand.volumeTons != null
+                                ? demand.volumeTons
+                                : parseFloat(demand.volume) / 1000,
+                            )} т
                           </span>
                         )}
                         {demand.missingDataReason && (

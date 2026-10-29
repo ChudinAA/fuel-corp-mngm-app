@@ -838,7 +838,7 @@ export const TransportationForm = forwardRef<
                           type="number"
                           min="0"
                           step="0.00001"
-                          placeholder="0.00000"
+                          placeholder="0"
                           data-testid="input-quantity-tonnes"
                           disabled={watchFormInputMode === "liters"}
                           value={field.value ?? ""}

@@ -1,11 +1,16 @@
-import { formatTonnes, kilogramsToTonnes, tonnesToKilograms } from "@shared/units";
+import {
+  formatTonnes,
+  formatTonnesForInput,
+  kilogramsToTonnes,
+  tonnesToKilograms,
+} from "@shared/units";
 
 // Compatibility adapter for older APIs that still return kg mirrors.
 export function kgToTons(kg: string | number | null | undefined): string {
-  if (kg === null || kg === undefined || kg === "") return "0.00000";
+  if (kg === null || kg === undefined || kg === "") return "0";
   const val = parseFloat(String(kg));
-  if (!Number.isFinite(val)) return "0.00000";
-  return kilogramsToTonnes(val).toFixed(5);
+  if (!Number.isFinite(val)) return "0";
+  return formatTonnesForInput(kilogramsToTonnes(val));
 }
 
 // Preserve the kg compatibility mirror while tonne fields are authoritative.

@@ -28,6 +28,7 @@ import {
   PRODUCT_TYPE,
 } from "@shared/constants";
 import {
+  formatTonnesForInput,
   kilogramsToTonnes,
   pricePerKilogramToPerTonne,
   tonnesToKilograms,
@@ -151,9 +152,11 @@ export function AddPriceDialog({
           editPrice.contractVolume?.limit !== undefined
             ? editPrice.contractVolume.limit === null
               ? ""
-              : editPrice.contractVolume.limit.toFixed(5)
+              : formatTonnesForInput(editPrice.contractVolume.limit)
             : editPrice.volume
-              ? kilogramsToTonnes(Number(editPrice.volume)).toFixed(5)
+              ? formatTonnesForInput(
+                  kilogramsToTonnes(Number(editPrice.volume)),
+                )
               : "",
         maxDealAmount: (editPrice as any).maxDealAmount || "",
         priceValues: parsedPriceValues,

@@ -7,6 +7,7 @@ import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { useOptWarehouseBalance } from "./use-opt-warehouse-balance";
 import {
+  formatTonnesForInput,
   pricePerKilogramToPerTonne,
   pricePerTonneToPerKilogram,
 } from "@shared/units";
@@ -70,7 +71,8 @@ export function useOptCalculations({
     quantityLiters,
     density,
   });
-  const calculatedTonnes = finalTonnes > 0 ? finalTonnes.toFixed(5) : "";
+  const calculatedTonnes =
+    finalTonnes > 0 ? formatTonnesForInput(finalTonnes) : "";
   const finalKg = optTonnesToLegacyKilograms(finalTonnes);
 
   const { 
