@@ -52,20 +52,22 @@
 - Индекс `planning_resources_supplier_idx` сохранён как `UNIQUE ... WHERE deleted_at IS NULL`; до применения уникальности в dev проверено отсутствие активных дубликатов. Для `logistics_unit_extra_drivers` сохранены production-поведение `created_by_id ON DELETE SET NULL` и default `updated_at = now()`.
 - Production не имеет `prices.volume_unit`; Publish добавит колонку с совместимым default `kg`. Форма нового тарифа отправляет лимит в тоннах, адаптер записывает `volume_unit='tonne'` и при чтении преобразует старые kg-значения. Backfill `0088` отдельно переводит сохранённые volume/sold_volume и ставки ₽/кг; Publish не исполняет этот backfill.
 - Replit Publish применяет форму схемы, но не исполняет бизнес-смысл `0086`–`0103`: деление kg на 1000, перевод ставок, сохранение сумм, плотность, знаки и сверки. Нумерованные SQL-файлы отсутствуют в Drizzle journal; в `_journal.json` записан только базовый entry `0000`.
-- `.replit` build запускает только `npm run build`. `scripts/post-merge.sh` выполняет `drizzle-kit push --force` только в post-merge/dev. Для Replit-managed production не добавлять production DDL в build, startup или повторяемые deploy hooks; агент не должен создавать или запускать production migration script. Официальная документация также описывает ручной Shell-путь для пользовательской миграции: это отдельное действие владельца с точным подтверждением target, свежей копией и явным разрешением, не часть Publish schema diff.
+- `.replit` build запускает только `npm run build`. `scripts/post-merge.sh` выполняет `drizzle-kit push --force` только в post-merge/dev. Для Replit-managed production не добавлять production DDL в build, startup или повторяемые deploy hooks; агент не должен запускать production SQL. Для опубликованных Reserved VM/Autoscale приложений отдельного Production Shell нет: Shell tool работает в Workspace/dev. Официально поддерживаемый UI-путь для ручного изменения данных — Database → Production → My Data → SQL Console; для записи там включается `Enable Editing`. Ссылки: [Work with your data](https://docs.replit.com/features/data-and-storage/work-with-your-data), [Deployment types](https://docs.replit.com/features/publishing/deployment-types).
 
 ### План для Replit-managed production
 
 #### До Publish
 
-1. **Я проверяю** свежий `explainSchemaDiff()` после изменений: нет `TRUNCATE`, удаления таблиц/колонок, неизвестных rename или warnings. Последний результат: 211 statements, `hasStructuralDataLoss=false`; `maybeNonBackwardsCompatible=true` из-за 41 замены constraints и 85 FK additions. Перед разрешением Publish я сверю их с production-поведением и пришлю итог.
-2. **Вы делаете backup и проверяете target:** в Replit Database выберите Production и сделайте свежую полную копию. Если нужен Shell preflight, используйте Shell именно в Production environment, не обычный Workspace Shell. Replit задаёт `DATABASE_URL` отдельно для dev и production; URL не печатайте. До любых команд проверьте:
+Для текущего nullable-expansion релиза пункты 1–3 ниже уже выполнены; результат подтверждён в журнале подэтапа 2.104. Они остаются контрольным списком для будущего Publish, например для отдельного перехода nullable→NOT NULL.
 
-   ```bash
-   psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atc 'SELECT current_database()'
+1. **Я проверяю** свежий `explainSchemaDiff()` после изменений: нет `TRUNCATE`, удаления таблиц/колонок, неизвестных rename или warnings. Последний результат: 211 statements, `hasStructuralDataLoss=false`; `maybeNonBackwardsCompatible=true` из-за 41 замены constraints и 85 FK additions. Перед разрешением Publish я сверю их с production-поведением и пришлю итог.
+2. **Вы делаете backup и проверяете target:** создайте свежую полную копию тем же безопасным `pg_dump`-способом, что и предыдущий backup. В Database tool выберите именно Production; Workspace Shell не является Production Shell. Replit задаёт подключение отдельно для dev и production; URL не печатайте. В SQL Console можно выполнить read-only проверку:
+
+   ```sql
+   SELECT current_database();
    ```
 
-   Сверьте результат с Production в Replit Database. Если target неочевиден или Shell доступен только в dev — остановитесь, backfill не запускайте.
+   Сверьте результат с выбранной Production-базой. Если SQL Console не показывает Production target или результат не совпадает, остановитесь и не включайте запись.
 3. **Вы проверяете Publish diff/Deployment Preview:** в нём не должно быть `TRUNCATE`, `DROP TABLE`, `DROP COLUMN` или неизвестного переименования. Отдельно просмотрите constraint/FK изменения; если Replit показывает неожиданный destructive action, не подтверждайте Publish и передайте мне текст/скрин diff.
 
 #### Publish и проверка расширенной схемы
@@ -75,26 +77,14 @@
 
 #### Одноразовый data-backfill
 
-6. **Вы запускаете файлы только из Production Shell** (официальная документация Replit допускает ручные миграции из Shell production environment). Проверьте, что файлы `migrations/0086_*.sql`…`migrations/0103_*.sql` доступны в текущем project root. Затем выполните строго по порядку:
+6. **Отдельного Production Shell для опубликованного приложения нет.** Откройте Database tool → Production → My Data → SQL Console. Replit документирует SQL Console для production-данных и выполнение многострочных SQL/транзакций. Workspace Shell использовать для backfill нельзя.
+7. Перед изменением данных сделайте свежий backup, выберите Production в Database tool, выполните `SELECT current_database();` и сверьте имя базы. На время backfill желательно остановить ввод новых операций или согласовать короткое окно обслуживания.
+8. **Только после подтверждения target включите `Enable Editing`** в Production → My Data. Откройте SQL-файлы `migrations/0086`–`0103` в редакторе проекта и запускайте их по одному, в строгом порядке, вставляя в SQL Console полный текст каждого файла за раз. Каждый файл имеет собственные `BEGIN`/`COMMIT`; не объединяйте все файлы в один большой запрос и не запускайте их через Workspace Shell. После каждого успешного файла фиксируйте его имя.
 
-   ```bash
-   set -euo pipefail
-   for f in \
-     migrations/0086_*.sql migrations/0087_*.sql migrations/0088_*.sql \
-     migrations/0089_*.sql migrations/0090_*.sql migrations/0091_*.sql \
-     migrations/0092_*.sql migrations/0093_*.sql migrations/0094_*.sql \
-     migrations/0095_*.sql migrations/0096_*.sql migrations/0097_*.sql \
-     migrations/0098_*.sql migrations/0099_*.sql migrations/0100_*.sql \
-     migrations/0101_*.sql migrations/0102_*.sql migrations/0103_*.sql
-   do
-     echo "Running $f"
-     psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -f "$f"
-   done
-   ```
-
-   Каждый файл содержит собственные `BEGIN`/`COMMIT`; ошибка останавливает цикл. Если любой файл завершается ошибкой, остановитесь, сохраните имя файла и текст ошибки, не запускайте цикл повторно и не переходите к следующим файлам — я проверю частичное состояние read-only и подскажу безопасное продолжение. Не используйте обычный Workspace Shell: там `DATABASE_URL` указывает на dev.
-7. **После успешного цикла сообщаете мне результат.** Я выполняю read-only проверку заполненности тоннажных значений, единиц ставок, сохранности связей/знаков и денежных итогов по backup baseline. В этом cutover новые поля остаются nullable, чтобы schema source и production не расходились.
-8. **Отдельный следующий релиз:** после подтверждения сверок источник схемы переводится на `NOT NULL`, выполняется post-merge и ещё один безопасный Publish. После периода наблюдения отдельными изменениями убираются kg-fallback, kg-зеркала и миграционные адаптеры.
+   Read-only проверка после Publish уже подтвердила, что все ожидаемые поля существуют, а типы `exchange_deals.weight_ton/actual_weight_ton` (`numeric(17,5)`) и `prices.volume/sold_volume` (`numeric(18,5)`) совпадают с миграциями. Остальные добавляемые миграциями колонки используют `ADD COLUMN IF NOT EXISTS`. В этих SQL-файлах нет `DROP`/`TRUNCATE`. Если SQL Console отклоняет файл или сообщает о неожиданном schema-change, остановитесь и не редактируйте SQL на ходу.
+9. Если любой файл завершается ошибкой, остановитесь, сохраните имя файла и текст ошибки, не запускайте весь список повторно и не переходите к следующим файлам. Я проверю частичное состояние read-only и укажу безопасное продолжение.
+10. **После успешного backfill сообщите мне результат.** Я выполню read-only проверку заполненности тоннажных значений, единиц ставок, сохранности связей/знаков и денежных итогов по backup baseline. В этом cutover новые поля остаются nullable, чтобы schema source и production не расходились.
+11. **Отдельный следующий релиз:** после подтверждения сверок источник схемы переводится на `NOT NULL`, выполняется post-merge и ещё один безопасный Publish. После периода наблюдения отдельными изменениями убираются kg-fallback, kg-зеркала и миграционные адаптеры.
 
 Публикация, production backfill и tightening требуют ваших отдельных действий; агент не публикует приложение и не выполняет production SQL. Если настройки когда-либо подтвердят независимую внешнюю БД вместо Replit-managed, этот порядок не применять — сначала нужен отдельный runbook для её точного target.
 
@@ -109,11 +99,11 @@
 
 ### Текущие блокеры и условия остановки
 
-- **Критический:** текущий Publish diff содержит команды, способные очистить пять таблиц и удалить таблицы/колонки. До исправления и повторного preview production не публиковать.
-- **Критический:** точная связь Publish diff, Replit Production connection details и production dump ещё не подтверждена безопасным сопоставлением. Число таблиц и host сами по себе недостаточны.
+- **Закрыто для текущего Publish:** пользователь подтвердил свежий backup и отсутствие `TRUNCATE`, `DROP TABLE`, `DROP COLUMN`; read-only production-схема и ключевые row counts проверены после публикации.
+- **Следующий блокирующий шаг:** владелец должен выполнить backfill через Production SQL Console. Schema Publish не исполнял бизнес-преобразования данных.
 - **Высокий:** SQL-файлы миграции не зарегистрированы в Drizzle journal; Replit auto-diff не заменяет их data-backfill.
 - **Высокий, не блокирует преобразование:** историческая масса отличается от `литры × плотность`. По решению пользователя сохранять записанную массу; не исправлять эти строки автоматически. Отдельная бизнес-проверка нужна только для корректировки исходных данных.
-- Backup и изолированный rehearsal `0086`–`0103` завершены на дампе `/tmp/mass_unit_prod_20261028_183021.sql.gz`; production не менялась. Перед настоящим cutover нужен свежий dump, сверка target и явное разрешение.
+- Изолированный rehearsal `0086`–`0103` завершён на production dump; после текущего Publish повторная read-only сверка подтвердила ожидаемые колонки, типы и неизменность основных row counts. Production DML-backfill ещё не выполнялся.
 - Временный production export secret, если он больше не нужен для согласованного обслуживания, удалить после экспорта; не оставлять его runtime-переменной приложения.
 
 **Граница безопасности:** этот документ фиксирует план и найденный риск, но не меняет схему, данные или production-среду.
@@ -124,7 +114,7 @@
 
 `scripts/profile-mass-unit-data.sql` — статический read-only профиль, рассчитанный на полную актуальную схему приложения. Не запускать его на дампе с отставшей схемой: для такого дампа использовать `rehearse-mass-unit-dump.mjs`.
 
-Production dump получен через Production connection details в Replit Database и `pg_dump` из Replit Shell, без Neon Console. Host `neon.tech` сам по себе не доказывает независимую внешнюю БД. В Shell использовать только подтверждённую Production connection и временную editor-переменную; не подменять dev `DATABASE_URL` и не помещать production URL в Publishing secrets. Текущий Shell имеет `pg_dump`/`psql` 16.10, gzip 1.12; дамп источника 16.15 успешно восстановлен. `executeSql(environment="production")` — read-only путь к Replit-managed production replica; до любого backfill подтвердить, что это тот же target, что Published app.
+Предыдущий production dump был создан владельцем из Workspace Shell через `pg_dump` с отдельной Production connection, без Neon Console; это был backup-путь, а не Production Shell. Не подменяйте dev `DATABASE_URL` и не помещайте production URL в Publishing secrets. Для просмотра используется `executeSql(environment="production")` — read-only путь к Replit-managed production replica. SQL-записи владелец выполняет только через Database tool → Production → My Data → SQL Console с включённым `Enable Editing`.
 
 ## Исторические наблюдения по отвергнутой Neon-копии
 
