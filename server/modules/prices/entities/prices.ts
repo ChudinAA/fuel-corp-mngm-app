@@ -47,7 +47,7 @@ export const prices = pgTable(
     soldVolume: decimal("sold_volume", { precision: 18, scale: 5 }).default(
       "0",
     ),
-    volumeUnit: text("volume_unit").notNull().default("kg"),
+    volumeUnit: text("volume_unit").notNull().default("tonne"),
     soldAmount: decimal("sold_amount", { precision: 15, scale: 2 }).default(
       "0",
     ),
@@ -150,8 +150,8 @@ export const insertPriceSchema = createInsertSchema(prices)
     oldPriceValues: true,
   })
   .extend({
-  priceUnit: z.enum(["kg", "tonne", "liter"]).default("kg"),
-  volumeUnit: z.enum(["kg", "tonne"]).default("kg"),
+  priceUnit: z.enum(["kg", "tonne", "liter"]).default("tonne"),
+  volumeUnit: z.enum(["kg", "tonne"]).default("tonne"),
   nomenclatureId: z.string().uuid().nullable().optional(),
   contractId: z.string().uuid().nullable().optional(),
   });

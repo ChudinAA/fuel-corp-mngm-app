@@ -168,6 +168,17 @@ test("liter-based rates keep their rate unit and store mass limits in tonnes", (
   assert.equal(result.volume, "1.00000");
 });
 
+test("unlimited prices without a volume payload still default mass units to tonnes", () => {
+  const result = priceWriteFromApi({
+    contractLimitEnabled: false,
+    priceRate: { unit: "tonne", values: [2500] },
+  });
+
+  assert.equal(result.priceUnit, "tonne");
+  assert.equal(result.volumeUnit, "tonne");
+  assert.equal("volume" in result, false);
+});
+
 test("price value storage accepts API objects and already-normalized JSON", () => {
   assert.deepEqual(
     normalizePriceValuesForStorage([

@@ -231,10 +231,10 @@ export function priceWriteFromApi<T extends Record<string, unknown>>(
   return {
     ...legacy,
     priceUnit: rate.unit,
+    volumeUnit: "tonne",
     priceValues: rate.values.map((price) => JSON.stringify({ price })),
     ...(volume
       ? {
-          volumeUnit: "tonne",
           volume: volume.limit === null ? null : volume.limit.toFixed(5),
         }
       : {}),
