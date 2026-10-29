@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { equipments } from "../entities/equipment";
 import { EquipmentRecalculationQueueService } from "./equipment-recalculation-queue-service";
 import { EquipmentRecalculationService } from "./equipment-recalculation-service";
+import { SSEService } from "server/services/sse-service";
 
 export class EquipmentRecalculationWorker {
   private static isRunning = false;
@@ -73,6 +74,10 @@ export class EquipmentRecalculationWorker {
         });
 
         await EquipmentRecalculationQueueService.markAsCompleted(task.id);
+        SSEService.notifyEquipmentRecalculationCompleted(
+          task.equipmentId,
+          task.productType,
+        );
         console.log(
           `[EquipmentRecalculationWorker] Task ${task.id} completed successfully`,
         );

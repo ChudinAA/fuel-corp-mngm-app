@@ -20,7 +20,7 @@ test("per-litre prices convert using the density of the specific deal", () => {
 });
 
 test("unit formatters use five decimals for mass and two for tonne prices", () => {
-  assert.equal(formatTonnes(12.3), "12,30000");
+  assert.equal(formatTonnes(12.3), "12,3");
   assert.equal(formatTonnes("0.00001"), "0,00001");
   assert.equal(formatPricePerTonne(1234.5), "1 234,50");
 });

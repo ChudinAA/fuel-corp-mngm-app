@@ -46,6 +46,13 @@ export class SSEService {
     this.broadcast("warehouse_recalculated", { warehouseId, productType });
   }
 
+  static notifyEquipmentRecalculationCompleted(
+    equipmentId: string,
+    productType: string,
+  ) {
+    this.broadcast("equipment_recalculated", { equipmentId, productType });
+  }
+
   // Generic entity change notification
   static notifyEntityChanged(entity: string, excludeClientId?: string | null) {
     this.broadcast("entity_changed", { entity }, excludeClientId);

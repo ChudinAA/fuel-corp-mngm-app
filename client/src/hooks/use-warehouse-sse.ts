@@ -7,6 +7,11 @@ interface SSEEventData {
   productType: string;
 }
 
+interface EquipmentSSEEventData {
+  equipmentId: string;
+  productType: string;
+}
+
 interface EntityChangedData {
   entity: string;
 }
@@ -133,6 +138,21 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
         queryClient.invalidateQueries({ queryKey: ["/api/warehouses/equipment-map"] });
       } catch (error) {
         console.error("[SSE] Failed to parse warehouse_recalculated:", error);
+      }
+    });
+
+    eventSource.addEventListener("equipment_recalculated", (event) => {
+      try {
+        const data: EquipmentSSEEventData = JSON.parse(event.data);
+        console.log("[SSE] Equipment recalculated:", data);
+
+        queryClient.invalidateQueries({ queryKey: ["/api/equipment-movement"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/refueling"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/warehouses/equipment-map"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/warehouses/lik"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
+      } catch (error) {
+        console.error("[SSE] Failed to parse equipment_recalculated:", error);
       }
     });
 
