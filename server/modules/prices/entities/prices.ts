@@ -55,7 +55,7 @@ export const prices = pgTable(
     currency: text("currency").default("RUB"),
     currencyId: uuid("currency_id").references(() => currencies.id),
     exchangeRateId: uuid("exchange_rate_id").references(() => exchangeRates.id),
-    priceUnit: text("price_unit").default("kg"),
+    priceUnit: text("price_unit").default("tonne"),
     // Retained for the staged production schema cutover; no current runtime path uses these.
     needsRecalculation: boolean("needs_recalculation").notNull().default(false),
     oldPriceValues: text("old_price_values").array(),
