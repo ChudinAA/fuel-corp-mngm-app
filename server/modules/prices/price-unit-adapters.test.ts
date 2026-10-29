@@ -179,6 +179,22 @@ test("unlimited prices without a volume payload still default mass units to tonn
   assert.equal("volume" in result, false);
 });
 
+test("amount-limited prices keep the money limit and store mass unit defaults as tonnes", () => {
+  const result = priceWriteFromApi({
+    contractLimitEnabled: true,
+    limitType: "amount",
+    maxDealAmount: "500000.00",
+    priceRate: { unit: "tonne", values: [2500] },
+    contractVolume: { limitUnit: "tonne", limit: null },
+  });
+
+  assert.equal(result.priceUnit, "tonne");
+  assert.equal(result.volumeUnit, "tonne");
+  assert.equal(result.maxDealAmount, "500000.00");
+  assert.equal(result.volume, null);
+  assert.equal(result.limitType, "amount");
+});
+
 test("price value storage accepts API objects and already-normalized JSON", () => {
   assert.deepEqual(
     normalizePriceValuesForStorage([
