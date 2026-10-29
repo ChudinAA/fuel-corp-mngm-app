@@ -29,9 +29,6 @@ import {
 } from "@shared/constants";
 import {
   formatTonnesForInput,
-  kilogramsToTonnes,
-  pricePerKilogramToPerTonne,
-  tonnesToKilograms,
 } from "@shared/units";
 import { priceFormSchema } from "../schemas";
 import type { PriceFormData, PriceDialogProps } from "../types";
@@ -116,21 +113,6 @@ export function AddPriceDialog({
         if (parsedPriceValues.length === 0) {
           parsedPriceValues = [{ price: "" }];
         }
-      } else if (editPrice.priceValues && editPrice.priceValues.length > 0) {
-        try {
-          parsedPriceValues = editPrice.priceValues.map((pv: string) => {
-            const parsed = JSON.parse(pv);
-            const storedPrice = Number(parsed.price);
-            if (!Number.isFinite(storedPrice)) return { price: "" };
-            const displayPrice = editPrice.priceUnit === "kg" || !editPrice.priceUnit
-              ? pricePerKilogramToPerTonne(storedPrice)
-              : storedPrice;
-            return { price: displayPrice.toFixed(2) };
-          });
-        } catch (e) {
-          console.error("Failed to parse priceValues:", e);
-          parsedPriceValues = [{ price: "" }];
-        }
       }
 
       form.reset({
@@ -154,9 +136,7 @@ export function AddPriceDialog({
               ? ""
               : formatTonnesForInput(editPrice.contractVolume.limit)
             : editPrice.volume
-              ? formatTonnesForInput(
-                  kilogramsToTonnes(Number(editPrice.volume)),
-                )
+              ? formatTonnesForInput(Number(editPrice.volume))
               : "",
         maxDealAmount: (editPrice as any).maxDealAmount || "",
         priceValues: parsedPriceValues,

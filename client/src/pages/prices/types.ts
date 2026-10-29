@@ -6,7 +6,7 @@ import {
 } from "@shared/constants";
 import type { Price } from "@shared/schema";
 
-export interface PriceApi extends Price {
+export interface PriceApi extends Omit<Price, "priceValues"> {
   priceRate?: {
     unit: "tonne" | "liter";
     values: Array<number | null>;
@@ -14,7 +14,7 @@ export interface PriceApi extends Price {
   contractVolume?: {
     limitUnit: "tonne";
     limit: number | null;
-    usedUnit: "tonne" | "liter";
+    usedUnit: "tonne";
     used: number | null;
   };
 }

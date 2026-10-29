@@ -20,6 +20,7 @@ test("price API returns canonical tonne rates and contract volumes", () => {
   });
 
   assert.equal(result.priceUnit, "tonne");
+  assert.equal("priceValues" in result, false);
   assert.equal(result.priceRate.unit, "tonne");
   assert.deepEqual(result.priceRate, {
     unit: "tonne",
@@ -48,9 +49,10 @@ test("schema-only legacy price columns are not exposed in the price API", () => 
 test("liter-denominated rates remain per liter while used mass is exposed in tonnes", () => {
   const result = priceToApi({
     priceUnit: "liter",
+    volumeUnit: "tonne",
     priceValues: ['{"price":"12.345678"}'],
-    volume: "4000",
-    soldVolume: "125.5",
+    volume: "4",
+    soldVolume: "0.1255",
   });
 
   assert.deepEqual(result.priceRate, {
@@ -88,7 +90,12 @@ test("contract mass units are independent from the price-rate unit", () => {
 
 test("unknown stored contract-volume units fail explicitly", () => {
   assert.throws(
-    () => priceToApi({ priceUnit: "kg", volumeUnit: "liter", priceValues: [] }),
+    () =>
+      priceToApi({
+        priceUnit: "tonne",
+        volumeUnit: "liter",
+        priceValues: [],
+      }),
     /Неизвестная единица массы лимита цены/,
   );
 });
@@ -256,7 +263,7 @@ test("price lookup accepts tonne and liter rates only", () => {
 });
 
 test("price selection results use five-decimal tonnes and reject invalid mass", () => {
-  assert.deepEqual(priceSelectionVolumeToApi(1234.56), {
+  assert.deepEqual(priceSelectionVolumeToApi(1.23456), {
     value: "1.23456",
     unit: "tonne",
   });

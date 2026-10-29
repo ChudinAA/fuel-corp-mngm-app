@@ -47,7 +47,6 @@ export function usePriceExtraction({
         const serviceRate = basisPrice
           ? getStoredBasisPriceRate(
               basisPrice.servicePricePerTonne,
-              basisPrice.servicePrice,
             )
           : null;
         if (serviceRate?.value) {
@@ -65,7 +64,6 @@ export function usePriceExtraction({
         const pvkjRate = basisPrice
           ? getStoredBasisPriceRate(
               basisPrice.pvkjPricePerTonne,
-              basisPrice.pvkjPrice,
             )
           : null;
         if (pvkjRate?.value) {
@@ -76,7 +74,6 @@ export function usePriceExtraction({
       if (isWarehouseSupplier && supplierWarehouse) {
         return warehouseAverageCostRate(
           supplierWarehouse.pvkjAverageCostPerTonne,
-          supplierWarehouse.pvkjAverageCost,
         );
       }
       // Если нет basis-price и поставщик не склад — используем цену из таблицы цен (fall-through ниже)
@@ -86,7 +83,6 @@ export function usePriceExtraction({
     if (isWarehouseSupplier && supplierWarehouse && productType !== PRODUCT_TYPE.SERVICE) {
       return warehouseAverageCostRate(
         supplierWarehouse.averageCostPerTonne,
-        supplierWarehouse.averageCost,
       );
     }
 

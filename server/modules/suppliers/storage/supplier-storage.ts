@@ -1,6 +1,9 @@
 import { eq, asc, sql, isNull, and, inArray } from "drizzle-orm";
 import { db } from "server/db";
-import { normalizeSupplierBasisPriceRates } from "../supplier-basis-price-api-adapters";
+import {
+  normalizeSupplierBasisPriceRates,
+  supplierBasisPriceToApi,
+} from "../supplier-basis-price-api-adapters";
 import {
   suppliers,
   supplierBases,
@@ -15,11 +18,8 @@ import type { ISupplierStorage } from "./types";
 
 export type SupplierBasisPriceInput = {
   basisId: string;
-  servicePrice?: string | number | null;
   servicePricePerTonne?: string | number | null;
-  pvkjPrice?: string | number | null;
   pvkjPricePerTonne?: string | number | null;
-  agentFee?: string | number | null;
   agentFeePerTonne?: string | number | null;
   otherServiceType?: string | null;
   otherServiceValue?: string | number | null;
@@ -37,7 +37,13 @@ export class SupplierStorage implements ISupplierStorage {
     return db
       .select()
       .from(supplierBasisPrices)
-      .where(inArray(supplierBasisPrices.supplierId, supplierIds));
+      .where(inArray(supplierBasisPrices.supplierId, supplierIds))
+      .then((rows) =>
+        rows.map(
+          (row) =>
+            supplierBasisPriceToApi(row) as unknown as SupplierBasisPrice,
+        ),
+      );
   }
 
   async getAllSuppliers(): Promise<Supplier[]> {
@@ -173,11 +179,8 @@ export class SupplierStorage implements ISupplierStorage {
             return {
               supplierId: created.id,
               basisId: bp.basisId,
-              servicePrice: decimalOrNull(rates.servicePrice),
               servicePricePerTonne: decimalOrNull(rates.servicePricePerTonne),
-              pvkjPrice: decimalOrNull(rates.pvkjPrice),
               pvkjPricePerTonne: decimalOrNull(rates.pvkjPricePerTonne),
-              agentFee: decimalOrNull(rates.agentFee),
               agentFeePerTonne: decimalOrNull(rates.agentFeePerTonne),
               otherServiceType: bp.otherServiceType || null,
               otherServiceValue: decimalOrNull(bp.otherServiceValue),
@@ -287,11 +290,8 @@ export class SupplierStorage implements ISupplierStorage {
               return {
                 supplierId: id,
                 basisId: bp.basisId,
-                servicePrice: decimalOrNull(rates.servicePrice),
                 servicePricePerTonne: decimalOrNull(rates.servicePricePerTonne),
-                pvkjPrice: decimalOrNull(rates.pvkjPrice),
                 pvkjPricePerTonne: decimalOrNull(rates.pvkjPricePerTonne),
-                agentFee: decimalOrNull(rates.agentFee),
                 agentFeePerTonne: decimalOrNull(rates.agentFeePerTonne),
                 otherServiceType: bp.otherServiceType || null,
                 otherServiceValue: decimalOrNull(bp.otherServiceValue),

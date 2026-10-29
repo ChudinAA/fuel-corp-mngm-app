@@ -1,8 +1,3 @@
-import {
-  pricePerKilogramToPerTonne,
-  pricePerTonneToPerKilogram,
-} from "@shared/units";
-
 export class SupplierBasisPriceRateInputError extends Error {
   constructor(message: string) {
     super(message);
@@ -12,11 +7,13 @@ export class SupplierBasisPriceRateInputError extends Error {
 
 type RateRecord = Record<string, unknown>;
 
-const ratePairs = [
-  ["servicePrice", "servicePricePerTonne", "ставка услуги"],
-  ["pvkjPrice", "pvkjPricePerTonne", "ставка ПВКЖ"],
-  ["agentFee", "agentFeePerTonne", "агентская ставка"],
+const tonneRateKeys = [
+  ["servicePricePerTonne", "ставка услуги"],
+  ["pvkjPricePerTonne", "ставка ПВКЖ"],
+  ["agentFeePerTonne", "агентская ставка"],
 ] as const;
+
+const removedKilogramKeys = ["servicePrice", "pvkjPrice", "agentFee"] as const;
 
 function hasOwn(record: RateRecord, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(record, key);
@@ -33,87 +30,41 @@ function parseRate(value: unknown, label: string): number | null {
   return parsed;
 }
 
-function sameAtDisplayPrecision(left: number, right: number): boolean {
-  return left.toFixed(2) === right.toFixed(2);
-}
-
-function tonneColumnValue(value: number): string {
-  return value.toFixed(6);
-}
-
 export function normalizeSupplierBasisPriceRates(
   input: RateRecord,
   current?: RateRecord | null,
 ): RateRecord {
+  const legacyKey = removedKilogramKeys.find((key) => hasOwn(input, key));
+  if (legacyKey) {
+    throw new SupplierBasisPriceRateInputError(
+      `Поле ${legacyKey} больше не поддерживается; передавайте ставку в ₽/т`,
+    );
+  }
+
   const normalized = { ...input };
-
-  for (const [legacyKey, tonneKey, label] of ratePairs) {
-    const hasTonneValue = hasOwn(input, tonneKey);
-    const hasLegacyValue = hasOwn(input, legacyKey);
-    const currentLegacy = parseRate(current?.[legacyKey], label);
-    const storedTonne = parseRate(current?.[tonneKey], label);
-    const currentTonne =
-      storedTonne ??
-      (currentLegacy === null
-        ? null
-        : pricePerKilogramToPerTonne(currentLegacy));
-    const submittedTonne = hasTonneValue
-      ? parseRate(input[tonneKey], label)
-      : null;
-    const submittedLegacy = hasLegacyValue
-      ? parseRate(input[legacyKey], label)
-      : null;
-
-    if (hasTonneValue && submittedTonne !== null) {
-      const tonneUnchangedAtDisplayPrecision =
-        currentTonne !== null &&
-        sameAtDisplayPrecision(submittedTonne, currentTonne);
-      // Forms round tonnes for display. Preserve exact saved precision on a
-      // no-op, but retain an old kg-only edit when the submitted tonne value
-      // is still the saved exact value or its two-decimal display.
-      const submittedTonneMatchesCurrent =
-        currentTonne !== null &&
-        (submittedTonne === currentTonne ||
-          submittedTonne === Number(currentTonne.toFixed(2)));
-      const legacyChanged =
-        hasLegacyValue &&
-        currentLegacy !== null &&
-        submittedLegacy !== null &&
-        submittedLegacy !== currentLegacy;
-      const legacyEditWins =
-        submittedTonneMatchesCurrent && legacyChanged;
-      const preserveExistingPrecision =
-        submittedTonneMatchesCurrent && !legacyEditWins;
-      const effectiveTonne = legacyEditWins
-        ? pricePerKilogramToPerTonne(submittedLegacy!)
-        : preserveExistingPrecision
-          ? currentTonne
-          : submittedTonne;
-      const preserveStoredTonne =
-        preserveExistingPrecision &&
-        current?.[tonneKey] != null;
-      const preserveStoredLegacy =
-        preserveExistingPrecision &&
-        current?.[legacyKey] != null;
-
-      normalized[tonneKey] = preserveStoredTonne
-        ? String(current![tonneKey])
-        : tonneColumnValue(effectiveTonne);
-      normalized[legacyKey] = preserveStoredLegacy
-        ? String(current![legacyKey])
-        : legacyEditWins
-          ? String(input[legacyKey])
-          : pricePerTonneToPerKilogram(effectiveTonne).toFixed(6);
-    } else if (hasLegacyValue && submittedLegacy !== null) {
-      normalized[legacyKey] = String(input[legacyKey]);
-      normalized[tonneKey] = tonneColumnValue(
-        pricePerKilogramToPerTonne(submittedLegacy),
-      );
-    } else if (hasTonneValue || hasLegacyValue) {
-      normalized[legacyKey] = null;
-      normalized[tonneKey] = null;
+  for (const [key, label] of tonneRateKeys) {
+    if (!hasOwn(input, key)) continue;
+    const submitted = parseRate(input[key], label);
+    if (submitted === null) {
+      normalized[key] = null;
+      continue;
     }
+
+    const saved = parseRate(current?.[key], label);
+    const preserveStoredPrecision =
+      saved !== null && submitted.toFixed(2) === saved.toFixed(2);
+    normalized[key] = (preserveStoredPrecision ? saved : submitted).toFixed(6);
   }
 
   return normalized;
+}
+
+export function supplierBasisPriceToApi(value: RateRecord): RateRecord {
+  const {
+    servicePrice: _servicePrice,
+    pvkjPrice: _pvkjPrice,
+    agentFee: _agentFee,
+    ...tonneRates
+  } = value;
+  return tonneRates;
 }

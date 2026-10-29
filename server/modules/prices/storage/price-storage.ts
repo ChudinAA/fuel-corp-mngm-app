@@ -167,25 +167,10 @@ export class PriceStorage {
     id: string,
     data: Partial<InsertPrice>,
   ): Promise<Price | undefined> {
-    const rebaseSoldVolume =
-      data.volumeUnit !== undefined && !Object.prototype.hasOwnProperty.call(data, "soldVolume");
     const [updated] = await db
       .update(prices)
       .set({
         ...data,
-        ...(rebaseSoldVolume
-          ? {
-              soldVolume: sql`
-                CASE
-                  WHEN ${prices.volumeUnit} = 'kg' AND ${data.volumeUnit} = 'tonne'
-                    THEN ${prices.soldVolume} / 1000
-                  WHEN ${prices.volumeUnit} = 'tonne' AND ${data.volumeUnit} = 'kg'
-                    THEN ${prices.soldVolume} * 1000
-                  ELSE ${prices.soldVolume}
-                END
-              `,
-            }
-          : {}),
         updatedAt: sql`NOW()`,
       })
       .where(eq(prices.id, id))

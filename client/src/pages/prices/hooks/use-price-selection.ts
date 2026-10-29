@@ -28,16 +28,11 @@ export function usePriceSelection() {
       queryClient.invalidateQueries({ queryKey: ["/api/prices/list"] });
       const isAmountLimit = (price as any).limitType === "amount";
       const calculatedVolume = data.volume as
-        | { value: string | number; unit: "tonne" | "liter" }
+        | { value: string | number; unit: "tonne" }
         | undefined;
-      const volumeDescription = calculatedVolume
-        ? calculatedVolume.unit === "tonne"
-          ? `${formatTonnes(Number(calculatedVolume.value))} т`
-          : `${new Intl.NumberFormat("ru-RU", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(Number(calculatedVolume.value))} л`
-        : `${formatTonnes(Number(calculatedVolume?.value ?? 0))} т`;
+      const volumeDescription = `${formatTonnes(
+        Number(calculatedVolume?.value ?? 0),
+      )} т`;
       const description = isAmountLimit
         ? `Общая сумма: ${data.totalAmount} ₽`
         : `Общий объём: ${volumeDescription}`;

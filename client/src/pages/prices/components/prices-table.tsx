@@ -65,7 +65,6 @@ import {
   formatContractVolumeUsed,
   formatDate,
   getApiPriceDisplay,
-  getPriceDisplay,
   getProductTypeLabel,
 } from "../utils";
 import type { PriceApi } from "../types";
@@ -73,7 +72,7 @@ import { cn } from "@/lib/utils";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { AddPriceDialog } from "./add-price-dialog";
-import { formatTonnes, kilogramsToTonnes } from "@shared/units";
+import { formatTonnes } from "@shared/units";
 
 const PAGE_SIZE = 100;
 
@@ -531,25 +530,14 @@ export function PricesTable({
                     <TableCell className="text-right font-medium">
                       <div className="flex items-center justify-end gap-1.5">
                         <span>
-                          {(price as PriceApi).priceRate
-                            ? getApiPriceDisplay(
-                                (price as PriceApi).priceRate,
-                                price.currencySymbol || "₽",
-                              )
-                            : getPriceDisplay(
-                                price.priceValues,
-                                price.currencySymbol || "₽",
-                                price.priceUnit === "liter"
-                                  ? "liter"
-                                  : price.priceUnit === "tonne"
-                                    ? "tonne"
-                                    : "kg",
-                              )}
+                          {getApiPriceDisplay(
+                            (price as PriceApi).priceRate,
+                            price.currencySymbol || "₽",
+                          )}
                         </span>
                         <span className="text-[11px] text-muted-foreground font-normal border rounded px-1 py-0.5 leading-none">
                           {(price as PriceApi).priceRate?.unit === "liter" ||
-                          (!(price as PriceApi).priceRate &&
-                            price.priceUnit === "liter")
+                          price.priceUnit === "liter"
                             ? "л"
                             : "т"}
                         </span>
@@ -565,7 +553,7 @@ export function PricesTable({
                               (price as PriceApi).contractVolume,
                             )
                           : price.volume
-                            ? `${formatTonnes(kilogramsToTonnes(Number(price.volume)))} т`
+                            ? `${formatTonnes(Number(price.volume))} т`
                             : "—"}
                     </TableCell>
                     <TableCell className="text-right">
@@ -580,7 +568,7 @@ export function PricesTable({
                                   (price as PriceApi).contractVolume,
                                 )
                               : price.soldVolume && parseFloat(price.soldVolume) > 0
-                                ? `${formatTonnes(kilogramsToTonnes(Number(price.soldVolume)))} т`
+                                ? `${formatTonnes(Number(price.soldVolume))} т`
                                 : "—"}
                         </span>
                         <Tooltip>

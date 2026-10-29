@@ -5,7 +5,6 @@ import { PRODUCT_TYPE } from "@shared/constants";
 import {
   formatPricePerTonne,
   formatTonnes,
-  pricePerKilogramToPerTonne,
 } from "@shared/units";
 import type { PriceApi } from "./types";
 
@@ -31,30 +30,6 @@ export const formatNumberForTable = (value: string | number | null | undefined):
 export const formatDate = (dateStr: string | null) => {
   if (!dateStr) return "—";
   return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
-};
-
-export const getPriceDisplay = (
-  priceValues: string[] | null,
-  symbol: string,
-  priceUnit: "kg" | "tonne" | "liter" = "kg",
-) => {
-  if (!priceValues || priceValues.length === 0) return "—";
-  try {
-    const prices = priceValues.map(pv => {
-      const parsed = JSON.parse(pv);
-      const storedPrice = Number(parsed.price);
-      if (!Number.isFinite(storedPrice)) throw new TypeError("Invalid stored price");
-      return priceUnit === "liter" || priceUnit === "tonne"
-        ? storedPrice
-        : pricePerKilogramToPerTonne(storedPrice);
-    });
-    if (prices.length === 1) {
-      return `${formatPricePerTonne(prices[0])} ${symbol}`;
-    }
-    return prices.map(p => `${formatPricePerTonne(p)} ${symbol}`).join(", ");
-  } catch {
-    return "—";
-  }
 };
 
 export const getApiPriceDisplay = (
@@ -86,9 +61,7 @@ export const formatContractVolumeUsed = (
   ) {
     return "—";
   }
-  return contractVolume.usedUnit === "tonne"
-    ? `${formatTonnes(contractVolume.used)} т`
-    : `${formatNumberForTable(contractVolume.used)} л`;
+  return `${formatTonnes(contractVolume.used)} т`;
 };
 
 export const getProductTypeLabel = (productType: string) => {

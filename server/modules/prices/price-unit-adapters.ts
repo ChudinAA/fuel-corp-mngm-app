@@ -97,6 +97,7 @@ function storedRateOrNull(value: string): number | null {
 
 export function priceToApi<T extends StoredPriceShape>(price: T) {
   const {
+    priceValues: _priceValues,
     needsRecalculation: _needsRecalculation,
     oldPriceValues: _oldPriceValues,
     ...priceForApi

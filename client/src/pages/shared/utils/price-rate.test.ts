@@ -6,20 +6,20 @@ import {
   warehouseAverageCostRate,
 } from "./price-rate";
 
-const legacyPrice = {
+const price = {
   id: "12345678-1234-1234-1234-123456789012",
-  priceValues: ['{"price":"12.5"}'],
-  priceUnit: "kg",
+  priceUnit: "tonne",
+  priceRate: { unit: "tonne", values: [12.5] },
 } as any;
 
 test("selected API rates retain their explicit tonne or liter unit", () => {
   const tonne = extractPriceRate(
-    [{ ...legacyPrice, priceRate: { unit: "tonne", values: [1234.567] } }],
-    `${legacyPrice.id}-0`,
+    [{ ...price, priceRate: { unit: "tonne", values: [1234.567] } }],
+    `${price.id}-0`,
   );
   const liter = extractPriceRate(
-    [{ ...legacyPrice, priceRate: { unit: "liter", values: [12.5] } }],
-    `${legacyPrice.id}-0`,
+    [{ ...price, priceRate: { unit: "liter", values: [12.5] } }],
+    `${price.id}-0`,
   );
 
   assert.deepEqual(tonne, { value: 1234.567, unit: "tonne" });
@@ -28,8 +28,7 @@ test("selected API rates retain their explicit tonne or liter unit", () => {
 
 test("API rate options work without legacy priceValues", () => {
   const rates = getPriceRateOptions({
-    ...legacyPrice,
-    priceValues: null,
+    ...price,
     priceRate: { unit: "tonne", values: [1234.56, null] },
   });
 
@@ -39,51 +38,30 @@ test("API rate options work without legacy priceValues", () => {
   ]);
 });
 
-test("legacy rates retain their stored kg or liter unit", () => {
-  assert.deepEqual(
-    extractPriceRate([legacyPrice], `${legacyPrice.id}-0`),
-    { value: 12.5, unit: "kg" },
-  );
-  assert.deepEqual(
-    extractPriceRate(
-      [{ ...legacyPrice, priceUnit: "liter" }],
-      `${legacyPrice.id}-0`,
-    ),
-    { value: 12.5, unit: "liter" },
-  );
-});
-
-test("legacy numeric scalar rates remain readable in their stored unit", () => {
-  assert.deepEqual(
-    extractPriceRate(
-      [{ ...legacyPrice, priceValues: ["75"] }],
-      `${legacyPrice.id}-0`,
-    ),
-    { value: 75, unit: "kg" },
-  );
+test("price rate options require the canonical API rate shape", () => {
+  assert.deepEqual(getPriceRateOptions(price), [
+    { value: 12.5, unit: "tonne" },
+  ]);
+  assert.deepEqual(getPriceRateOptions({ ...price, priceRate: undefined }), []);
 });
 
 test("malformed API rates do not fall back to fabricated legacy values", () => {
   assert.deepEqual(
     extractPriceRate(
-      [{ ...legacyPrice, priceRate: { unit: "tonne", values: [null] } }],
-      `${legacyPrice.id}-0`,
+      [{ ...price, priceRate: { unit: "tonne", values: [null] } }],
+      `${price.id}-0`,
     ),
     { value: null, unit: "tonne" },
   );
 });
 
-test("warehouse average cost prefers per-tonne rates and retains kg fallback", () => {
+test("warehouse average cost reads tonne rates only", () => {
   assert.deepEqual(
-    warehouseAverageCostRate("12500.25", "12.5"),
+    warehouseAverageCostRate("12500.25"),
     { value: 12500.25, unit: "tonne" },
   );
   assert.deepEqual(
-    warehouseAverageCostRate(null, "12.5"),
-    { value: 12.5, unit: "kg" },
-  );
-  assert.deepEqual(
-    warehouseAverageCostRate("invalid", "12.5"),
-    { value: 12.5, unit: "kg" },
+    warehouseAverageCostRate(null),
+    { value: 0, unit: "tonne" },
   );
 });

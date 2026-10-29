@@ -1,6 +1,6 @@
 import type { Price } from "@shared/schema";
 
-export type PriceRateUnit = "kg" | "tonne" | "liter";
+export type PriceRateUnit = "tonne" | "liter";
 
 export interface PriceWithApiRate extends Price {
   priceRate?: {
@@ -10,7 +10,7 @@ export interface PriceWithApiRate extends Price {
   contractVolume?: {
     limitUnit: "tonne";
     limit: number | null;
-    usedUnit: "tonne" | "liter";
+    usedUnit: "tonne";
     used: number | null;
   };
 }
@@ -22,19 +22,9 @@ export interface SelectedPriceRate {
 
 export function warehouseAverageCostRate(
   perTonne: string | number | null | undefined,
-  perKilogram: string | number | null | undefined,
 ): SelectedPriceRate {
   const explicitPerTonne = parseNumericRate(perTonne);
-  if (explicitPerTonne !== null) {
-    return { value: explicitPerTonne, unit: "tonne" };
-  }
-
-  const legacyPerKilogram = parseNumericRate(perKilogram);
-  if (legacyPerKilogram !== null) {
-    return { value: legacyPerKilogram, unit: "kg" };
-  }
-
-  return { value: 0, unit: "tonne" };
+  return { value: explicitPerTonne ?? 0, unit: "tonne" };
 }
 
 function parseNumericRate(value: string | number | null | undefined): number | null {
@@ -43,46 +33,14 @@ function parseNumericRate(value: string | number | null | undefined): number | n
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function legacyPriceRateUnit(price: Price): PriceRateUnit {
-  return price.priceUnit === "liter"
-    ? "liter"
-    : price.priceUnit === "tonne"
-      ? "tonne"
-      : "kg";
-}
-
 export function getPriceRateOptions(price: Price): SelectedPriceRate[] {
   const apiPrice = price as PriceWithApiRate;
-  if (apiPrice.priceRate) {
-    return apiPrice.priceRate.values.map((value) => ({
-      value: typeof value === "number" && Number.isFinite(value) ? value : null,
-      unit: apiPrice.priceRate!.unit,
-    }));
-  }
-
-  return (price.priceValues ?? []).map((legacyValue) => {
-    try {
-      const parsed: unknown = JSON.parse(legacyValue);
-      const rawPrice =
-        typeof parsed === "number"
-          ? parsed
-          : parsed && typeof parsed === "object" && !Array.isArray(parsed)
-            ? (parsed as { price?: unknown }).price
-            : null;
-      const numericValue =
-        rawPrice == null
-          ? Number.NaN
-          : typeof rawPrice === "number"
-            ? rawPrice
-            : Number(rawPrice);
-      return {
-        value: Number.isFinite(numericValue) ? numericValue : null,
-        unit: legacyPriceRateUnit(price),
-      };
-    } catch {
-      return { value: null, unit: legacyPriceRateUnit(price) };
-    }
-  });
+  const rate = apiPrice.priceRate;
+  if (!rate) return [];
+  return rate.values.map((value) => ({
+    value: typeof value === "number" && Number.isFinite(value) ? value : null,
+    unit: rate.unit,
+  }));
 }
 
 export function extractPriceRate(
@@ -103,20 +61,12 @@ export function extractPriceRate(
 
   const price = selectedPrice as PriceWithApiRate | undefined;
   if (!price) return { value: null, unit: "tonne" };
-
-  if (price.priceRate) {
-    return (
-      getPriceRateOptions(price)[selectedIndex] ?? {
-        value: null,
-        unit: price.priceRate.unit,
-      }
-    );
-  }
+  if (!price.priceRate) return { value: null, unit: "tonne" };
 
   return (
     getPriceRateOptions(price)[selectedIndex] ?? {
       value: null,
-      unit: legacyPriceRateUnit(price),
+      unit: price.priceRate.unit,
     }
   );
 }
