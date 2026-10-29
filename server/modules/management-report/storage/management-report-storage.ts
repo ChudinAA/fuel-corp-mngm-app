@@ -160,8 +160,8 @@ export class ManagementReportStorage implements IManagementReportStorage {
     // Метрики складов
     const [warehouseMetrics] = await db
       .select({
-        totalBalanceTonnes: sql<string>`COALESCE(SUM(COALESCE(CAST(${warehouseTransactions.quantityTonnes} AS NUMERIC), CAST(${warehouseTransactions.quantity} AS NUMERIC) / 1000)), 0)::text`,
-        totalValue: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantity} AS NUMERIC) * CAST(${warehouseTransactions.price} AS NUMERIC)), 0)`,
+        totalBalanceTonnes: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantityTonnes} AS NUMERIC)), 0)::text`,
+        totalValue: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.quantityTonnes} AS NUMERIC) * CAST(${warehouseTransactions.pricePerTonne} AS NUMERIC)), 0)`,
       })
       .from(warehouseTransactions)
       .where(isNull(warehouseTransactions.deletedAt));
