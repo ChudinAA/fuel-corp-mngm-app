@@ -53,10 +53,11 @@ export const opt = pgTable(
     nomenclatureId: uuid("nomenclature_id").references(() => nomenclature.id),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
+    // Nullable during schema expansion; historical rows fall back to quantityKg until backfill.
     quantityTonnes: decimal("quantity_tonnes", {
       precision: 18,
       scale: 5,
-    }).notNull(),
+    }),
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
     inputMode: text("input_mode"),
     purchasePricePerTonne: decimal("purchase_price_per_tonne", {

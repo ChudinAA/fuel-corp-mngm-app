@@ -421,9 +421,11 @@ export class OptStorage {
           );
         }
 
-        const oldQuantityKg = tonnesToKilograms(
-          Number(currentOpt.quantityTonnes),
-        );
+        const oldQuantityTonnes =
+          currentOpt.quantityTonnes == null
+            ? kilogramsToTonnes(Number(currentOpt.quantityKg))
+            : Number(currentOpt.quantityTonnes);
+        const oldQuantityKg = tonnesToKilograms(oldQuantityTonnes);
         const newQuantityKg =
           normalizedData.quantityTonnes == null
             ? oldQuantityKg
@@ -433,8 +435,8 @@ export class OptStorage {
           normalizedData.purchaseAmount ?? oldTotalCost;
 
         const quantityChanged =
-          Number(currentOpt.quantityTonnes) !==
-          Number(normalizedData.quantityTonnes ?? currentOpt.quantityTonnes);
+          oldQuantityTonnes !==
+          Number(normalizedData.quantityTonnes ?? oldQuantityTonnes);
         const dateChanged =
           normalizedData.dealDate !== undefined &&
           normalizedData.dealDate !== currentOpt.dealDate;

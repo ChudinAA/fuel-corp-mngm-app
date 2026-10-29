@@ -63,7 +63,8 @@ export const aircraftRefueling = pgTable(
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
-    quantityTonnes: decimal("quantity_tonnes", { precision: 18, scale: 5 }).notNull(),
+    // Nullable during schema expansion; historical rows fall back to quantityKg until backfill.
+    quantityTonnes: decimal("quantity_tonnes", { precision: 18, scale: 5 }),
     inputMode: text("input_mode"),
     purchasePrice: decimal("purchase_price", { precision: 19, scale: 6 }),
     purchasePricePerTonne: decimal("purchase_price_per_tonne", {

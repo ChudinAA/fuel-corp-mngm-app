@@ -1185,6 +1185,47 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     }
   }
 
+  await pool.query(
+    "UPDATE opt SET quantity_tonnes = NULL WHERE id = $1",
+    [optCreated.id],
+  );
+  const legacyMassList = await api("/api/opt?pageSize=100");
+  const legacyMassOpt = legacyMassList.data.find(
+    (deal) => deal.id === optCreated.id,
+  );
+  assert.equal(Number(legacyMassOpt.quantityTonnes), 0.02);
+  assert.equal(legacyMassOpt.quantityKg, undefined);
+
+  const inventoryBeforeLegacyMassEdit = await getInventory(
+    warehouse.id,
+    equipment.id,
+  );
+  await api(`/api/opt/${optCreated.id}`, {
+    method: "PATCH",
+    body: { quantityTonnes: 0.03 },
+  });
+  const inventoryAfterLegacyMassEdit = await getInventory(
+    warehouse.id,
+    equipment.id,
+  );
+  assert.equal(
+    Math.abs(
+      inventoryAfterLegacyMassEdit.warehouseKerosene -
+        inventoryBeforeLegacyMassEdit.warehouseKerosene,
+    ),
+    10,
+    "editing a kg-only historical OPT row adjusts stock by the 10 kg delta",
+  );
+  await api(`/api/opt/${optCreated.id}`, {
+    method: "PATCH",
+    body: { quantityTonnes: 0.02 },
+  });
+  assert.deepEqual(
+    await getInventory(warehouse.id, equipment.id),
+    inventoryBeforeLegacyMassEdit,
+    "restoring the original mass restores the warehouse balance",
+  );
+
   const governmentContract = await api("/api/gov-contracts", {
     method: "POST",
     expectedStatus: 201,
