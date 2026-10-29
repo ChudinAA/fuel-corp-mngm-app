@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -7,6 +7,7 @@ import {
   timestamp,
   uuid,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -235,7 +236,9 @@ export const planningResources = pgTable(
     deletedById: uuid("deleted_by_id").references(() => users.id),
   },
   (table) => ({
-    supplierIdx: index("planning_resources_supplier_idx").on(table.supplierId),
+    supplierIdx: uniqueIndex("planning_resources_supplier_idx")
+      .on(table.supplierId)
+      .where(sql`${table.deletedAt} IS NULL`),
     deletedIdx: index("planning_resources_deleted_idx").on(table.deletedAt),
   }),
 );
