@@ -26,6 +26,7 @@ const fixtures = {
   mixedSupplierName: `ui-mixed-supplier-${runId}`,
   inactiveTariffSupplierName: `ui-inactive-tariff-supplier-${runId}`,
   warehouseSupplierName: `ui-warehouse-supplier-${runId}`,
+  warehouseRefuelingSupplierName: `ui-warehouse-refueling-supplier-${runId}`,
   foreignSupplierName: `ui-foreign-supplier-${runId}`,
   buyerName: `ui-smoke-buyer-${runId}`,
   wholesaleBuyerName: `ui-wholesale-buyer-${runId}`,
@@ -47,6 +48,7 @@ const fixtures = {
   operationalWarehouseName: `ui-operations-warehouse-${runId}`,
   transferWarehouseName: `ui-operations-transfer-warehouse-${runId}`,
   warehouseSupplierWarehouseName: `ui-wholesale-supplier-warehouse-${runId}`,
+  warehouseRefuelingWarehouseName: `ui-refueling-supplier-warehouse-${runId}`,
   deliveryLocationName: `ui-wholesale-delivery-location-${runId}`,
   equipmentName: `ui-operations-equipment-${runId}`,
   carrierName: `ui-operations-carrier-${runId}`,
@@ -58,6 +60,11 @@ const fixtures = {
   nomenclatureUnitShortName: `t-ui-${runId}`,
   receiptNote: `ui-operations-receipt-${runId}`,
   secondReceiptNote: `ui-operations-second-receipt-${runId}`,
+  warehouseRefuelingFirstReceiptNote: `ui-refueling-first-receipt-${runId}`,
+  warehouseRefuelingSecondReceiptNote: `ui-refueling-second-receipt-${runId}`,
+  warehouseRefuelingPvkjReceiptNote: `ui-refueling-pvkj-receipt-${runId}`,
+  warehousePriorRefuelingNote: `ui-warehouse-prior-refueling-${runId}`,
+  warehouseMultiProductRefuelingNote: `ui-warehouse-multi-refueling-${runId}`,
   warehouseTransferNote: `ui-operations-warehouse-transfer-${runId}`,
   equipmentTransferNote: `ui-operations-equipment-transfer-${runId}`,
   finalRefuelingNote: `ui-operations-final-refueling-${runId}`,
@@ -128,13 +135,18 @@ async function seedUiFixtures() {
     "INSERT INTO suppliers (name, is_warehouse) VALUES ($1, true) RETURNING id",
     [fixtures.warehouseSupplierName],
   );
+  const warehouseRefuelingSupplier = await pool.query(
+    "INSERT INTO suppliers (name, is_warehouse) VALUES ($1, true) RETURNING id",
+    [fixtures.warehouseRefuelingSupplierName],
+  );
   const foreignSupplier = await pool.query(
     "INSERT INTO suppliers (name, is_foreign) VALUES ($1, true) RETURNING id",
     [fixtures.foreignSupplierName],
   );
   await pool.query(
     `INSERT INTO supplier_bases (supplier_id, base_id)
-     VALUES ($1, $2), ($3, $4), ($3, $5), ($6, $7), ($8, $9), ($10, $11)`,
+     VALUES ($1, $2), ($3, $4), ($3, $5), ($6, $7), ($8, $9),
+            ($10, $11), ($12, $13)`,
     [
       supplier.rows[0].id,
       basisIds[fixtures.baseName],
@@ -147,6 +159,8 @@ async function seedUiFixtures() {
       basisIds[fixtures.inactiveTariffSourceBaseName],
       warehouseSupplier.rows[0].id,
       basisIds[fixtures.warehouseTariffSourceBaseName],
+      warehouseRefuelingSupplier.rows[0].id,
+      basisIds[fixtures.baseName],
     ],
   );
   const buyer = await pool.query(
@@ -217,12 +231,28 @@ async function seedUiFixtures() {
      RETURNING id`,
     [fixtures.warehouseSupplierWarehouseName, warehouseSupplier.rows[0].id],
   );
+  const warehouseRefuelingWarehouse = await pool.query(
+    `INSERT INTO warehouses
+       (name, current_balance_tonnes, average_cost_per_tonne,
+        pvkj_balance_tonnes, pvkj_average_cost_per_tonne, equipment_type,
+        supplier_id)
+     VALUES ($1, 0, 0, 0, 0, 'common', $2)
+     RETURNING id`,
+    [
+      fixtures.warehouseRefuelingWarehouseName,
+      warehouseRefuelingSupplier.rows[0].id,
+    ],
+  );
   await pool.query(
     "INSERT INTO warehouse_bases (warehouse_id, base_id) VALUES ($1, $2)",
     [
       warehouseSupplierWarehouse.rows[0].id,
       basisIds[fixtures.warehouseTariffSourceBaseName],
     ],
+  );
+  await pool.query(
+    "INSERT INTO warehouse_bases (warehouse_id, base_id) VALUES ($1, $2)",
+    [warehouseRefuelingWarehouse.rows[0].id, basisIds[fixtures.baseName]],
   );
   await pool.query(
     "UPDATE warehouses SET supplier_id = $1 WHERE id = $2",
@@ -422,6 +452,35 @@ async function seedUiFixtures() {
         basis, basis_id, nomenclature_id, price_values, date_from, date_to,
         volume_unit, price_unit, contract_limit_enabled)
      VALUES
+       ('pvkj', $1, 'wholesale', 'supplier', $2, $3, $4,
+        ARRAY['{"price":12000}'], '2026-10-01', '2026-10-31',
+        'tonne', 'tonne', false),
+       ('pvkj', $5, 'refueling', 'buyer', $2, $3, $6,
+        ARRAY['{"price":18000}'], '2026-10-01', '2026-10-31',
+        'tonne', 'tonne', false),
+       ('service', $7, 'refueling', 'supplier', $2, $3, $8,
+        ARRAY['{"price":1500}'], '2026-10-01', '2026-10-31',
+        'tonne', 'tonne', false),
+       ('service', $5, 'refueling', 'buyer', $2, $3, $8,
+        ARRAY['{"price":2500}'], '2026-10-01', '2026-10-31',
+        'tonne', 'tonne', false)`,
+    [
+      supplier.rows[0].id,
+      fixtures.baseName,
+      basisIds[fixtures.baseName],
+      nomenclatureIds.pvkj,
+      buyer.rows[0].id,
+      nomenclatureIds.pvkj,
+      warehouseRefuelingSupplier.rows[0].id,
+      nomenclatureIds.service,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_id, counterparty_type, counterparty_role,
+        basis, basis_id, nomenclature_id, price_values, date_from, date_to,
+        volume_unit, price_unit, contract_limit_enabled)
+     VALUES
        ('kerosene', $1, 'wholesale', 'supplier', $2, $3, $4,
         ARRAY['{"price":30000}', '{"price":31000}'], '2026-10-01', '2026-10-31',
         'tonne', 'tonne', false),
@@ -498,12 +557,22 @@ async function cleanUiFixtures() {
       [[
         fixtures.refuelingNote,
         fixtures.multiProductRefuelingNote,
+        fixtures.warehousePriorRefuelingNote,
+        fixtures.warehouseMultiProductRefuelingNote,
         fixtures.finalRefuelingNote,
       ]],
     ),
     pool.query(
       "SELECT id FROM movement WHERE notes = ANY($1::text[])",
-      [[fixtures.movementNote, fixtures.receiptNote, fixtures.secondReceiptNote, fixtures.warehouseTransferNote]],
+      [[
+        fixtures.movementNote,
+        fixtures.receiptNote,
+        fixtures.secondReceiptNote,
+        fixtures.warehouseRefuelingFirstReceiptNote,
+        fixtures.warehouseRefuelingSecondReceiptNote,
+        fixtures.warehouseRefuelingPvkjReceiptNote,
+        fixtures.warehouseTransferNote,
+      ]],
     ),
     pool.query(
       "SELECT id FROM equipment_movement WHERE notes = $1",
@@ -586,7 +655,11 @@ async function cleanUiFixtures() {
   if (movements.rows.length) {
     await pool.query(
       "DELETE FROM recalculation_queue WHERE warehouse_id IN (SELECT id FROM warehouses WHERE name = ANY($1::text[]))",
-      [[fixtures.operationalWarehouseName, fixtures.transferWarehouseName]],
+      [[
+        fixtures.operationalWarehouseName,
+        fixtures.transferWarehouseName,
+        fixtures.warehouseRefuelingWarehouseName,
+      ]],
     );
   }
   await pool.query(
@@ -608,6 +681,7 @@ async function cleanUiFixtures() {
         fixtures.mixedSupplierName,
         fixtures.inactiveTariffSupplierName,
         fixtures.warehouseSupplierName,
+        fixtures.warehouseRefuelingSupplierName,
         fixtures.foreignSupplierName,
       ],
       [
@@ -631,6 +705,7 @@ async function cleanUiFixtures() {
       fixtures.operationalWarehouseName,
       fixtures.transferWarehouseName,
       fixtures.warehouseSupplierWarehouseName,
+      fixtures.warehouseRefuelingWarehouseName,
     ]],
   );
   await pool.query(
@@ -641,6 +716,7 @@ async function cleanUiFixtures() {
       fixtures.mixedSupplierName,
       fixtures.inactiveTariffSupplierName,
       fixtures.warehouseSupplierName,
+      fixtures.warehouseRefuelingSupplierName,
       fixtures.foreignSupplierName,
     ]],
   );
@@ -667,6 +743,7 @@ async function cleanUiFixtures() {
       fixtures.operationalWarehouseName,
       fixtures.transferWarehouseName,
       fixtures.warehouseSupplierWarehouseName,
+      fixtures.warehouseRefuelingWarehouseName,
     ],
   ]);
   await pool.query("DELETE FROM equipments WHERE name = $1", [
@@ -682,6 +759,7 @@ async function cleanUiFixtures() {
         fixtures.mixedSupplierName,
         fixtures.inactiveTariffSupplierName,
         fixtures.warehouseSupplierName,
+        fixtures.warehouseRefuelingSupplierName,
         fixtures.foreignSupplierName,
       ],
       [fixtures.buyerName, fixtures.wholesaleBuyerName, fixtures.foreignBuyerName],
@@ -709,6 +787,7 @@ async function cleanUiFixtures() {
       fixtures.operationalWarehouseName,
       fixtures.transferWarehouseName,
       fixtures.warehouseSupplierWarehouseName,
+      fixtures.warehouseRefuelingWarehouseName,
     ],
   ]);
   await pool.query("DELETE FROM suppliers WHERE name = ANY($1::text[])", [[
@@ -716,6 +795,7 @@ async function cleanUiFixtures() {
     fixtures.mixedSupplierName,
     fixtures.inactiveTariffSupplierName,
     fixtures.warehouseSupplierName,
+    fixtures.warehouseRefuelingSupplierName,
     fixtures.foreignSupplierName,
   ]]);
   await pool.query("DELETE FROM customers WHERE name = ANY($1::text[])", [[
@@ -1218,7 +1298,7 @@ async function waitForRecalculation(
   table,
   ownerColumn,
   ownerId,
-  { requireTask = true } = {},
+  { requireTask = true, productType = "kerosene", createdAfter } = {},
 ) {
   assert.ok(
     (table === "recalculation_queue" && ownerColumn === "warehouse_id") ||
@@ -1231,9 +1311,10 @@ async function waitForRecalculation(
   while (Date.now() < deadline) {
     const result = await pool.query(
       `SELECT status FROM ${table}
-       WHERE ${ownerColumn} = $1 AND product_type = 'kerosene'
+       WHERE ${ownerColumn} = $1 AND product_type = $2
+         AND ($3::timestamptz IS NULL OR created_at >= $3)
        ORDER BY created_at, id`,
-      [ownerId],
+      [ownerId, productType, createdAfter ?? null],
     );
     statuses = result.rows.map((row) => row.status);
     if (statuses.length === 0 && !requireTask) return;
@@ -3080,7 +3161,14 @@ test("authenticated browser can load the core business pages", async () => {
         "a new movement form for final operations",
       );
     };
-    const createReceipt = async ({ date, quantity, note }) => {
+    const createReceipt = async ({
+      date,
+      quantity,
+      note,
+      warehouseName = fixtures.operationalWarehouseName,
+      productType = "Керосин",
+      nomenclatureName = fixtures.nomenclatureNames.kerosene,
+    }) => {
       await openMovementForm();
       await fillInput(cdp, '[data-testid="input-movement-date"]', date);
       await selectComboboxOption(
@@ -3093,10 +3181,23 @@ test("authenticated browser can load the core business pages", async () => {
         "select-movement-basis",
         fixtures.baseName,
       );
+      if (productType !== "Керосин") {
+        await selectComboboxOption(
+          cdp,
+          "select-movement-product",
+          productType,
+        );
+      }
+      await waitForExpression(
+        cdp,
+        `document.querySelector('[data-testid="select-nomenclature"]')
+          ?.innerText.includes(${JSON.stringify(nomenclatureName)})`,
+        `the ${productType} receipt's default nomenclature`,
+      );
       await selectComboboxOption(
         cdp,
         "select-movement-to",
-        fixtures.operationalWarehouseName,
+        warehouseName,
       );
       try {
         await waitForExpression(
@@ -3140,7 +3241,8 @@ test("authenticated browser can load the core business pages", async () => {
       try {
         receipt = await waitForDatabaseRow(
           `SELECT id, quantity_tonnes, input_mode, is_draft,
-                  movement_date, purchase_price_per_tonne, total_cost
+                  movement_date, purchase_price_per_tonne, total_cost,
+                  nomenclature_id, product_type, to_warehouse_id
            FROM movement WHERE notes = $1`,
           [note],
           `final receipt ${note} created in the UI`,
@@ -3155,6 +3257,14 @@ test("authenticated browser can load the core business pages", async () => {
       }
       assert.equal(receipt.is_draft, false);
       assert.equal(receipt.input_mode, "tonnes");
+      assert.equal(
+        receipt.to_warehouse_id,
+        (
+          await pool.query("SELECT id FROM warehouses WHERE name = $1", [
+            warehouseName,
+          ])
+        ).rows[0]?.id,
+      );
       return receipt;
     };
 
@@ -3194,6 +3304,449 @@ test("authenticated browser can load the core business pages", async () => {
         Number(row.current_balance_tonnes) === 2 &&
         Number(row.average_cost_per_tonne) === 15_000,
       45_000,
+    );
+
+    const warehouseRefuelingWarehouse = await pool.query(
+      `SELECT id FROM warehouses WHERE name = $1`,
+      [fixtures.warehouseRefuelingWarehouseName],
+    );
+    const warehouseRefuelingWarehouseId =
+      warehouseRefuelingWarehouse.rows[0]?.id;
+    assert.ok(
+      warehouseRefuelingWarehouseId,
+      "the warehouse-linked refueling supplier has a dedicated warehouse",
+    );
+    const warehouseRefuelingFirstReceipt = await createReceipt({
+      date: "01.10.2026",
+      quantity: "1",
+      note: fixtures.warehouseRefuelingFirstReceiptNote,
+      warehouseName: fixtures.warehouseRefuelingWarehouseName,
+    });
+    assert.equal(
+      Number(warehouseRefuelingFirstReceipt.purchase_price_per_tonne),
+      10_000,
+    );
+    const warehouseRefuelingSecondReceipt = await createReceipt({
+      date: "06.10.2026",
+      quantity: "1",
+      note: fixtures.warehouseRefuelingSecondReceiptNote,
+      warehouseName: fixtures.warehouseRefuelingWarehouseName,
+    });
+    assert.equal(
+      Number(warehouseRefuelingSecondReceipt.purchase_price_per_tonne),
+      20_000,
+    );
+    const warehousePvkjReceipt = await createReceipt({
+      date: "01.10.2026",
+      quantity: "1",
+      note: fixtures.warehouseRefuelingPvkjReceiptNote,
+      warehouseName: fixtures.warehouseRefuelingWarehouseName,
+      productType: "ПВКЖ",
+      nomenclatureName: fixtures.nomenclatureNames.pvkj,
+    });
+    assert.equal(warehousePvkjReceipt.product_type, "pvkj");
+    assert.equal(Number(warehousePvkjReceipt.purchase_price_per_tonne), 12_000);
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne,
+              pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [warehouseRefuelingWarehouseId],
+      "the warehouse's real kerosene and PVKJ receipt ledger",
+      (row) =>
+        Number(row.current_balance_tonnes) === 2 &&
+        Number(row.average_cost_per_tonne) === 15_000 &&
+        Number(row.pvkj_balance_tonnes) === 1 &&
+        Number(row.pvkj_average_cost_per_tonne) === 12_000,
+      45_000,
+    );
+
+    const createWarehouseRefuelingOrder = async ({
+      note,
+      date,
+      keroseneTonnes,
+      pvkjTonnes,
+      serviceTonnes,
+    }) => {
+      await navigateToRoute(cdp, "/refueling");
+      await clickTestId(cdp, "button-add-refueling");
+      await selectComboboxOption(
+        cdp,
+        "select-supplier",
+        fixtures.warehouseRefuelingSupplierName,
+      );
+      await waitForExpression(
+        cdp,
+        `document.querySelector('[data-testid="select-basis"]')
+          ?.innerText.includes(${JSON.stringify(fixtures.baseName)})`,
+        "the warehouse supplier's refueling basis",
+      );
+      await selectComboboxOption(cdp, "select-buyer", fixtures.buyerName);
+      if (pvkjTonnes !== undefined) {
+        await addRefuelingProduct(cdp, "ПВКЖ");
+      }
+      if (serviceTonnes !== undefined) {
+        await addRefuelingProduct(cdp, "Услуга заправки");
+      }
+      await fillInput(
+        cdp,
+        '[data-testid="input-refueling-date"]',
+        date,
+      );
+      await fillProductMassTonnes(cdp, "Керосин", keroseneTonnes);
+      if (pvkjTonnes !== undefined) {
+        await fillProductMassTonnes(cdp, "ПВКЖ", pvkjTonnes);
+      }
+      if (serviceTonnes !== undefined) {
+        await fillProductMassTonnes(
+          cdp,
+          "Услуга заправки",
+          serviceTonnes,
+        );
+      }
+      await fillInput(cdp, '[data-testid="input-notes"]', note);
+      await waitForExpression(
+        cdp,
+        `!document.querySelector('[data-testid="button-submit-refueling"]')?.disabled`,
+        `the completed warehouse-backed order ${note} to be submittable`,
+        30_000,
+      );
+      const recalculationCreatedAfter = new Date(
+        Date.now() - 1_000,
+      ).toISOString();
+      await clickTestId(cdp, "button-submit-refueling");
+      const expectedRowCount = 1 + Number(pvkjTonnes !== undefined) +
+        Number(serviceTonnes !== undefined);
+      await waitForDatabaseRow(
+        `SELECT COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active
+         FROM aircraft_refueling WHERE notes = $1`,
+        [note],
+        `all ${expectedRowCount} final warehouse-backed products for ${note}`,
+        (row) =>
+          Number(row.total) === expectedRowCount &&
+          Number(row.active) === expectedRowCount,
+        30_000,
+      );
+      const rows = await pool.query(
+        `SELECT id, refueling_order_id, product_type, quantity_tonnes,
+                warehouse_id, is_draft, purchase_price_per_tonne,
+                purchase_amount, sale_price_per_tonne, sale_amount,
+                agent_fee, other_service_fee, profit,
+                is_agent_fee_enabled, is_other_service_enabled
+         FROM aircraft_refueling
+         WHERE notes = $1 AND deleted_at IS NULL
+         ORDER BY product_type`,
+        [note],
+      );
+      assert.equal(rows.rows.length, expectedRowCount);
+      assert.ok(
+        rows.rows.every(
+          (row) =>
+            row.is_draft === false &&
+            row.refueling_order_id === rows.rows[0].refueling_order_id,
+        ),
+        "all products are final rows in one refueling order",
+      );
+      await waitForRecalculation(
+        "recalculation_queue",
+        "warehouse_id",
+        warehouseRefuelingWarehouseId,
+        {
+          productType: "kerosene",
+          createdAfter: recalculationCreatedAfter,
+          requireTask: false,
+        },
+      );
+      if (pvkjTonnes !== undefined) {
+        await waitForRecalculation(
+          "recalculation_queue",
+          "warehouse_id",
+          warehouseRefuelingWarehouseId,
+          {
+            productType: "pvkj",
+            createdAfter: recalculationCreatedAfter,
+            requireTask: false,
+          },
+        );
+      }
+      return rows.rows;
+    };
+
+    const assertRefuelingEconomics = (deal) => {
+      const agentFee =
+        deal.is_agent_fee_enabled === false ? 0 : Number(deal.agent_fee || 0);
+      const otherFee =
+        deal.is_other_service_enabled === false
+          ? 0
+          : Number(deal.other_service_fee || 0);
+      const expectedProfit =
+        Number(deal.sale_amount || 0) -
+        Number(deal.purchase_amount || 0) -
+        agentFee -
+        otherFee;
+      assert.ok(Number.isFinite(Number(deal.purchase_amount)));
+      assert.ok(Number.isFinite(Number(deal.sale_amount)));
+      assert.ok(
+        Math.abs(Number(deal.profit || 0) - expectedProfit) < 0.011,
+        `${deal.product_type} profit matches the saved purchase, sale, and fee amounts`,
+      );
+    };
+
+    const priorWarehouseOrder = await createWarehouseRefuelingOrder({
+      note: fixtures.warehousePriorRefuelingNote,
+      date: "08.10.2026",
+      keroseneTonnes: "0.1",
+      pvkjTonnes: "0.05",
+    });
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne,
+              pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [warehouseRefuelingWarehouseId],
+      "stock after the earlier real warehouse-backed write-off",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1.9 &&
+        Number(row.average_cost_per_tonne) === 15_000 &&
+        Number(row.pvkj_balance_tonnes) === 0.95 &&
+        Number(row.pvkj_average_cost_per_tonne) === 12_000,
+      45_000,
+    );
+    const priorWarehouseDealByType = new Map(
+      priorWarehouseOrder.map((deal) => [deal.product_type, deal]),
+    );
+    assert.deepEqual(
+      [...priorWarehouseDealByType.keys()].sort(),
+      ["kerosene", "pvkj"],
+      "the earlier warehouse write-off includes both stocked product types",
+    );
+    for (const deal of priorWarehouseOrder) {
+      assert.equal(deal.warehouse_id, warehouseRefuelingWarehouseId);
+      assertRefuelingEconomics(deal);
+    }
+    assert.equal(
+      Number(priorWarehouseDealByType.get("kerosene").purchase_price_per_tonne),
+      15_000,
+    );
+    assert.equal(
+      Number(priorWarehouseDealByType.get("pvkj").purchase_price_per_tonne),
+      12_000,
+    );
+    const priorWarehouseWriteoffs = await pool.query(
+      `SELECT source_id, product_type, quantity_tonnes
+       FROM warehouse_transactions
+       WHERE source_type = 'refueling'
+         AND source_id = ANY($1::uuid[])
+         AND deleted_at IS NULL`,
+      [priorWarehouseOrder.map((deal) => deal.id)],
+    );
+    assert.equal(priorWarehouseWriteoffs.rows.length, 2);
+    assert.ok(
+      priorWarehouseWriteoffs.rows.every(
+        (transaction) => Number(transaction.quantity_tonnes) < 0,
+      ),
+      "the earlier warehouse-backed deals have real inventory write-offs",
+    );
+
+    const testedWarehouseOrder = await createWarehouseRefuelingOrder({
+      note: fixtures.warehouseMultiProductRefuelingNote,
+      date: "10.10.2026",
+      keroseneTonnes: "0.2",
+      pvkjTonnes: "0.1",
+      serviceTonnes: "0.007",
+    });
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne,
+              pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [warehouseRefuelingWarehouseId],
+      "stock after the final three-product warehouse-backed order",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1.7 &&
+        Number(row.average_cost_per_tonne) === 15_000 &&
+        Number(row.pvkj_balance_tonnes) === 0.85 &&
+        Number(row.pvkj_average_cost_per_tonne) === 12_000,
+      45_000,
+    );
+    const testedWarehouseDealByType = new Map(
+      testedWarehouseOrder.map((deal) => [deal.product_type, deal]),
+    );
+    assert.deepEqual(
+      [...testedWarehouseDealByType.keys()].sort(),
+      ["kerosene", "pvkj", "service"],
+      "the final warehouse-backed order includes kerosene, PVKJ, and service",
+    );
+    for (const deal of testedWarehouseOrder) {
+      assertRefuelingEconomics(deal);
+    }
+    const testedKeroseneBeforeRecalculation =
+      testedWarehouseDealByType.get("kerosene");
+    assert.equal(testedKeroseneBeforeRecalculation.warehouse_id, warehouseRefuelingWarehouseId);
+    assert.equal(
+      Number(testedKeroseneBeforeRecalculation.purchase_price_per_tonne),
+      15_000,
+    );
+    assert.equal(
+      Number(testedKeroseneBeforeRecalculation.purchase_amount),
+      Number(testedKeroseneBeforeRecalculation.quantity_tonnes) * 15_000,
+    );
+    assert.equal(
+      Number(testedWarehouseDealByType.get("pvkj").purchase_price_per_tonne),
+      12_000,
+    );
+    const testedWarehouseWriteoffs = await pool.query(
+      `SELECT source_id, product_type, quantity_tonnes
+       FROM warehouse_transactions
+       WHERE source_type = 'refueling'
+         AND source_id = ANY($1::uuid[])
+         AND deleted_at IS NULL`,
+      [testedWarehouseOrder.map((deal) => deal.id)],
+    );
+    assert.deepEqual(
+      testedWarehouseWriteoffs.rows.map((transaction) => transaction.product_type).sort(),
+      ["kerosene", "pvkj"],
+      "only stocked products create warehouse write-offs; service remains non-inventory",
+    );
+    assert.ok(
+      testedWarehouseWriteoffs.rows.every(
+        (transaction) => Number(transaction.quantity_tonnes) < 0,
+      ),
+    );
+
+    await navigateToRoute(cdp, "/movement");
+    await fillInput(cdp, 'input[placeholder="Поиск..."]', "");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('input[placeholder="Поиск..."]')?.value === ""`,
+      "the movement table search to be cleared before editing the historical receipt",
+    );
+    await openRowActionByTestId(
+      cdp,
+      `movement-row-${warehouseRefuelingFirstReceipt.id}`,
+      "Редактировать",
+    );
+    await waitForExpression(
+      cdp,
+      `Number(document.querySelector('[data-testid="input-quantity-tonnes"]')
+        ?.value) === 1`,
+      "the original backdated warehouse receipt in the movement edit form",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-quantity-tonnes"]',
+      "1.5",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-movement-notes"]',
+      fixtures.warehouseRefuelingFirstReceiptNote,
+    );
+    const warehouseReceiptRecalculationCreatedAfter = new Date(
+      Date.now() - 1_000,
+    ).toISOString();
+    await clickTestId(cdp, "button-create-movement");
+    const editedWarehouseReceipt = await waitForDatabaseRow(
+      `SELECT id, quantity_tonnes, purchase_price_per_tonne, total_cost,
+              movement_date, to_warehouse_id
+       FROM movement WHERE id = $1`,
+      [warehouseRefuelingFirstReceipt.id],
+      "the first warehouse receipt quantity edited retroactively in the UI",
+      (row) => Number(row.quantity_tonnes) === 1.5,
+      30_000,
+    );
+    assert.equal(editedWarehouseReceipt.id, warehouseRefuelingFirstReceipt.id);
+    assert.equal(Number(editedWarehouseReceipt.purchase_price_per_tonne), 10_000);
+    assert.equal(Number(editedWarehouseReceipt.total_cost), 15_000);
+    assert.equal(editedWarehouseReceipt.to_warehouse_id, warehouseRefuelingWarehouseId);
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      warehouseRefuelingWarehouseId,
+      {
+        productType: "kerosene",
+        createdAfter: warehouseReceiptRecalculationCreatedAfter,
+      },
+    );
+    const recalculatedWarehouseDeals = await pool.query(
+      `SELECT id, product_type, quantity_tonnes, purchase_price_per_tonne,
+              purchase_amount, sale_amount, agent_fee, other_service_fee,
+              profit, is_agent_fee_enabled, is_other_service_enabled
+       FROM aircraft_refueling
+       WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL`,
+      [
+        [
+          priorWarehouseDealByType.get("kerosene").id,
+          testedKeroseneBeforeRecalculation.id,
+        ],
+      ],
+    );
+    const recalculatedById = new Map(
+      recalculatedWarehouseDeals.rows.map((deal) => [deal.id, deal]),
+    );
+    const recalculatedPriorKerosene = recalculatedById.get(
+      priorWarehouseDealByType.get("kerosene").id,
+    );
+    const recalculatedTestedKerosene = recalculatedById.get(
+      testedKeroseneBeforeRecalculation.id,
+    );
+    assert.equal(
+      Number(recalculatedPriorKerosene.purchase_price_per_tonne),
+      14_000,
+      "the earlier warehouse-backed refueling is recalculated at the corrected average cost",
+    );
+    assert.equal(
+      Number(recalculatedTestedKerosene.purchase_price_per_tonne),
+      14_000,
+      "the later multi-product order is recalculated at the corrected average cost",
+    );
+    assert.equal(
+      Number(recalculatedTestedKerosene.purchase_amount),
+      Number(recalculatedTestedKerosene.quantity_tonnes) * 14_000,
+    );
+    assertRefuelingEconomics(recalculatedPriorKerosene);
+    assertRefuelingEconomics(recalculatedTestedKerosene);
+    const recalculatedWarehouseBalances = await pool.query(
+      `SELECT current_balance_tonnes, average_cost_per_tonne,
+              pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [warehouseRefuelingWarehouseId],
+    );
+    assert.equal(
+      Number(recalculatedWarehouseBalances.rows[0].current_balance_tonnes),
+      2.2,
+    );
+    assert.equal(
+      Number(recalculatedWarehouseBalances.rows[0].average_cost_per_tonne),
+      14_000,
+    );
+    assert.equal(
+      Number(recalculatedWarehouseBalances.rows[0].pvkj_balance_tonnes),
+      0.85,
+    );
+    assert.equal(
+      Number(recalculatedWarehouseBalances.rows[0].pvkj_average_cost_per_tonne),
+      12_000,
+    );
+    const finalOrderRows = await pool.query(
+      `SELECT product_type, quantity_tonnes, purchase_price_per_tonne,
+              purchase_amount, sale_amount, profit,
+              is_agent_fee_enabled, is_other_service_enabled
+       FROM aircraft_refueling
+       WHERE notes = $1 AND deleted_at IS NULL
+       ORDER BY product_type`,
+      [fixtures.warehouseMultiProductRefuelingNote],
+    );
+    assert.deepEqual(
+      finalOrderRows.rows.map((deal) => deal.product_type),
+      ["kerosene", "pvkj", "service"],
+    );
+    for (const deal of finalOrderRows.rows) assertRefuelingEconomics(deal);
+    assert.equal(
+      Number(finalOrderRows.rows.find((deal) => deal.product_type === "kerosene").purchase_amount),
+      Number(finalOrderRows.rows.find((deal) => deal.product_type === "kerosene").quantity_tonnes) * 14_000,
+      "the final order's kerosene purchase amount uses the retroactively recalculated warehouse cost",
+    );
+    console.log(
+      "UI flow passed: warehouse-backed final multi-product order, prior write-offs, backdated receipt recalculation, and economics",
     );
 
     await openMovementForm();

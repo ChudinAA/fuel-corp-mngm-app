@@ -395,6 +395,7 @@ export function MovementTable({
                   _rows.push((
                     <TableRow
                       key={item.id}
+                      data-testid={`movement-row-${item.id}`}
                       className={cn(
                         isToday && !item.isDraft && "bg-emerald-50/30 dark:bg-emerald-950/10",
                         "hover:bg-muted/50 transition-colors",
