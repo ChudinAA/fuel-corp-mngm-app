@@ -1,5 +1,10 @@
 import type { Express } from "express";
 import { SSEService } from "../../../services/sse-service";
+import { storage } from "../../../storage/index";
+import {
+  getOperationNomenclatureError,
+  getOperationNomenclatureUpdateError,
+} from "../../catalogs/nomenclature-validation";
 import { refuelingAbroadStorage } from "../storage/refueling-abroad-storage";
 import { refuelingAbroadIntermediariesStorage } from "../storage/refueling-abroad-intermediaries-storage";
 import { refuelingAbroadExchangeRatesStorage } from "../storage/refueling-abroad-exchange-rates-storage";
@@ -199,6 +204,13 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         const validatedData = insertRefuelingAbroadSchema.parse(
           normalizeRefuelingAbroadInput(req.body),
         );
+        const nomenclatureError = await getOperationNomenclatureError(
+          validatedData,
+          (id) => storage.catalogs.getNomenclatureItem(id),
+        );
+        if (nomenclatureError) {
+          return res.status(400).json({ message: nomenclatureError });
+        }
         const userId = req.session.userId?.toString();
         const item = await refuelingAbroadStorage.create(validatedData, userId);
         SSEService.notifyEntityChanged("refueling-abroad", SSEService.extractClientId(req.headers["x-client-id"]));
@@ -259,6 +271,19 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         const validatedData = insertRefuelingAbroadSchema.parse(
           normalizeRefuelingAbroadInput(req.body),
         );
+        const current = await refuelingAbroadStorage.getById(req.params.id);
+        if (!current) {
+          return res.status(404).json({ message: "Запись не найдена" });
+        }
+        const nomenclatureError =
+          await getOperationNomenclatureUpdateError(
+            current,
+            validatedData,
+            (id) => storage.catalogs.getNomenclatureItem(id),
+          );
+        if (nomenclatureError) {
+          return res.status(400).json({ message: nomenclatureError });
+        }
         const userId = req.session.userId?.toString();
         const item = await refuelingAbroadStorage.update(
           req.params.id,

@@ -1,5 +1,9 @@
 import type { Express } from "express";
 import { storage } from "../../../storage/index";
+import {
+  getOperationNomenclatureError,
+  getOperationNomenclatureUpdateError,
+} from "../../catalogs/nomenclature-validation";
 import { insertAircraftRefuelingSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth, requirePermission, requireAnyPermission } from "../../../middleware/middleware";
@@ -205,6 +209,13 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           ...normalizeRefuelingInput(req.body),
           createdById: String(req.session.userId),
         });
+        const nomenclatureError = await getOperationNomenclatureError(
+          data,
+          (id) => storage.catalogs.getNomenclatureItem(id),
+        );
+        if (nomenclatureError) {
+          return res.status(400).json({ message: nomenclatureError });
+        }
         const item = await storage.aircraftRefueling.createRefueling(data);
         await AuditService.log({
           entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
@@ -273,6 +284,15 @@ export function registerRefuelingOperationsRoutes(app: Express) {
             createdById: userId,
           }),
         );
+        for (const deal of validatedDeals) {
+          const nomenclatureError = await getOperationNomenclatureError(
+            deal,
+            (id) => storage.catalogs.getNomenclatureItem(id),
+          );
+          if (nomenclatureError) {
+            return res.status(400).json({ message: nomenclatureError });
+          }
+        }
         const created = await storage.aircraftRefueling.createRefuelings(
           validatedDeals,
         );
@@ -327,6 +347,10 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
+        const current = await storage.aircraftRefueling.getRefueling(id);
+        if (!current) {
+          return res.status(404).json({ message: "Заправка не найдена" });
+        }
 
         // For LIK refueling, check warehouse access
         if (req.body.equipmentType === "lik" && req.body.warehouseId) {
@@ -338,8 +362,22 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           }
         }
 
+        const normalized = normalizeRefuelingInput(req.body) as Record<
+          string,
+          unknown
+        >;
+        const nomenclatureError = await getOperationNomenclatureUpdateError(
+          current,
+          normalized,
+          (nomenclatureId) =>
+            storage.catalogs.getNomenclatureItem(nomenclatureId),
+        );
+        if (nomenclatureError) {
+          return res.status(400).json({ message: nomenclatureError });
+        }
+
         const item = await storage.aircraftRefueling.updateRefueling(id, {
-          ...normalizeRefuelingInput(req.body),
+          ...normalized,
           updatedById: req.session.userId,
         });
         if (!item) {
@@ -379,6 +417,9 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         });
         const { deals } = requestSchema.parse(req.body);
         const userId = String(req.session.userId);
+        const existingDeals = await storage.aircraftRefueling.getRefuelingOrder(
+          req.params.id,
+        );
         for (const deal of deals) {
           if (deal.equipmentType === "lik" && deal.warehouseId) {
             const allowedWarehouseIds =
@@ -397,6 +438,20 @@ export function registerRefuelingOperationsRoutes(app: Express) {
             updatedById: userId,
           }),
         );
+        for (const deal of validatedDeals) {
+          const existingDeal = existingDeals.find(
+            (existing) => existing.productType === deal.productType,
+          );
+          const nomenclatureError =
+            await getOperationNomenclatureUpdateError(
+              existingDeal,
+              deal,
+              (id) => storage.catalogs.getNomenclatureItem(id),
+            );
+          if (nomenclatureError) {
+            return res.status(400).json({ message: nomenclatureError });
+          }
+        }
         const { oldDeals, deals: savedDeals } =
           await storage.aircraftRefueling.updateRefuelingOrder(
             req.params.id,

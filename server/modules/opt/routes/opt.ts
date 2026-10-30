@@ -1,5 +1,9 @@
 import type { Express } from "express";
 import { storage } from "../../../storage/index";
+import {
+  getOperationNomenclatureError,
+  getOperationNomenclatureUpdateError,
+} from "../../catalogs/nomenclature-validation";
 import { insertOptSchema } from "@shared/schema";
 import { updateOptSchema } from "../entities/opt";
 import { z } from "zod";
@@ -170,6 +174,13 @@ export function registerOptRoutes(app: Express) {
           ...normalizeOptInput(req.body),
           createdById: req.session.userId,
         });
+        const nomenclatureError = await getOperationNomenclatureError(
+          data,
+          (id) => storage.catalogs.getNomenclatureItem(id),
+        );
+        if (nomenclatureError) {
+          return res.status(400).json({ message: nomenclatureError });
+        }
         const item = await storage.opt.createOpt(data);
         SSEService.notifyEntityChanged("opt", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
@@ -210,8 +221,22 @@ export function registerOptRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
+        const current = await storage.opt.getOpt(id);
+        if (!current) {
+          return res.status(404).json({ message: "Сделка не найдена" });
+        }
+        const data = updateOptSchema.parse(normalizeOptInput(req.body));
+        const nomenclatureError = await getOperationNomenclatureUpdateError(
+          current,
+          data,
+          (nomenclatureId) =>
+            storage.catalogs.getNomenclatureItem(nomenclatureId),
+        );
+        if (nomenclatureError) {
+          return res.status(400).json({ message: nomenclatureError });
+        }
         const item = await storage.opt.updateOpt(id, {
-          ...updateOptSchema.parse(normalizeOptInput(req.body)),
+          ...data,
           updatedById: req.session.userId,
         });
         if (!item) {

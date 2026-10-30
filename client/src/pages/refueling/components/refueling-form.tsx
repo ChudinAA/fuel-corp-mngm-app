@@ -55,6 +55,7 @@ import { useRefuelingCalculations } from "../hooks/use-refueling-calculations";
 import { useRefuelingFilters } from "../hooks/use-refueling-filters";
 import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
+import { shouldPreserveLegacyNomenclatureSelection } from "@/pages/shared/utils/nomenclature-selection";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 import { SpecialConditionsBanner } from "@/components/special-conditions-banner";
@@ -1332,7 +1333,12 @@ export const RefuelingForm = forwardRef<
           className="space-y-6"
         >
           <RefuelingMainFields
-            preserveLegacySelection={isEditing && !editData?.nomenclatureId}
+            preserveLegacySelection={shouldPreserveLegacyNomenclatureSelection({
+              isEditing,
+              currentNomenclatureId: editData?.nomenclatureId,
+              currentProductType: watchProductType,
+              originalProductType: editData?.productType,
+            })}
             lockProductType={!!editDeals?.length}
             primaryProductRemoved={!isPrimaryProductIncluded}
             form={form}

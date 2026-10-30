@@ -67,6 +67,7 @@ import { useLikBalance } from "../hooks/use-lik-balance";
 import { useLikCalculations } from "../hooks/use-lik-calculations";
 import { Equipment } from "@shared/schema";
 import { NomenclatureField } from "../../shared/components/nomenclature-field";
+import { shouldPreserveLegacyNomenclatureSelection } from "@/pages/shared/utils/nomenclature-selection";
 
 export function EquipmentMovementDialog({
   warehouses,
@@ -460,7 +461,12 @@ export function EquipmentMovementDialog({
                 <NomenclatureField
                   form={form}
                   productType={watchProductType}
-                  preserveLegacySelection={isEditing && !editMovement?.nomenclatureId}
+                  preserveLegacySelection={shouldPreserveLegacyNomenclatureSelection({
+                    isEditing,
+                    currentNomenclatureId: editMovement?.nomenclatureId,
+                    currentProductType: watchProductType,
+                    originalProductType: editMovement?.productType,
+                  })}
                 />
               </div>
 

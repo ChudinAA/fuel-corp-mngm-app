@@ -170,15 +170,24 @@ export class TransportationStorage {
   }
 
   async createTransportation(data: InsertTransportation): Promise<Transportation> {
-    if (!data.buyerId || !data.dealDate || data.quantityTonnes == null) {
-      throw new Error("Buyer, deal date, and quantity are required");
+    if (
+      !data.buyerId ||
+      !data.dealDate ||
+      (!data.isDraft && data.quantityTonnes == null)
+    ) {
+      throw new Error(
+        data.isDraft
+          ? "Buyer and deal date are required"
+          : "Buyer, deal date, and quantity are required",
+      );
     }
     const dbValues = Object.fromEntries(
       Object.entries({
         ...data,
         buyerId: data.buyerId!,
         dealDate: data.dealDate!,
-        quantityTonnes: String(data.quantityTonnes),
+        quantityTonnes:
+          data.quantityTonnes == null ? null : String(data.quantityTonnes),
       }).map(([key, value]) => [key, typeof value === "number" ? String(value) : value]),
     );
     const [created] = await db

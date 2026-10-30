@@ -48,6 +48,7 @@ import type {
 import type { DeliveryCostApiRecord } from "@/pages/delivery/types";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
+import { shouldPreserveLegacyNomenclatureSelection } from "@/pages/shared/utils/nomenclature-selection";
 import { useDuplicateCheck } from "@/pages/shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "@/pages/shared/components/duplicate-alert-dialog";
 import { ContractHint, getSelectedPriceContract } from "@/pages/shared/components/contract-hint";
@@ -394,7 +395,6 @@ export const TransportationForm = forwardRef<
       customerBasisId: data.customerBasisId || null,
       productType: data.productType || PRODUCT_TYPE.KEROSENE,
       nomenclatureId: data.nomenclatureId || null,
-      contractNumber: salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
       quantityTonnes: finalTonnes,
       quantityLiters: data.quantityLiters || null,
       density: data.density || null,
@@ -607,7 +607,16 @@ export const TransportationForm = forwardRef<
                     <FormMessage />
                   </FormItem>
                 )} />
-                <NomenclatureField form={form} productType={watchProductType} preserveLegacySelection={isEditing && !editData?.nomenclatureId} />
+                <NomenclatureField
+                  form={form}
+                  productType={watchProductType}
+                  preserveLegacySelection={shouldPreserveLegacyNomenclatureSelection({
+                    isEditing,
+                    currentNomenclatureId: editData?.nomenclatureId,
+                    currentProductType: watchProductType,
+                    originalProductType: editData?.productType,
+                  })}
+                />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -1087,9 +1096,19 @@ export const TransportationForm = forwardRef<
                 data-testid="button-save-draft"
                 onClick={() => {
                   form.clearErrors();
+                  const previousDraftValue = form.getValues("isDraft") ?? false;
+                  form.setValue("isDraft", true, { shouldValidate: false });
                   form.handleSubmit(
-                    (data) => onSubmit(data, true),
+                    (data) => {
+                      form.setValue("isDraft", previousDraftValue, {
+                        shouldValidate: false,
+                      });
+                      return onSubmit(data, true);
+                    },
                     (errors) => {
+                      form.setValue("isDraft", previousDraftValue, {
+                        shouldValidate: false,
+                      });
                       showError(
                         getReadableZodError(
                           errors,

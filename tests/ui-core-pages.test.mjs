@@ -28,6 +28,7 @@ const fixtures = {
   warehouseSupplierName: `ui-warehouse-supplier-${runId}`,
   warehouseRefuelingSupplierName: `ui-warehouse-refueling-supplier-${runId}`,
   foreignSupplierName: `ui-foreign-supplier-${runId}`,
+  foreignIntermediaryName: `ui-foreign-intermediary-${runId}`,
   buyerName: `ui-smoke-buyer-${runId}`,
   wholesaleBuyerName: `ui-wholesale-buyer-${runId}`,
   foreignBuyerName: `ui-foreign-buyer-${runId}`,
@@ -45,6 +46,7 @@ const fixtures = {
   optPriceDraftNote: `ui-opt-price-draft-${runId}`,
   optPriceDraftEditedNote: `ui-opt-price-draft-edited-${runId}`,
   movementNote: `ui-smoke-movement-${runId}`,
+  legacyMovementNote: `ui-legacy-movement-${runId}`,
   operationalWarehouseName: `ui-operations-warehouse-${runId}`,
   transferWarehouseName: `ui-operations-transfer-warehouse-${runId}`,
   warehouseSupplierWarehouseName: `ui-wholesale-supplier-warehouse-${runId}`,
@@ -65,6 +67,7 @@ const fixtures = {
   warehouseRefuelingPvkjReceiptNote: `ui-refueling-pvkj-receipt-${runId}`,
   warehousePriorRefuelingNote: `ui-warehouse-prior-refueling-${runId}`,
   warehouseMultiProductRefuelingNote: `ui-warehouse-multi-refueling-${runId}`,
+  foreignRefuelingNote: `ui-foreign-refueling-${runId}`,
   warehouseTransferNote: `ui-operations-warehouse-transfer-${runId}`,
   equipmentTransferNote: `ui-operations-equipment-transfer-${runId}`,
   finalRefuelingNote: `ui-operations-final-refueling-${runId}`,
@@ -92,6 +95,13 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function seedUiFixtures() {
   pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  await pool.query(
+    `INSERT INTO currencies (code, name, symbol, is_active)
+     VALUES ('RUB', 'Российский рубль', '₽', true),
+            ('USD', 'Доллар США', '$', true),
+            ('EUR', 'Евро', '€', true)
+     ON CONFLICT (code) DO NOTHING`,
+  );
   const bases = await pool.query(
     `INSERT INTO bases (name, base_type)
      VALUES ($1, 'refueling'),
@@ -142,6 +152,10 @@ async function seedUiFixtures() {
   const foreignSupplier = await pool.query(
     "INSERT INTO suppliers (name, is_foreign) VALUES ($1, true) RETURNING id",
     [fixtures.foreignSupplierName],
+  );
+  await pool.query(
+    "INSERT INTO suppliers (name, is_intermediary) VALUES ($1, true)",
+    [fixtures.foreignIntermediaryName],
   );
   await pool.query(
     `INSERT INTO supplier_bases (supplier_id, base_id)
@@ -383,6 +397,22 @@ async function seedUiFixtures() {
     nomenclatureIds[productType] = nomenclature.rows[0].id;
   }
   await pool.query(
+    `INSERT INTO movement
+       (movement_date, movement_type, product_type, nomenclature_id,
+        supplier_id, basis, basis_id, to_warehouse_id, quantity_tonnes,
+        input_mode, is_draft, notes)
+     SELECT '2026-10-29', 'supply', 'kerosene', NULL,
+            s.id, b.name, b.id, w.id, 0.25, 'tonnes', true, $1
+     FROM suppliers s, bases b, warehouses w
+     WHERE s.name = $2 AND b.name = $3 AND w.name = $4`,
+    [
+      fixtures.legacyMovementNote,
+      fixtures.supplierName,
+      fixtures.baseName,
+      fixtures.operationalWarehouseName,
+    ],
+  );
+  await pool.query(
     `INSERT INTO supplier_basis_prices
        (supplier_id, basis_id, service_price_per_tonne,
         agent_fee_per_tonne, other_service_type, other_service_value,
@@ -503,7 +533,8 @@ async function seedUiFixtures() {
         basis, basis_id, nomenclature_id, price_values, date_from, date_to,
         volume_unit, price_unit, contract_limit_enabled)
      SELECT 'kerosene', s.id, 'abroad', 'supplier', b.name, b.id, n.id,
-            ARRAY['{"price":42000}'], '2026-10-01', '2026-10-31',
+             ARRAY['{"price":42000}', '{"price":43000}'],
+             '2026-10-01', '2026-10-31',
             'tonne', 'tonne', false
      FROM suppliers s, bases b, nomenclature n
      WHERE s.name = $1 AND b.name = $2 AND n.id = $3`,
@@ -519,7 +550,8 @@ async function seedUiFixtures() {
         basis, basis_id, nomenclature_id, price_values, date_from, date_to,
         volume_unit, price_unit, contract_limit_enabled)
      SELECT 'kerosene', c.id, 'abroad', 'buyer', b.name, b.id, n.id,
-            ARRAY['{"price":44000}'], '2026-10-01', '2026-10-31',
+             ARRAY['{"price":44000}', '{"price":45000}'],
+             '2026-10-01', '2026-10-31',
             'tonne', 'tonne', false
      FROM customers c, bases b, nomenclature n
      WHERE c.name = $1 AND b.name = $2 AND n.id = $3`,
@@ -536,7 +568,8 @@ async function seedUiFixtures() {
         date_from, date_to, volume_unit, price_unit, contract_limit_enabled)
      SELECT 'kerosene', c.id, 'transportation', 'buyer', delivery.name,
             delivery.id, loading.id, n.id,
-            ARRAY['{"price":46000}'], '2026-10-01', '2026-10-31',
+             ARRAY['{"price":46000}', '{"price":47000}'],
+             '2026-10-01', '2026-10-31',
             'tonne', 'tonne', false
      FROM customers c, bases delivery, bases loading, nomenclature n
      WHERE c.name = $1 AND delivery.name = $2 AND loading.name = $3
@@ -551,7 +584,13 @@ async function seedUiFixtures() {
 }
 
 async function cleanUiFixtures() {
-  const [refuelings, movements, equipmentMovements, optDeals] = await Promise.all([
+  const [
+    refuelings,
+    abroadRefuelings,
+    movements,
+    equipmentMovements,
+    optDeals,
+  ] = await Promise.all([
     pool.query(
       "SELECT id FROM aircraft_refueling WHERE notes = ANY($1::text[])",
       [[
@@ -563,9 +602,14 @@ async function cleanUiFixtures() {
       ]],
     ),
     pool.query(
+      "SELECT id FROM refueling_abroad WHERE notes = $1",
+      [fixtures.foreignRefuelingNote],
+    ),
+    pool.query(
       "SELECT id FROM movement WHERE notes = ANY($1::text[])",
       [[
         fixtures.movementNote,
+        fixtures.legacyMovementNote,
         fixtures.receiptNote,
         fixtures.secondReceiptNote,
         fixtures.warehouseRefuelingFirstReceiptNote,
@@ -585,6 +629,7 @@ async function cleanUiFixtures() {
   ]);
   const entityIds = [
     ...refuelings.rows.map((row) => row.id),
+    ...abroadRefuelings.rows.map((row) => row.id),
     ...movements.rows.map((row) => row.id),
     ...equipmentMovements.rows.map((row) => row.id),
     ...optDeals.rows.map((row) => row.id),
@@ -645,6 +690,9 @@ async function cleanUiFixtures() {
   );
   await pool.query("DELETE FROM opt WHERE id = ANY($1::uuid[])", [
     optDeals.rows.map((row) => row.id),
+  ]);
+  await pool.query("DELETE FROM refueling_abroad WHERE id = ANY($1::uuid[])", [
+    abroadRefuelings.rows.map((row) => row.id),
   ]);
   if (movementIds.length) {
     await pool.query(
@@ -749,6 +797,13 @@ async function cleanUiFixtures() {
   await pool.query("DELETE FROM equipments WHERE name = $1", [
     fixtures.equipmentName,
   ]);
+  await pool.query(
+    `DELETE FROM transportation
+     WHERE buyer_id IN (
+       SELECT id FROM customers WHERE name = ANY($1::text[])
+     )`,
+    [[fixtures.wholesaleBuyerName]],
+  );
   await pool.query(
     `DELETE FROM prices
      WHERE counterparty_id IN (SELECT id FROM suppliers WHERE name = ANY($1::text[]))
@@ -1121,6 +1176,16 @@ async function verifyDefaultNomenclatureForm(cdp, {
   productChanges = [],
 }) {
   await navigateToRoute(cdp, route);
+  await waitForStableExpression(
+    cdp,
+    `(() => {
+      const button = document.querySelector('[data-testid="${addButtonTestId}"]');
+      if (!button) return false;
+      const rect = button.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    })()`,
+    `the visible create button on ${route}`,
+  );
   await clickTestId(cdp, addButtonTestId);
   await waitForExpression(
     cdp,
@@ -1254,6 +1319,77 @@ async function openRowActionByTestId(cdp, markerTestId, actionText) {
     `the ${actionText} action for ${markerTestId}`,
   );
   await clickMenuItemWithText(cdp, actionText);
+}
+
+async function openRowActionFromTestIds(cdp, markerTestIds, actionText) {
+  const markerTestIdsJson = JSON.stringify(markerTestIds);
+  await waitForExpression(
+    cdp,
+    `(() => {
+      const markerTestIds = ${markerTestIdsJson};
+      return markerTestIds.some((markerTestId) => {
+        const marker = document.querySelector(
+          '[data-testid="' + markerTestId + '"]',
+        );
+        const row = marker?.closest("tr");
+        const rect = row?.getBoundingClientRect();
+        return Boolean(row && rect && rect.width > 0 && rect.height > 0);
+      });
+    })()`,
+    "a visible row from the final refueling order",
+  );
+  await waitForExpression(
+    cdp,
+    `(() => {
+      const markerTestIds = ${markerTestIdsJson};
+      return markerTestIds.some((markerTestId) => {
+        const marker = document.querySelector(
+          '[data-testid="' + markerTestId + '"]',
+        );
+        return Boolean(marker?.closest("tr")?.querySelector("td:last-child button"));
+      });
+    })()`,
+    "the group action button for the final refueling order",
+  );
+  const openedId = await cdp.evaluate(`(() => {
+    const markerTestIds = ${markerTestIdsJson};
+    for (const markerTestId of markerTestIds) {
+      const marker = document.querySelector(
+        '[data-testid="' + markerTestId + '"]',
+      );
+      const row = marker?.closest("tr");
+      const button = row?.querySelector("td:last-child button");
+      if (!button) continue;
+      button.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          bubbles: true,
+          button: 0,
+          pointerType: "mouse",
+          isPrimary: true,
+        }),
+      );
+      button.dispatchEvent(
+        new PointerEvent("pointerup", {
+          bubbles: true,
+          button: 0,
+          pointerType: "mouse",
+          isPrimary: true,
+        }),
+      );
+      button.click();
+      return markerTestId.slice("refueling-row-".length);
+    }
+    return null;
+  })()`);
+  assert.ok(openedId, "Expected an actionable row in the final refueling order");
+  await waitForExpression(
+    cdp,
+    `Array.from(document.querySelectorAll('[role="menuitem"]'))
+      .some((item) => item.innerText.trim() === ${JSON.stringify(actionText)})`,
+    `the ${actionText} action for the final refueling order`,
+  );
+  await clickMenuItemWithText(cdp, actionText);
+  return openedId;
 }
 
 async function waitForDatabaseRow(
@@ -1581,7 +1717,29 @@ test("authenticated browser can load the core business pages", async () => {
   const failures = [];
   const diagnostics = [];
   const operationWritePayloads = [];
+  const completedOperationWriteResponses = new Map();
   const stopListening = cdp.onEvent((method, params) => {
+    if (
+      method === "Network.responseReceived" &&
+      params.requestId &&
+      params.response?.url
+    ) {
+      const responsePath = new URL(params.response.url).pathname;
+      if (
+        responsePath === "/api/refueling" ||
+        responsePath.startsWith("/api/refueling/") ||
+        responsePath === "/api/refueling-abroad" ||
+        responsePath.startsWith("/api/refueling-abroad/") ||
+        responsePath === "/api/transportation" ||
+        responsePath.startsWith("/api/transportation/") ||
+        /^\/api\/movement(?:\/[^/]+)?$/.test(responsePath)
+      ) {
+        completedOperationWriteResponses.set(params.requestId, {
+          path: responsePath,
+          status: params.response.status,
+        });
+      }
+    }
     if (
       method === "Network.requestWillBeSent" &&
       ["POST", "PATCH", "PUT"].includes(params.request?.method) &&
@@ -1591,10 +1749,15 @@ test("authenticated browser can load the core business pages", async () => {
       if (
         path === "/api/refueling" ||
         path.startsWith("/api/refueling/") ||
+        path === "/api/refueling-abroad" ||
+        path.startsWith("/api/refueling-abroad/") ||
+        path === "/api/transportation" ||
+        path.startsWith("/api/transportation/") ||
         /^\/api\/movement(?:\/[^/]+)?$/.test(path)
       ) {
         try {
           operationWritePayloads.push({
+            requestId: params.requestId,
             path,
             method: params.request.method,
             payload: JSON.parse(params.request.postData),
@@ -1921,6 +2084,562 @@ test("authenticated browser can load the core business pages", async () => {
          ?.innerText.includes("44")`,
       "the foreign purchase and sale prices for the automatically selected basis",
     );
+    const expectedForeignPriceIdRows = await pool.query(
+      `SELECT
+         (SELECT p.id
+          FROM prices p
+          JOIN suppliers s ON s.id = p.counterparty_id
+          JOIN bases b ON b.id = p.basis_id
+          WHERE s.name = $1 AND b.name = $2
+            AND p.counterparty_type = 'abroad'
+            AND p.counterparty_role = 'supplier'
+            AND p.product_type = 'kerosene'
+            AND p.nomenclature_id = $3
+          ORDER BY p.date_from DESC LIMIT 1) AS purchase_price_id,
+         (SELECT p.id
+          FROM prices p
+          JOIN customers c ON c.id = p.counterparty_id
+          JOIN bases b ON b.id = p.basis_id
+          WHERE c.name = $4 AND b.name = $2
+            AND p.counterparty_type = 'abroad'
+            AND p.counterparty_role = 'buyer'
+            AND p.product_type = 'kerosene'
+            AND p.nomenclature_id = $3
+          ORDER BY p.date_from DESC LIMIT 1) AS sale_price_id`,
+      [
+        fixtures.foreignSupplierName,
+        fixtures.abroadBaseName,
+        nomenclatureIds.kerosene,
+        fixtures.foreignBuyerName,
+      ],
+    );
+    const expectedForeignPriceIds = expectedForeignPriceIdRows.rows[0];
+    assert.ok(expectedForeignPriceIds?.purchase_price_id);
+    assert.ok(expectedForeignPriceIds?.sale_price_id);
+    await selectComboboxOption(cdp, "select-purchase-price", "43");
+    await selectComboboxOption(cdp, "select-sale-price", "45");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-purchase-price"]')
+         ?.innerText.includes("43") &&
+       document.querySelector('[data-testid="select-sale-price"]')
+         ?.innerText.includes("45")`,
+      "the second foreign purchase and sale price tiers to be selected",
+    );
+
+    await fillInput(
+      cdp,
+      '[data-testid="input-quantity-tonnes"]',
+      "1",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-manual-purchase-exchange-rate"]',
+      "100",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-manual-sale-exchange-rate"]',
+      "100",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-notes"]',
+      fixtures.foreignRefuelingNote,
+    );
+
+    await clickTestId(cdp, "button-add-chain-item");
+    await clickTestId(cdp, "menu-add-intermediary");
+    await selectComboboxOption(
+      cdp,
+      "select-intermediary-dialog",
+      fixtures.foreignIntermediaryName,
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-intermediary-rate"]',
+      "2.5",
+    );
+    await clickTestId(cdp, "button-save-intermediary");
+
+    await clickTestId(cdp, "button-add-chain-item");
+    await clickTestId(cdp, "menu-add-bank-commission");
+    await fillInput(
+      cdp,
+      '[data-testid="input-bank-name"]',
+      `ui-bank-${runId}`,
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-bank-commission-percent"]',
+      "1.5",
+    );
+    await clickTestId(cdp, "button-save-bank-commission");
+
+    await clickTestId(cdp, "button-add-chain-item");
+    await clickTestId(cdp, "menu-add-exchange-rate");
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector('[data-testid="select-chain-to-currency"]'))`,
+      "the chain currency conversion form",
+    );
+    const chainFromCurrencySelectExists = await cdp.evaluate(
+      `Boolean(document.querySelector('[data-testid="select-chain-from-currency"]'))`,
+    );
+    if (chainFromCurrencySelectExists) {
+      await selectComboboxOption(
+        cdp,
+        "select-chain-from-currency",
+        "USD",
+      );
+    }
+    await selectComboboxOption(
+      cdp,
+      "select-chain-to-currency",
+      "EUR",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-chain-exchange-rate"]',
+      "0.92",
+    );
+    await waitForExpression(
+      cdp,
+      `Number(document.querySelector('[data-testid="input-chain-exchange-rate"]')?.value) === 0.92`,
+      "the chain exchange rate to show 0.92 before saving",
+    );
+    await clickTestId(cdp, "button-save-chain-exchange-rate");
+
+    await clickTestId(cdp, "button-submit-refueling");
+    const createdForeignRefueling = await waitForDatabaseRow(
+      `SELECT * FROM refueling_abroad WHERE notes = $1`,
+      [fixtures.foreignRefuelingNote],
+      "the final foreign refueling with intermediary, bank, and chain rate",
+      (row) =>
+        !row.deleted_at &&
+        row.is_draft === false &&
+        Number(row.quantity_tonnes) === 1 &&
+        Number(row.purchase_amount_usd) === 43_000 &&
+        Number(row.sale_amount_usd) === 45_000 &&
+        Number(row.intermediary_commission_usd) === 1_125 &&
+        Number(row.bank_commission_usd) === 645 &&
+        Number(row.profit_usd) === 230 &&
+        Number(row.profit_rub) === 23_000,
+      45_000,
+    );
+    assert.equal(
+      createdForeignRefueling.purchase_price_id,
+      expectedForeignPriceIds.purchase_price_id,
+    );
+    assert.equal(Number(createdForeignRefueling.purchase_price_index), 1);
+    assert.equal(
+      createdForeignRefueling.sale_price_id,
+      expectedForeignPriceIds.sale_price_id,
+    );
+    assert.equal(Number(createdForeignRefueling.sale_price_index), 1);
+    const foreignCreatePayload = operationWritePayloads
+      .filter(
+        (entry) =>
+          entry.path === "/api/refueling-abroad" && entry.method === "POST",
+      )
+      .at(-1)?.payload;
+    assert.ok(
+      foreignCreatePayload,
+      "capture the foreign refueling create payload",
+    );
+    assert.equal(
+      foreignCreatePayload.purchasePriceId,
+      expectedForeignPriceIds.purchase_price_id,
+    );
+    assert.equal(foreignCreatePayload.purchasePriceIndex, 1);
+    assert.equal(
+      foreignCreatePayload.salePriceId,
+      expectedForeignPriceIds.sale_price_id,
+    );
+    assert.equal(foreignCreatePayload.salePriceIndex, 1);
+    assert.equal("selectedPurchasePriceId" in foreignCreatePayload, false);
+    assert.equal("selectedSalePriceId" in foreignCreatePayload, false);
+    const foreignChainRows = await waitForDatabaseRow(
+      `SELECT
+         (SELECT COUNT(*)::int FROM refueling_abroad_intermediaries
+          WHERE refueling_abroad_id = $1) AS intermediary_count,
+         (SELECT COUNT(*)::int FROM refueling_abroad_bank_commissions
+          WHERE refueling_abroad_id = $1) AS bank_count,
+         (SELECT COUNT(*)::int FROM refueling_abroad_exchange_rates
+          WHERE refueling_abroad_id = $1) AS exchange_rate_count`,
+      [createdForeignRefueling.id],
+      "all three foreign-refueling chain records to be saved",
+      (row) =>
+        row.intermediary_count === 1 &&
+        row.bank_count === 1 &&
+        row.exchange_rate_count === 1,
+      30_000,
+    );
+    assert.deepEqual(foreignChainRows, {
+      intermediary_count: 1,
+      bank_count: 1,
+      exchange_rate_count: 1,
+    });
+    const persistedForeignIntermediary = await pool.query(
+      `SELECT intermediary_id, commission_formula, manual_commission_usd,
+              commission_usd, commission_rub
+       FROM refueling_abroad_intermediaries
+       WHERE refueling_abroad_id = $1`,
+      [createdForeignRefueling.id],
+    );
+    assert.equal(
+      persistedForeignIntermediary.rows[0]?.commission_formula,
+      "percent_sale",
+    );
+    assert.equal(
+      persistedForeignIntermediary.rows[0]?.intermediary_id,
+      (
+        await pool.query("SELECT id FROM suppliers WHERE name = $1", [
+          fixtures.foreignIntermediaryName,
+        ])
+      ).rows[0]?.id,
+    );
+    assert.equal(
+      Number(persistedForeignIntermediary.rows[0]?.manual_commission_usd),
+      2.5,
+    );
+    assert.equal(
+      Number(persistedForeignIntermediary.rows[0]?.commission_usd),
+      1_125,
+    );
+    assert.equal(
+      Number(persistedForeignIntermediary.rows[0]?.commission_rub),
+      112_500,
+    );
+    const persistedForeignBank = await pool.query(
+      `SELECT commission_type, percent, bank_name
+       FROM refueling_abroad_bank_commissions
+       WHERE refueling_abroad_id = $1`,
+      [createdForeignRefueling.id],
+    );
+    assert.deepEqual(persistedForeignBank.rows[0], {
+      commission_type: "percent",
+      percent: "1.5000",
+      bank_name: `ui-bank-${runId}`,
+    });
+    const persistedForeignChainRate = await pool.query(
+      `SELECT from_currency_code, to_currency_code, rate,
+              from_currency_id, to_currency_id
+       FROM refueling_abroad_exchange_rates
+       WHERE refueling_abroad_id = $1`,
+      [createdForeignRefueling.id],
+    );
+    assert.equal(persistedForeignChainRate.rows[0]?.from_currency_code, "RUB");
+    assert.equal(persistedForeignChainRate.rows[0]?.to_currency_code, "EUR");
+    assert.ok(
+      Number.isFinite(Number(persistedForeignChainRate.rows[0]?.rate)),
+      `Expected a persisted numeric chain rate; got ${JSON.stringify(persistedForeignChainRate.rows[0])}`,
+    );
+    assert.equal(Number(persistedForeignChainRate.rows[0]?.rate), 0.92);
+
+    await fillInput(
+      cdp,
+      '[data-testid="input-search-refueling-abroad"]',
+      fixtures.foreignSupplierName,
+    );
+    await openEditMenuForRow(cdp, fixtures.foreignSupplierName);
+    await waitForExpression(
+      cdp,
+      `(() => {
+        const dialog = Array.from(document.querySelectorAll('[role="dialog"]'))
+          .find((item) => item.innerText.includes("Редактировать заправку"));
+        return Boolean(dialog) &&
+          Number(dialog.querySelector('[data-testid="input-quantity-tonnes"]')?.value) === 1 &&
+          dialog.querySelector('[data-testid="select-purchase-price"]')
+            ?.innerText.includes("43") &&
+          dialog.querySelector('[data-testid="select-sale-price"]')
+            ?.innerText.includes("45") &&
+          dialog.innerText.includes(${JSON.stringify(fixtures.foreignIntermediaryName)}) &&
+          dialog.innerText.includes(${JSON.stringify(`ui-bank-${runId}`)}) &&
+          dialog.innerText.includes("RUB → EUR") &&
+          dialog.innerText.includes("0.92");
+      })()`,
+    "the foreign refueling, intermediary, bank, and exchange rate to be prefilled for editing",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-quantity-tonnes"]',
+      "1.2",
+    );
+    await waitForExpression(
+      cdp,
+      `Number(document.querySelector('[data-testid="input-quantity-tonnes"]')?.value) === 1.2`,
+      "the edited foreign-refueling quantity to show 1.2 tonnes before saving",
+    );
+    const foreignChainUpdatePaths = [
+      `/api/refueling-abroad/${createdForeignRefueling.id}/intermediaries`,
+      `/api/refueling-abroad/${createdForeignRefueling.id}/chain-exchange-rates`,
+      `/api/refueling-abroad/${createdForeignRefueling.id}/chain-bank-commissions`,
+    ];
+    const foreignChainWriteCountsBeforeEdit = new Map(
+      foreignChainUpdatePaths.map((path) => [
+        path,
+        operationWritePayloads.filter(
+          (entry) => entry.path === path && entry.method === "PUT",
+        ).length,
+      ]),
+    );
+    await clickTestId(cdp, "button-submit-refueling");
+    const foreignChainWriteDeadline = Date.now() + 15_000;
+    const completedForeignChainWrites = new Map();
+    while (
+      Date.now() < foreignChainWriteDeadline &&
+      completedForeignChainWrites.size < foreignChainUpdatePaths.length
+    ) {
+      for (const path of foreignChainUpdatePaths) {
+        const previousCount = foreignChainWriteCountsBeforeEdit.get(path);
+        const newWrites = operationWritePayloads
+          .filter(
+            (entry) => entry.path === path && entry.method === "PUT",
+          )
+          .slice(previousCount);
+        const completedWrite = newWrites.find(
+          (entry) =>
+            completedOperationWriteResponses.get(entry.requestId)?.status >=
+              200 &&
+            completedOperationWriteResponses.get(entry.requestId)?.status < 300,
+        );
+        if (completedWrite) completedForeignChainWrites.set(path, completedWrite);
+      }
+      if (completedForeignChainWrites.size < foreignChainUpdatePaths.length) {
+        await delay(100);
+      }
+    }
+    assert.equal(
+      completedForeignChainWrites.size,
+      foreignChainUpdatePaths.length,
+      "all three foreign-refueling child updates must finish before checking persisted values",
+    );
+    for (const path of foreignChainUpdatePaths) {
+      const newWrites = operationWritePayloads
+        .filter((entry) => entry.path === path && entry.method === "PUT")
+        .slice(foreignChainWriteCountsBeforeEdit.get(path));
+      assert.equal(
+        newWrites.length,
+        1,
+        `editing must send one update to ${path}; captured ${JSON.stringify(newWrites.map((entry) => entry.payload))}`,
+      );
+    }
+    const foreignEditExchangeRateWrite = completedForeignChainWrites.get(
+      `/api/refueling-abroad/${createdForeignRefueling.id}/chain-exchange-rates`,
+    );
+    assert.ok(foreignEditExchangeRateWrite);
+    assert.equal(
+      Number(foreignEditExchangeRateWrite.payload[0]?.rate),
+      0.92,
+      `the foreign exchange rate must remain in the edit request: ${JSON.stringify(foreignEditExchangeRateWrite.payload)}`,
+    );
+    const editedForeignRefueling = await waitForDatabaseRow(
+      `SELECT * FROM refueling_abroad WHERE id = $1`,
+      [createdForeignRefueling.id],
+      "the edited foreign-refueling totals",
+      (row) =>
+        !row.deleted_at &&
+        Number(row.quantity_tonnes) === 1.2 &&
+        Number(row.purchase_amount_usd) === 51_600 &&
+        Number(row.sale_amount_usd) === 54_000 &&
+        Number(row.intermediary_commission_usd) === 1_350 &&
+        Number(row.bank_commission_usd) === 774 &&
+        Number(row.profit_usd) === 276 &&
+        Number(row.profit_rub) === 27_600 &&
+        row.purchase_price_id === expectedForeignPriceIds.purchase_price_id &&
+        Number(row.purchase_price_index) === 1 &&
+        row.sale_price_id === expectedForeignPriceIds.sale_price_id &&
+        Number(row.sale_price_index) === 1,
+      45_000,
+    );
+    assert.equal(editedForeignRefueling.id, createdForeignRefueling.id);
+    const foreignEditPayload = operationWritePayloads
+      .filter(
+        (entry) =>
+          entry.path === `/api/refueling-abroad/${createdForeignRefueling.id}` &&
+          entry.method === "PATCH",
+      )
+      .at(-1)?.payload;
+    assert.ok(foreignEditPayload, "capture the foreign refueling edit payload");
+    assert.equal(
+      foreignEditPayload.purchasePriceId,
+      expectedForeignPriceIds.purchase_price_id,
+    );
+    assert.equal(foreignEditPayload.purchasePriceIndex, 1);
+    assert.equal(
+      foreignEditPayload.salePriceId,
+      expectedForeignPriceIds.sale_price_id,
+    );
+    assert.equal(foreignEditPayload.salePriceIndex, 1);
+    assert.equal("selectedPurchasePriceId" in foreignEditPayload, false);
+    assert.equal("selectedSalePriceId" in foreignEditPayload, false);
+    await waitForAuditOperations(createdForeignRefueling.id, ["CREATE", "UPDATE"]);
+    assert.ok(
+      Array.isArray(foreignEditExchangeRateWrite.payload),
+      "capture the foreign exchange-rate chain edit payload",
+    );
+    const persistedEditedForeignChainRate = await waitForDatabaseRow(
+      `SELECT rate FROM refueling_abroad_exchange_rates
+       WHERE refueling_abroad_id = $1`,
+      [createdForeignRefueling.id],
+      "the edited foreign exchange rate to finish persisting",
+      (row) => Number(row.rate) === 0.92,
+    );
+    assert.equal(Number(persistedEditedForeignChainRate.rate), 0.92);
+    await waitForDatabaseRow(
+      `SELECT commission_usd FROM refueling_abroad_intermediaries
+       WHERE refueling_abroad_id = $1`,
+      [createdForeignRefueling.id],
+      "the edited intermediary commission to finish persisting",
+      (row) => Number(row.commission_usd) === 1_350,
+    );
+    await waitForDatabaseRow(
+      `SELECT commission_type, percent, bank_name
+       FROM refueling_abroad_bank_commissions
+       WHERE refueling_abroad_id = $1`,
+      [createdForeignRefueling.id],
+      "the edited bank commission to finish persisting",
+      (row) =>
+        row.commission_type === "percent" &&
+        Number(row.percent) === 1.5 &&
+        row.bank_name === `ui-bank-${runId}`,
+    );
+    const editedForeignChainCounts = await pool.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM refueling_abroad_intermediaries
+          WHERE refueling_abroad_id = $1) AS intermediary_count,
+         (SELECT COUNT(*)::int FROM refueling_abroad_bank_commissions
+          WHERE refueling_abroad_id = $1) AS bank_count,
+         (SELECT COUNT(*)::int FROM refueling_abroad_exchange_rates
+          WHERE refueling_abroad_id = $1) AS exchange_rate_count`,
+      [createdForeignRefueling.id],
+    );
+    assert.deepEqual(editedForeignChainCounts.rows[0], {
+      intermediary_count: 1,
+      bank_count: 1,
+      exchange_rate_count: 1,
+    });
+
+    await openDeleteMenuForRow(cdp, fixtures.foreignSupplierName);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить запись?")`,
+      "the foreign refueling deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    await waitForDatabaseRow(
+      `SELECT deleted_at FROM refueling_abroad WHERE id = $1`,
+      [createdForeignRefueling.id],
+      "the foreign refueling soft-deleted through the UI",
+      (row) => Boolean(row.deleted_at),
+    );
+    await waitForAuditOperations(createdForeignRefueling.id, [
+      "CREATE",
+      "UPDATE",
+      "DELETE",
+    ]);
+    const foreignDeleteAudit = await pool.query(
+      `SELECT id FROM audit_log
+       WHERE entity_id = $1 AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [createdForeignRefueling.id],
+    );
+    assert.ok(foreignDeleteAudit.rows[0]?.id);
+    await clickButtonWithText(cdp, "История изменений");
+    const foreignAuditEntrySelector = JSON.stringify(
+      `[data-testid="audit-entry-${foreignDeleteAudit.rows[0].id}"]`,
+    );
+    await waitForExpression(
+      cdp,
+      `(() => {
+        const entry = document.querySelector(${foreignAuditEntrySelector});
+        return Boolean(entry && Array.from(entry.querySelectorAll("button"))
+          .some((button) => button.innerText.trim() === "Откатить"));
+      })()`,
+      "the exact foreign delete audit entry with its rollback action",
+    );
+    const openedForeignRollback = await cdp.evaluate(`(() => {
+      const entry = document.querySelector(${foreignAuditEntrySelector});
+      const button = Array.from(entry?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(openedForeignRollback, true);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалённая запись будет восстановлена со всеми данными.")`,
+      "confirmation that the foreign refueling is restored with its chain",
+    );
+    const confirmedForeignRollback = await cdp.evaluate(`(() => {
+      const dialog = document.querySelector('[role="alertdialog"]');
+      const button = Array.from(dialog?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(confirmedForeignRollback, true);
+    const restoredForeignRefueling = await waitForDatabaseRow(
+      `SELECT deleted_at, quantity_tonnes, purchase_amount_usd,
+              sale_amount_usd, profit_usd, profit_rub,
+              purchase_price_id, purchase_price_index,
+              sale_price_id, sale_price_index
+       FROM refueling_abroad WHERE id = $1`,
+      [createdForeignRefueling.id],
+      "the restored foreign refueling and its economics",
+      (row) =>
+        row.deleted_at === null &&
+        Number(row.quantity_tonnes) === 1.2 &&
+        Number(row.purchase_amount_usd) === 51_600 &&
+        Number(row.sale_amount_usd) === 54_000 &&
+        Number(row.profit_usd) === 276 &&
+        Number(row.profit_rub) === 27_600 &&
+        row.purchase_price_id === expectedForeignPriceIds.purchase_price_id &&
+        Number(row.purchase_price_index) === 1 &&
+        row.sale_price_id === expectedForeignPriceIds.sale_price_id &&
+        Number(row.sale_price_index) === 1,
+    );
+    assert.equal(Number(restoredForeignRefueling.profit_usd), 276);
+    await waitForAuditOperations(createdForeignRefueling.id, [
+      "CREATE",
+      "UPDATE",
+      "DELETE",
+      "RESTORE",
+    ]);
+    const restoredForeignChainCounts = await pool.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM refueling_abroad_intermediaries
+          WHERE refueling_abroad_id = $1) AS intermediary_count,
+         (SELECT COUNT(*)::int FROM refueling_abroad_bank_commissions
+          WHERE refueling_abroad_id = $1) AS bank_count,
+         (SELECT COUNT(*)::int FROM refueling_abroad_exchange_rates
+          WHERE refueling_abroad_id = $1) AS exchange_rate_count`,
+      [createdForeignRefueling.id],
+    );
+    assert.deepEqual(restoredForeignChainCounts.rows[0], {
+      intermediary_count: 1,
+      bank_count: 1,
+      exchange_rate_count: 1,
+    });
+    const rolledBackForeignDelete = await pool.query(
+      "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+      [foreignDeleteAudit.rows[0].id],
+    );
+    assert.ok(rolledBackForeignDelete.rows[0]?.rolled_back_at);
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelectorAll("tbody tr"))
+        .some((row) => row.innerText.includes(${JSON.stringify(fixtures.foreignSupplierName)}))`,
+      "the restored foreign refueling to return to the active table",
+    );
+    console.log(
+      "UI flow passed: foreign refueling intermediary, bank, exchange-rate chain, edit, delete, and restore",
+    );
 
     await navigateToRoute(cdp, "/transportation");
     await clickTestId(cdp, "button-add-transportation");
@@ -1944,6 +2663,138 @@ test("authenticated browser can load the core business pages", async () => {
       `document.querySelector('[data-testid="select-sale-price"]')
         ?.innerText.includes("46")`,
       "the transportation service price for the selected delivery basis",
+    );
+    const transportationPriceRows = await pool.query(
+      `SELECT p.id
+       FROM prices p
+       JOIN customers c ON c.id = p.counterparty_id
+       JOIN bases delivery ON delivery.id = p.basis_id
+       JOIN bases loading ON loading.id = p.loading_basis_id
+       WHERE c.name = $1
+         AND p.counterparty_type = 'transportation'
+         AND p.counterparty_role = 'buyer'
+         AND p.product_type = 'kerosene'
+         AND p.nomenclature_id = $4
+         AND delivery.name = $2
+         AND loading.name = $3
+       ORDER BY p.date_from DESC
+       LIMIT 1`,
+      [
+        fixtures.wholesaleBuyerName,
+        fixtures.wholesaleDeliveryBaseName,
+        fixtures.wholesaleBaseName,
+        nomenclatureIds.kerosene,
+      ],
+    );
+    const expectedTransportationPriceId = transportationPriceRows.rows[0]?.id;
+    assert.ok(expectedTransportationPriceId);
+    await selectComboboxOption(cdp, "select-sale-price", "47");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-sale-price"]')
+        ?.innerText.includes("47")`,
+      "the second transportation service price tier to be selected",
+    );
+    await clickTestId(cdp, "button-save-draft");
+    const createdTransportationDraft = await waitForDatabaseRow(
+      `SELECT id, sale_price_id, sale_price_index,
+              purchase_price_id, purchase_price_index, quantity_tonnes, is_draft
+       FROM transportation
+       WHERE buyer_id = (SELECT id FROM customers WHERE name = $1)
+         AND sale_price_id = $2 AND sale_price_index = 1
+       ORDER BY created_at DESC LIMIT 1`,
+      [fixtures.wholesaleBuyerName, expectedTransportationPriceId],
+      "the transportation draft created with the second price tier",
+      (row) =>
+        row.is_draft === true &&
+        row.quantity_tonnes === null &&
+        row.sale_price_id === expectedTransportationPriceId &&
+        Number(row.sale_price_index) === 1,
+    );
+    assert.equal(createdTransportationDraft.purchase_price_id, null);
+    const transportationCreatePayload = operationWritePayloads
+      .filter(
+        (entry) =>
+          entry.path === "/api/transportation" && entry.method === "POST",
+      )
+      .at(-1)?.payload;
+    assert.ok(
+      transportationCreatePayload,
+      "capture the transportation create payload",
+    );
+    assert.equal(
+      transportationCreatePayload.salePriceId,
+      expectedTransportationPriceId,
+    );
+    assert.equal(transportationCreatePayload.salePriceIndex, 1);
+    assert.equal(transportationCreatePayload.purchasePriceId, null);
+    assert.equal("selectedSalePriceId" in transportationCreatePayload, false);
+    assert.equal(
+      "selectedPurchasePriceId" in transportationCreatePayload,
+      false,
+    );
+    assert.equal("contractNumber" in transportationCreatePayload, false);
+
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector(
+        '[data-testid="row-transportation-${createdTransportationDraft.id}"]'
+      ))`,
+      "the saved transportation draft to appear in the table",
+    );
+    await clickTestId(
+      cdp,
+      `row-transportation-${createdTransportationDraft.id}`,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-sale-price"]')
+        ?.innerText.includes("47")`,
+      "the saved second transportation price tier to be prefilled for editing",
+    );
+    await clickTestId(cdp, "button-save-draft");
+    const editedTransportationDraft = await waitForDatabaseRow(
+      `SELECT id, sale_price_id, sale_price_index,
+              purchase_price_id, quantity_tonnes, is_draft
+       FROM transportation WHERE id = $1`,
+      [createdTransportationDraft.id],
+      "the edited transportation draft retaining its price tier",
+      (row) =>
+        row.id === createdTransportationDraft.id &&
+        row.is_draft === true &&
+        row.quantity_tonnes === null &&
+        row.sale_price_id === expectedTransportationPriceId &&
+        Number(row.sale_price_index) === 1,
+    );
+    assert.equal(
+      editedTransportationDraft.purchase_price_id,
+      null,
+    );
+    const transportationEditPayload = operationWritePayloads
+      .filter(
+        (entry) =>
+          entry.path === `/api/transportation/${createdTransportationDraft.id}` &&
+          entry.method === "PATCH",
+      )
+      .at(-1)?.payload;
+    assert.ok(
+      transportationEditPayload,
+      "capture the transportation edit payload",
+    );
+    assert.equal(
+      transportationEditPayload.salePriceId,
+      expectedTransportationPriceId,
+    );
+    assert.equal(transportationEditPayload.salePriceIndex, 1);
+    assert.equal(transportationEditPayload.purchasePriceId, null);
+    assert.equal("selectedSalePriceId" in transportationEditPayload, false);
+    assert.equal(
+      "selectedPurchasePriceId" in transportationEditPayload,
+      false,
+    );
+    assert.equal("contractNumber" in transportationEditPayload, false);
+    console.log(
+      "UI flow passed: transportation service price ID/index saved and prefilled on edit",
     );
 
     await navigateToRoute(cdp, "/opt");
@@ -2284,6 +3135,15 @@ test("authenticated browser can load the core business pages", async () => {
     assert.ok(optDeleteAudit.rows[0]?.id, "the UI deletion should have an audit entry");
 
     await clickButtonWithText(cdp, "История");
+    const deleteAuditEntrySelector =
+      `[data-testid="audit-entry-${optDeleteAudit.rows[0].id}"]`;
+    const deleteAuditRollbackReady = `(() => {
+      const panel = Array.from(document.querySelectorAll('[role="dialog"]'))
+        .find((dialog) => dialog.innerText.includes("Все сделки ОПТ"));
+      const row = panel?.querySelector(${JSON.stringify(deleteAuditEntrySelector)});
+      return Boolean(row && Array.from(row.querySelectorAll("button"))
+        .some((item) => item.innerText.trim() === "Откатить"));
+    })()`;
     await waitForExpression(
       cdp,
       `Array.from(document.querySelectorAll('[role="dialog"]'))
@@ -2291,10 +3151,16 @@ test("authenticated browser can load the core business pages", async () => {
        document.body.innerText.includes("Откат доступен")`,
       "the all-OPT audit panel with restore permission",
     );
+    await waitForExpression(
+      cdp,
+      deleteAuditRollbackReady,
+      "the deleted OPT audit row and its rollback action to finish loading",
+    );
     const openedDeleteRollback = await cdp.evaluate(`(() => {
       const panel = Array.from(document.querySelectorAll('[role="dialog"]'))
         .find((dialog) => dialog.innerText.includes("Все сделки ОПТ"));
-      const button = Array.from(panel?.querySelectorAll("button") ?? [])
+      const row = panel?.querySelector(${JSON.stringify(deleteAuditEntrySelector)});
+      const button = Array.from(row?.querySelectorAll("button") ?? [])
         .find((item) => item.innerText.trim() === "Откатить");
       if (!button) return false;
       button.click();
@@ -3745,8 +4611,186 @@ test("authenticated browser can load the core business pages", async () => {
       Number(finalOrderRows.rows.find((deal) => deal.product_type === "kerosene").quantity_tonnes) * 14_000,
       "the final order's kerosene purchase amount uses the retroactively recalculated warehouse cost",
     );
+
+    await navigateToRoute(cdp, "/refueling");
+    await fillInput(
+      cdp,
+      '[data-testid="input-search-refueling"]',
+      "",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="input-search-refueling"]')?.value === ""`,
+      "the refueling table search to be cleared before deleting the final order",
+    );
+    const testedOrderRowTestIds = testedWarehouseOrder.map(
+      (deal) => `refueling-row-${deal.id}`,
+    );
+    const deletedOrderAnchorId = await openRowActionFromTestIds(
+      cdp,
+      testedOrderRowTestIds,
+      "Удалить",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить заказ заправки?")`,
+      "the final warehouse-backed order deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    const deletedFinalOrder = await waitForDatabaseRow(
+      `SELECT
+         COUNT(*)::int AS total,
+         COUNT(*) FILTER (WHERE deleted_at IS NOT NULL)::int AS deleted
+       FROM aircraft_refueling
+       WHERE id = ANY($1::uuid[])`,
+      [testedWarehouseOrder.map((deal) => deal.id)],
+      "all three final warehouse-backed refueling rows to be deleted",
+      (row) => row.total === 3 && row.deleted === 3,
+      30_000,
+    );
+    assert.deepEqual(deletedFinalOrder, { total: 3, deleted: 3 });
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne,
+              pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [warehouseRefuelingWarehouseId],
+      "warehouse balances after deleting the final refueling order",
+      (row) =>
+        Number(row.current_balance_tonnes) === 2.4 &&
+        Number(row.average_cost_per_tonne) === 14_000 &&
+        Number(row.pvkj_balance_tonnes) === 0.95 &&
+        Number(row.pvkj_average_cost_per_tonne) === 12_000,
+      45_000,
+    );
+    const deletedOrderWriteoffs = await pool.query(
+      `SELECT id, source_id, product_type, deleted_at
+       FROM warehouse_transactions
+       WHERE source_type = 'refueling'
+         AND source_id = ANY($1::uuid[])
+       ORDER BY product_type`,
+      [testedWarehouseOrder.map((deal) => deal.id)],
+    );
+    assert.equal(deletedOrderWriteoffs.rows.length, 2);
+    assert.ok(
+      deletedOrderWriteoffs.rows.every((transaction) => transaction.deleted_at),
+      "deleting the order soft-deletes both stock write-offs",
+    );
+    const orderDeleteAudit = await waitForDatabaseRow(
+      `SELECT id FROM audit_log
+       WHERE entity_id = $1 AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [deletedOrderAnchorId],
+      "the delete audit entry for the final warehouse-backed order",
+    );
+    await clickButtonWithText(cdp, "История");
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelectorAll('[role="dialog"]'))
+        .some((dialog) =>
+          dialog.innerText.includes("Все заправки ВС (включая удаленные)")) &&
+       document.body.innerText.includes("Откат доступен")`,
+      "the refueling audit panel with restore permission",
+    );
+    const finalOrderAuditSelector = JSON.stringify(
+      `[data-testid="audit-entry-${orderDeleteAudit.id}"]`,
+    );
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector(${finalOrderAuditSelector}))`,
+      "the final order's specific DELETE audit entry to render",
+    );
+    await waitForExpression(
+      cdp,
+      `Array.from(
+        document.querySelector(${finalOrderAuditSelector})?.querySelectorAll("button") ?? [],
+      ).some((button) => button.innerText.trim() === "Откатить")`,
+      "the rollback button for the final order's DELETE audit entry",
+    );
+    const openedFinalOrderRollback = await cdp.evaluate(`(() => {
+      const entry = document.querySelector(${finalOrderAuditSelector});
+      const button = Array.from(entry?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(openedFinalOrderRollback, true);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалённая запись будет восстановлена со всеми данными.")`,
+      "confirmation that all products in the final order are restored",
+    );
+    const confirmedFinalOrderRollback = await cdp.evaluate(`(() => {
+      const dialog = document.querySelector('[role="alertdialog"]');
+      const button = Array.from(dialog?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(confirmedFinalOrderRollback, true);
+    const restoredFinalOrder = await waitForDatabaseRow(
+      `SELECT
+         COUNT(*)::int AS total,
+         COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active
+       FROM aircraft_refueling
+       WHERE id = ANY($1::uuid[])`,
+      [testedWarehouseOrder.map((deal) => deal.id)],
+      "all three final warehouse-backed order rows to be restored",
+      (row) => row.total === 3 && row.active === 3,
+      45_000,
+    );
+    assert.deepEqual(restoredFinalOrder, { total: 3, active: 3 });
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne,
+              pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [warehouseRefuelingWarehouseId],
+      "warehouse balances after restoring the final refueling order",
+      (row) =>
+        Number(row.current_balance_tonnes) === 2.2 &&
+        Number(row.average_cost_per_tonne) === 14_000 &&
+        Number(row.pvkj_balance_tonnes) === 0.85 &&
+        Number(row.pvkj_average_cost_per_tonne) === 12_000,
+      45_000,
+    );
+    const restoredOrderWriteoffs = await pool.query(
+      `SELECT id, source_id, product_type, quantity_tonnes, deleted_at
+       FROM warehouse_transactions
+       WHERE source_type = 'refueling'
+         AND source_id = ANY($1::uuid[])
+       ORDER BY product_type`,
+      [testedWarehouseOrder.map((deal) => deal.id)],
+    );
+    assert.equal(restoredOrderWriteoffs.rows.length, 2);
+    assert.ok(
+      restoredOrderWriteoffs.rows.every((transaction) => !transaction.deleted_at),
+      "restoring the order reactivates the original stock write-offs",
+    );
+    assert.deepEqual(
+      restoredOrderWriteoffs.rows.map((transaction) => transaction.id).sort(),
+      deletedOrderWriteoffs.rows.map((transaction) => transaction.id).sort(),
+      "restoration reuses the original write-offs without creating duplicates",
+    );
+    await waitForAuditOperations(deletedOrderAnchorId, ["DELETE", "RESTORE"]);
+    const rolledBackFinalOrderAudit = await pool.query(
+      "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+      [orderDeleteAudit.id],
+    );
+    assert.ok(rolledBackFinalOrderAudit.rows[0]?.rolled_back_at);
+    await clickButtonWithText(cdp, "Close");
+    await waitForExpression(
+      cdp,
+      `!Array.from(document.querySelectorAll('[role="dialog"]'))
+        .some((dialog) =>
+          dialog.innerText.includes("Все заправки ВС (включая удаленные)"))`,
+      "the refueling audit panel to close before the next UI flow",
+    );
+    await navigateToRoute(cdp, "/movement");
     console.log(
-      "UI flow passed: warehouse-backed final multi-product order, prior write-offs, backdated receipt recalculation, and economics",
+      "UI flow passed: warehouse-backed final multi-product order, backdated recalculation, delete, restore, and economics",
     );
 
     await openMovementForm();
@@ -4234,6 +5278,16 @@ test("authenticated browser can load the core business pages", async () => {
       "08.10.2026",
     );
     await fillInput(cdp, '[data-testid="input-quantity-tonnes"]', "0.8");
+    await waitForExpression(
+      cdp,
+      `(() => {
+        const price = document.querySelector('[data-testid="select-purchase-price"]')?.innerText || "";
+        const submit = document.querySelector('[data-testid="button-create-movement"]');
+        return price.replace(/[^0-9]/g, "").includes("20000") &&
+          submit && !submit.disabled;
+      })()`,
+      "the refreshed 20,000 ₽/т price before saving the later receipt",
+    );
     await waitForRecalculation(
       "recalculation_queue",
       "warehouse_id",
@@ -4377,6 +5431,16 @@ test("authenticated browser can load the core business pages", async () => {
       "05.10.2026",
     );
     await fillInput(cdp, '[data-testid="input-quantity-tonnes"]', "0.7");
+    await waitForExpression(
+      cdp,
+      `(() => {
+        const price = document.querySelector('[data-testid="select-purchase-price"]')?.innerText || "";
+        const submit = document.querySelector('[data-testid="button-create-movement"]');
+        return price.replace(/[^0-9]/g, "").includes("10000") &&
+          submit && !submit.disabled;
+      })()`,
+      "the refreshed 10,000 ₽/т price before saving the earlier receipt",
+    );
     await waitForRecalculation(
       "recalculation_queue",
       "warehouse_id",
@@ -4520,6 +5584,49 @@ test("authenticated browser can load the core business pages", async () => {
     );
     assert.equal(Number(updatedEquipmentTransfer.rows[0].total_cost), 23_000);
     await waitForAuditOperations(finalDeal.id, ["CREATE"]);
+
+    const legacyMovement = await pool.query(
+      "SELECT id FROM movement WHERE notes = $1",
+      [fixtures.legacyMovementNote],
+    );
+    assert.ok(legacyMovement.rows[0]?.id);
+    await navigateToRoute(cdp, "/movement");
+    await openRowActionByTestId(
+      cdp,
+      `movement-row-${legacyMovement.rows[0].id}`,
+      "Редактировать",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-movement-product"]')
+        ?.innerText.includes("Керосин") &&
+       document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes("Выберите номенклатуру")`,
+      "the legacy movement retaining an empty nomenclature while its type is unchanged",
+    );
+    await selectComboboxOption(cdp, "select-movement-product", "ПВКЖ");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.pvkj)})`,
+      "the PVKJ default after changing a legacy movement's product type",
+    );
+    await clickTestId(cdp, "button-save-draft");
+    const updatedLegacyMovement = await waitForDatabaseRow(
+      `SELECT product_type, nomenclature_id, is_draft
+       FROM movement WHERE id = $1`,
+      [legacyMovement.rows[0].id],
+      "the legacy movement saved with the new product default",
+      (row) =>
+        row.product_type === "pvkj" &&
+        row.nomenclature_id === nomenclatureIds.pvkj &&
+        row.is_draft === true,
+    );
+    assert.equal(updatedLegacyMovement.product_type, "pvkj");
+    await waitForAuditOperations(legacyMovement.rows[0].id, ["UPDATE"]);
+    console.log(
+      "UI flow passed: legacy movement keeps blank nomenclature until product type changes, then saves the new default",
+    );
 
     await cdp.evaluate("window.__uiOperationSse?.close()");
     console.log(

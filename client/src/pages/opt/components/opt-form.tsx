@@ -48,6 +48,7 @@ import { BASE_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { formatTonnes, formatTonnesForInput } from "@shared/units";
 import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
+import { shouldPreserveLegacyNomenclatureSelection } from "@/pages/shared/utils/nomenclature-selection";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 import {
@@ -903,7 +904,12 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
             className="space-y-6"
           >
             <OptMainFields
-              preserveLegacySelection={isEditing && !editData?.nomenclatureId}
+              preserveLegacySelection={shouldPreserveLegacyNomenclatureSelection({
+                isEditing,
+                currentNomenclatureId: editData?.nomenclatureId,
+                currentProductType: watchProductType,
+                originalProductType: editData?.productType,
+              })}
               form={form}
               wholesaleSuppliers={wholesaleSuppliers}
               customers={customers}

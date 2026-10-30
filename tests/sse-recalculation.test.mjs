@@ -169,6 +169,7 @@ async function openSse(clientId, cookie) {
 function makeRefueling({
   supplierId,
   buyerId,
+  nomenclatureId,
   warehouseId,
   equipmentId,
   date,
@@ -177,6 +178,7 @@ function makeRefueling({
   return {
     refuelingDate: date,
     productType: "kerosene",
+    nomenclatureId,
     supplierId,
     buyerId,
     warehouseId: warehouseId ?? null,
@@ -213,6 +215,8 @@ test("SSE notifies observers after warehouse and equipment recalculations finish
 
   let supplierId;
   let buyerId;
+  let nomenclatureId;
+  let nomenclatureUnitId;
   let warehouseId;
   let equipmentId;
   const refuelingIds = [];
@@ -231,6 +235,20 @@ test("SSE notifies observers after warehouse and equipment recalculations finish
       await pool.query(
         "INSERT INTO customers (name, module) VALUES ($1, 'refueling') RETURNING id",
         [`sse-recalc-buyer-${randomUUID()}`],
+      )
+    ).rows[0].id;
+    nomenclatureUnitId = (
+      await pool.query(
+        `INSERT INTO units_of_measure (short_name, full_name)
+         VALUES ($1, $2) RETURNING id`,
+        [`sse-unit-${randomUUID()}`, "SSE test unit"],
+      )
+    ).rows[0].id;
+    nomenclatureId = (
+      await pool.query(
+        `INSERT INTO nomenclature (product_type, name, unit_id)
+         VALUES ('kerosene', $1, $2) RETURNING id`,
+        [`SSE kerosene ${randomUUID()}`, nomenclatureUnitId],
       )
     ).rows[0].id;
     warehouseId = (
@@ -281,6 +299,7 @@ test("SSE notifies observers after warehouse and equipment recalculations finish
       body: makeRefueling({
         supplierId,
         buyerId,
+        nomenclatureId,
         warehouseId,
         date: "2026-10-20T12:00:00.000Z",
         quantityTonnes: 0.1,
@@ -292,6 +311,7 @@ test("SSE notifies observers after warehouse and equipment recalculations finish
       body: makeRefueling({
         supplierId,
         buyerId,
+        nomenclatureId,
         equipmentId,
         date: "2026-10-20T12:00:00.000Z",
         quantityTonnes: 0.1,
@@ -310,6 +330,7 @@ test("SSE notifies observers after warehouse and equipment recalculations finish
       body: makeRefueling({
         supplierId,
         buyerId,
+        nomenclatureId,
         warehouseId,
         date: "2026-10-15T12:00:00.000Z",
         quantityTonnes: 0.2,
@@ -322,6 +343,7 @@ test("SSE notifies observers after warehouse and equipment recalculations finish
       body: makeRefueling({
         supplierId,
         buyerId,
+        nomenclatureId,
         equipmentId,
         date: "2026-10-15T12:00:00.000Z",
         quantityTonnes: 0.2,
@@ -398,6 +420,16 @@ test("SSE notifies observers after warehouse and equipment recalculations finish
         "DELETE FROM aircraft_refueling WHERE id = ANY($1::uuid[])",
         [refuelingIds],
       );
+    }
+    if (nomenclatureId) {
+      await pool.query("DELETE FROM nomenclature WHERE id = $1", [
+        nomenclatureId,
+      ]);
+    }
+    if (nomenclatureUnitId) {
+      await pool.query("DELETE FROM units_of_measure WHERE id = $1", [
+        nomenclatureUnitId,
+      ]);
     }
     if (warehouseId) {
       await pool.query("DELETE FROM recalculation_queue WHERE warehouse_id = $1", [

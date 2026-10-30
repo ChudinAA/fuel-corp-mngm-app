@@ -255,7 +255,7 @@ export function IntermediaryDialog({
           <Button type="button" variant="outline" onClick={onClose}>
             Отмена
           </Button>
-          <Button type="button" onClick={handleSave}>
+          <Button type="button" onClick={handleSave} data-testid="button-save-intermediary">
             {editItem ? "Сохранить" : "Добавить"}
           </Button>
         </DialogFooter>

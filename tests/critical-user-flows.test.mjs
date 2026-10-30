@@ -38,6 +38,15 @@ async function api(path, { method = "GET", body, expectedStatus = 200 } = {}) {
   return data;
 }
 
+async function assertNomenclatureRequiredOnCreate(path, body) {
+  const response = await api(path, {
+    method: "POST",
+    body,
+    expectedStatus: 400,
+  });
+  assert.equal(response.message, "Выберите номенклатуру", `${path} create guard`);
+}
+
 async function getInventory(warehouseId, equipmentId) {
   const [warehouse, equipment] = await Promise.all([
     pool.query(
@@ -157,6 +166,7 @@ function makeRefuelingDeal({
   buyerId,
   warehouseId,
   equipmentId,
+  nomenclatureId,
   quantityTonnes,
   purchasePricePerTonne,
   salePricePerTonne,
@@ -168,6 +178,7 @@ function makeRefuelingDeal({
     productType,
     supplierId,
     buyerId,
+    nomenclatureId,
     warehouseId: warehouseId ?? null,
     equipmentId: equipmentId ?? null,
     equipmentType: "common",
@@ -237,6 +248,62 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   });
   assert.equal(loggedIn.role?.name, "Админ");
 
+  const draftDate = new Date().toISOString();
+  const unresolvedId = "00000000-0000-4000-8000-000000000001";
+  const missingNomenclatureDraft = {
+    isDraft: true,
+    productType: "kerosene",
+    nomenclatureId: null,
+  };
+  await assertNomenclatureRequiredOnCreate("/api/opt", {
+    ...missingNomenclatureDraft,
+    supplierId: unresolvedId,
+    buyerId: unresolvedId,
+    dealDate: draftDate,
+  });
+  await assertNomenclatureRequiredOnCreate("/api/refueling", {
+    ...missingNomenclatureDraft,
+    supplierId: unresolvedId,
+    buyerId: unresolvedId,
+    refuelingDate: draftDate,
+    equipmentType: "common",
+  });
+  await assertNomenclatureRequiredOnCreate("/api/refueling/bulk", {
+    deals: [
+      {
+        ...missingNomenclatureDraft,
+        supplierId: unresolvedId,
+        buyerId: unresolvedId,
+        refuelingDate: draftDate,
+        equipmentType: "common",
+      },
+    ],
+  });
+  await assertNomenclatureRequiredOnCreate("/api/refueling-abroad", {
+    ...missingNomenclatureDraft,
+    supplierId: unresolvedId,
+    buyerId: unresolvedId,
+    refuelingDate: draftDate,
+    currency: "USD",
+  });
+  await assertNomenclatureRequiredOnCreate("/api/movement", {
+    ...missingNomenclatureDraft,
+    movementDate: draftDate,
+    movementType: "transfer",
+    toWarehouseId: unresolvedId,
+    quantityTonnes: 1,
+  });
+  await assertNomenclatureRequiredOnCreate("/api/equipment-movement", {
+    ...missingNomenclatureDraft,
+    movementDate: draftDate,
+    movementType: "transfer",
+  });
+  await assertNomenclatureRequiredOnCreate("/api/transportation", {
+    ...missingNomenclatureDraft,
+    buyerId: unresolvedId,
+    dealDate: draftDate,
+  });
+
   let deliveryCarrierId;
   let deliveryCostId;
   try {
@@ -302,11 +369,54 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     }
   }
 
+  const foreignDraftUnit = (
+    await pool.query(
+      `INSERT INTO units_of_measure (short_name, full_name)
+       VALUES ($1, $2) RETURNING id`,
+      [`critical-${randomUUID()}`, "Critical test unit"],
+    )
+  ).rows[0];
+  const foreignDraftNomenclature = (
+    await pool.query(
+      `INSERT INTO nomenclature (product_type, name, unit_id)
+       VALUES ('kerosene', $1, $2) RETURNING id`,
+      [`Critical foreign draft ${randomUUID()}`, foreignDraftUnit.id],
+    )
+  ).rows[0];
+  const pvkjNomenclature = (
+    await pool.query(
+      `INSERT INTO nomenclature (product_type, name, unit_id)
+       VALUES ('pvkj', $1, $2) RETURNING id`,
+      [`Critical PVKJ ${randomUUID()}`, foreignDraftUnit.id],
+    )
+  ).rows[0];
+  const serviceNomenclature = (
+    await pool.query(
+      `INSERT INTO nomenclature (product_type, name, unit_id)
+       VALUES ('service', $1, $2) RETURNING id`,
+      [`Critical service ${randomUUID()}`, foreignDraftUnit.id],
+    )
+  ).rows[0];
+  const nomenclatureIdByProductType = {
+    kerosene: foreignDraftNomenclature.id,
+    pvkj: pvkjNomenclature.id,
+    service: serviceNomenclature.id,
+  };
+  const makeValidRefuelingDeal = (deal) => {
+    const nomenclatureId = nomenclatureIdByProductType[deal.productType];
+    assert.ok(nomenclatureId, `fixture nomenclature exists for ${deal.productType}`);
+    return makeRefuelingDeal({
+      ...deal,
+      nomenclatureId,
+    });
+  };
   const foreignDraft = await api("/api/refueling-abroad", {
     method: "POST",
     expectedStatus: 201,
     body: {
       isDraft: true,
+      productType: "kerosene",
+      nomenclatureId: foreignDraftNomenclature.id,
       inputMode: "tonnes",
       quantityTonnes: 0.01234,
       density: 0.8,
@@ -328,7 +438,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(Number(fetchedForeignDraft.quantityTonnes), 0.01234);
   const storedForeignDraft = await pool.query(
     `SELECT quantity_tonnes, input_mode,
-            purchase_price_usd_per_tonne, purchase_price_rub_per_tonne
+            purchase_price_usd_per_tonne, purchase_price_rub_per_tonne,
+            product_type, nomenclature_id
      FROM refueling_abroad WHERE id = $1`,
     [foreignDraft.id],
   );
@@ -341,6 +452,11 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(
     Number(storedForeignDraft.rows[0].purchase_price_rub_per_tonne),
     1600000,
+  );
+  assert.equal(storedForeignDraft.rows[0].product_type, "kerosene");
+  assert.equal(
+    storedForeignDraft.rows[0].nomenclature_id,
+    foreignDraftNomenclature.id,
   );
 
   const supplier = (
@@ -571,6 +687,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       buyerId: refuelingBuyer.id,
       dealDate: "2026-10-27",
       productType: "kerosene",
+      nomenclatureId: foreignDraftNomenclature.id,
       inputMode: "tonnes",
       quantityTonnes: 0.01234,
       salePricePerTonne: 160_000,
@@ -587,7 +704,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(Number(transportationDeal.saleAmount), 1_974.4);
   const storedTransportationDeal = await pool.query(
     `SELECT quantity_tonnes, sale_price_per_tonne,
-            delivery_tariff_per_tonne, sale_amount, delivery_cost
+            delivery_tariff_per_tonne, sale_amount, delivery_cost,
+            product_type, nomenclature_id
      FROM transportation WHERE id = $1`,
     [transportationDeal.id],
   );
@@ -602,10 +720,59 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assert.equal(Number(storedTransportationDeal.rows[0].sale_amount), 1_974.4);
   assert.equal(Number(storedTransportationDeal.rows[0].delivery_cost), 30.85);
+  assert.equal(storedTransportationDeal.rows[0].product_type, "kerosene");
+  assert.equal(
+    storedTransportationDeal.rows[0].nomenclature_id,
+    foreignDraftNomenclature.id,
+  );
   const fetchedTransportationDeal = await api(
     `/api/transportation/${transportationDeal.id}`,
   );
   assert.equal(Number(fetchedTransportationDeal.quantityTonnes), 0.01234);
+  const clearTransportationNomenclature = await api(
+    `/api/transportation/${transportationDeal.id}`,
+    {
+      method: "PATCH",
+      expectedStatus: 400,
+      body: { productType: "kerosene", nomenclatureId: null },
+    },
+  );
+  assert.equal(clearTransportationNomenclature.message, "Выберите номенклатуру");
+  await pool.query(
+    "UPDATE transportation SET nomenclature_id = NULL WHERE id = $1",
+    [transportationDeal.id],
+  );
+  const legacyTransportationEdit = await api(
+    `/api/transportation/${transportationDeal.id}`,
+    {
+      method: "PATCH",
+      body: {
+        productType: "kerosene",
+        nomenclatureId: null,
+        notes: "legacy nomenclature remains empty",
+      },
+    },
+  );
+  assert.equal(legacyTransportationEdit.nomenclatureId, null);
+  const legacyTransportationTypeChange = await api(
+    `/api/transportation/${transportationDeal.id}`,
+    {
+      method: "PATCH",
+      expectedStatus: 400,
+      body: { productType: "pvkj", nomenclatureId: null },
+    },
+  );
+  assert.equal(
+    legacyTransportationTypeChange.message,
+    "Выберите номенклатуру",
+  );
+  const storedLegacyTransportation = await pool.query(
+    `SELECT product_type, nomenclature_id
+     FROM transportation WHERE id = $1`,
+    [transportationDeal.id],
+  );
+  assert.equal(storedLegacyTransportation.rows[0].product_type, "kerosene");
+  assert.equal(storedLegacyTransportation.rows[0].nomenclature_id, null);
 
   const warehouse = (
     await pool.query(
@@ -686,7 +853,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
 
   const initialDeals = [
-    makeRefuelingDeal({
+    makeValidRefuelingDeal({
       productType: "kerosene",
       date: "2026-10-20T12:00:00.000Z",
       supplierId: supplier.id,
@@ -696,7 +863,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       purchasePricePerTonne: 10_000,
       salePricePerTonne: 15_000,
     }),
-    makeRefuelingDeal({
+    makeValidRefuelingDeal({
       productType: "pvkj",
       date: "2026-10-20T12:00:00.000Z",
       supplierId: supplier.id,
@@ -706,7 +873,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       purchasePricePerTonne: 12_000,
       salePricePerTonne: 18_000,
     }),
-    makeRefuelingDeal({
+    makeValidRefuelingDeal({
       productType: "service",
       date: "2026-10-20T12:00:00.000Z",
       supplierId: supplier.id,
@@ -722,6 +889,12 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     body: { deals: initialDeals },
   });
   assert.equal(createdOrder.length, 3);
+  for (const deal of createdOrder) {
+    assert.equal(
+      deal.nomenclatureId,
+      nomenclatureIdByProductType[deal.productType],
+    );
+  }
   assert.deepEqual(
     createdOrder.map((deal) => Number(deal.quantityTonnes)).sort((a, b) => a - b),
     [0.007, 0.01, 0.017],
@@ -729,6 +902,13 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(Number(createdOrder[0].purchasePricePerTonne), 10000);
   assert.equal(new Set(createdOrder.map((deal) => deal.refuelingOrderId)).size, 1);
   assertDealEconomics(createdOrder);
+  const legacyServiceId = createdOrder.find(
+    (deal) => deal.productType === "service",
+  ).id;
+  await pool.query(
+    "UPDATE aircraft_refueling SET nomenclature_id = NULL WHERE id = $1",
+    [legacyServiceId],
+  );
   const storedRefuelingRate = await pool.query(
     "SELECT quantity_tonnes, purchase_price_per_tonne, sale_price_per_tonne FROM aircraft_refueling WHERE id = $1",
     [createdOrder.find((deal) => deal.productType === "kerosene").id],
@@ -792,7 +972,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     expectedStatus: 201,
     body: {
       deals: [
-        makeRefuelingDeal({
+        makeValidRefuelingDeal({
           productType: "kerosene",
           date: "2026-10-26T12:00:00.000Z",
           supplierId: supplier.id,
@@ -802,7 +982,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
           purchasePricePerTonne: 10_000,
           salePricePerTonne: 15_000,
         }),
-        makeRefuelingDeal({
+        makeValidRefuelingDeal({
           productType: "pvkj",
           date: "2026-10-26T12:00:00.000Z",
           supplierId: supplier.id,
@@ -819,7 +999,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(Number(laterOrder[0].quantityTonnes), 0.002);
 
   const backdatedDeals = [
-    makeRefuelingDeal({
+    makeValidRefuelingDeal({
       productType: "kerosene",
       date: "2026-10-15T12:00:00.000Z",
       supplierId: supplier.id,
@@ -829,7 +1009,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       purchasePricePerTonne: 10_000,
       salePricePerTonne: 15_000,
     }),
-    makeRefuelingDeal({
+    makeValidRefuelingDeal({
       productType: "pvkj",
       date: "2026-10-15T12:00:00.000Z",
       supplierId: supplier.id,
@@ -839,7 +1019,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       purchasePricePerTonne: 12_000,
       salePricePerTonne: 18_000,
     }),
-    makeRefuelingDeal({
+    makeValidRefuelingDeal({
       productType: "service",
       date: "2026-10-15T12:00:00.000Z",
       supplierId: supplier.id,
@@ -849,6 +1029,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       salePricePerTonne: 2_000,
     }),
   ];
+  backdatedDeals.find((deal) => deal.productType === "service").nomenclatureId =
+    null;
   const editedOrder = await api(`/api/refueling/order/${anchorId}`, {
     method: "PUT",
     body: { deals: backdatedDeals },
@@ -867,9 +1049,21 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     originalIds.get("service"),
     "retained product rows keep their IDs",
   );
+  assert.equal(
+    editedOrder.find((deal) => deal.productType === "service").nomenclatureId,
+    null,
+  );
+  for (const deal of editedOrder.filter(
+    (entry) => entry.productType !== "service",
+  )) {
+    assert.equal(
+      deal.nomenclatureId,
+      nomenclatureIdByProductType[deal.productType],
+    );
+  }
   assertDealEconomics(editedOrder);
 
-  const laterService = makeRefuelingDeal({
+  const laterService = makeValidRefuelingDeal({
     productType: "service",
     date: "2026-10-15T12:00:00.000Z",
     supplierId: supplier.id,
@@ -894,6 +1088,24 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     [removedServiceId],
   );
   assert.ok(removedService.rows[0]?.deleted_at, "removed product is soft-deleted");
+
+  const addedServiceWithoutNomenclature = await api(
+    `/api/refueling/order/${anchorId}`,
+    {
+      method: "PUT",
+      expectedStatus: 400,
+      body: {
+        deals: [
+          ...withoutService,
+          { ...laterService, nomenclatureId: null },
+        ],
+      },
+    },
+  );
+  assert.equal(
+    addedServiceWithoutNomenclature.message,
+    "Выберите номенклатуру",
+  );
 
   const addedServiceEdit = await api(`/api/refueling/order/${anchorId}`, {
     method: "PUT",
@@ -982,6 +1194,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       warehouseId: warehouse.id,
       dealDate: "2026-10-26T12:00:00.000Z",
       productType: "kerosene",
+      nomenclatureId: foreignDraftNomenclature.id,
       quantityTonnes: 0.02,
       inputMode: "tonnes",
       purchasePricePerTonne: 10000.001,
@@ -1000,7 +1213,8 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(Number(optCreated.profit), 100);
   const storedOptMass = await pool.query(
     `SELECT quantity_tonnes, purchase_price_per_tonne,
-            sale_price_per_tonne, delivery_tariff_per_tonne
+            sale_price_per_tonne, delivery_tariff_per_tonne,
+            product_type, nomenclature_id
      FROM opt WHERE id = $1`,
     [optCreated.id],
   );
@@ -1008,6 +1222,11 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(Number(storedOptMass.rows[0].purchase_price_per_tonne), 10000.001);
   assert.equal(Number(storedOptMass.rows[0].sale_price_per_tonne), 15000.004);
   assert.equal(Number(storedOptMass.rows[0].delivery_tariff_per_tonne), 500);
+  assert.equal(storedOptMass.rows[0].product_type, "kerosene");
+  assert.equal(
+    storedOptMass.rows[0].nomenclature_id,
+    foreignDraftNomenclature.id,
+  );
   const unchangedRateUpdate = await api(`/api/opt/${optCreated.id}`, {
     method: "PATCH",
     body: {
@@ -1305,6 +1524,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
       movementDate: "2026-10-26T08:00:00.000Z",
       movementType: "internal",
       productType: "kerosene",
+      nomenclatureId: foreignDraftNomenclature.id,
       fromWarehouseId: warehouse.id,
       toWarehouseId: transferWarehouse.id,
       quantityTonnes: 0.02,
@@ -1322,7 +1542,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(Number(transferCreated.totalCost), 200);
   const storedMovement = await pool.query(
     `SELECT quantity_tonnes, purchase_price_per_tonne,
-            total_cost, cost_per_tonne
+            total_cost, cost_per_tonne, product_type, nomenclature_id
      FROM movement WHERE id = $1`,
     [transferId],
   );
@@ -1330,6 +1550,11 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.equal(Number(storedMovement.rows[0].purchase_price_per_tonne), 10_000);
   assert.equal(Number(storedMovement.rows[0].total_cost), 200);
   assert.equal(Number(storedMovement.rows[0].cost_per_tonne), 10_000);
+  assert.equal(storedMovement.rows[0].product_type, "kerosene");
+  assert.equal(
+    storedMovement.rows[0].nomenclature_id,
+    foreignDraftNomenclature.id,
+  );
   const listedMovements = await api("/api/movement?pageSize=500");
   const listedTransfer = listedMovements.data.find(
     (item) => item.id === transferId,

@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getNomenclatureSelection as choose } from "./nomenclature-selection";
+import {
+  getNomenclatureSelection as choose,
+  shouldPreserveLegacyNomenclatureSelection as shouldPreserveLegacy,
+} from "./nomenclature-selection";
 
 const items = [
   { id: "fuel", productType: "kerosene", isDefault: true },
@@ -32,6 +35,56 @@ test("changing product without a default clears an invalid selection once", () =
 });
 test("historical empty selection is not inferred from the current default", () => {
   assert.equal(choose(items, "kerosene", "", true, true), undefined);
+});
+test("legacy empty selection is preserved only while its product type is unchanged", () => {
+  const legacyEdit = {
+    isEditing: true,
+    currentNomenclatureId: null,
+    currentProductType: "kerosene",
+    originalProductType: "kerosene",
+  };
+  assert.equal(shouldPreserveLegacy(legacyEdit), true);
+  assert.equal(
+    shouldPreserveLegacy({
+      ...legacyEdit,
+      currentProductType: "pvkj",
+    }),
+    false,
+  );
+  const changedProductType = {
+    ...legacyEdit,
+    currentProductType: "service",
+  };
+  assert.equal(
+    choose(
+      items,
+      changedProductType.currentProductType,
+      "",
+      true,
+      shouldPreserveLegacy(changedProductType),
+    ),
+    "service",
+  );
+});
+test("new records and selected legacy records do not preserve a missing selection", () => {
+  assert.equal(
+    shouldPreserveLegacy({
+      isEditing: false,
+      currentNomenclatureId: null,
+      currentProductType: "kerosene",
+      originalProductType: "kerosene",
+    }),
+    false,
+  );
+  assert.equal(
+    shouldPreserveLegacy({
+      isEditing: true,
+      currentNomenclatureId: "fuel",
+      currentProductType: "kerosene",
+      originalProductType: "kerosene",
+    }),
+    false,
+  );
 });
 test("integration kind codes are never used as product types", () => {
   assert.equal(choose([{ id: "unmapped", isDefault: true }], "kerosene", "", true), undefined);

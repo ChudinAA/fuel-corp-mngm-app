@@ -1,5 +1,24 @@
 type Item = { id: string; productType?: string | null; isDefault?: boolean };
 
+export function shouldPreserveLegacyNomenclatureSelection({
+  isEditing,
+  currentNomenclatureId,
+  currentProductType,
+  originalProductType,
+}: {
+  isEditing: boolean;
+  currentNomenclatureId?: string | null;
+  currentProductType?: string | null;
+  originalProductType?: string | null;
+}): boolean {
+  return (
+    isEditing &&
+    !currentNomenclatureId &&
+    Boolean(currentProductType) &&
+    currentProductType === originalProductType
+  );
+}
+
 /** undefined means no write: especially important while loading or when the list is empty. */
 export function getNomenclatureSelection(
   items: Item[],

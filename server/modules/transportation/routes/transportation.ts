@@ -1,5 +1,9 @@
 import type { Express } from "express";
 import { storage } from "../../../storage/index";
+import {
+  getOperationNomenclatureError,
+  getOperationNomenclatureUpdateError,
+} from "../../catalogs/nomenclature-validation";
 import { insertTransportationSchema } from "../entities/transportation";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
@@ -99,6 +103,13 @@ export function registerTransportationRoutes(app: Express) {
           ...normalized,
           createdById: req.session.userId,
         });
+        const nomenclatureError = await getOperationNomenclatureError(
+          data,
+          (id) => storage.catalogs.getNomenclatureItem(id),
+        );
+        if (nomenclatureError) {
+          return res.status(400).json({ message: nomenclatureError });
+        }
         const item = await (storage as any).transportation.createTransportation(data);
         SSEService.notifyEntityChanged("transportation", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
@@ -142,6 +153,22 @@ export function registerTransportationRoutes(app: Express) {
         const normalized = normalizeTransportationInput(
           req.body as Record<string, unknown>,
         );
+        const current = await (storage as any).transportation.getTransportation(
+          id,
+        );
+        if (!current) {
+          return res.status(404).json({ message: "Сделка не найдена" });
+        }
+        const nomenclatureError =
+          await getOperationNomenclatureUpdateError(
+            current,
+            normalized,
+            (nomenclatureId) =>
+              storage.catalogs.getNomenclatureItem(nomenclatureId),
+          );
+        if (nomenclatureError) {
+          return res.status(400).json({ message: nomenclatureError });
+        }
         const item = await (storage as any).transportation.updateTransportation(id, {
           ...normalized,
           updatedById: req.session.userId,

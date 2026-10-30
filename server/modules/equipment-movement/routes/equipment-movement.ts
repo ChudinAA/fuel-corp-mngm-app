@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { storage } from "../../../storage/index";
+import { getOperationNomenclatureUpdateError } from "../../catalogs/nomenclature-validation";
 import { requireAuth, requirePermission, requireAnyPermission } from "../../../middleware/middleware";
 import { insertEquipmentMovementSchema } from "@shared/schema";
 import { z } from "zod";
@@ -136,7 +137,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
             normalized.density != null ? String(normalized.density) : null,
           createdById: req.session.userId,
         });
-        const nomenclatureError = await validateNomenclature(data, !data.isDraft);
+        const nomenclatureError = await validateNomenclature(data, true);
         if (nomenclatureError) return res.status(400).json({ message: nomenclatureError });
         const record = await (storage as any).equipmentMovement.createMovement(data);
         SSEService.notifyEntityChanged("equipment-movement", SSEService.extractClientId(req.headers["x-client-id"]));
@@ -217,10 +218,12 @@ export function registerEquipmentMovementRoutes(app: Express) {
         });
         const current = await (storage as any).equipmentMovement.getMovement(req.params.id);
         if (!current) return res.status(404).json({ message: "Запись не найдена" });
-        const nomenclatureError = await validateNomenclature({
-          productType: data.productType,
-          nomenclatureId: data.nomenclatureId === undefined ? current.nomenclatureId : data.nomenclatureId,
-        }, !!current.nomenclatureId);
+        const nomenclatureError =
+          await getOperationNomenclatureUpdateError(
+            current,
+            data,
+            (id) => storage.catalogs.getNomenclatureItem(id),
+          );
         if (nomenclatureError) return res.status(400).json({ message: nomenclatureError });
 
         const item = await (storage as any).equipmentMovement.updateMovement(req.params.id, data);

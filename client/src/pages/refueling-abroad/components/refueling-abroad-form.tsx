@@ -102,6 +102,7 @@ import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 import { useRefuelingFilters } from "@/pages/refueling/hooks/use-refueling-filters";
 import { useAutoPriceSelection } from "@/pages/shared/hooks/use-auto-price-selection";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
+import { shouldPreserveLegacyNomenclatureSelection } from "@/pages/shared/utils/nomenclature-selection";
 import { CalculatedField } from "@/pages/refueling/calculated-field";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { SpecialConditionsBanner } from "@/components/special-conditions-banner";
@@ -927,7 +928,16 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
             />
 
             <div className="min-w-0 md:col-span-2">
-              <NomenclatureField form={form} productType={watchedValues.productType || PRODUCT_TYPE.KEROSENE} preserveLegacySelection={!!editData?.id && !editData?.nomenclatureId} />
+              <NomenclatureField
+                form={form}
+                productType={watchedValues.productType || PRODUCT_TYPE.KEROSENE}
+                preserveLegacySelection={shouldPreserveLegacyNomenclatureSelection({
+                  isEditing: !!editData?.id,
+                  currentNomenclatureId: editData?.nomenclatureId,
+                  currentProductType: watchedValues.productType,
+                  originalProductType: editData?.productType,
+                })}
+              />
             </div>
             <div className="col-span-2 grid grid-cols-2 gap-4 md:col-span-6 md:grid-cols-4">
             <FormField

@@ -38,6 +38,7 @@ import { MovementDestinationSection } from "./movement-destination-section";
 import { MovementCostSummary } from "./movement-cost-summary";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
+import { shouldPreserveLegacyNomenclatureSelection } from "@/pages/shared/utils/nomenclature-selection";
 import {
   useMovementCalculations,
   useAvailableCarriers,
@@ -510,7 +511,15 @@ export function MovementDialog({
               className="space-y-6"
             >
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 items-end">
-                <MovementFormHeader form={form} preserveLegacySelection={isEditing && !editMovement?.nomenclatureId} />
+                <MovementFormHeader
+                  form={form}
+                  preserveLegacySelection={shouldPreserveLegacyNomenclatureSelection({
+                    isEditing,
+                    currentNomenclatureId: editMovement?.nomenclatureId,
+                    currentProductType: watchProductType,
+                    originalProductType: editMovement?.productType,
+                  })}
+                />
                 <MovementSourceSection
                   form={form}
                   watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}

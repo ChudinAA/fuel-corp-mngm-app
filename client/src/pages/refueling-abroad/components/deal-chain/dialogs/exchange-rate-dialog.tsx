@@ -201,7 +201,7 @@ export function ExchangeRateDialog({
                     }));
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="select-chain-from-currency">
                     <SelectValue placeholder="Валюта" />
                   </SelectTrigger>
                   <SelectContent>
@@ -232,7 +232,7 @@ export function ExchangeRateDialog({
                   }));
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger data-testid="select-chain-to-currency">
                   <SelectValue placeholder="Валюта" />
                 </SelectTrigger>
                 <SelectContent>
@@ -295,7 +295,7 @@ export function ExchangeRateDialog({
           <Button type="button" variant="outline" onClick={onClose}>
             Отмена
           </Button>
-          <Button type="button" onClick={handleSave}>
+          <Button type="button" onClick={handleSave} data-testid="button-save-chain-exchange-rate">
             {editItem ? "Сохранить" : "Добавить"}
           </Button>
         </DialogFooter>

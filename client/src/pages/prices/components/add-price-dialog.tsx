@@ -36,6 +36,7 @@ import { useDateCheck } from "../hooks/use-date-check";
 import { PriceFormFields } from "./price-form-fields";
 import { PriceChecksPanel } from "./price-checks-panel";
 import { getLatestPriceContract, isPriceContractRequired } from "@shared/price-contract-selection";
+import { shouldPreserveLegacyNomenclatureSelection } from "@/pages/shared/utils/nomenclature-selection";
 
 export function AddPriceDialog({
   editPrice,
@@ -699,7 +700,12 @@ export function AddPriceDialog({
                 className="space-y-4"
               >
                 <PriceFormFields
-                  preserveLegacySelection={!!editPrice && !editPrice.nomenclatureId}
+                  preserveLegacySelection={shouldPreserveLegacyNomenclatureSelection({
+                    isEditing: !!editPrice,
+                    currentNomenclatureId: editPrice?.nomenclatureId,
+                    currentProductType: form.watch("productType"),
+                    originalProductType: editPrice?.productType,
+                  })}
                   control={form.control}
                   setValue={form.setValue}
                   contractors={contractors}
@@ -857,7 +863,12 @@ export function AddPriceDialog({
             className="space-y-4"
           >
             <PriceFormFields
-              preserveLegacySelection={!!editPrice && !editPrice.nomenclatureId}
+              preserveLegacySelection={shouldPreserveLegacyNomenclatureSelection({
+                isEditing: !!editPrice,
+                currentNomenclatureId: editPrice?.nomenclatureId,
+                currentProductType: form.watch("productType"),
+                originalProductType: editPrice?.productType,
+              })}
               control={form.control}
               setValue={form.setValue}
               contractors={contractors}

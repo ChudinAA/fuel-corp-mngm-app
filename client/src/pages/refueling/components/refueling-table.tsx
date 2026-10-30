@@ -698,6 +698,7 @@ export function RefuelingTable({
                   _rows.push((
                     <TableRow
                       key={deal.id}
+                      data-testid={`refueling-row-${deal.id}`}
                       className={cn(
                         isToday && !deal.isDraft && "bg-emerald-50/30 dark:bg-emerald-950/10",
                         deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200",

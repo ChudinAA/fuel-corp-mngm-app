@@ -1,5 +1,9 @@
 import type { Express } from "express";
 import { storage } from "../../../storage/index";
+import {
+  getOperationNomenclatureError,
+  getOperationNomenclatureUpdateError,
+} from "../../catalogs/nomenclature-validation";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { insertMovementSchema } from "@shared/schema";
 import { z } from "zod";
@@ -81,6 +85,13 @@ export function registerMovementRoutes(app: Express) {
           ...normalized,
           createdById: req.session.userId,
         });
+        const nomenclatureError = await getOperationNomenclatureError(
+          data,
+          (id) => storage.catalogs.getNomenclatureItem(id),
+        );
+        if (nomenclatureError) {
+          return res.status(400).json({ message: nomenclatureError });
+        }
 
         if (data.quantityTonnes === null || data.quantityTonnes === undefined) {
           throw new Error("Количество (т) обязательно");
@@ -164,6 +175,19 @@ export function registerMovementRoutes(app: Express) {
         const normalized = normalizeMovementInput(
           req.body as Record<string, unknown>,
         );
+        const current = await storage.movement.getMovement(id);
+        if (!current) {
+          return res.status(404).json({ message: "Перемещение не найдено" });
+        }
+        const nomenclatureError = await getOperationNomenclatureUpdateError(
+          current,
+          normalized,
+          (nomenclatureId) =>
+            storage.catalogs.getNomenclatureItem(nomenclatureId),
+        );
+        if (nomenclatureError) {
+          return res.status(400).json({ message: nomenclatureError });
+        }
 
         // Преобразуем числовые поля в строки для БД
         const dbData = {
