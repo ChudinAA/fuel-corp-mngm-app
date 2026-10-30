@@ -679,6 +679,13 @@ export const RefuelingForm = forwardRef<
     isEditing,
   ]); // Added watchProductType dependency
 
+  const omitFormOnlyPriceSelectionFields = (data: RefuelingFormData) => {
+    const payload: Record<string, unknown> = { ...data };
+    delete payload.selectedPurchasePriceId;
+    delete payload.selectedSalePriceId;
+    return payload;
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: RefuelingFormData) => {
       const {
@@ -695,7 +702,8 @@ export const RefuelingForm = forwardRef<
       );
 
       const payload = {
-        ...data,
+        ...omitFormOnlyPriceSelectionFields(data),
+        nomenclatureId: data.nomenclatureId || null,
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
         isDraft: data.isDraft || false,
@@ -797,7 +805,8 @@ export const RefuelingForm = forwardRef<
       );
 
       const payload = {
-        ...data,
+        ...omitFormOnlyPriceSelectionFields(data),
+        nomenclatureId: data.nomenclatureId || null,
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
         isDraft: data.isDraft || false,
