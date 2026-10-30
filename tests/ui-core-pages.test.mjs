@@ -23,8 +23,11 @@ const fixtures = {
   wholesaleBuyerName: `ui-wholesale-buyer-${runId}`,
   foreignBuyerName: `ui-foreign-buyer-${runId}`,
   supplierContractName: `ui-supplier-contract-${runId}`,
+  supplierContractNumber: `S-${runId.slice(0, 8)}`,
   buyerContractName: `ui-buyer-contract-${runId}`,
+  buyerContractNumber: `B-${runId.slice(0, 8)}`,
   carrierContractName: `ui-carrier-contract-${runId}`,
+  carrierContractNumber: `C-${runId.slice(0, 8)}`,
   warehouseName: `ui-smoke-warehouse-${runId}`,
   refuelingNote: `ui-smoke-refueling-${runId}`,
   movementNote: `ui-smoke-movement-${runId}`,
@@ -192,7 +195,7 @@ async function seedUiFixtures() {
      VALUES ($1, $2, '2026-01-01', $3)`,
     [
       fixtures.supplierContractName,
-      `S-${runId.slice(0, 8)}`,
+      fixtures.supplierContractNumber,
       supplier.rows[0].id,
     ],
   );
@@ -202,7 +205,7 @@ async function seedUiFixtures() {
      VALUES ($1, $2, '2026-01-01', $3)`,
     [
       fixtures.buyerContractName,
-      `B-${runId.slice(0, 8)}`,
+      fixtures.buyerContractNumber,
       wholesaleBuyer.rows[0].id,
     ],
   );
@@ -212,7 +215,7 @@ async function seedUiFixtures() {
      VALUES ($1, $2, '2026-01-01', $3)`,
     [
       fixtures.carrierContractName,
-      `C-${runId.slice(0, 8)}`,
+      fixtures.carrierContractNumber,
       carrier.rows[0].id,
     ],
   );
@@ -1418,6 +1421,60 @@ test("authenticated browser can load the core business pages", async () => {
     assert(foreignBuyers.some((text) => text.includes(fixtures.foreignBuyerName)));
     assert(!foreignBuyers.some((text) => text.includes(fixtures.wholesaleBuyerName)));
     assert(!foreignBuyers.some((text) => text.includes(fixtures.buyerName)));
+
+    await navigateToRoute(cdp, "/opt");
+    await clickTestId(cdp, "button-add-opt");
+    await selectComboboxOption(cdp, "select-supplier", fixtures.mixedSupplierName);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-basis"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.wholesaleBaseName)})`,
+      "the wholesale basis selected for the mixed supplier",
+    );
+    await selectComboboxOption(cdp, "select-buyer", fixtures.wholesaleBuyerName);
+    await selectComboboxOption(
+      cdp,
+      "select-buyer-basis",
+      fixtures.wholesaleBaseName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-purchase-price"]')
+        ?.innerText.includes("30")`,
+      "the default wholesale purchase price",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-sale-price"]')
+        ?.innerText.includes("35")`,
+      "the default wholesale sale price",
+    );
+
+    await navigateToRoute(cdp, "/prices");
+    await clickTestId(cdp, "button-add-price");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-counterparty-type"]')
+        ?.innerText.includes("ОПТ") &&
+       document.querySelector('[data-testid="select-counterparty-role"]')
+        ?.innerText.includes("Поставщик")`,
+      "the default wholesale supplier price form",
+    );
+    const priceCounterparties = await getVisibleComboboxOptions(
+      cdp,
+      "select-counterparty",
+    );
+    assert(
+      priceCounterparties.some((text) => text.includes(fixtures.supplierName)),
+      `The supplier should be selectable for a wholesale price; options: ${JSON.stringify(priceCounterparties)}`,
+    );
+    await selectComboboxOption(cdp, "select-counterparty", fixtures.supplierName);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-price-contract"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.supplierContractNumber)})`,
+      "the contract automatically selected for the chosen supplier",
+    );
 
     await cdp.evaluate(`(() => {
       window.history.pushState({}, "", "/refueling");

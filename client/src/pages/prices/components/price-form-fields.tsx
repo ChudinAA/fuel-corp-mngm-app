@@ -655,7 +655,7 @@ export function PriceFormFields({
               setValue("contractNumber", selected?.contractNumber || "");
               setValue("contractAppendix", selected?.parentContractId ? selected.contractNumber : "");
             }}>
-              <FormControl><SelectTrigger><SelectValue placeholder="Выберите договор" /></SelectTrigger></FormControl>
+              <FormControl><SelectTrigger data-testid="select-price-contract"><SelectValue placeholder="Выберите договор" /></SelectTrigger></FormControl>
               <SelectContent>
                 {!isPriceContractRequired(counterpartyType) && <SelectItem value="__none__">Без договора</SelectItem>}
                 {contractsForParty.map((item) => <SelectItem key={item.id} value={item.id}>

@@ -308,9 +308,10 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
 
         // Автоматически выбираем первый базис только при СОЗДАНИИ новой сделки (не при копировании/редактировании)
         if (!editData && supplier?.baseIds && supplier.baseIds.length > 0) {
-          const baseId = supplier.baseIds[0];
           const base = allBases.find(
-            (b) => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE,
+            (b) =>
+              supplier.baseIds?.includes(b.id) &&
+              b.baseType === BASE_TYPE.WHOLESALE,
           );
           if (base) {
             form.setValue("basis", base.name, { shouldDirty: true });
