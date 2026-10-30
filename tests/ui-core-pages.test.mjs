@@ -14,8 +14,17 @@ const baseUrl = process.env.E2E_BASE_URL;
 const runId = randomUUID();
 const fixtures = {
   baseName: `ui-smoke-base-${runId}`,
+  wholesaleBaseName: `ui-wholesale-base-${runId}`,
+  abroadBaseName: `ui-abroad-base-${runId}`,
   supplierName: `ui-smoke-supplier-${runId}`,
+  mixedSupplierName: `ui-mixed-supplier-${runId}`,
+  foreignSupplierName: `ui-foreign-supplier-${runId}`,
   buyerName: `ui-smoke-buyer-${runId}`,
+  wholesaleBuyerName: `ui-wholesale-buyer-${runId}`,
+  foreignBuyerName: `ui-foreign-buyer-${runId}`,
+  supplierContractName: `ui-supplier-contract-${runId}`,
+  buyerContractName: `ui-buyer-contract-${runId}`,
+  carrierContractName: `ui-carrier-contract-${runId}`,
   warehouseName: `ui-smoke-warehouse-${runId}`,
   refuelingNote: `ui-smoke-refueling-${runId}`,
   movementNote: `ui-smoke-movement-${runId}`,
@@ -39,6 +48,7 @@ let browser;
 let profileDir;
 let pool;
 let nomenclatureIds = {};
+let basisIds = {};
 
 after(async () => {
   await stopBrowser();
@@ -57,23 +67,69 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function seedUiFixtures() {
   pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const base = await pool.query(
+  const bases = await pool.query(
     `INSERT INTO bases (name, base_type)
-     VALUES ($1, 'refueling')
-     RETURNING id`,
-    [fixtures.baseName],
+     VALUES ($1, 'refueling'),
+            ($2, 'wholesale'),
+            ($3, 'abroad')
+     RETURNING id, name`,
+    [
+      fixtures.baseName,
+      fixtures.wholesaleBaseName,
+      fixtures.abroadBaseName,
+    ],
+  );
+  basisIds = Object.fromEntries(
+    bases.rows.map((base) => [base.name, base.id]),
   );
   const supplier = await pool.query(
     "INSERT INTO suppliers (name) VALUES ($1) RETURNING id",
     [fixtures.supplierName],
   );
-  await pool.query(
-    "INSERT INTO supplier_bases (supplier_id, base_id) VALUES ($1, $2)",
-    [supplier.rows[0].id, base.rows[0].id],
+  const mixedSupplier = await pool.query(
+    "INSERT INTO suppliers (name) VALUES ($1) RETURNING id",
+    [fixtures.mixedSupplierName],
+  );
+  const foreignSupplier = await pool.query(
+    "INSERT INTO suppliers (name, is_foreign) VALUES ($1, true) RETURNING id",
+    [fixtures.foreignSupplierName],
   );
   await pool.query(
-    "INSERT INTO customers (name, module) VALUES ($1, 'refueling')",
+    `INSERT INTO supplier_bases (supplier_id, base_id)
+     VALUES ($1, $2), ($3, $4), ($3, $5), ($6, $7)`,
+    [
+      supplier.rows[0].id,
+      basisIds[fixtures.baseName],
+      mixedSupplier.rows[0].id,
+      basisIds[fixtures.baseName],
+      basisIds[fixtures.wholesaleBaseName],
+      foreignSupplier.rows[0].id,
+      basisIds[fixtures.abroadBaseName],
+    ],
+  );
+  const buyer = await pool.query(
+    "INSERT INTO customers (name, module) VALUES ($1, 'refueling') RETURNING id",
     [fixtures.buyerName],
+  );
+  const wholesaleBuyer = await pool.query(
+    "INSERT INTO customers (name, module) VALUES ($1, 'wholesale') RETURNING id",
+    [fixtures.wholesaleBuyerName],
+  );
+  const foreignBuyer = await pool.query(
+    "INSERT INTO customers (name, module, is_foreign) VALUES ($1, 'wholesale', true) RETURNING id",
+    [fixtures.foreignBuyerName],
+  );
+  await pool.query(
+    `INSERT INTO customer_bases (customer_id, base_id)
+     VALUES ($1, $2), ($3, $4), ($5, $6)`,
+    [
+      buyer.rows[0].id,
+      basisIds[fixtures.baseName],
+      wholesaleBuyer.rows[0].id,
+      basisIds[fixtures.wholesaleBaseName],
+      foreignBuyer.rows[0].id,
+      basisIds[fixtures.abroadBaseName],
+    ],
   );
   await pool.query(
     `INSERT INTO warehouses
@@ -118,13 +174,46 @@ async function seedUiFixtures() {
     `INSERT INTO delivery_cost
        (carrier_id, from_entity_type, from_entity_id, from_location,
         to_entity_type, to_entity_id, to_location, cost_per_tonne)
-     VALUES ($1, 'base', $2, $3, 'warehouse', $4, $5, 0)`,
+     VALUES ($1, 'base', $2, $3, 'warehouse', $4, $5, 0),
+            ($1, 'base', $6, $7, 'warehouse', $4, $5, 250)`,
     [
       carrier.rows[0].id,
-      base.rows[0].id,
+      basisIds[fixtures.baseName],
       fixtures.baseName,
       operationalWarehouses[1].rows[0].id,
       fixtures.transferWarehouseName,
+      basisIds[fixtures.wholesaleBaseName],
+      fixtures.wholesaleBaseName,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO counterparty_contracts
+       (contract_name, contract_number, contract_date, supplier_id)
+     VALUES ($1, $2, '2026-01-01', $3)`,
+    [
+      fixtures.supplierContractName,
+      `S-${runId.slice(0, 8)}`,
+      supplier.rows[0].id,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO counterparty_contracts
+       (contract_name, contract_number, contract_date, buyer_id)
+     VALUES ($1, $2, '2026-01-01', $3)`,
+    [
+      fixtures.buyerContractName,
+      `B-${runId.slice(0, 8)}`,
+      wholesaleBuyer.rows[0].id,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO counterparty_contracts
+       (contract_name, contract_number, contract_date, carrier_id)
+     VALUES ($1, $2, '2026-01-01', $3)`,
+    [
+      fixtures.carrierContractName,
+      `C-${runId.slice(0, 8)}`,
+      carrier.rows[0].id,
     ],
   );
   const equipment = await pool.query(
@@ -156,11 +245,21 @@ async function seedUiFixtures() {
     nomenclatureIds[productType] = nomenclature.rows[0].id;
   }
   await pool.query(
-    `INSERT INTO customer_bases (customer_id, base_id)
-     SELECT c.id, b.id
-     FROM customers c, bases b
-     WHERE c.name = $1 AND b.name = $2`,
-    [fixtures.buyerName, fixtures.baseName],
+    `INSERT INTO supplier_basis_prices
+       (supplier_id, basis_id, service_price_per_tonne,
+        agent_fee_per_tonne, other_service_type, other_service_value,
+        other_service_name, other_service_quantity)
+     VALUES ($1, $2, 125, 75, 'fixed', 30, 'Обработка', 1),
+            ($3, $4, 250, NULL, 'fixed', 40, 'Погрузка', 1),
+            ($5, $6, 500, 100, 'fixed', 50, 'Терминал', 1)`,
+    [
+      supplier.rows[0].id,
+      basisIds[fixtures.baseName],
+      mixedSupplier.rows[0].id,
+      basisIds[fixtures.wholesaleBaseName],
+      foreignSupplier.rows[0].id,
+      basisIds[fixtures.abroadBaseName],
+    ],
   );
   await pool.query(
     `INSERT INTO prices
@@ -209,6 +308,26 @@ async function seedUiFixtures() {
      FROM customers c, bases b, nomenclature n
      WHERE c.name = $1 AND b.name = $2 AND n.id = $3`,
     [fixtures.buyerName, fixtures.baseName, nomenclatureIds.kerosene],
+  );
+  await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_id, counterparty_type, counterparty_role,
+        basis, basis_id, nomenclature_id, price_values, date_from, date_to,
+        volume_unit, price_unit, contract_limit_enabled)
+     VALUES
+       ('kerosene', $1, 'wholesale', 'supplier', $2, $3, $4,
+        ARRAY['{"price":30000}'], '2026-10-01', '2026-10-31',
+        'tonne', 'tonne', false),
+       ('kerosene', $5, 'wholesale', 'buyer', $2, $3, $4,
+        ARRAY['{"price":35000}'], '2026-10-01', '2026-10-31',
+        'tonne', 'tonne', false)`,
+    [
+      mixedSupplier.rows[0].id,
+      fixtures.wholesaleBaseName,
+      basisIds[fixtures.wholesaleBaseName],
+      nomenclatureIds.kerosene,
+      wholesaleBuyer.rows[0].id,
+    ],
   );
 }
 
@@ -298,6 +417,54 @@ async function cleanUiFixtures() {
       [[fixtures.operationalWarehouseName, fixtures.transferWarehouseName]],
     );
   }
+  await pool.query(
+    "DELETE FROM counterparty_contracts WHERE contract_name = ANY($1::text[])",
+    [[
+      fixtures.supplierContractName,
+      fixtures.buyerContractName,
+      fixtures.carrierContractName,
+    ]],
+  );
+  await pool.query(
+    `DELETE FROM supplier_basis_prices
+     WHERE supplier_id IN (SELECT id FROM suppliers WHERE name = ANY($1::text[]))
+        OR basis_id IN (SELECT id FROM bases WHERE name = ANY($2::text[]))`,
+    [
+      [
+        fixtures.supplierName,
+        fixtures.mixedSupplierName,
+        fixtures.foreignSupplierName,
+      ],
+      [
+        fixtures.baseName,
+        fixtures.wholesaleBaseName,
+        fixtures.abroadBaseName,
+      ],
+    ],
+  );
+  await pool.query(
+    `DELETE FROM warehouse_bases
+     WHERE warehouse_id IN (SELECT id FROM warehouses WHERE name = ANY($1::text[]))`,
+    [[
+      fixtures.warehouseName,
+      fixtures.operationalWarehouseName,
+      fixtures.transferWarehouseName,
+    ]],
+  );
+  await pool.query(
+    `DELETE FROM supplier_bases
+     WHERE supplier_id IN (SELECT id FROM suppliers WHERE name = ANY($1::text[]))`,
+    [[
+      fixtures.supplierName,
+      fixtures.mixedSupplierName,
+      fixtures.foreignSupplierName,
+    ]],
+  );
+  await pool.query(
+    `DELETE FROM customer_bases
+     WHERE customer_id IN (SELECT id FROM customers WHERE name = ANY($1::text[]))`,
+    [[fixtures.buyerName, fixtures.wholesaleBuyerName, fixtures.foreignBuyerName]],
+  );
   await pool.query("DELETE FROM aircraft_refueling WHERE id = ANY($1::uuid[])", [
     refuelings.rows.map((row) => row.id),
   ]);
@@ -316,10 +483,19 @@ async function cleanUiFixtures() {
   await pool.query("DELETE FROM equipments WHERE name = $1", [
     fixtures.equipmentName,
   ]);
-  await pool.query("DELETE FROM prices WHERE counterparty_id IN (SELECT id FROM suppliers WHERE name = $1) OR counterparty_id IN (SELECT id FROM customers WHERE name = $2)", [
-    fixtures.supplierName,
-    fixtures.buyerName,
-  ]);
+  await pool.query(
+    `DELETE FROM prices
+     WHERE counterparty_id IN (SELECT id FROM suppliers WHERE name = ANY($1::text[]))
+        OR counterparty_id IN (SELECT id FROM customers WHERE name = ANY($2::text[]))`,
+    [
+      [
+        fixtures.supplierName,
+        fixtures.mixedSupplierName,
+        fixtures.foreignSupplierName,
+      ],
+      [fixtures.buyerName, fixtures.wholesaleBuyerName, fixtures.foreignBuyerName],
+    ],
+  );
   await pool.query(
     "DELETE FROM delivery_cost WHERE carrier_id IN (SELECT id FROM logistics_carriers WHERE name = $1)",
     [fixtures.carrierName],
@@ -336,13 +512,20 @@ async function cleanUiFixtures() {
   await pool.query("DELETE FROM warehouse_bases WHERE warehouse_id IN (SELECT id FROM warehouses WHERE name = ANY($1::text[]))", [
     [fixtures.operationalWarehouseName, fixtures.transferWarehouseName],
   ]);
-  await pool.query("DELETE FROM suppliers WHERE name = $1", [
+  await pool.query("DELETE FROM suppliers WHERE name = ANY($1::text[])", [[
     fixtures.supplierName,
-  ]);
-  await pool.query("DELETE FROM customers WHERE name = $1", [
+    fixtures.mixedSupplierName,
+    fixtures.foreignSupplierName,
+  ]]);
+  await pool.query("DELETE FROM customers WHERE name = ANY($1::text[])", [[
     fixtures.buyerName,
-  ]);
-  await pool.query("DELETE FROM bases WHERE name = $1", [fixtures.baseName]);
+    fixtures.wholesaleBuyerName,
+    fixtures.foreignBuyerName,
+  ]]);
+  await pool.query(
+    "DELETE FROM bases WHERE name = ANY($1::text[])",
+    [[fixtures.baseName, fixtures.wholesaleBaseName, fixtures.abroadBaseName]],
+  );
 }
 
 async function waitForExpression(cdp, expression, label, timeoutMs = 12_000) {
@@ -485,21 +668,44 @@ async function navigateToRoute(cdp, route) {
 }
 
 async function closeActiveDialog(cdp, label) {
-  await cdp.send("Input.dispatchKeyEvent", {
-    type: "keyDown",
-    key: "Escape",
-    code: "Escape",
-  });
-  await cdp.send("Input.dispatchKeyEvent", {
-    type: "keyUp",
-    key: "Escape",
-    code: "Escape",
-  });
+  for (let index = 0; index < 2; index += 1) {
+    await cdp.send("Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: "Escape",
+      code: "Escape",
+    });
+    await cdp.send("Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "Escape",
+      code: "Escape",
+    });
+  }
   await waitForExpression(
     cdp,
     `!document.querySelector('[role="dialog"][data-state="open"]')`,
     `${label} dialog to close`,
   );
+}
+
+async function getVisibleComboboxOptions(cdp, testId) {
+  await clickTestId(cdp, testId);
+  await waitForExpression(
+    cdp,
+    `Array.from(document.querySelectorAll('[role="option"]'))
+      .some((option) => {
+        const rect = option.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      })`,
+    `visible options for ${testId}`,
+  );
+  return cdp.evaluate(`Array.from(document.querySelectorAll('[role="option"]'))
+    .filter((option) => {
+      const rect = option.getBoundingClientRect();
+      const style = getComputedStyle(option);
+      return rect.width > 0 && rect.height > 0 &&
+        style.visibility !== "hidden" && Number(style.opacity) > 0;
+    })
+    .map((option) => option.innerText.trim())`);
 }
 
 async function verifyDefaultNomenclatureForm(cdp, {
@@ -1181,6 +1387,38 @@ test("authenticated browser can load the core business pages", async () => {
         { productLabel: "Керосин", nomenclatureKey: "kerosene" },
       ],
     });
+
+    await navigateToRoute(cdp, "/opt");
+    await clickTestId(cdp, "button-add-opt");
+    await selectComboboxOption(cdp, "select-supplier", fixtures.mixedSupplierName);
+    const wholesaleBases = await getVisibleComboboxOptions(cdp, "select-basis");
+    assert(wholesaleBases.some((text) => text.includes(fixtures.wholesaleBaseName)));
+    assert(!wholesaleBases.some((text) => text.includes(fixtures.baseName)));
+    assert(!wholesaleBases.some((text) => text.includes(fixtures.abroadBaseName)));
+
+    await navigateToRoute(cdp, "/refueling");
+    await clickTestId(cdp, "button-add-refueling");
+    await selectComboboxOption(cdp, "select-supplier", fixtures.mixedSupplierName);
+    const refuelingBases = await getVisibleComboboxOptions(cdp, "select-basis");
+    assert(refuelingBases.some((text) => text.includes(fixtures.baseName)));
+    assert(!refuelingBases.some((text) => text.includes(fixtures.wholesaleBaseName)));
+    assert(!refuelingBases.some((text) => text.includes(fixtures.abroadBaseName)));
+
+    await navigateToRoute(cdp, "/abroad");
+    await clickTestId(cdp, "button-add-refueling-abroad");
+    const foreignSuppliers = await getVisibleComboboxOptions(cdp, "select-supplier");
+    assert(foreignSuppliers.some((text) => text.includes(fixtures.foreignSupplierName)));
+    assert(!foreignSuppliers.some((text) => text.includes(fixtures.mixedSupplierName)));
+    assert(!foreignSuppliers.some((text) => text.includes(fixtures.supplierName)));
+    await selectComboboxOption(cdp, "select-supplier", fixtures.foreignSupplierName);
+    const abroadBases = await getVisibleComboboxOptions(cdp, "select-basis");
+    assert(abroadBases.some((text) => text.includes(fixtures.abroadBaseName)));
+    assert(!abroadBases.some((text) => text.includes(fixtures.baseName)));
+    assert(!abroadBases.some((text) => text.includes(fixtures.wholesaleBaseName)));
+    const foreignBuyers = await getVisibleComboboxOptions(cdp, "select-buyer");
+    assert(foreignBuyers.some((text) => text.includes(fixtures.foreignBuyerName)));
+    assert(!foreignBuyers.some((text) => text.includes(fixtures.wholesaleBuyerName)));
+    assert(!foreignBuyers.some((text) => text.includes(fixtures.buyerName)));
 
     await cdp.evaluate(`(() => {
       window.history.pushState({}, "", "/refueling");
