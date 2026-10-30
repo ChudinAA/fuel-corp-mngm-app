@@ -2939,6 +2939,11 @@ test("authenticated browser can load the core business pages", async () => {
       "UI flow passed: transportation service price ID/index saved and prefilled on edit",
     );
 
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[role="dialog"][data-state="open"]')`,
+      "the transportation draft edit dialog to close before finalization",
+    );
     const transportationFinalNote = `ui-transportation-final-${runId}`;
     await clickTestId(
       cdp,
@@ -2949,6 +2954,7 @@ test("authenticated browser can load the core business pages", async () => {
       `(() => {
         const dialog = document.querySelector('[role="dialog"][data-state="open"]');
         return Boolean(
+          dialog?.innerText.includes("Редактирование перевозки") &&
           dialog?.querySelector('[data-testid="input-quantity-tonnes"]') &&
           dialog.querySelector('[data-testid="select-sale-price"]')
             ?.innerText.includes("47")
@@ -3001,6 +3007,11 @@ test("authenticated browser can load the core business pages", async () => {
       expectedTransportationPriceId,
     );
     assert.equal(finalizedTransportationWrite.write.payload.salePriceIndex, 1);
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[role="dialog"][data-state="open"]')`,
+      "the transportation finalization dialog to close before editing",
+    );
 
     await clickTestId(
       cdp,
@@ -3008,9 +3019,13 @@ test("authenticated browser can load the core business pages", async () => {
     );
     await waitForExpression(
       cdp,
-      `Boolean(document.querySelector(
-        '[role="dialog"][data-state="open"] [data-testid="input-quantity-tonnes"]'
-      ))`,
+      `(() => {
+        const dialog = document.querySelector('[role="dialog"][data-state="open"]');
+        return Boolean(
+          dialog?.innerText.includes("Редактирование перевозки") &&
+          dialog.querySelector('[data-testid="input-quantity-tonnes"]')
+        );
+      })()`,
       "the final transportation edit form",
     );
     await fillInput(
@@ -3053,6 +3068,11 @@ test("authenticated browser can load the core business pages", async () => {
       Number(editedFinalTransportation.sale_amount) >
         Number(finalizedTransportation.sale_amount),
       "increasing transportation mass increases the saved service amount",
+    );
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[role="dialog"][data-state="open"]')`,
+      "the final transportation edit dialog to close before deletion",
     );
 
     await openRowActionByTestId(
