@@ -15,6 +15,7 @@ const runId = randomUUID();
 const fixtures = {
   baseName: `ui-smoke-base-${runId}`,
   wholesaleBaseName: `ui-wholesale-base-${runId}`,
+  wholesaleDeliveryBaseName: `ui-wholesale-delivery-base-${runId}`,
   abroadBaseName: `ui-abroad-base-${runId}`,
   supplierName: `ui-smoke-supplier-${runId}`,
   mixedSupplierName: `ui-mixed-supplier-${runId}`,
@@ -78,12 +79,14 @@ async function seedUiFixtures() {
     `INSERT INTO bases (name, base_type)
      VALUES ($1, 'refueling'),
             ($2, 'wholesale'),
-            ($3, 'abroad')
+            ($3, 'abroad'),
+            ($4, 'wholesale')
      RETURNING id, name`,
     [
       fixtures.baseName,
       fixtures.wholesaleBaseName,
       fixtures.abroadBaseName,
+      fixtures.wholesaleDeliveryBaseName,
     ],
   );
   basisIds = Object.fromEntries(
@@ -133,7 +136,7 @@ async function seedUiFixtures() {
       buyer.rows[0].id,
       basisIds[fixtures.baseName],
       wholesaleBuyer.rows[0].id,
-      basisIds[fixtures.wholesaleBaseName],
+      basisIds[fixtures.wholesaleDeliveryBaseName],
       foreignBuyer.rows[0].id,
       basisIds[fixtures.abroadBaseName],
     ],
@@ -182,7 +185,8 @@ async function seedUiFixtures() {
        (carrier_id, from_entity_type, from_entity_id, from_location,
         to_entity_type, to_entity_id, to_location, cost_per_tonne)
      VALUES ($1, 'base', $2, $3, 'warehouse', $4, $5, 0),
-            ($1, 'base', $6, $7, 'warehouse', $4, $5, 250)`,
+            ($1, 'base', $6, $7, 'warehouse', $4, $5, 250),
+            ($1, 'base', $6, $7, 'base', $8, $9, 475)`,
     [
       carrier.rows[0].id,
       basisIds[fixtures.baseName],
@@ -191,6 +195,8 @@ async function seedUiFixtures() {
       fixtures.transferWarehouseName,
       basisIds[fixtures.wholesaleBaseName],
       fixtures.wholesaleBaseName,
+      basisIds[fixtures.wholesaleDeliveryBaseName],
+      fixtures.wholesaleDeliveryBaseName,
     ],
   );
   await pool.query(
@@ -334,7 +340,7 @@ async function seedUiFixtures() {
        ('kerosene', $1, 'wholesale', 'supplier', $2, $3, $4,
         ARRAY['{"price":30000}', '{"price":31000}'], '2026-10-01', '2026-10-31',
         'tonne', 'tonne', false),
-       ('kerosene', $5, 'wholesale', 'buyer', $2, $3, $4,
+       ('kerosene', $5, 'wholesale', 'buyer', $6, $7, $4,
         ARRAY['{"price":35000}', '{"price":36000}'], '2026-10-01', '2026-10-31',
         'tonne', 'tonne', false)`,
     [
@@ -343,6 +349,8 @@ async function seedUiFixtures() {
       basisIds[fixtures.wholesaleBaseName],
       nomenclatureIds.kerosene,
       wholesaleBuyer.rows[0].id,
+      fixtures.wholesaleDeliveryBaseName,
+      basisIds[fixtures.wholesaleDeliveryBaseName],
     ],
   );
 }
@@ -463,6 +471,7 @@ async function cleanUiFixtures() {
       [
         fixtures.baseName,
         fixtures.wholesaleBaseName,
+        fixtures.wholesaleDeliveryBaseName,
         fixtures.abroadBaseName,
       ],
     ],
@@ -549,7 +558,12 @@ async function cleanUiFixtures() {
   ]]);
   await pool.query(
     "DELETE FROM bases WHERE name = ANY($1::text[])",
-    [[fixtures.baseName, fixtures.wholesaleBaseName, fixtures.abroadBaseName]],
+    [[
+      fixtures.baseName,
+      fixtures.wholesaleBaseName,
+      fixtures.wholesaleDeliveryBaseName,
+      fixtures.abroadBaseName,
+    ]],
   );
 }
 
@@ -1458,7 +1472,7 @@ test("authenticated browser can load the core business pages", async () => {
     await selectComboboxOption(
       cdp,
       "select-buyer-basis",
-      fixtures.wholesaleBaseName,
+      fixtures.wholesaleDeliveryBaseName,
     );
     await waitForExpression(
       cdp,
@@ -1472,6 +1486,19 @@ test("authenticated browser can load the core business pages", async () => {
         ?.innerText.includes("35")`,
       "the default wholesale sale price",
     );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-carrier"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.carrierName)}) &&
+       document.body.innerText.includes("Тариф найден по маршруту базис → базис")`,
+      "the base-to-base tariff and carrier automatically selected",
+    );
+    await fillInput(cdp, '[data-testid="input-tonnes"]', "1");
+    await waitForExpression(
+      cdp,
+      `document.body.innerText.includes("475")`,
+      "the calculated delivery cost from the matched base-to-base tariff",
+    );
     await selectComboboxOption(cdp, "select-purchase-price", "31");
     await selectComboboxOption(cdp, "select-sale-price", "36");
     await fillInput(
@@ -1482,7 +1509,8 @@ test("authenticated browser can load the core business pages", async () => {
     await clickButtonWithText(cdp, "Сохранить черновик");
     const createdOptDraft = await waitForDatabaseRow(
       `SELECT id, purchase_price_id, purchase_price_index,
-              sale_price_id, sale_price_index, is_draft, nomenclature_id
+              sale_price_id, sale_price_index, delivery_cost,
+              delivery_tariff_per_tonne, is_draft, nomenclature_id
        FROM opt WHERE notes = $1`,
       [fixtures.optPriceDraftNote],
       "the OPT draft with explicitly selected price tiers",
@@ -1492,17 +1520,19 @@ test("authenticated browser can load the core business pages", async () => {
        FROM prices
        WHERE product_type = 'kerosene'
          AND counterparty_type = 'wholesale'
-         AND basis_id = $1
          AND date_from = '2026-10-01'
          AND (
            (counterparty_role = 'supplier'
-             AND counterparty_id = (SELECT id FROM suppliers WHERE name = $2))
+             AND basis_id = $1
+             AND counterparty_id = (SELECT id FROM suppliers WHERE name = $3))
            OR
            (counterparty_role = 'buyer'
-             AND counterparty_id = (SELECT id FROM customers WHERE name = $3))
+             AND basis_id = $2
+             AND counterparty_id = (SELECT id FROM customers WHERE name = $4))
          )`,
       [
         basisIds[fixtures.wholesaleBaseName],
+        basisIds[fixtures.wholesaleDeliveryBaseName],
         fixtures.mixedSupplierName,
         fixtures.wholesaleBuyerName,
       ],
@@ -1519,6 +1549,8 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(Number(createdOptDraft.purchase_price_index), 1);
     assert.equal(createdOptDraft.sale_price_id, expectedSalePriceId);
     assert.equal(Number(createdOptDraft.sale_price_index), 1);
+    assert.equal(Number(createdOptDraft.delivery_cost), 475);
+    assert.equal(Number(createdOptDraft.delivery_tariff_per_tonne), 475);
     assert.equal(createdOptDraft.is_draft, true);
     assert.equal(createdOptDraft.nomenclature_id, nomenclatureIds.kerosene);
     await waitForAuditOperations(createdOptDraft.id, ["CREATE"]);
@@ -1554,7 +1586,8 @@ test("authenticated browser can load the core business pages", async () => {
     await clickButtonWithText(cdp, "Сохранить черновик");
     const editedOptDraft = await waitForDatabaseRow(
       `SELECT id, purchase_price_id, purchase_price_index,
-              sale_price_id, sale_price_index, is_draft, nomenclature_id
+              sale_price_id, sale_price_index, delivery_cost,
+              delivery_tariff_per_tonne, is_draft, nomenclature_id
        FROM opt WHERE notes = $1`,
       [fixtures.optPriceDraftEditedNote],
       "the edited OPT draft retaining its selected price tiers",
@@ -1563,7 +1596,9 @@ test("authenticated browser can load the core business pages", async () => {
         row.purchase_price_id === expectedPurchasePriceId &&
         Number(row.purchase_price_index) === 1 &&
         row.sale_price_id === expectedSalePriceId &&
-        Number(row.sale_price_index) === 1,
+        Number(row.sale_price_index) === 1 &&
+        Number(row.delivery_cost) === 475 &&
+        Number(row.delivery_tariff_per_tonne) === 475,
     );
     assert.equal(editedOptDraft.is_draft, true);
     assert.equal(editedOptDraft.nomenclature_id, nomenclatureIds.kerosene);
