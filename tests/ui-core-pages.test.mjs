@@ -4614,6 +4614,184 @@ test("authenticated browser can load the core business pages", async () => {
         Number(row.average_cost_per_tonne) === 15_000,
       45_000,
     );
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[role="dialog"][data-state="open"]')`,
+      "the second receipt form to close before deleting the receipt",
+    );
+    await waitForAuditOperations(secondReceipt.id, ["CREATE"]);
+    const secondReceiptLedgerBeforeDelete = await pool.query(
+      `SELECT id, transaction_type, quantity_tonnes, sum, price_per_tonne,
+              deleted_at
+       FROM warehouse_transactions
+       WHERE source_type = 'movement' AND source_id = $1`,
+      [secondReceipt.id],
+    );
+    assert.equal(secondReceiptLedgerBeforeDelete.rows.length, 1);
+    const secondReceiptTransactionId =
+      secondReceiptLedgerBeforeDelete.rows[0].id;
+    assert.equal(
+      secondReceiptLedgerBeforeDelete.rows[0].transaction_type,
+      "receipt",
+    );
+    assert.equal(
+      Number(secondReceiptLedgerBeforeDelete.rows[0].quantity_tonnes),
+      1,
+    );
+    assert.equal(Number(secondReceiptLedgerBeforeDelete.rows[0].sum), 20_000);
+    assert.equal(
+      Number(secondReceiptLedgerBeforeDelete.rows[0].price_per_tonne),
+      20_000,
+    );
+    assert.equal(secondReceiptLedgerBeforeDelete.rows[0].deleted_at, null);
+    await fillInput(cdp, 'input[placeholder="Поиск..."]', "");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('input[placeholder="Поиск..."]')?.value === ""`,
+      "the movement table search to be cleared before deleting the receipt",
+    );
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector(
+        '[data-testid="movement-row-${secondReceipt.id}"]'
+      ))`,
+      "the second receipt to appear in the active movement table",
+    );
+
+    await openRowActionByTestId(
+      cdp,
+      `movement-row-${secondReceipt.id}`,
+      "Удалить",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить перемещение?")`,
+      "the warehouse-receipt deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    const deletedSecondReceipt = await waitForDatabaseRow(
+      `SELECT deleted_at, total_cost, purchase_price_per_tonne
+       FROM movement WHERE id = $1`,
+      [secondReceipt.id],
+      "the warehouse receipt soft-deleted through the UI",
+      (row) => Boolean(row.deleted_at),
+    );
+    assert.equal(Number(deletedSecondReceipt.total_cost), 20_000);
+    assert.equal(Number(deletedSecondReceipt.purchase_price_per_tonne), 20_000);
+    await waitForAuditOperations(secondReceipt.id, ["CREATE", "DELETE"]);
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [operationalWarehouseId],
+      "the warehouse balance and cost after deleting the receipt",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1 &&
+        Number(row.average_cost_per_tonne) === 10_000,
+      45_000,
+    );
+    const deletedReceiptLedger = await pool.query(
+      `SELECT id, sum, price_per_tonne, deleted_at
+       FROM warehouse_transactions
+       WHERE source_type = 'movement' AND source_id = $1`,
+      [secondReceipt.id],
+    );
+    assert.equal(deletedReceiptLedger.rows.length, 1);
+    assert.equal(deletedReceiptLedger.rows[0].id, secondReceiptTransactionId);
+    assert.equal(Number(deletedReceiptLedger.rows[0].sum), 20_000);
+    assert.equal(Number(deletedReceiptLedger.rows[0].price_per_tonne), 20_000);
+    assert.ok(deletedReceiptLedger.rows[0].deleted_at);
+
+    const receiptDeleteAudit = await waitForDatabaseRow(
+      `SELECT id FROM audit_log
+       WHERE entity_type = 'movement' AND entity_id = $1
+         AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [secondReceipt.id],
+      "the warehouse receipt delete audit entry",
+    );
+    await restoreDeletedAuditEntry(
+      cdp,
+      receiptDeleteAudit.id,
+      "Все перемещения (включая удаленные)",
+    );
+    const restoredSecondReceipt = await waitForDatabaseRow(
+      `SELECT deleted_at, total_cost, purchase_price_per_tonne
+       FROM movement WHERE id = $1`,
+      [secondReceipt.id],
+      "the warehouse receipt restored through audit history",
+      (row) => row.deleted_at === null,
+    );
+    assert.equal(Number(restoredSecondReceipt.total_cost), 20_000);
+    assert.equal(
+      Number(restoredSecondReceipt.purchase_price_per_tonne),
+      20_000,
+    );
+    await waitForAuditOperations(secondReceipt.id, [
+      "CREATE",
+      "DELETE",
+      "RESTORE",
+    ]);
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [operationalWarehouseId],
+      "the warehouse balance and cost after restoring the receipt",
+      (row) =>
+        Number(row.current_balance_tonnes) === 2 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    const restoredReceiptLedger = await pool.query(
+      `SELECT id, transaction_type, quantity_tonnes, sum, price_per_tonne,
+              balance_after_tonnes, average_cost_after_per_tonne, deleted_at
+       FROM warehouse_transactions
+       WHERE source_type = 'movement' AND source_id = $1`,
+      [secondReceipt.id],
+    );
+    assert.equal(restoredReceiptLedger.rows.length, 1);
+    assert.equal(restoredReceiptLedger.rows[0].id, secondReceiptTransactionId);
+    assert.equal(restoredReceiptLedger.rows[0].transaction_type, "receipt");
+    assert.equal(Number(restoredReceiptLedger.rows[0].quantity_tonnes), 1);
+    assert.equal(Number(restoredReceiptLedger.rows[0].sum), 20_000);
+    assert.equal(Number(restoredReceiptLedger.rows[0].price_per_tonne), 20_000);
+    assert.equal(Number(restoredReceiptLedger.rows[0].balance_after_tonnes), 2);
+    assert.equal(
+      Number(restoredReceiptLedger.rows[0].average_cost_after_per_tonne),
+      15_000,
+    );
+    assert.equal(restoredReceiptLedger.rows[0].deleted_at, null);
+    const receiptLedgerCounts = await pool.query(
+      `SELECT COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active
+       FROM warehouse_transactions
+       WHERE source_type = 'movement' AND source_id = ANY($1::uuid[])`,
+      [[firstReceipt.id, secondReceipt.id]],
+    );
+    assert.deepEqual(receiptLedgerCounts.rows[0], { total: 2, active: 2 });
+    const rolledBackReceiptDelete = await pool.query(
+      "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+      [receiptDeleteAudit.id],
+    );
+    assert.ok(rolledBackReceiptDelete.rows[0]?.rolled_back_at);
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector(
+        '[data-testid="movement-row-${secondReceipt.id}"]'
+      ))`,
+      "the restored receipt in the active movement table",
+    );
+    await clickButtonWithText(cdp, "Close");
+    await waitForExpression(
+      cdp,
+      `!Array.from(document.querySelectorAll('[role="dialog"]'))
+        .some((dialog) =>
+          dialog.innerText.includes("Все перемещения (включая удаленные)"))`,
+      "the movement audit panel to close after restoring the receipt",
+    );
+    console.log(
+      "UI flow passed: warehouse receipt delete/restore preserves cost, sums, and one active movement",
+    );
 
     const warehouseRefuelingWarehouse = await pool.query(
       `SELECT id FROM warehouses WHERE name = $1`,

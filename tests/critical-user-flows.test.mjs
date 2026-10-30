@@ -1629,6 +1629,146 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   assert.ok(auditCounts.rows.some((row) => row.entity_type === "aircraft_refueling"));
   assert.ok(auditCounts.rows.some((row) => row.entity_type === "opt"));
 
+  const receiptRestoreWarehouse = (
+    await pool.query(
+      `INSERT INTO warehouses
+         (name, current_balance_tonnes, average_cost_per_tonne,
+          pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+       VALUES ($1, 1, 10000, 0, 0)
+       RETURNING id`,
+      [`critical-flow-receipt-restore-${randomUUID()}`],
+    )
+  ).rows[0];
+  await pool.query(
+    `INSERT INTO warehouse_transactions
+       (warehouse_id, transaction_type, product_type, quantity_tonnes,
+        source_type, balance_before_tonnes, balance_after_tonnes,
+        average_cost_before_per_tonne, average_cost_after_per_tonne,
+        sum, price_per_tonne, transaction_date)
+     VALUES ($1, 'receipt', 'kerosene', 1, 'critical_flow_receipt_seed',
+             0, 1, 0, 10000, 10000, 10000, '2026-10-01T00:00:00.000Z')`,
+    [receiptRestoreWarehouse.id],
+  );
+  const receiptForRestore = await api("/api/movement", {
+    method: "POST",
+    expectedStatus: 201,
+    body: {
+      movementDate: "2026-10-15T12:00:00.000Z",
+      movementType: "supply",
+      productType: "kerosene",
+      nomenclatureId: nomenclatureIdByProductType.kerosene,
+      supplierId: supplier.id,
+      toWarehouseId: receiptRestoreWarehouse.id,
+      quantityTonnes: 1,
+      purchasePricePerTonne: 20_000,
+      totalCost: 20_000,
+      costPerTonne: 20_000,
+      isDraft: false,
+      notes: `critical flow receipt restore ${randomUUID()}`,
+    },
+  });
+  assert.ok(receiptForRestore.id, "the warehouse receipt is created through API");
+  assertStock(
+    await getStock("warehouses", receiptRestoreWarehouse.id),
+    2,
+    15_000,
+    "warehouse receipt after API create",
+  );
+  const createdReceiptLedger = await pool.query(
+    `SELECT id, transaction_type, quantity_tonnes, sum, price_per_tonne,
+            deleted_at
+     FROM warehouse_transactions
+     WHERE source_type = 'movement' AND source_id = $1`,
+    [receiptForRestore.id],
+  );
+  assert.equal(createdReceiptLedger.rows.length, 1);
+  const receiptTransactionId = createdReceiptLedger.rows[0].id;
+  assert.equal(createdReceiptLedger.rows[0].transaction_type, "receipt");
+  assert.equal(Number(createdReceiptLedger.rows[0].quantity_tonnes), 1);
+  assert.equal(Number(createdReceiptLedger.rows[0].sum), 20_000);
+  assert.equal(Number(createdReceiptLedger.rows[0].price_per_tonne), 20_000);
+  assert.equal(createdReceiptLedger.rows[0].deleted_at, null);
+  await waitForAuditOperations("movement", receiptForRestore.id, ["CREATE"]);
+
+  await api(`/api/movement/${receiptForRestore.id}`, { method: "DELETE" });
+  assertStock(
+    await getStock("warehouses", receiptRestoreWarehouse.id),
+    1,
+    10_000,
+    "warehouse receipt after API delete",
+  );
+  const deletedReceiptLedger = await pool.query(
+    `SELECT id, sum, price_per_tonne, deleted_at
+     FROM warehouse_transactions
+     WHERE source_type = 'movement' AND source_id = $1`,
+    [receiptForRestore.id],
+  );
+  assert.equal(deletedReceiptLedger.rows.length, 1);
+  assert.equal(deletedReceiptLedger.rows[0].id, receiptTransactionId);
+  assert.equal(Number(deletedReceiptLedger.rows[0].sum), 20_000);
+  assert.equal(Number(deletedReceiptLedger.rows[0].price_per_tonne), 20_000);
+  assert.ok(deletedReceiptLedger.rows[0].deleted_at);
+  const receiptDeleteAuditId = await latestAuditId(
+    "movement",
+    receiptForRestore.id,
+  );
+  const receiptRestoreResult = await api(
+    `/api/audit/rollback/${receiptDeleteAuditId}`,
+    { method: "POST", body: {} },
+  );
+  assert.equal(receiptRestoreResult.success, true);
+  assertStock(
+    await getStock("warehouses", receiptRestoreWarehouse.id),
+    2,
+    15_000,
+    "warehouse receipt after API restore",
+  );
+  const restoredReceipt = await pool.query(
+    `SELECT purchase_price_per_tonne, total_cost, deleted_at
+     FROM movement WHERE id = $1`,
+    [receiptForRestore.id],
+  );
+  assert.equal(Number(restoredReceipt.rows[0].purchase_price_per_tonne), 20_000);
+  assert.equal(Number(restoredReceipt.rows[0].total_cost), 20_000);
+  assert.equal(restoredReceipt.rows[0].deleted_at, null);
+  const restoredReceiptLedger = await pool.query(
+    `SELECT id, transaction_type, quantity_tonnes, sum, price_per_tonne,
+            balance_after_tonnes, average_cost_after_per_tonne, deleted_at
+     FROM warehouse_transactions
+     WHERE source_type = 'movement' AND source_id = $1`,
+    [receiptForRestore.id],
+  );
+  assert.equal(restoredReceiptLedger.rows.length, 1);
+  assert.equal(restoredReceiptLedger.rows[0].id, receiptTransactionId);
+  assert.equal(restoredReceiptLedger.rows[0].transaction_type, "receipt");
+  assert.equal(Number(restoredReceiptLedger.rows[0].quantity_tonnes), 1);
+  assert.equal(Number(restoredReceiptLedger.rows[0].sum), 20_000);
+  assert.equal(Number(restoredReceiptLedger.rows[0].price_per_tonne), 20_000);
+  assert.equal(Number(restoredReceiptLedger.rows[0].balance_after_tonnes), 2);
+  assert.equal(
+    Number(restoredReceiptLedger.rows[0].average_cost_after_per_tonne),
+    15_000,
+  );
+  assert.equal(restoredReceiptLedger.rows[0].deleted_at, null);
+  const receiptLedgerCounts = await pool.query(
+    `SELECT COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active
+     FROM warehouse_transactions
+     WHERE source_type = 'movement' AND source_id = $1`,
+    [receiptForRestore.id],
+  );
+  assert.deepEqual(receiptLedgerCounts.rows[0], { total: 1, active: 1 });
+  await waitForAuditOperations("movement", receiptForRestore.id, [
+    "CREATE",
+    "DELETE",
+    "RESTORE",
+  ]);
+  const rolledBackReceiptDelete = await pool.query(
+    "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+    [receiptDeleteAuditId],
+  );
+  assert.ok(rolledBackReceiptDelete.rows[0]?.rolled_back_at);
+
   // Internal warehouse transfers must keep both ledgers and weighted cost in sync,
   // including when an existing transfer is edited to an earlier business date.
   const transferWarehouse = (
