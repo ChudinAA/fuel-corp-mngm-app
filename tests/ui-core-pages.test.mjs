@@ -250,12 +250,11 @@ async function seedUiFixtures() {
         agent_fee_per_tonne, other_service_type, other_service_value,
         other_service_name, other_service_quantity)
      VALUES ($1, $2, 125, 75, 'fixed', 30, 'Обработка', 1),
-            ($3, $4, 250, NULL, 'fixed', 40, 'Погрузка', 1),
-            ($5, $6, 500, 100, 'fixed', 50, 'Терминал', 1)`,
+            ($1, $3, 250, NULL, 'fixed', 40, 'Погрузка', 1),
+            ($4, $5, 500, 100, 'fixed', 50, 'Терминал', 1)`,
     [
-      supplier.rows[0].id,
-      basisIds[fixtures.baseName],
       mixedSupplier.rows[0].id,
+      basisIds[fixtures.baseName],
       basisIds[fixtures.wholesaleBaseName],
       foreignSupplier.rows[0].id,
       basisIds[fixtures.abroadBaseName],
