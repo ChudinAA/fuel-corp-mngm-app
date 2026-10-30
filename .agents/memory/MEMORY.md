@@ -26,3 +26,4 @@
 - [UI combobox browser tests](ui-combobox-testing.md) — close stale popovers and choose only visible options when automating shared comboboxes through Chromium.
 - [UI fixture economics isolation](ui-fixture-economics.md) — keep fee-bearing supplier-basis fixture rows separate from baseline deal-economics fixtures.
 - [Nomenclature defaults in operations](nomenclature-defaults.md) — new operations, including drafts, must always use the default nomenclature for their product type.
+- [OPT form/API boundaries](opt-form-contract-boundaries.md) — choose mixed-party bases by type and send canonical price IDs/indices, not UI selectors or route IDs.

@@ -467,7 +467,12 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           salePrices,
           isWarehouseSupplier,
         );
-        const { quantityTonnes: _quantityTonnes, ...formData } = data;
+        const {
+          quantityTonnes: _quantityTonnes,
+          selectedPurchasePriceId: _selectedPurchasePriceId,
+          selectedSalePriceId: _selectedSalePriceId,
+          ...formData
+        } = data;
 
         const payload = {
           ...formData,
@@ -639,7 +644,13 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           value: string | number | null | undefined,
         ): number | null =>
           value === null || value === undefined ? null : Number(value);
-        const { quantityTonnes: _quantityTonnes, ...formData } = data;
+        const {
+          quantityTonnes: _quantityTonnes,
+          selectedPurchasePriceId: _selectedPurchasePriceId,
+          selectedSalePriceId: _selectedSalePriceId,
+          id: _id,
+          ...formData
+        } = data;
 
         const payload = {
           ...formData,

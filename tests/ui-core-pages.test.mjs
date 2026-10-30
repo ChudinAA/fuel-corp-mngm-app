@@ -24,12 +24,16 @@ const fixtures = {
   foreignBuyerName: `ui-foreign-buyer-${runId}`,
   supplierContractName: `ui-supplier-contract-${runId}`,
   supplierContractNumber: `S-${runId.slice(0, 8)}`,
+  mixedSupplierContractName: `ui-mixed-supplier-contract-${runId}`,
+  mixedSupplierContractNumber: `MS-${runId.slice(0, 8)}`,
   buyerContractName: `ui-buyer-contract-${runId}`,
   buyerContractNumber: `B-${runId.slice(0, 8)}`,
   carrierContractName: `ui-carrier-contract-${runId}`,
   carrierContractNumber: `C-${runId.slice(0, 8)}`,
   warehouseName: `ui-smoke-warehouse-${runId}`,
   refuelingNote: `ui-smoke-refueling-${runId}`,
+  optPriceDraftNote: `ui-opt-price-draft-${runId}`,
+  optPriceDraftEditedNote: `ui-opt-price-draft-edited-${runId}`,
   movementNote: `ui-smoke-movement-${runId}`,
   operationalWarehouseName: `ui-operations-warehouse-${runId}`,
   transferWarehouseName: `ui-operations-transfer-warehouse-${runId}`,
@@ -201,6 +205,16 @@ async function seedUiFixtures() {
   );
   await pool.query(
     `INSERT INTO counterparty_contracts
+       (contract_name, contract_number, contract_date, supplier_id)
+     VALUES ($1, $2, '2026-01-01', $3)`,
+    [
+      fixtures.mixedSupplierContractName,
+      fixtures.mixedSupplierContractNumber,
+      mixedSupplier.rows[0].id,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO counterparty_contracts
        (contract_name, contract_number, contract_date, buyer_id)
      VALUES ($1, $2, '2026-01-01', $3)`,
     [
@@ -318,10 +332,10 @@ async function seedUiFixtures() {
         volume_unit, price_unit, contract_limit_enabled)
      VALUES
        ('kerosene', $1, 'wholesale', 'supplier', $2, $3, $4,
-        ARRAY['{"price":30000}'], '2026-10-01', '2026-10-31',
+        ARRAY['{"price":30000}', '{"price":31000}'], '2026-10-01', '2026-10-31',
         'tonne', 'tonne', false),
        ('kerosene', $5, 'wholesale', 'buyer', $2, $3, $4,
-        ARRAY['{"price":35000}'], '2026-10-01', '2026-10-31',
+        ARRAY['{"price":35000}', '{"price":36000}'], '2026-10-01', '2026-10-31',
         'tonne', 'tonne', false)`,
     [
       mixedSupplier.rows[0].id,
@@ -334,7 +348,7 @@ async function seedUiFixtures() {
 }
 
 async function cleanUiFixtures() {
-  const [refuelings, movements, equipmentMovements] = await Promise.all([
+  const [refuelings, movements, equipmentMovements, optDeals] = await Promise.all([
     pool.query(
       "SELECT id FROM aircraft_refueling WHERE notes = ANY($1::text[])",
       [[fixtures.refuelingNote, fixtures.finalRefuelingNote]],
@@ -347,11 +361,16 @@ async function cleanUiFixtures() {
       "SELECT id FROM equipment_movement WHERE notes = $1",
       [fixtures.equipmentTransferNote],
     ),
+    pool.query(
+      "SELECT id FROM opt WHERE notes = ANY($1::text[])",
+      [[fixtures.optPriceDraftNote, fixtures.optPriceDraftEditedNote]],
+    ),
   ]);
   const entityIds = [
     ...refuelings.rows.map((row) => row.id),
     ...movements.rows.map((row) => row.id),
     ...equipmentMovements.rows.map((row) => row.id),
+    ...optDeals.rows.map((row) => row.id),
   ];
   if (entityIds.length) {
     await pool.query(
@@ -407,6 +426,9 @@ async function cleanUiFixtures() {
     "DELETE FROM movement WHERE id = ANY($1::uuid[])",
     [movementIds],
   );
+  await pool.query("DELETE FROM opt WHERE id = ANY($1::uuid[])", [
+    optDeals.rows.map((row) => row.id),
+  ]);
   if (movementIds.length) {
     await pool.query(
       "DELETE FROM warehouse_transactions WHERE source_type = 'movement' AND source_id = ANY($1::uuid[])",
@@ -423,6 +445,7 @@ async function cleanUiFixtures() {
     "DELETE FROM counterparty_contracts WHERE contract_name = ANY($1::text[])",
     [[
       fixtures.supplierContractName,
+      fixtures.mixedSupplierContractName,
       fixtures.buyerContractName,
       fixtures.carrierContractName,
     ]],
@@ -1449,6 +1472,107 @@ test("authenticated browser can load the core business pages", async () => {
         ?.innerText.includes("35")`,
       "the default wholesale sale price",
     );
+    await selectComboboxOption(cdp, "select-purchase-price", "31");
+    await selectComboboxOption(cdp, "select-sale-price", "36");
+    await fillInput(
+      cdp,
+      '[data-testid="input-notes"]',
+      fixtures.optPriceDraftNote,
+    );
+    await clickButtonWithText(cdp, "Сохранить черновик");
+    const createdOptDraft = await waitForDatabaseRow(
+      `SELECT id, purchase_price_id, purchase_price_index,
+              sale_price_id, sale_price_index, is_draft, nomenclature_id
+       FROM opt WHERE notes = $1`,
+      [fixtures.optPriceDraftNote],
+      "the OPT draft with explicitly selected price tiers",
+    );
+    const optFixturePrices = await pool.query(
+      `SELECT id, counterparty_role
+       FROM prices
+       WHERE product_type = 'kerosene'
+         AND counterparty_type = 'wholesale'
+         AND basis_id = $1
+         AND date_from = '2026-10-01'
+         AND (
+           (counterparty_role = 'supplier'
+             AND counterparty_id = (SELECT id FROM suppliers WHERE name = $2))
+           OR
+           (counterparty_role = 'buyer'
+             AND counterparty_id = (SELECT id FROM customers WHERE name = $3))
+         )`,
+      [
+        basisIds[fixtures.wholesaleBaseName],
+        fixtures.mixedSupplierName,
+        fixtures.wholesaleBuyerName,
+      ],
+    );
+    const expectedPurchasePriceId = optFixturePrices.rows.find(
+      (price) => price.counterparty_role === "supplier",
+    )?.id;
+    const expectedSalePriceId = optFixturePrices.rows.find(
+      (price) => price.counterparty_role === "buyer",
+    )?.id;
+    assert.ok(expectedPurchasePriceId, "fixture purchase price should exist");
+    assert.ok(expectedSalePriceId, "fixture sale price should exist");
+    assert.equal(createdOptDraft.purchase_price_id, expectedPurchasePriceId);
+    assert.equal(Number(createdOptDraft.purchase_price_index), 1);
+    assert.equal(createdOptDraft.sale_price_id, expectedSalePriceId);
+    assert.equal(Number(createdOptDraft.sale_price_index), 1);
+    assert.equal(createdOptDraft.is_draft, true);
+    assert.equal(createdOptDraft.nomenclature_id, nomenclatureIds.kerosene);
+    await waitForAuditOperations(createdOptDraft.id, ["CREATE"]);
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[role="dialog"][data-state="open"]')`,
+      "the OPT draft form to close after creation",
+    );
+
+    await fillInput(
+      cdp,
+      '[data-testid="input-search-opt"]',
+      fixtures.mixedSupplierName,
+    );
+    await openEditMenuForRow(cdp, fixtures.mixedSupplierName);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-purchase-price"]')
+        ?.innerText.includes("31")`,
+      "the selected purchase price tier in the OPT edit form",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-sale-price"]')
+        ?.innerText.includes("36")`,
+      "the selected sale price tier in the OPT edit form",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-notes"]',
+      fixtures.optPriceDraftEditedNote,
+    );
+    await clickButtonWithText(cdp, "Сохранить черновик");
+    const editedOptDraft = await waitForDatabaseRow(
+      `SELECT id, purchase_price_id, purchase_price_index,
+              sale_price_id, sale_price_index, is_draft, nomenclature_id
+       FROM opt WHERE notes = $1`,
+      [fixtures.optPriceDraftEditedNote],
+      "the edited OPT draft retaining its selected price tiers",
+      (row) =>
+        row.id === createdOptDraft.id &&
+        row.purchase_price_id === expectedPurchasePriceId &&
+        Number(row.purchase_price_index) === 1 &&
+        row.sale_price_id === expectedSalePriceId &&
+        Number(row.sale_price_index) === 1,
+    );
+    assert.equal(editedOptDraft.is_draft, true);
+    assert.equal(editedOptDraft.nomenclature_id, nomenclatureIds.kerosene);
+    await waitForAuditOperations(editedOptDraft.id, ["CREATE", "UPDATE"]);
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[role="dialog"][data-state="open"]')`,
+      "the OPT edit form to close after saving",
+    );
 
     await navigateToRoute(cdp, "/prices");
     await clickTestId(cdp, "button-add-price");
@@ -1465,14 +1589,18 @@ test("authenticated browser can load the core business pages", async () => {
       "select-counterparty",
     );
     assert(
-      priceCounterparties.some((text) => text.includes(fixtures.supplierName)),
-      `The supplier should be selectable for a wholesale price; options: ${JSON.stringify(priceCounterparties)}`,
+      priceCounterparties.some((text) => text.includes(fixtures.mixedSupplierName)),
+      `A supplier with linked bases should be selectable for a wholesale price; options: ${JSON.stringify(priceCounterparties)}`,
     );
-    await selectComboboxOption(cdp, "select-counterparty", fixtures.supplierName);
+    await selectComboboxOption(
+      cdp,
+      "select-counterparty",
+      fixtures.mixedSupplierName,
+    );
     await waitForExpression(
       cdp,
       `document.querySelector('[data-testid="select-price-contract"]')
-        ?.innerText.includes(${JSON.stringify(fixtures.supplierContractNumber)})`,
+        ?.innerText.includes(${JSON.stringify(fixtures.mixedSupplierContractNumber)})`,
       "the contract automatically selected for the chosen supplier",
     );
 
