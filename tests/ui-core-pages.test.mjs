@@ -950,7 +950,7 @@ async function clickMenuItemWithText(cdp, text) {
   assert.equal(clicked, true, `Expected menu item "${text}"`);
 }
 
-async function openEditMenuForRow(cdp, rowText) {
+async function openRowActionForRow(cdp, rowText, actionText) {
   const rowTextJson = JSON.stringify(rowText);
   await waitForExpression(
     cdp,
@@ -986,10 +986,18 @@ async function openEditMenuForRow(cdp, rowText) {
   await waitForExpression(
     cdp,
     `Array.from(document.querySelectorAll('[role="menuitem"]'))
-      .some((item) => item.innerText.trim() === "Редактировать")`,
-    "the edit action",
+      .some((item) => item.innerText.trim() === ${JSON.stringify(actionText)})`,
+    `the ${actionText} action`,
   );
-  await clickMenuItemWithText(cdp, "Редактировать");
+  await clickMenuItemWithText(cdp, actionText);
+}
+
+async function openEditMenuForRow(cdp, rowText) {
+  await openRowActionForRow(cdp, rowText, "Редактировать");
+}
+
+async function openDeleteMenuForRow(cdp, rowText) {
+  await openRowActionForRow(cdp, rowText, "Удалить");
 }
 
 async function waitForDatabaseRow(
@@ -1940,6 +1948,116 @@ test("authenticated browser can load the core business pages", async () => {
     );
 
     await navigateToRoute(cdp, "/prices");
+    await navigateToRoute(cdp, "/opt");
+    await fillInput(
+      cdp,
+      '[data-testid="input-search-opt"]',
+      fixtures.mixedSupplierName,
+    );
+    await openDeleteMenuForRow(cdp, fixtures.mixedSupplierName);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить сделку?")`,
+      "the OPT deal deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM opt WHERE id = $1",
+      [editedOptDraft.id],
+      "the OPT draft soft-deleted through the UI",
+      (row) => Boolean(row.deleted_at),
+    );
+    await waitForAuditOperations(editedOptDraft.id, [
+      "CREATE",
+      "UPDATE",
+      "DELETE",
+    ]);
+    await waitForExpression(
+      cdp,
+      `!Array.from(document.querySelectorAll("tbody tr"))
+        .some((row) => row.innerText.includes(${JSON.stringify(fixtures.mixedSupplierName)}))`,
+      "the deleted OPT draft to disappear from the active table",
+    );
+    const optDeleteAudit = await pool.query(
+      `SELECT id FROM audit_log
+       WHERE entity_id = $1 AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [editedOptDraft.id],
+    );
+    assert.ok(optDeleteAudit.rows[0]?.id, "the UI deletion should have an audit entry");
+
+    await clickButtonWithText(cdp, "История");
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelectorAll('[role="dialog"]'))
+        .some((dialog) => dialog.innerText.includes("Все сделки ОПТ")) &&
+       document.body.innerText.includes("Откат доступен")`,
+      "the all-OPT audit panel with restore permission",
+    );
+    const openedDeleteRollback = await cdp.evaluate(`(() => {
+      const panel = Array.from(document.querySelectorAll('[role="dialog"]'))
+        .find((dialog) => dialog.innerText.includes("Все сделки ОПТ"));
+      const button = Array.from(panel?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(
+      openedDeleteRollback,
+      true,
+      "the deleted OPT audit entry should offer rollback",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалённая запись будет восстановлена со всеми данными.")`,
+      "confirmation that the audit rollback restores the deleted OPT draft",
+    );
+    const confirmedDeleteRollback = await cdp.evaluate(`(() => {
+      const dialog = document.querySelector('[role="alertdialog"]');
+      const button = Array.from(dialog?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(confirmedDeleteRollback, true);
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM opt WHERE id = $1",
+      [editedOptDraft.id],
+      "the OPT draft restored through the audit UI",
+      (row) => row.deleted_at === null,
+    );
+    await waitForAuditOperations(editedOptDraft.id, [
+      "CREATE",
+      "UPDATE",
+      "DELETE",
+      "RESTORE",
+    ]);
+    const rolledBackDelete = await pool.query(
+      "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+      [optDeleteAudit.rows[0].id],
+    );
+    assert.ok(
+      rolledBackDelete.rows[0]?.rolled_back_at,
+      "the delete audit entry should be marked as rolled back",
+    );
+    const activeDraftCount = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM opt
+       WHERE notes = $1 AND deleted_at IS NULL`,
+      [fixtures.optPriceDraftEditedNote],
+    );
+    assert.equal(activeDraftCount.rows[0].count, 1);
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelectorAll("tbody tr"))
+        .some((row) => row.innerText.includes(${JSON.stringify(fixtures.mixedSupplierName)}))`,
+      "the restored OPT draft to return to the active table",
+    );
+
+    await navigateToRoute(cdp, "/prices");
     await clickTestId(cdp, "button-add-price");
     await waitForExpression(
       cdp,
@@ -2278,13 +2396,25 @@ test("authenticated browser can load the core business pages", async () => {
         ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
       "the default kerosene nomenclature after restoring movement product",
     );
-    await selectComboboxOption(cdp, "select-supplier", fixtures.supplierName);
+    await selectComboboxOption(cdp, "select-movement-type", "Покупка");
+    await selectComboboxOption(
+      cdp,
+      "select-movement-supplier",
+      fixtures.supplierName,
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-movement-basis",
+      fixtures.baseName,
+    );
     await waitForExpression(
       cdp,
-      `document.querySelector('[data-testid="select-basis"]')
+      `document.querySelector('[data-testid="select-movement-basis"]')
          ?.innerText.includes(${JSON.stringify(fixtures.baseName)}) &&
        document.querySelector('[data-testid="select-purchase-price"]')
-         ?.innerText.trim()`,
+         ?.innerText.trim() &&
+       !document.querySelector('[data-testid="select-purchase-price"]')
+         ?.innerText.includes("нет цены")`,
       "the supplier basis and active purchase price in the movement form",
     );
     const createdMovementPriceLabel = await cdp.evaluate(
