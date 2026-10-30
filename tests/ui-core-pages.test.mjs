@@ -437,6 +437,57 @@ async function seedUiFixtures() {
       basisIds[fixtures.wholesaleDeliveryBaseName],
     ],
   );
+  await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_id, counterparty_type, counterparty_role,
+        basis, basis_id, nomenclature_id, price_values, date_from, date_to,
+        volume_unit, price_unit, contract_limit_enabled)
+     SELECT 'kerosene', s.id, 'abroad', 'supplier', b.name, b.id, n.id,
+            ARRAY['{"price":42000}'], '2026-10-01', '2026-10-31',
+            'tonne', 'tonne', false
+     FROM suppliers s, bases b, nomenclature n
+     WHERE s.name = $1 AND b.name = $2 AND n.id = $3`,
+    [
+      fixtures.foreignSupplierName,
+      fixtures.abroadBaseName,
+      nomenclatureIds.kerosene,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_id, counterparty_type, counterparty_role,
+        basis, basis_id, nomenclature_id, price_values, date_from, date_to,
+        volume_unit, price_unit, contract_limit_enabled)
+     SELECT 'kerosene', c.id, 'abroad', 'buyer', b.name, b.id, n.id,
+            ARRAY['{"price":44000}'], '2026-10-01', '2026-10-31',
+            'tonne', 'tonne', false
+     FROM customers c, bases b, nomenclature n
+     WHERE c.name = $1 AND b.name = $2 AND n.id = $3`,
+    [
+      fixtures.foreignBuyerName,
+      fixtures.abroadBaseName,
+      nomenclatureIds.kerosene,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_id, counterparty_type, counterparty_role,
+        basis, basis_id, loading_basis_id, nomenclature_id, price_values,
+        date_from, date_to, volume_unit, price_unit, contract_limit_enabled)
+     SELECT 'kerosene', c.id, 'transportation', 'buyer', delivery.name,
+            delivery.id, loading.id, n.id,
+            ARRAY['{"price":46000}'], '2026-10-01', '2026-10-31',
+            'tonne', 'tonne', false
+     FROM customers c, bases delivery, bases loading, nomenclature n
+     WHERE c.name = $1 AND delivery.name = $2 AND loading.name = $3
+       AND n.id = $4`,
+    [
+      fixtures.wholesaleBuyerName,
+      fixtures.wholesaleDeliveryBaseName,
+      fixtures.wholesaleBaseName,
+      nomenclatureIds.kerosene,
+    ],
+  );
 }
 
 async function cleanUiFixtures() {
@@ -1686,6 +1737,12 @@ test("authenticated browser can load the core business pages", async () => {
     assert(!foreignSuppliers.some((text) => text.includes(fixtures.mixedSupplierName)));
     assert(!foreignSuppliers.some((text) => text.includes(fixtures.supplierName)));
     await selectComboboxOption(cdp, "select-supplier", fixtures.foreignSupplierName);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-basis"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.abroadBaseName)})`,
+      "the first linked abroad basis automatically selected for the supplier",
+    );
     const abroadBases = await getVisibleComboboxOptions(cdp, "select-basis");
     assert(abroadBases.some((text) => text.includes(fixtures.abroadBaseName)));
     assert(!abroadBases.some((text) => text.includes(fixtures.baseName)));
@@ -1694,6 +1751,39 @@ test("authenticated browser can load the core business pages", async () => {
     assert(foreignBuyers.some((text) => text.includes(fixtures.foreignBuyerName)));
     assert(!foreignBuyers.some((text) => text.includes(fixtures.wholesaleBuyerName)));
     assert(!foreignBuyers.some((text) => text.includes(fixtures.buyerName)));
+    await selectComboboxOption(cdp, "select-buyer", fixtures.foreignBuyerName);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-purchase-price"]')
+         ?.innerText.includes("42") &&
+       document.querySelector('[data-testid="select-sale-price"]')
+         ?.innerText.includes("44")`,
+      "the foreign purchase and sale prices for the automatically selected basis",
+    );
+
+    await navigateToRoute(cdp, "/transportation");
+    await clickTestId(cdp, "button-add-transportation");
+    await selectComboboxOption(
+      cdp,
+      "select-buyer",
+      fixtures.wholesaleBuyerName,
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-basis",
+      fixtures.wholesaleBaseName,
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-customer-basis",
+      fixtures.wholesaleDeliveryBaseName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-sale-price"]')
+        ?.innerText.includes("46")`,
+      "the transportation service price for the selected delivery basis",
+    );
 
     await navigateToRoute(cdp, "/opt");
     await clickTestId(cdp, "button-add-opt");

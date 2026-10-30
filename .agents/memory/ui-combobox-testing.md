@@ -9,8 +9,8 @@ When automating the shared combobox through Chromium, close stale open popovers 
 
 **How to apply:** browser-test helpers should constrain selection to visible options, verify the target trigger's selected label, and close remaining open comboboxes before the next action.
 
-For dependent forms, visible options do not prove that a value can be committed. Verify the selected trigger after choosing prerequisite parties and bases; if the value does not persist after a few evidence-based sequences, leave the path explicitly uncovered rather than weakening the assertion or changing a shared helper without a root cause.
+The shared Combobox clears its current value when its already-selected option is selected again. Some dependent forms automatically select a linked basis after choosing a supplier, so clicking that same option again clears the form field.
 
-**Why:** foreign refueling UI checks exposed a case where the filtered basis was visible but repeated selection attempts did not update the form state.
+**Why:** the foreign-refueling browser flow appeared to lose its basis because the test clicked the auto-selected option, triggering the component's explicit toggle-off behavior.
 
-**How to apply:** inspect the form's dependency order and selected state before expanding fixtures for foreign or transportation price lookup flows.
+**How to apply:** inspect the target trigger after changing prerequisite fields. Assert an automatic selection directly; click an option only when it differs from the current value. Continue to verify the trigger label and dependent prices after each change.
