@@ -440,7 +440,7 @@ export function EquipmentMovementDialog({
                         value={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger data-testid="select-equipment-product">
                             <SelectValue placeholder="Выберите продукт" />
                           </SelectTrigger>
                         </FormControl>

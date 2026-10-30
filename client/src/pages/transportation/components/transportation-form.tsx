@@ -597,7 +597,7 @@ export const TransportationForm = forwardRef<
                   <FormItem>
                     <FormLabel>Тип продукта</FormLabel>
                     <Select value={field.value || PRODUCT_TYPE.KEROSENE} onValueChange={field.onChange}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger data-testid="select-transportation-product"><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>
                         <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
                         <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>

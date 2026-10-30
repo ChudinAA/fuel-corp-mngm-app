@@ -23,7 +23,12 @@ const fixtures = {
   transferWarehouseName: `ui-operations-transfer-warehouse-${runId}`,
   equipmentName: `ui-operations-equipment-${runId}`,
   carrierName: `ui-operations-carrier-${runId}`,
-  nomenclatureName: `ui-operations-kerosene-${runId}`,
+  nomenclatureNames: {
+    kerosene: `ui-operations-kerosene-${runId}`,
+    pvkj: `ui-operations-pvkj-${runId}`,
+    service: `ui-operations-service-${runId}`,
+  },
+  nomenclatureUnitShortName: `t-ui-${runId}`,
   receiptNote: `ui-operations-receipt-${runId}`,
   secondReceiptNote: `ui-operations-second-receipt-${runId}`,
   warehouseTransferNote: `ui-operations-warehouse-transfer-${runId}`,
@@ -33,6 +38,7 @@ const fixtures = {
 let browser;
 let profileDir;
 let pool;
+let nomenclatureIds = {};
 
 after(async () => {
   await stopBrowser();
@@ -131,15 +137,24 @@ async function seedUiFixtures() {
   );
   const unit = await pool.query(
     `INSERT INTO units_of_measure (short_name, full_name)
-     VALUES ('t-ui-test', 'Tonne UI test')
+     VALUES ($1, 'UI test unit')
      RETURNING id`,
+    [fixtures.nomenclatureUnitShortName],
   );
-  const nomenclature = await pool.query(
-    `INSERT INTO nomenclature (product_type, name, unit_id, is_default)
-     VALUES ('kerosene', $1, $2, true)
-     RETURNING id`,
-    [fixtures.nomenclatureName, unit.rows[0].id],
-  );
+  nomenclatureIds = {};
+  for (const productType of ["kerosene", "pvkj", "service"]) {
+    const nomenclature = await pool.query(
+      `INSERT INTO nomenclature (product_type, name, unit_id, is_default)
+       VALUES ($1, $2, $3, true)
+       RETURNING id`,
+      [
+        productType,
+        fixtures.nomenclatureNames[productType],
+        unit.rows[0].id,
+      ],
+    );
+    nomenclatureIds[productType] = nomenclature.rows[0].id;
+  }
   await pool.query(
     `INSERT INTO customer_bases (customer_id, base_id)
      SELECT c.id, b.id
@@ -157,7 +172,7 @@ async function seedUiFixtures() {
             'tonne', 'tonne', false
      FROM suppliers s, bases b, nomenclature n
      WHERE s.name = $1 AND b.name = $2 AND n.id = $3`,
-    [fixtures.supplierName, fixtures.baseName, nomenclature.rows[0].id],
+    [fixtures.supplierName, fixtures.baseName, nomenclatureIds.kerosene],
   );
   await pool.query(
     `INSERT INTO prices
@@ -169,7 +184,7 @@ async function seedUiFixtures() {
             'tonne', 'tonne', false
      FROM suppliers s, bases b, nomenclature n
      WHERE s.name = $1 AND b.name = $2 AND n.id = $3`,
-    [fixtures.supplierName, fixtures.baseName, nomenclature.rows[0].id],
+    [fixtures.supplierName, fixtures.baseName, nomenclatureIds.kerosene],
   );
   await pool.query(
     `INSERT INTO prices
@@ -181,7 +196,7 @@ async function seedUiFixtures() {
             'tonne', 'tonne', false
      FROM suppliers s, bases b, nomenclature n
      WHERE s.name = $1 AND b.name = $2 AND n.id = $3`,
-    [fixtures.supplierName, fixtures.baseName, nomenclature.rows[0].id],
+    [fixtures.supplierName, fixtures.baseName, nomenclatureIds.kerosene],
   );
   await pool.query(
     `INSERT INTO prices
@@ -193,7 +208,7 @@ async function seedUiFixtures() {
             'tonne', 'tonne', false
      FROM customers c, bases b, nomenclature n
      WHERE c.name = $1 AND b.name = $2 AND n.id = $3`,
-    [fixtures.buyerName, fixtures.baseName, nomenclature.rows[0].id],
+    [fixtures.buyerName, fixtures.baseName, nomenclatureIds.kerosene],
   );
 }
 
@@ -312,10 +327,12 @@ async function cleanUiFixtures() {
   await pool.query("DELETE FROM logistics_carriers WHERE name = $1", [
     fixtures.carrierName,
   ]);
-  await pool.query("DELETE FROM nomenclature WHERE name = $1", [
-    fixtures.nomenclatureName,
+  await pool.query("DELETE FROM nomenclature WHERE name = ANY($1::text[])", [
+    Object.values(fixtures.nomenclatureNames),
   ]);
-  await pool.query("DELETE FROM units_of_measure WHERE short_name = 't-ui-test'");
+  await pool.query("DELETE FROM units_of_measure WHERE short_name = $1", [
+    fixtures.nomenclatureUnitShortName,
+  ]);
   await pool.query("DELETE FROM warehouse_bases WHERE warehouse_id IN (SELECT id FROM warehouses WHERE name = ANY($1::text[]))", [
     [fixtures.operationalWarehouseName, fixtures.transferWarehouseName],
   ]);
@@ -348,11 +365,24 @@ async function clickTestId(cdp, testId) {
     const element = document.querySelector(
       ${JSON.stringify(`[data-testid="${testId}"]`)},
     );
-    if (!element) return false;
+    if (!element) {
+      return {
+        clicked: false,
+        path: window.location.pathname,
+        heading: document.querySelector("main h1, h1")?.innerText?.trim() || "",
+        mainText: document.querySelector("main")?.innerText?.trim()?.slice(0, 500) || "",
+        openDialogs: Array.from(document.querySelectorAll('[role="dialog"][data-state="open"]'))
+          .map((dialog) => dialog.innerText.trim().slice(0, 200)),
+      };
+    }
     element.click();
-    return true;
+    return { clicked: true };
   })()`);
-  assert.equal(clicked, true, `Expected [data-testid="${testId}"] to be clickable`);
+  assert.equal(
+    clicked?.clicked,
+    true,
+    `Expected [data-testid="${testId}"] to be clickable; page state: ${JSON.stringify(clicked)}`,
+  );
 }
 
 async function fillInput(cdp, selector, value) {
@@ -440,6 +470,72 @@ async function clickButtonWithText(cdp, text) {
     return true;
   })()`);
   assert.equal(clicked, true, `Expected button "${text}"`);
+}
+
+async function navigateToRoute(cdp, route) {
+  await cdp.evaluate(`(() => {
+    window.history.pushState({}, "", ${JSON.stringify(route)});
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  })()`);
+  await waitFor(
+    cdp,
+    (state) => state.path === route && state.mainText.length > 20,
+    `the ${route} page`,
+  );
+}
+
+async function closeActiveDialog(cdp, label) {
+  await cdp.send("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key: "Escape",
+    code: "Escape",
+  });
+  await cdp.send("Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key: "Escape",
+    code: "Escape",
+  });
+  await waitForExpression(
+    cdp,
+    `!document.querySelector('[role="dialog"][data-state="open"]')`,
+    `${label} dialog to close`,
+  );
+}
+
+async function verifyDefaultNomenclatureForm(cdp, {
+  route,
+  addButtonTestId,
+  nomenclatureTestId = "select-nomenclature",
+  productTypeTestId,
+  productChanges = [],
+}) {
+  await navigateToRoute(cdp, route);
+  await clickTestId(cdp, addButtonTestId);
+  await waitForExpression(
+    cdp,
+    `!!document.querySelector('[data-testid="${nomenclatureTestId}"]')`,
+    `the nomenclature field on ${route}`,
+  );
+  const assertSelected = (name, label) =>
+    waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="${nomenclatureTestId}"]')
+        ?.innerText.includes(${JSON.stringify(name)})`,
+      label,
+    );
+
+  await assertSelected(
+    fixtures.nomenclatureNames.kerosene,
+    `the default kerosene nomenclature on ${route}`,
+  );
+  for (const { productLabel, nomenclatureKey } of productChanges) {
+    await selectComboboxOption(cdp, productTypeTestId, productLabel);
+    await assertSelected(
+      fixtures.nomenclatureNames[nomenclatureKey],
+      `the ${nomenclatureKey} nomenclature on ${route}`,
+    );
+  }
+  await closeActiveDialog(cdp, route);
 }
 
 async function clickMenuItemWithText(cdp, text) {
@@ -1036,6 +1132,56 @@ test("authenticated browser can load the core business pages", async () => {
       console.log(`UI smoke passed: ${route} — ${state.heading || "content rendered"}`);
     }
 
+    await verifyDefaultNomenclatureForm(cdp, {
+      route: "/opt",
+      addButtonTestId: "button-add-opt",
+      productTypeTestId: "select-product-type",
+      productChanges: [
+        { productLabel: "ПВКЖ", nomenclatureKey: "pvkj" },
+        { productLabel: "Керосин", nomenclatureKey: "kerosene" },
+      ],
+    });
+    await verifyDefaultNomenclatureForm(cdp, {
+      route: "/transportation",
+      addButtonTestId: "button-add-transportation",
+      productTypeTestId: "select-transportation-product",
+      productChanges: [
+        { productLabel: "ПВКЖ", nomenclatureKey: "pvkj" },
+        { productLabel: "Услуга", nomenclatureKey: "service" },
+        { productLabel: "Керосин", nomenclatureKey: "kerosene" },
+      ],
+    });
+    await verifyDefaultNomenclatureForm(cdp, {
+      route: "/abroad",
+      addButtonTestId: "button-add-refueling-abroad",
+      productTypeTestId: "select-product-type",
+      productChanges: [
+        { productLabel: "ПВКЖ", nomenclatureKey: "pvkj" },
+        { productLabel: "Услуга заправки", nomenclatureKey: "service" },
+        { productLabel: "Керосин", nomenclatureKey: "kerosene" },
+      ],
+    });
+    await verifyDefaultNomenclatureForm(cdp, {
+      route: "/prices",
+      addButtonTestId: "button-add-price",
+      nomenclatureTestId: "select-price-nomenclature",
+      productTypeTestId: "select-product-type",
+      productChanges: [
+        { productLabel: "ПВКЖ", nomenclatureKey: "pvkj" },
+        { productLabel: "Услуга", nomenclatureKey: "service" },
+        { productLabel: "Керосин", nomenclatureKey: "kerosene" },
+      ],
+    });
+    await verifyDefaultNomenclatureForm(cdp, {
+      route: "/lik/movement",
+      addButtonTestId: "button-add-equipment-movement",
+      productTypeTestId: "select-equipment-product",
+      productChanges: [
+        { productLabel: "ПВКЖ", nomenclatureKey: "pvkj" },
+        { productLabel: "Керосин", nomenclatureKey: "kerosene" },
+      ],
+    });
+
     await cdp.evaluate(`(() => {
       window.history.pushState({}, "", "/refueling");
       window.dispatchEvent(new PopStateEvent("popstate"));
@@ -1051,6 +1197,33 @@ test("authenticated browser can load the core business pages", async () => {
       `!!document.querySelector('[data-testid="select-supplier"]') &&
        !!document.querySelector('[data-testid="select-buyer"]')`,
       "the new refueling form",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
+      "the default kerosene nomenclature in a new refueling",
+    );
+    await selectComboboxOption(cdp, "select-product-type", "ПВКЖ");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.pvkj)})`,
+      "the default PVKJ nomenclature after changing product type",
+    );
+    await selectComboboxOption(cdp, "select-product-type", "Услуга");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.service)})`,
+      "the default service nomenclature after changing product type",
+    );
+    await selectComboboxOption(cdp, "select-product-type", "Керосин");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
+      "the default kerosene nomenclature after restoring product type",
     );
     await selectComboboxOption(cdp, "select-supplier", fixtures.supplierName);
     await waitForExpression(
@@ -1078,7 +1251,7 @@ test("authenticated browser can load the core business pages", async () => {
     );
     await clickButtonWithText(cdp, "Сохранить черновик");
     const createdRefueling = await waitForDatabaseRow(
-      `SELECT id, quantity_tonnes, input_mode, is_draft
+      `SELECT id, quantity_tonnes, input_mode, is_draft, nomenclature_id
        FROM aircraft_refueling WHERE notes = $1`,
       [fixtures.refuelingNote],
       "the refueling draft created through the UI",
@@ -1086,6 +1259,7 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(createdRefueling.input_mode, "tonnes");
     assert.equal(Number(createdRefueling.quantity_tonnes), 0.12345);
     assert.equal(createdRefueling.is_draft, true);
+    assert.equal(createdRefueling.nomenclature_id, nomenclatureIds.kerosene);
     await waitForAuditOperations(createdRefueling.id, ["CREATE"]);
     await waitForExpression(
       cdp,
@@ -1105,6 +1279,12 @@ test("authenticated browser can load the core business pages", async () => {
         ?.value === "0.12345"`,
       "the saved tonne value in the refueling edit form",
     );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
+      "the saved refueling nomenclature in the edit form",
+    );
     await fillInput(
       cdp,
       '[data-testid="input-quantity-tonnes"]',
@@ -1117,7 +1297,7 @@ test("authenticated browser can load the core business pages", async () => {
     );
     await clickButtonWithText(cdp, "Сохранить черновик");
     const editedRefueling = await waitForDatabaseRow(
-      `SELECT id, quantity_tonnes, input_mode, is_draft
+      `SELECT id, quantity_tonnes, input_mode, is_draft, nomenclature_id
        FROM aircraft_refueling WHERE notes = $1`,
       [fixtures.refuelingNote],
       "the refueling draft updated through the UI",
@@ -1126,6 +1306,7 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(editedRefueling.id, createdRefueling.id);
     assert.equal(editedRefueling.input_mode, "tonnes");
     assert.equal(editedRefueling.is_draft, true);
+    assert.equal(editedRefueling.nomenclature_id, nomenclatureIds.kerosene);
     await waitForAuditOperations(editedRefueling.id, ["CREATE", "UPDATE"]);
     await waitForExpression(
       cdp,
@@ -1155,6 +1336,26 @@ test("authenticated browser can load the core business pages", async () => {
         ?.getAttribute("aria-checked")`,
     );
     assert.equal(movementMode, "true", "movement forms start in tonne mode");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
+      "the default kerosene nomenclature in a new movement",
+    );
+    await selectComboboxOption(cdp, "select-movement-product", "ПВКЖ");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.pvkj)})`,
+      "the default PVKJ nomenclature after changing movement product",
+    );
+    await selectComboboxOption(cdp, "select-movement-product", "Керосин");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
+      "the default kerosene nomenclature after restoring movement product",
+    );
     await selectComboboxOption(
       cdp,
       "select-movement-to",
@@ -1172,7 +1373,8 @@ test("authenticated browser can load the core business pages", async () => {
     );
     await clickTestId(cdp, "button-save-draft");
     const createdMovement = await waitForDatabaseRow(
-      `SELECT id, quantity_tonnes, input_mode, is_draft, to_warehouse_id
+      `SELECT id, quantity_tonnes, input_mode, is_draft, to_warehouse_id,
+              nomenclature_id
        FROM movement WHERE notes = $1`,
       [fixtures.movementNote],
       "the movement draft created through the UI",
@@ -1180,6 +1382,7 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(Number(createdMovement.quantity_tonnes), 0.12345);
     assert.equal(createdMovement.input_mode, "tonnes");
     assert.equal(createdMovement.is_draft, true);
+    assert.equal(createdMovement.nomenclature_id, nomenclatureIds.kerosene);
     await waitForAuditOperations(createdMovement.id, ["CREATE"]);
     await waitForExpression(
       cdp,
@@ -1199,6 +1402,12 @@ test("authenticated browser can load the core business pages", async () => {
         ?.value === "0.12345"`,
       "the saved tonne value in the movement edit form",
     );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
+      "the saved movement nomenclature in the edit form",
+    );
     await fillInput(
       cdp,
       '[data-testid="input-quantity-tonnes"]',
@@ -1211,7 +1420,8 @@ test("authenticated browser can load the core business pages", async () => {
     );
     await clickTestId(cdp, "button-save-draft");
     const editedMovement = await waitForDatabaseRow(
-      `SELECT id, quantity_tonnes, input_mode, is_draft, to_warehouse_id
+      `SELECT id, quantity_tonnes, input_mode, is_draft, to_warehouse_id,
+              nomenclature_id
        FROM movement WHERE notes = $1`,
       [fixtures.movementNote],
       "the movement draft updated through the UI",
@@ -1220,6 +1430,7 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(editedMovement.id, createdMovement.id);
     assert.equal(editedMovement.input_mode, "tonnes");
     assert.equal(editedMovement.is_draft, true);
+    assert.equal(editedMovement.nomenclature_id, nomenclatureIds.kerosene);
     await waitForAuditOperations(editedMovement.id, ["CREATE", "UPDATE"]);
     const warehouseBalance = await pool.query(
       `SELECT current_balance_tonnes
@@ -1272,6 +1483,12 @@ test("authenticated browser can load the core business pages", async () => {
     );
     const operationalWarehouseId = operationalWarehouse.rows[0].id;
     const openMovementForm = async () => {
+      await waitForExpression(
+        cdp,
+        `window.location.pathname === "/movement" &&
+         !!document.querySelector('[data-testid="button-add-movement"]')`,
+        "the movement page add button before creating a final operation",
+      );
       await clickTestId(cdp, "button-add-movement");
       await waitForExpression(
         cdp,
@@ -1549,7 +1766,7 @@ test("authenticated browser can load the core business pages", async () => {
     await clickTestId(cdp, "button-create-equipment-movement");
     const equipmentTransfer = await waitForDatabaseRow(
       `SELECT id, quantity_tonnes, input_mode, is_draft, total_cost,
-              cost_per_tonne, movement_date
+              cost_per_tonne, movement_date, nomenclature_id
        FROM equipment_movement WHERE notes = $1`,
       [fixtures.equipmentTransferNote],
       "the final warehouse-to-equipment transfer created in the UI",
@@ -1557,6 +1774,7 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(equipmentTransfer.is_draft, false);
     assert.equal(Number(equipmentTransfer.quantity_tonnes), 1.5);
     assert.equal(equipmentTransfer.input_mode, "tonnes");
+    assert.equal(equipmentTransfer.nomenclature_id, nomenclatureIds.kerosene);
     assert.equal(
       new Date(equipmentTransfer.movement_date).toISOString().slice(0, 10),
       "2026-10-24",
@@ -1635,7 +1853,7 @@ test("authenticated browser can load the core business pages", async () => {
     const finalDeal = await waitForDatabaseRow(
       `SELECT id, quantity_tonnes, input_mode, is_draft, equipment_id,
               refueling_date, purchase_price_per_tonne, purchase_amount,
-              sale_amount, profit
+              sale_amount, profit, nomenclature_id
        FROM aircraft_refueling WHERE notes = $1`,
       [fixtures.finalRefuelingNote],
       "the final equipment-linked refueling deal created in the UI",
@@ -1643,6 +1861,7 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(finalDeal.is_draft, false);
     assert.equal(finalDeal.input_mode, "tonnes");
     assert.equal(Number(finalDeal.quantity_tonnes), 0.20001);
+    assert.equal(finalDeal.nomenclature_id, nomenclatureIds.kerosene);
     assert.equal(finalDeal.equipment_id, equipmentId);
     assert.equal(
       new Date(finalDeal.refueling_date).toISOString().slice(0, 10),

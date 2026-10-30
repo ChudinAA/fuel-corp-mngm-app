@@ -32,7 +32,7 @@ export function NomenclatureField({
         <FormItem>
           <FormLabel>Номенклатура</FormLabel>
           <Select value={field.value || ""} onValueChange={field.onChange}>
-            <FormControl><SelectTrigger><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
+            <FormControl><SelectTrigger data-testid="select-nomenclature"><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
             <SelectContent>
               {options.map((item) => (
                 <SelectItem key={item.id} value={item.id}>

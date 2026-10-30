@@ -231,7 +231,7 @@ export function RefuelingMainFields({
             <FormItem>
               <FormLabel>Номенклатура</FormLabel>
               <Select value={field.value || ""} onValueChange={field.onChange}>
-                <FormControl><SelectTrigger><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
+                <FormControl><SelectTrigger data-testid="select-nomenclature"><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
                 <SelectContent>{nomenclatureOptions.map((item) => <SelectItem key={item.id} value={item.id}>
                   {item.name} ({item.unitShortName}){item.isDefault ? " ✓" : ""}
                 </SelectItem>)}</SelectContent>
