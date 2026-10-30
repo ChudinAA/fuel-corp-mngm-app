@@ -16,9 +16,16 @@ const fixtures = {
   baseName: `ui-smoke-base-${runId}`,
   wholesaleBaseName: `ui-wholesale-base-${runId}`,
   wholesaleDeliveryBaseName: `ui-wholesale-delivery-base-${runId}`,
+  wholesaleLocationBaseName: `ui-wholesale-location-base-${runId}`,
+  inactiveTariffSourceBaseName: `ui-inactive-tariff-source-base-${runId}`,
+  inactiveTariffDestinationBaseName: `ui-inactive-tariff-destination-base-${runId}`,
+  warehouseTariffSourceBaseName: `ui-warehouse-tariff-source-base-${runId}`,
+  warehouseTariffDestinationBaseName: `ui-warehouse-tariff-destination-base-${runId}`,
   abroadBaseName: `ui-abroad-base-${runId}`,
   supplierName: `ui-smoke-supplier-${runId}`,
   mixedSupplierName: `ui-mixed-supplier-${runId}`,
+  inactiveTariffSupplierName: `ui-inactive-tariff-supplier-${runId}`,
+  warehouseSupplierName: `ui-warehouse-supplier-${runId}`,
   foreignSupplierName: `ui-foreign-supplier-${runId}`,
   buyerName: `ui-smoke-buyer-${runId}`,
   wholesaleBuyerName: `ui-wholesale-buyer-${runId}`,
@@ -38,6 +45,8 @@ const fixtures = {
   movementNote: `ui-smoke-movement-${runId}`,
   operationalWarehouseName: `ui-operations-warehouse-${runId}`,
   transferWarehouseName: `ui-operations-transfer-warehouse-${runId}`,
+  warehouseSupplierWarehouseName: `ui-wholesale-supplier-warehouse-${runId}`,
+  deliveryLocationName: `ui-wholesale-delivery-location-${runId}`,
   equipmentName: `ui-operations-equipment-${runId}`,
   carrierName: `ui-operations-carrier-${runId}`,
   nomenclatureNames: {
@@ -80,13 +89,23 @@ async function seedUiFixtures() {
      VALUES ($1, 'refueling'),
             ($2, 'wholesale'),
             ($3, 'abroad'),
-            ($4, 'wholesale')
+            ($4, 'wholesale'),
+            ($5, 'wholesale'),
+            ($6, 'wholesale'),
+            ($7, 'wholesale'),
+            ($8, 'wholesale'),
+            ($9, 'wholesale')
      RETURNING id, name`,
     [
       fixtures.baseName,
       fixtures.wholesaleBaseName,
       fixtures.abroadBaseName,
       fixtures.wholesaleDeliveryBaseName,
+      fixtures.wholesaleLocationBaseName,
+      fixtures.inactiveTariffSourceBaseName,
+      fixtures.inactiveTariffDestinationBaseName,
+      fixtures.warehouseTariffSourceBaseName,
+      fixtures.warehouseTariffDestinationBaseName,
     ],
   );
   basisIds = Object.fromEntries(
@@ -100,13 +119,21 @@ async function seedUiFixtures() {
     "INSERT INTO suppliers (name) VALUES ($1) RETURNING id",
     [fixtures.mixedSupplierName],
   );
+  const inactiveTariffSupplier = await pool.query(
+    "INSERT INTO suppliers (name) VALUES ($1) RETURNING id",
+    [fixtures.inactiveTariffSupplierName],
+  );
+  const warehouseSupplier = await pool.query(
+    "INSERT INTO suppliers (name, is_warehouse) VALUES ($1, true) RETURNING id",
+    [fixtures.warehouseSupplierName],
+  );
   const foreignSupplier = await pool.query(
     "INSERT INTO suppliers (name, is_foreign) VALUES ($1, true) RETURNING id",
     [fixtures.foreignSupplierName],
   );
   await pool.query(
     `INSERT INTO supplier_bases (supplier_id, base_id)
-     VALUES ($1, $2), ($3, $4), ($3, $5), ($6, $7)`,
+     VALUES ($1, $2), ($3, $4), ($3, $5), ($6, $7), ($8, $9), ($10, $11)`,
     [
       supplier.rows[0].id,
       basisIds[fixtures.baseName],
@@ -115,6 +142,10 @@ async function seedUiFixtures() {
       basisIds[fixtures.wholesaleBaseName],
       foreignSupplier.rows[0].id,
       basisIds[fixtures.abroadBaseName],
+      inactiveTariffSupplier.rows[0].id,
+      basisIds[fixtures.inactiveTariffSourceBaseName],
+      warehouseSupplier.rows[0].id,
+      basisIds[fixtures.warehouseTariffSourceBaseName],
     ],
   );
   const buyer = await pool.query(
@@ -131,7 +162,8 @@ async function seedUiFixtures() {
   );
   await pool.query(
     `INSERT INTO customer_bases (customer_id, base_id)
-     VALUES ($1, $2), ($3, $4), ($5, $6)`,
+     VALUES ($1, $2), ($3, $4), ($5, $6),
+            ($3, $7), ($3, $8), ($3, $9)`,
     [
       buyer.rows[0].id,
       basisIds[fixtures.baseName],
@@ -139,6 +171,9 @@ async function seedUiFixtures() {
       basisIds[fixtures.wholesaleDeliveryBaseName],
       foreignBuyer.rows[0].id,
       basisIds[fixtures.abroadBaseName],
+      basisIds[fixtures.wholesaleLocationBaseName],
+      basisIds[fixtures.inactiveTariffDestinationBaseName],
+      basisIds[fixtures.warehouseTariffDestinationBaseName],
     ],
   );
   await pool.query(
@@ -172,6 +207,22 @@ async function seedUiFixtures() {
       [rows[0].id, fixtures.baseName],
     );
   }
+  const warehouseSupplierWarehouse = await pool.query(
+    `INSERT INTO warehouses
+       (name, current_balance_tonnes, average_cost_per_tonne,
+        pvkj_balance_tonnes, pvkj_average_cost_per_tonne, equipment_type,
+        supplier_id)
+     VALUES ($1, 100, 20000, 0, 0, 'lik', $2)
+     RETURNING id`,
+    [fixtures.warehouseSupplierWarehouseName, warehouseSupplier.rows[0].id],
+  );
+  await pool.query(
+    "INSERT INTO warehouse_bases (warehouse_id, base_id) VALUES ($1, $2)",
+    [
+      warehouseSupplierWarehouse.rows[0].id,
+      basisIds[fixtures.warehouseTariffSourceBaseName],
+    ],
+  );
   await pool.query(
     "UPDATE warehouses SET supplier_id = $1 WHERE id = $2",
     [supplier.rows[0].id, operationalWarehouses[0].rows[0].id],
@@ -179,6 +230,15 @@ async function seedUiFixtures() {
   const carrier = await pool.query(
     "INSERT INTO logistics_carriers (name) VALUES ($1) RETURNING id",
     [fixtures.carrierName],
+  );
+  const deliveryLocation = await pool.query(
+    `INSERT INTO logistics_delivery_locations (name, base_id)
+     VALUES ($1, $2)
+     RETURNING id`,
+    [
+      fixtures.deliveryLocationName,
+      basisIds[fixtures.wholesaleLocationBaseName],
+    ],
   );
   await pool.query(
     `INSERT INTO delivery_cost
@@ -197,6 +257,30 @@ async function seedUiFixtures() {
       fixtures.wholesaleBaseName,
       basisIds[fixtures.wholesaleDeliveryBaseName],
       fixtures.wholesaleDeliveryBaseName,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO delivery_cost
+       (carrier_id, from_entity_type, from_entity_id, from_location,
+        to_entity_type, to_entity_id, to_location, cost_per_tonne, is_active)
+     VALUES
+       ($1, 'base', $2, $3, 'delivery_location', $4, $5, 625, true),
+       ($1, 'warehouse', $6, $7, 'base', $8, $9, 525, true),
+       ($1, 'base', $10, $11, 'base', $12, $13, 875, false)`,
+    [
+      carrier.rows[0].id,
+      basisIds[fixtures.wholesaleBaseName],
+      fixtures.wholesaleBaseName,
+      deliveryLocation.rows[0].id,
+      fixtures.deliveryLocationName,
+      warehouseSupplierWarehouse.rows[0].id,
+      fixtures.warehouseSupplierWarehouseName,
+      basisIds[fixtures.warehouseTariffDestinationBaseName],
+      fixtures.warehouseTariffDestinationBaseName,
+      basisIds[fixtures.inactiveTariffSourceBaseName],
+      fixtures.inactiveTariffSourceBaseName,
+      basisIds[fixtures.inactiveTariffDestinationBaseName],
+      fixtures.inactiveTariffDestinationBaseName,
     ],
   );
   await pool.query(
@@ -466,12 +550,19 @@ async function cleanUiFixtures() {
       [
         fixtures.supplierName,
         fixtures.mixedSupplierName,
+        fixtures.inactiveTariffSupplierName,
+        fixtures.warehouseSupplierName,
         fixtures.foreignSupplierName,
       ],
       [
         fixtures.baseName,
         fixtures.wholesaleBaseName,
         fixtures.wholesaleDeliveryBaseName,
+        fixtures.wholesaleLocationBaseName,
+        fixtures.inactiveTariffSourceBaseName,
+        fixtures.inactiveTariffDestinationBaseName,
+        fixtures.warehouseTariffSourceBaseName,
+        fixtures.warehouseTariffDestinationBaseName,
         fixtures.abroadBaseName,
       ],
     ],
@@ -483,6 +574,7 @@ async function cleanUiFixtures() {
       fixtures.warehouseName,
       fixtures.operationalWarehouseName,
       fixtures.transferWarehouseName,
+      fixtures.warehouseSupplierWarehouseName,
     ]],
   );
   await pool.query(
@@ -491,6 +583,8 @@ async function cleanUiFixtures() {
     [[
       fixtures.supplierName,
       fixtures.mixedSupplierName,
+      fixtures.inactiveTariffSupplierName,
+      fixtures.warehouseSupplierName,
       fixtures.foreignSupplierName,
     ]],
   );
@@ -512,7 +606,12 @@ async function cleanUiFixtures() {
     fixtures.equipmentName,
   ]);
   await pool.query("DELETE FROM warehouses WHERE name = ANY($1::text[])", [
-    [fixtures.warehouseName, fixtures.operationalWarehouseName, fixtures.transferWarehouseName],
+    [
+      fixtures.warehouseName,
+      fixtures.operationalWarehouseName,
+      fixtures.transferWarehouseName,
+      fixtures.warehouseSupplierWarehouseName,
+    ],
   ]);
   await pool.query("DELETE FROM equipments WHERE name = $1", [
     fixtures.equipmentName,
@@ -525,6 +624,8 @@ async function cleanUiFixtures() {
       [
         fixtures.supplierName,
         fixtures.mixedSupplierName,
+        fixtures.inactiveTariffSupplierName,
+        fixtures.warehouseSupplierName,
         fixtures.foreignSupplierName,
       ],
       [fixtures.buyerName, fixtures.wholesaleBuyerName, fixtures.foreignBuyerName],
@@ -533,6 +634,10 @@ async function cleanUiFixtures() {
   await pool.query(
     "DELETE FROM delivery_cost WHERE carrier_id IN (SELECT id FROM logistics_carriers WHERE name = $1)",
     [fixtures.carrierName],
+  );
+  await pool.query(
+    "DELETE FROM logistics_delivery_locations WHERE name = $1",
+    [fixtures.deliveryLocationName],
   );
   await pool.query("DELETE FROM logistics_carriers WHERE name = $1", [
     fixtures.carrierName,
@@ -544,11 +649,17 @@ async function cleanUiFixtures() {
     fixtures.nomenclatureUnitShortName,
   ]);
   await pool.query("DELETE FROM warehouse_bases WHERE warehouse_id IN (SELECT id FROM warehouses WHERE name = ANY($1::text[]))", [
-    [fixtures.operationalWarehouseName, fixtures.transferWarehouseName],
+    [
+      fixtures.operationalWarehouseName,
+      fixtures.transferWarehouseName,
+      fixtures.warehouseSupplierWarehouseName,
+    ],
   ]);
   await pool.query("DELETE FROM suppliers WHERE name = ANY($1::text[])", [[
     fixtures.supplierName,
     fixtures.mixedSupplierName,
+    fixtures.inactiveTariffSupplierName,
+    fixtures.warehouseSupplierName,
     fixtures.foreignSupplierName,
   ]]);
   await pool.query("DELETE FROM customers WHERE name = ANY($1::text[])", [[
@@ -562,6 +673,11 @@ async function cleanUiFixtures() {
       fixtures.baseName,
       fixtures.wholesaleBaseName,
       fixtures.wholesaleDeliveryBaseName,
+      fixtures.wholesaleLocationBaseName,
+      fixtures.inactiveTariffSourceBaseName,
+      fixtures.inactiveTariffDestinationBaseName,
+      fixtures.warehouseTariffSourceBaseName,
+      fixtures.warehouseTariffDestinationBaseName,
       fixtures.abroadBaseName,
     ]],
   );
@@ -1607,6 +1723,90 @@ test("authenticated browser can load the core business pages", async () => {
       cdp,
       `!document.querySelector('[role="dialog"][data-state="open"]')`,
       "the OPT edit form to close after saving",
+    );
+
+    await navigateToRoute(cdp, "/opt");
+    await clickTestId(cdp, "button-add-opt");
+    await selectComboboxOption(cdp, "select-supplier", fixtures.mixedSupplierName);
+    await selectComboboxOption(cdp, "select-buyer", fixtures.wholesaleBuyerName);
+    await selectComboboxOption(
+      cdp,
+      "select-buyer-basis",
+      fixtures.wholesaleLocationBaseName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-carrier"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.carrierName)}) &&
+       document.querySelector('[data-testid="select-delivery-location"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.deliveryLocationName)})`,
+      "the carrier and delivery location automatically selected for a via-location tariff",
+    );
+    await fillInput(cdp, '[data-testid="input-tonnes"]', "1");
+    await waitForExpression(
+      cdp,
+      `document.body.innerText.includes("625")`,
+      "the calculated cost from the via-location tariff",
+    );
+
+    await navigateToRoute(cdp, "/prices");
+    await navigateToRoute(cdp, "/opt");
+    await clickTestId(cdp, "button-add-opt");
+    await selectComboboxOption(
+      cdp,
+      "select-supplier",
+      fixtures.warehouseSupplierName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-basis"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.warehouseTariffSourceBaseName)})`,
+      "the wholesale source basis of the warehouse supplier",
+    );
+    await selectComboboxOption(cdp, "select-buyer", fixtures.wholesaleBuyerName);
+    await selectComboboxOption(
+      cdp,
+      "select-buyer-basis",
+      fixtures.warehouseTariffDestinationBaseName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-carrier"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.carrierName)})`,
+      "the carrier automatically selected for a warehouse-to-base tariff",
+    );
+    await fillInput(cdp, '[data-testid="input-tonnes"]', "1");
+    await waitForExpression(
+      cdp,
+      `document.body.innerText.includes("525")`,
+      "the calculated cost from the warehouse-to-base tariff",
+    );
+
+    await navigateToRoute(cdp, "/prices");
+    await navigateToRoute(cdp, "/opt");
+    await clickTestId(cdp, "button-add-opt");
+    await selectComboboxOption(
+      cdp,
+      "select-supplier",
+      fixtures.inactiveTariffSupplierName,
+    );
+    await selectComboboxOption(cdp, "select-buyer", fixtures.wholesaleBuyerName);
+    await selectComboboxOption(
+      cdp,
+      "select-buyer-basis",
+      fixtures.inactiveTariffDestinationBaseName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-carrier"]')
+        ?.innerText.includes("Выберите перевозчика")`,
+      "no carrier auto-selected when only an inactive tariff matches",
+    );
+    await fillInput(cdp, '[data-testid="input-tonnes"]', "1");
+    await waitForExpression(
+      cdp,
+      `document.body.innerText.includes("Не выбрана точка поставки")`,
+      "the delivery validation when no active tariff matches",
     );
 
     await navigateToRoute(cdp, "/prices");
