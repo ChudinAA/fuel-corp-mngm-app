@@ -40,6 +40,7 @@ const fixtures = {
   carrierContractNumber: `C-${runId.slice(0, 8)}`,
   warehouseName: `ui-smoke-warehouse-${runId}`,
   refuelingNote: `ui-smoke-refueling-${runId}`,
+  multiProductRefuelingNote: `ui-multi-product-refueling-${runId}`,
   optPriceDraftNote: `ui-opt-price-draft-${runId}`,
   optPriceDraftEditedNote: `ui-opt-price-draft-edited-${runId}`,
   movementNote: `ui-smoke-movement-${runId}`,
@@ -494,7 +495,11 @@ async function cleanUiFixtures() {
   const [refuelings, movements, equipmentMovements, optDeals] = await Promise.all([
     pool.query(
       "SELECT id FROM aircraft_refueling WHERE notes = ANY($1::text[])",
-      [[fixtures.refuelingNote, fixtures.finalRefuelingNote]],
+      [[
+        fixtures.refuelingNote,
+        fixtures.multiProductRefuelingNote,
+        fixtures.finalRefuelingNote,
+      ]],
     ),
     pool.query(
       "SELECT id FROM movement WHERE notes = ANY($1::text[])",
@@ -829,6 +834,49 @@ async function fillInput(cdp, selector, value) {
   assert.equal(filled, true, `Expected input ${selector} to exist`);
 }
 
+function productMassInputExpression(productLabel) {
+  const heading = JSON.stringify(`Объем топлива · ${productLabel}`);
+  const fieldLabel = JSON.stringify("Масса (т)");
+  return `(() => {
+    const title = Array.from(document.querySelectorAll("h3"))
+      .find((node) => node.textContent.trim() === ${heading});
+    for (let container = title; container; container = container.parentElement) {
+      const label = Array.from(container.querySelectorAll("label"))
+        .find((node) => node.textContent.trim() === ${fieldLabel});
+      const input = label?.parentElement?.querySelector('input[type="number"]');
+      if (input) return input;
+    }
+    return null;
+  })()`;
+}
+
+async function fillProductMassTonnes(cdp, productLabel, value) {
+  const inputExpression = productMassInputExpression(productLabel);
+  const expected = String(value);
+  const filled = await cdp.evaluate(`(() => {
+    const input = ${inputExpression};
+    if (!(input instanceof HTMLInputElement)) return false;
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    ).set;
+    setter.call(input, ${JSON.stringify(expected)});
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    return input.value;
+  })()`);
+  assert.equal(
+    filled,
+    expected,
+    `Expected a tonne input for ${productLabel}`,
+  );
+  await waitForExpression(
+    cdp,
+    `(${inputExpression})?.value === ${JSON.stringify(expected)}`,
+    `${productLabel} mass to update to ${expected} tonnes`,
+  );
+}
+
 async function selectComboboxOption(cdp, testId, label) {
   await cdp.evaluate(`(() => {
     document
@@ -898,6 +946,20 @@ async function clickButtonWithText(cdp, text) {
     return true;
   })()`);
   assert.equal(clicked, true, `Expected button "${text}"`);
+}
+
+async function addRefuelingProduct(cdp, productLabel) {
+  await clickTestId(cdp, "button-add-product");
+  await waitForExpression(
+    cdp,
+    `Array.from(document.querySelectorAll("button")).some((button) => {
+      const rect = button.getBoundingClientRect();
+      return button.innerText.trim() === ${JSON.stringify(productLabel)} &&
+        rect.width > 0 && rect.height > 0;
+    })`,
+    `the ${productLabel} option in the add-product menu`,
+  );
+  await clickButtonWithText(cdp, productLabel);
 }
 
 async function navigateToRoute(cdp, route) {
@@ -2469,6 +2531,263 @@ test("authenticated browser can load the core business pages", async () => {
       "the refueling edit form to close after saving",
     );
     console.log("UI flow passed: refueling draft created and edited in tonnes");
+
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector('[data-testid="button-add-refueling"]'))`,
+      "the refueling list create button before starting a multi-product order",
+    );
+    await clickTestId(cdp, "button-add-refueling");
+    await selectComboboxOption(cdp, "select-supplier", fixtures.supplierName);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-basis"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.baseName)})`,
+      "the default basis for the multi-product refueling order",
+    );
+    await selectComboboxOption(cdp, "select-buyer", fixtures.buyerName);
+    await addRefuelingProduct(cdp, "ПВКЖ");
+    await addRefuelingProduct(cdp, "Услуга заправки");
+    await fillProductMassTonnes(cdp, "Керосин", "0.10001");
+    await fillProductMassTonnes(cdp, "ПВКЖ", "0.05002");
+    await fillProductMassTonnes(cdp, "Услуга заправки", "0.007");
+    await fillInput(
+      cdp,
+      '[data-testid="input-notes"]',
+      fixtures.multiProductRefuelingNote,
+    );
+    await clickButtonWithText(cdp, "Сохранить черновик");
+    await waitForDatabaseRow(
+      `SELECT COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active
+       FROM aircraft_refueling WHERE notes = $1`,
+      [fixtures.multiProductRefuelingNote],
+      "all three UI-created refueling product rows",
+      (row) => Number(row.total) === 3 && Number(row.active) === 3,
+    );
+    const initialMultiProductRows = await pool.query(
+      `SELECT id, refueling_order_id, product_type, quantity_tonnes,
+              is_draft, deleted_at
+       FROM aircraft_refueling
+       WHERE notes = $1 AND deleted_at IS NULL
+       ORDER BY product_type`,
+      [fixtures.multiProductRefuelingNote],
+    );
+    assert.deepEqual(
+      initialMultiProductRows.rows.map((row) => row.product_type),
+      ["kerosene", "pvkj", "service"],
+    );
+    const initialMultiProductByType = new Map(
+      initialMultiProductRows.rows.map((row) => [row.product_type, row]),
+    );
+    assert.equal(
+      new Set(
+        initialMultiProductRows.rows.map((row) => row.refueling_order_id),
+      ).size,
+      1,
+    );
+    for (const [productType, expectedQuantity] of [
+      ["kerosene", 0.10001],
+      ["pvkj", 0.05002],
+      ["service", 0.007],
+    ]) {
+      const row = initialMultiProductByType.get(productType);
+      assert.ok(row, `the order contains ${productType}`);
+      assert.equal(Number(row.quantity_tonnes), expectedQuantity);
+      assert.equal(row.is_draft, true);
+    }
+    await waitForAuditOperations(initialMultiProductByType.get("kerosene").id, [
+      "CREATE",
+    ]);
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[role="dialog"][data-state="open"]')`,
+      "the multi-product order create form to close",
+    );
+
+    await openRowActionByTestId(
+      cdp,
+      `text-basis-${initialMultiProductByType.get("kerosene").id}`,
+      "Редактировать",
+    );
+    await fillProductMassTonnes(cdp, "Керосин", "0.11111");
+    await fillProductMassTonnes(cdp, "ПВКЖ", "0.05555");
+    const removedPvkjSection = await cdp.evaluate(`(() => {
+      const button = document.querySelector(
+        '[aria-label="Убрать ПВКЖ из заказа"]',
+      );
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(removedPvkjSection, true);
+    await clickButtonWithText(cdp, "Сохранить черновик");
+    await waitForDatabaseRow(
+      `SELECT COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active
+       FROM aircraft_refueling WHERE notes = $1`,
+      [fixtures.multiProductRefuelingNote],
+      "the UI order after removing PVKJ",
+      (row) => Number(row.active) === 2,
+    );
+    const removedMultiProduct = await pool.query(
+      `SELECT id, deleted_at FROM aircraft_refueling
+       WHERE id = $1`,
+      [initialMultiProductByType.get("pvkj").id],
+    );
+    assert.ok(
+      removedMultiProduct.rows[0]?.deleted_at,
+      "editing the order soft-deletes the removed PVKJ row",
+    );
+    const editedKeroseneRow = await pool.query(
+      `SELECT id, quantity_tonnes FROM aircraft_refueling
+       WHERE id = $1 AND deleted_at IS NULL`,
+      [initialMultiProductByType.get("kerosene").id],
+    );
+    assert.equal(editedKeroseneRow.rows[0]?.id, initialMultiProductByType.get("kerosene").id);
+    assert.equal(Number(editedKeroseneRow.rows[0]?.quantity_tonnes), 0.11111);
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[role="dialog"][data-state="open"]')`,
+      "the edited order form to close",
+    );
+
+    await openRowActionByTestId(
+      cdp,
+      `text-basis-${initialMultiProductByType.get("kerosene").id}`,
+      "Редактировать",
+    );
+    await addRefuelingProduct(cdp, "ПВКЖ");
+    await fillProductMassTonnes(cdp, "ПВКЖ", "0.06666");
+    await clickButtonWithText(cdp, "Сохранить черновик");
+    await waitForDatabaseRow(
+      `SELECT COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active
+       FROM aircraft_refueling WHERE notes = $1`,
+      [fixtures.multiProductRefuelingNote],
+      "the UI order after adding PVKJ back",
+      (row) => Number(row.active) === 3,
+    );
+    const activeMultiProductRows = await pool.query(
+      `SELECT id, product_type, quantity_tonnes
+       FROM aircraft_refueling
+       WHERE notes = $1 AND deleted_at IS NULL
+       ORDER BY product_type`,
+      [fixtures.multiProductRefuelingNote],
+    );
+    const activeMultiProductByType = new Map(
+      activeMultiProductRows.rows.map((row) => [row.product_type, row]),
+    );
+    assert.equal(activeMultiProductRows.rows.length, 3);
+    assert.notEqual(
+      activeMultiProductByType.get("pvkj")?.id,
+      initialMultiProductByType.get("pvkj").id,
+      "re-adding PVKJ creates a new row instead of reviving the earlier deletion",
+    );
+    assert.equal(
+      Number(activeMultiProductByType.get("pvkj")?.quantity_tonnes),
+      0.06666,
+    );
+    const previouslyRemovedPvkj = await pool.query(
+      `SELECT deleted_at FROM aircraft_refueling WHERE id = $1`,
+      [initialMultiProductByType.get("pvkj").id],
+    );
+    assert.ok(previouslyRemovedPvkj.rows[0]?.deleted_at);
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[role="dialog"][data-state="open"]')`,
+      "the re-added order form to close",
+    );
+
+    await openRowActionByTestId(
+      cdp,
+      `text-basis-${activeMultiProductByType.get("kerosene").id}`,
+      "Удалить",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить заказ заправки?")`,
+      "the multi-product order deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    await waitForDatabaseRow(
+      `SELECT COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active
+       FROM aircraft_refueling WHERE notes = $1`,
+      [fixtures.multiProductRefuelingNote],
+      "the whole multi-product order to be deleted",
+      (row) => Number(row.active) === 0,
+    );
+    const multiProductDeleteAudit = await pool.query(
+      `SELECT id FROM audit_log
+       WHERE entity_type = 'aircraft_refueling'
+         AND entity_id = $1 AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [activeMultiProductByType.get("kerosene").id],
+    );
+    assert.ok(multiProductDeleteAudit.rows[0]?.id);
+    await clickButtonWithText(cdp, "История");
+    await waitForExpression(
+      cdp,
+      `document.body.innerText.includes("Откат доступен")`,
+      "the deleted multi-product order in the refueling audit panel",
+    );
+    const openedMultiProductRollback = await cdp.evaluate(`(() => {
+      const button = Array.from(document.querySelectorAll('[role="dialog"] button'))
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(openedMultiProductRollback, true);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалённая запись будет восстановлена со всеми данными.")`,
+      "the multi-product order restore confirmation",
+    );
+    const confirmedMultiProductRollback = await cdp.evaluate(`(() => {
+      const dialog = document.querySelector('[role="alertdialog"]');
+      const button = Array.from(dialog?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(confirmedMultiProductRollback, true);
+    await waitForDatabaseRow(
+      `SELECT COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active
+       FROM aircraft_refueling WHERE notes = $1`,
+      [fixtures.multiProductRefuelingNote],
+      "the deleted multi-product order to be restored",
+      (row) => Number(row.active) === 3,
+    );
+    const restoredMultiProductRows = await pool.query(
+      `SELECT id, product_type, quantity_tonnes
+       FROM aircraft_refueling
+       WHERE notes = $1 AND deleted_at IS NULL
+       ORDER BY product_type`,
+      [fixtures.multiProductRefuelingNote],
+    );
+    assert.deepEqual(
+      restoredMultiProductRows.rows.map((row) => row.product_type),
+      ["kerosene", "pvkj", "service"],
+    );
+    assert.deepEqual(
+      new Set(restoredMultiProductRows.rows.map((row) => row.id)),
+      new Set(activeMultiProductRows.rows.map((row) => row.id)),
+    );
+    assert.ok(previouslyRemovedPvkj.rows[0]?.deleted_at);
+    const multiProductRollbackAudit = await pool.query(
+      "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+      [multiProductDeleteAudit.rows[0].id],
+    );
+    assert.ok(multiProductRollbackAudit.rows[0]?.rolled_back_at);
+    await waitForAuditOperations(
+      activeMultiProductByType.get("kerosene").id,
+      ["CREATE", "UPDATE", "DELETE", "RESTORE"],
+    );
+    console.log(
+      "UI flow passed: multi-product refueling create/edit/remove/re-add/delete/restore",
+    );
 
     const movementPriceRows = await pool.query(
       `SELECT p.id
