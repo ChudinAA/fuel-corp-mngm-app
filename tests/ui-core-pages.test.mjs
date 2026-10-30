@@ -212,6 +212,22 @@ async function openEditMenuForRow(cdp, rowText) {
       .find((item) => item.innerText.includes(${rowTextJson}));
     const button = row?.querySelector("td:last-child button");
     if (!button) return false;
+    button.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        pointerType: "mouse",
+        isPrimary: true,
+      }),
+    );
+    button.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        button: 0,
+        pointerType: "mouse",
+        isPrimary: true,
+      }),
+    );
     button.click();
     return true;
   })()`);

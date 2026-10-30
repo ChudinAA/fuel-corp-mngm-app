@@ -20,3 +20,9 @@ For authenticated smoke coverage across a Vite app's protected routes, load one 
 **Why:** a cold Vite module graph can take longer to render than expected, and repeated full reloads stalled headless Chromium in this environment even though the same routes rendered through client-side navigation.
 
 **How to apply:** keep at least one real protected-route document load in the smoke test, then use the router's normal client-side navigation for the remaining read-only page checks.
+
+When opening Radix dropdown menus through CDP, a DOM `.click()` on the trigger does not emit the `pointerdown` event the menu listens for.
+
+**Why:** synthetic clicks alone left row action menus closed in headless browser tests, creating false failures in edit flows.
+
+**How to apply:** dispatch a primary mouse `pointerdown` on the trigger before asserting that its menu items appeared.
