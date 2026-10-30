@@ -5,9 +5,26 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
+import { EquipmentRecalculationQueueService } from "../services/equipment-recalculation-queue-service";
 
 export function registerEquipmentRoutes(app: Router) {
   const router = Router();
+
+  router.get(
+    "/recalculation-issues",
+    requireAuth,
+    requirePermission("equipment", "view"),
+    async (_req, res) => {
+      try {
+        res.json(
+          await EquipmentRecalculationQueueService.getIssuesNeedingAttention(),
+        );
+      } catch (error) {
+        console.error("Failed to load equipment recalculation issues:", error);
+        res.status(500).json({ message: "Не удалось получить статус пересчёта оборудования" });
+      }
+    },
+  );
 
   router.get(
     "/",

@@ -1,9 +1,51 @@
-import { eq, and, or, lt, sql } from "drizzle-orm";
+import { eq, and, or, lt, sql, inArray, isNotNull, desc } from "drizzle-orm";
 import { db } from "server/db";
-import { equipmentRecalculationQueue } from "../entities/equipment";
+import { equipmentRecalculationQueue, equipments } from "../entities/equipment";
 import { RECALCULATION_STATUS } from "@shared/constants";
+import {
+  MAX_AUTOMATIC_RECALCULATION_ATTEMPTS,
+  toRecalculationIssueView,
+} from "../../warehouses/services/recalculation-issue-view";
 
 export class EquipmentRecalculationQueueService {
+  static async getIssuesNeedingAttention() {
+    const tasks = await db
+      .select({
+        id: equipmentRecalculationQueue.id,
+        equipmentId: equipmentRecalculationQueue.equipmentId,
+        recordName: equipments.name,
+        productType: equipmentRecalculationQueue.productType,
+        afterDate: equipmentRecalculationQueue.afterDate,
+        status: equipmentRecalculationQueue.status,
+        attempts: equipmentRecalculationQueue.attempts,
+      })
+      .from(equipmentRecalculationQueue)
+      .innerJoin(
+        equipments,
+        eq(equipmentRecalculationQueue.equipmentId, equipments.id),
+      )
+      .where(
+        and(
+          isNotNull(equipmentRecalculationQueue.errorMessage),
+          inArray(equipmentRecalculationQueue.status, [
+            RECALCULATION_STATUS.PENDING,
+            RECALCULATION_STATUS.PROCESSING,
+            RECALCULATION_STATUS.FAILED,
+          ]),
+        ),
+      )
+      .orderBy(desc(equipmentRecalculationQueue.createdAt))
+      .limit(100);
+
+    return tasks.map((task) =>
+      toRecalculationIssueView({
+        ...task,
+        recordId: task.equipmentId,
+        recordType: "equipment",
+      }),
+    );
+  }
+
   static async addToQueue(
     equipmentId: string,
     productType: string,
@@ -112,7 +154,7 @@ export class EquipmentRecalculationQueueService {
     });
 
     const attempts = task?.attempts || 0;
-    const maxAttempts = 3;
+    const maxAttempts = MAX_AUTOMATIC_RECALCULATION_ATTEMPTS;
 
     if (attempts >= maxAttempts) {
       await db

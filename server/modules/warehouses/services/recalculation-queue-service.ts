@@ -1,9 +1,48 @@
-import { eq, and, or, lt, sql } from "drizzle-orm";
+import { eq, and, or, lt, sql, inArray, isNotNull, desc } from "drizzle-orm";
 import { db } from "server/db";
-import { recalculationQueue } from "@shared/schema";
+import { recalculationQueue, warehouses } from "@shared/schema";
 import { RECALCULATION_STATUS } from "@shared/constants";
+import {
+  MAX_AUTOMATIC_RECALCULATION_ATTEMPTS,
+  toRecalculationIssueView,
+} from "./recalculation-issue-view";
 
 export class RecalculationQueueService {
+  static async getIssuesNeedingAttention() {
+    const tasks = await db
+      .select({
+        id: recalculationQueue.id,
+        warehouseId: recalculationQueue.warehouseId,
+        recordName: warehouses.name,
+        productType: recalculationQueue.productType,
+        afterDate: recalculationQueue.afterDate,
+        status: recalculationQueue.status,
+        attempts: recalculationQueue.attempts,
+      })
+      .from(recalculationQueue)
+      .innerJoin(warehouses, eq(recalculationQueue.warehouseId, warehouses.id))
+      .where(
+        and(
+          isNotNull(recalculationQueue.errorMessage),
+          inArray(recalculationQueue.status, [
+            RECALCULATION_STATUS.PENDING,
+            RECALCULATION_STATUS.PROCESSING,
+            RECALCULATION_STATUS.FAILED,
+          ]),
+        ),
+      )
+      .orderBy(desc(recalculationQueue.createdAt))
+      .limit(100);
+
+    return tasks.map((task) =>
+      toRecalculationIssueView({
+        ...task,
+        recordId: task.warehouseId,
+        recordType: "warehouse",
+      }),
+    );
+  }
+
   static async addToQueue(
     warehouseId: string,
     productType: string,
@@ -108,7 +147,7 @@ export class RecalculationQueueService {
     });
 
     const attempts = (task?.attempts || 0);
-    const maxAttempts = 3;
+    const maxAttempts = MAX_AUTOMATIC_RECALCULATION_ATTEMPTS;
 
     if (attempts >= maxAttempts) {
       await db

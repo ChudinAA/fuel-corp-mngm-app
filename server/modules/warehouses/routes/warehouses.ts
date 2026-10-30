@@ -43,6 +43,20 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   );
 
   app.get(
+    "/api/warehouses/recalculation-issues",
+    requireAuth,
+    requirePermission("warehouses", "view"),
+    async (_req, res) => {
+      try {
+        res.json(await RecalculationQueueService.getIssuesNeedingAttention());
+      } catch (error) {
+        console.error("Failed to load warehouse recalculation issues:", error);
+        res.status(500).json({ message: "Не удалось получить статус пересчёта складов" });
+      }
+    },
+  );
+
+  app.get(
     "/api/warehouses/:id",
     requireAuth,
     requirePermission("warehouses", "view"),

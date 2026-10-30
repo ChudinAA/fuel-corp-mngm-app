@@ -7,10 +7,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Warehouse, History, Globe, Plane, Pin } from "lucide-react";
 
 import { AuditPanel } from "@/components/audit-panel";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { apiRequest } from "@/lib/queryClient";
 import type { WarehouseWithTonnes as WarehouseType } from "./warehouses/types";
 import { WarehouseCard } from "./warehouses/components/warehouse-card";
 import { AddWarehouseDialog } from "./warehouses/components/add-warehouse-dialog";
 import { WarehouseDetailsDialog } from "./warehouses/components/warehouse-details-dialog";
+import {
+  RecalculationIssuesAlert,
+  type RecalculationIssue,
+} from "./warehouses/components/recalculation-issues-alert";
 import { useAuth } from "@/hooks/use-auth";
 import { EQUIPMENT_TYPE } from "@shared/constants";
 
@@ -24,11 +30,45 @@ export default function WarehousesPage() {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { hasPermission } = useAuth();
+  const canViewWarehouses = hasPermission("warehouses", "view");
+  const canViewEquipment = hasPermission("equipment", "view");
 
   const { data: warehouses, isLoading } = useQuery<WarehouseType[]>({
     queryKey: ["/api/warehouses"],
     refetchInterval: 10000,
   });
+  const {
+    data: warehouseRecalculationIssues = [],
+    isLoading: isLoadingWarehouseIssues,
+    isError: isWarehouseIssuesError,
+  } = useQuery<RecalculationIssue[]>({
+    queryKey: ["/api/warehouses/recalculation-issues"],
+    queryFn: async () =>
+      (await apiRequest("GET", "/api/warehouses/recalculation-issues")).json(),
+    enabled: canViewWarehouses,
+    refetchInterval: 10000,
+  });
+  const {
+    data: equipmentRecalculationIssues = [],
+    isLoading: isLoadingEquipmentIssues,
+    isError: isEquipmentIssuesError,
+  } = useQuery<RecalculationIssue[]>({
+    queryKey: ["/api/warehouses-equipment/recalculation-issues"],
+    queryFn: async () =>
+      (await apiRequest("GET", "/api/warehouses-equipment/recalculation-issues")).json(),
+    enabled: canViewEquipment,
+    refetchInterval: 10000,
+  });
+  const recalculationIssues = [
+    ...warehouseRecalculationIssues,
+    ...equipmentRecalculationIssues,
+  ];
+  const isLoadingRecalculationIssues =
+    (canViewWarehouses && isLoadingWarehouseIssues) ||
+    (canViewEquipment && isLoadingEquipmentIssues);
+  const hasRecalculationIssuesError =
+    (canViewWarehouses && isWarehouseIssuesError) ||
+    (canViewEquipment && isEquipmentIssuesError);
 
   const filteredWarehouses =
     warehouses?.filter((w) => {
@@ -80,6 +120,22 @@ export default function WarehousesPage() {
       </div>
 
       <div className="space-y-6">
+        {isLoadingRecalculationIssues && (
+          <RecalculationIssuesAlert issues={[]} isLoading />
+        )}
+        {!isLoadingRecalculationIssues && recalculationIssues.length > 0 && (
+          <RecalculationIssuesAlert issues={recalculationIssues} />
+        )}
+        {hasRecalculationIssuesError && (
+          <Alert variant="destructive">
+            <AlertTitle>Не удалось проверить пересчёт остатков</AlertTitle>
+            <AlertDescription>
+              Статус пересчёта временно недоступен. Повторите загрузку страницы
+              или обратитесь к администратору.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
