@@ -62,6 +62,11 @@ export function MovementSourceSection({
           placeholder={watchMovementType === MOVEMENT_TYPE.SUPPLY
             ? "Выберите поставщика"
             : "Выберите склад"}
+          dataTestId={
+            watchMovementType === MOVEMENT_TYPE.SUPPLY
+              ? "select-movement-supplier"
+              : "select-movement-from"
+          }
         />
       </FormItem>
       <FormField

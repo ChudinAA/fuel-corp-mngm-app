@@ -19,6 +19,16 @@ const fixtures = {
   warehouseName: `ui-smoke-warehouse-${runId}`,
   refuelingNote: `ui-smoke-refueling-${runId}`,
   movementNote: `ui-smoke-movement-${runId}`,
+  operationalWarehouseName: `ui-operations-warehouse-${runId}`,
+  transferWarehouseName: `ui-operations-transfer-warehouse-${runId}`,
+  equipmentName: `ui-operations-equipment-${runId}`,
+  carrierName: `ui-operations-carrier-${runId}`,
+  nomenclatureName: `ui-operations-kerosene-${runId}`,
+  receiptNote: `ui-operations-receipt-${runId}`,
+  secondReceiptNote: `ui-operations-second-receipt-${runId}`,
+  warehouseTransferNote: `ui-operations-warehouse-transfer-${runId}`,
+  equipmentTransferNote: `ui-operations-equipment-transfer-${runId}`,
+  finalRefuelingNote: `ui-operations-final-refueling-${runId}`,
 };
 let browser;
 let profileDir;
@@ -66,20 +76,146 @@ async function seedUiFixtures() {
      VALUES ($1, 0, 0, 0, 0)`,
     [fixtures.warehouseName],
   );
+  const operationalWarehouses = await Promise.all([
+    pool.query(
+      `INSERT INTO warehouses
+         (name, current_balance_tonnes, average_cost_per_tonne,
+          pvkj_balance_tonnes, pvkj_average_cost_per_tonne, equipment_type)
+       VALUES ($1, 0, 0, 0, 0, 'lik')
+       RETURNING id`,
+      [fixtures.operationalWarehouseName],
+    ),
+    pool.query(
+      `INSERT INTO warehouses
+         (name, current_balance_tonnes, average_cost_per_tonne,
+          pvkj_balance_tonnes, pvkj_average_cost_per_tonne, equipment_type)
+       VALUES ($1, 0, 0, 0, 0, 'lik')
+       RETURNING id`,
+      [fixtures.transferWarehouseName],
+    ),
+  ]);
+  for (const { rows } of operationalWarehouses) {
+    await pool.query(
+      "INSERT INTO warehouse_bases (warehouse_id, base_id) VALUES ($1, (SELECT id FROM bases WHERE name = $2))",
+      [rows[0].id, fixtures.baseName],
+    );
+  }
+  await pool.query(
+    "UPDATE warehouses SET supplier_id = $1 WHERE id = $2",
+    [supplier.rows[0].id, operationalWarehouses[0].rows[0].id],
+  );
+  const carrier = await pool.query(
+    "INSERT INTO logistics_carriers (name) VALUES ($1) RETURNING id",
+    [fixtures.carrierName],
+  );
+  await pool.query(
+    `INSERT INTO delivery_cost
+       (carrier_id, from_entity_type, from_entity_id, from_location,
+        to_entity_type, to_entity_id, to_location, cost_per_tonne)
+     VALUES ($1, 'base', $2, $3, 'warehouse', $4, $5, 0)`,
+    [
+      carrier.rows[0].id,
+      base.rows[0].id,
+      fixtures.baseName,
+      operationalWarehouses[1].rows[0].id,
+      fixtures.transferWarehouseName,
+    ],
+  );
+  const equipment = await pool.query(
+    `INSERT INTO equipments
+       (name, current_balance_tonnes, average_cost_per_tonne,
+        pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+     VALUES ($1, 0, 0, 0, 0)
+     RETURNING id`,
+    [fixtures.equipmentName],
+  );
+  const unit = await pool.query(
+    `INSERT INTO units_of_measure (short_name, full_name)
+     VALUES ('t-ui-test', 'Tonne UI test')
+     RETURNING id`,
+  );
+  const nomenclature = await pool.query(
+    `INSERT INTO nomenclature (product_type, name, unit_id, is_default)
+     VALUES ('kerosene', $1, $2, true)
+     RETURNING id`,
+    [fixtures.nomenclatureName, unit.rows[0].id],
+  );
+  await pool.query(
+    `INSERT INTO customer_bases (customer_id, base_id)
+     SELECT c.id, b.id
+     FROM customers c, bases b
+     WHERE c.name = $1 AND b.name = $2`,
+    [fixtures.buyerName, fixtures.baseName],
+  );
+  await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_id, counterparty_type, counterparty_role,
+        basis, basis_id, nomenclature_id, price_values, date_from, date_to, volume_unit,
+        price_unit, contract_limit_enabled)
+     SELECT 'kerosene', s.id, 'wholesale', 'supplier', b.name, b.id, n.id,
+            ARRAY['{"price":10000}'], '2026-10-01', '2026-10-05',
+            'tonne', 'tonne', false
+     FROM suppliers s, bases b, nomenclature n
+     WHERE s.name = $1 AND b.name = $2 AND n.id = $3`,
+    [fixtures.supplierName, fixtures.baseName, nomenclature.rows[0].id],
+  );
+  await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_id, counterparty_type, counterparty_role,
+        basis, basis_id, nomenclature_id, price_values, date_from, date_to, volume_unit,
+        price_unit, contract_limit_enabled)
+     SELECT 'kerosene', s.id, 'wholesale', 'supplier', b.name, b.id, n.id,
+            ARRAY['{"price":20000}'], '2026-10-06', '2026-10-31',
+            'tonne', 'tonne', false
+     FROM suppliers s, bases b, nomenclature n
+     WHERE s.name = $1 AND b.name = $2 AND n.id = $3`,
+    [fixtures.supplierName, fixtures.baseName, nomenclature.rows[0].id],
+  );
+  await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_id, counterparty_type, counterparty_role,
+        basis, basis_id, nomenclature_id, price_values, date_from, date_to, volume_unit,
+        price_unit, contract_limit_enabled)
+     SELECT 'kerosene', s.id, 'refueling', 'supplier', b.name, b.id, n.id,
+             ARRAY['{"price":15000}'], '2026-10-01', '2026-10-31',
+            'tonne', 'tonne', false
+     FROM suppliers s, bases b, nomenclature n
+     WHERE s.name = $1 AND b.name = $2 AND n.id = $3`,
+    [fixtures.supplierName, fixtures.baseName, nomenclature.rows[0].id],
+  );
+  await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_id, counterparty_type, counterparty_role,
+        basis, basis_id, nomenclature_id, price_values, date_from, date_to, volume_unit,
+        price_unit, contract_limit_enabled)
+     SELECT 'kerosene', c.id, 'refueling', 'buyer', b.name, b.id, n.id,
+            ARRAY['{"price":20000}'], '2026-10-01', '2026-10-31',
+            'tonne', 'tonne', false
+     FROM customers c, bases b, nomenclature n
+     WHERE c.name = $1 AND b.name = $2 AND n.id = $3`,
+    [fixtures.buyerName, fixtures.baseName, nomenclature.rows[0].id],
+  );
 }
 
 async function cleanUiFixtures() {
-  const [refuelings, movements] = await Promise.all([
-    pool.query("SELECT id FROM aircraft_refueling WHERE notes = $1", [
-      fixtures.refuelingNote,
-    ]),
-    pool.query("SELECT id FROM movement WHERE notes = $1", [
-      fixtures.movementNote,
-    ]),
+  const [refuelings, movements, equipmentMovements] = await Promise.all([
+    pool.query(
+      "SELECT id FROM aircraft_refueling WHERE notes = ANY($1::text[])",
+      [[fixtures.refuelingNote, fixtures.finalRefuelingNote]],
+    ),
+    pool.query(
+      "SELECT id FROM movement WHERE notes = ANY($1::text[])",
+      [[fixtures.movementNote, fixtures.receiptNote, fixtures.secondReceiptNote, fixtures.warehouseTransferNote]],
+    ),
+    pool.query(
+      "SELECT id FROM equipment_movement WHERE notes = $1",
+      [fixtures.equipmentTransferNote],
+    ),
   ]);
   const entityIds = [
     ...refuelings.rows.map((row) => row.id),
     ...movements.rows.map((row) => row.id),
+    ...equipmentMovements.rows.map((row) => row.id),
   ];
   if (entityIds.length) {
     await pool.query(
@@ -87,22 +223,101 @@ async function cleanUiFixtures() {
       [entityIds],
     );
   }
-  await pool.query("DELETE FROM movement WHERE notes = $1", [
-    fixtures.movementNote,
-  ]);
-  if (movements.rows.length) {
+  const movementIds = movements.rows.map((row) => row.id);
+  const equipmentMovementIds = equipmentMovements.rows.map((row) => row.id);
+  if (refuelings.rows.length) {
+    const ids = refuelings.rows.map((row) => row.id);
     await pool.query(
-      `DELETE FROM warehouse_transactions
-       WHERE source_type = 'movement'
-         AND source_id::text = ANY($1::text[])`,
-      [movements.rows.map((row) => row.id)],
+      `UPDATE aircraft_refueling
+       SET transaction_id = NULL, equipment_transaction_id = NULL
+       WHERE id = ANY($1::uuid[])`,
+      [ids],
+    );
+    await pool.query(
+      "DELETE FROM warehouse_transactions WHERE source_type = 'refueling' AND source_id = ANY($1::uuid[])",
+      [ids],
+    );
+    await pool.query(
+      "DELETE FROM equipment_transactions WHERE source_type = 'refueling' AND source_id = ANY($1::uuid[])",
+      [ids],
     );
   }
-  await pool.query("DELETE FROM aircraft_refueling WHERE notes = $1", [
-    fixtures.refuelingNote,
+  if (equipmentMovementIds.length) {
+    await pool.query(
+      `UPDATE equipment_movement
+       SET transaction_id = NULL, source_transaction_id = NULL,
+           warehouse_transaction_id = NULL, source_warehouse_transaction_id = NULL
+       WHERE id = ANY($1::uuid[])`,
+      [equipmentMovementIds],
+    );
+    await pool.query(
+      "DELETE FROM equipment_transactions WHERE source_type = 'movement' AND source_id = ANY($1::uuid[])",
+      [equipmentMovementIds],
+    );
+    await pool.query(
+      "DELETE FROM warehouse_transactions WHERE source_type = 'movement' AND source_id = ANY($1::uuid[])",
+      [equipmentMovementIds],
+    );
+  }
+  if (movementIds.length) {
+    await pool.query(
+      `UPDATE movement
+       SET transaction_id = NULL, source_transaction_id = NULL
+       WHERE id = ANY($1::uuid[])`,
+      [movementIds],
+    );
+  }
+  await pool.query(
+    "DELETE FROM movement WHERE id = ANY($1::uuid[])",
+    [movementIds],
+  );
+  if (movementIds.length) {
+    await pool.query(
+      "DELETE FROM warehouse_transactions WHERE source_type = 'movement' AND source_id = ANY($1::uuid[])",
+      [movementIds],
+    );
+  }
+  if (movements.rows.length) {
+    await pool.query(
+      "DELETE FROM recalculation_queue WHERE warehouse_id IN (SELECT id FROM warehouses WHERE name = ANY($1::text[]))",
+      [[fixtures.operationalWarehouseName, fixtures.transferWarehouseName]],
+    );
+  }
+  await pool.query("DELETE FROM aircraft_refueling WHERE id = ANY($1::uuid[])", [
+    refuelings.rows.map((row) => row.id),
   ]);
-  await pool.query("DELETE FROM warehouses WHERE name = $1", [
-    fixtures.warehouseName,
+  await pool.query("DELETE FROM equipment_movement WHERE id = ANY($1::uuid[])", [
+    equipmentMovementIds,
+  ]);
+  await pool.query("DELETE FROM equipment_recalculation_queue WHERE equipment_id IN (SELECT id FROM equipments WHERE name = $1)", [
+    fixtures.equipmentName,
+  ]);
+  await pool.query("DELETE FROM equipment_transactions WHERE equipment_id IN (SELECT id FROM equipments WHERE name = $1)", [
+    fixtures.equipmentName,
+  ]);
+  await pool.query("DELETE FROM warehouses WHERE name = ANY($1::text[])", [
+    [fixtures.warehouseName, fixtures.operationalWarehouseName, fixtures.transferWarehouseName],
+  ]);
+  await pool.query("DELETE FROM equipments WHERE name = $1", [
+    fixtures.equipmentName,
+  ]);
+  await pool.query("DELETE FROM prices WHERE counterparty_id IN (SELECT id FROM suppliers WHERE name = $1) OR counterparty_id IN (SELECT id FROM customers WHERE name = $2)", [
+    fixtures.supplierName,
+    fixtures.buyerName,
+  ]);
+  await pool.query(
+    "DELETE FROM delivery_cost WHERE carrier_id IN (SELECT id FROM logistics_carriers WHERE name = $1)",
+    [fixtures.carrierName],
+  );
+  await pool.query("DELETE FROM logistics_carriers WHERE name = $1", [
+    fixtures.carrierName,
+  ]);
+  await pool.query("DELETE FROM nomenclature WHERE name = $1", [
+    fixtures.nomenclatureName,
+  ]);
+  await pool.query("DELETE FROM units_of_measure WHERE short_name = 't-ui-test'");
+  await pool.query("DELETE FROM warehouse_bases WHERE warehouse_id IN (SELECT id FROM warehouses WHERE name = ANY($1::text[]))", [
+    [fixtures.operationalWarehouseName, fixtures.transferWarehouseName],
   ]);
   await pool.query("DELETE FROM suppliers WHERE name = $1", [
     fixtures.supplierName,
@@ -157,22 +372,62 @@ async function fillInput(cdp, selector, value) {
 }
 
 async function selectComboboxOption(cdp, testId, label) {
+  await cdp.evaluate(`(() => {
+    document
+      .querySelectorAll('[role="combobox"][aria-expanded="true"]')
+      .forEach((trigger) => trigger.click());
+  })()`);
+  await waitForExpression(
+    cdp,
+    `Array.from(document.querySelectorAll('[role="combobox"]'))
+      .every((trigger) => trigger.getAttribute("aria-expanded") !== "true")`,
+    "all previous comboboxes to close",
+  );
   await clickTestId(cdp, testId);
   const labelJson = JSON.stringify(label);
   await waitForExpression(
     cdp,
     `Array.from(document.querySelectorAll('[role="option"]'))
-      .some((option) => option.innerText.includes(${labelJson}))`,
+      .some((option) => {
+        const rect = option.getBoundingClientRect();
+        const style = getComputedStyle(option);
+        return rect.width > 0 && rect.height > 0 &&
+          style.visibility !== "hidden" && Number(style.opacity) > 0 &&
+          option.innerText.includes(${labelJson});
+      })`,
     `combobox option ${label}`,
   );
   const selected = await cdp.evaluate(`(() => {
     const option = Array.from(document.querySelectorAll('[role="option"]'))
-      .find((item) => item.innerText.includes(${labelJson}));
+      .find((item) => {
+        const rect = item.getBoundingClientRect();
+        const style = getComputedStyle(item);
+        return rect.width > 0 && rect.height > 0 &&
+          style.visibility !== "hidden" && Number(style.opacity) > 0 &&
+          item.innerText.includes(${labelJson});
+      });
     if (!option) return false;
     option.click();
     return true;
   })()`);
   assert.equal(selected, true, `Expected to select option "${label}"`);
+  const expanded = await cdp.evaluate(
+    `document.querySelector('[data-testid="${testId}"]')
+      ?.getAttribute("aria-expanded") === "true"`,
+  );
+  if (expanded) await clickTestId(cdp, testId);
+  await waitForExpression(
+    cdp,
+    `document.querySelector('[data-testid="${testId}"]')
+      ?.innerText.includes(${labelJson})`,
+    `combobox ${testId} to show ${label} after selection`,
+  );
+  await waitForExpression(
+    cdp,
+    `Array.from(document.querySelectorAll('[role="combobox"]'))
+      .every((trigger) => trigger.getAttribute("aria-expanded") !== "true")`,
+    `combobox ${testId} to close after selection`,
+  );
 }
 
 async function clickButtonWithText(cdp, text) {
@@ -277,6 +532,32 @@ async function waitForAuditOperations(entityId, expectedOperations) {
     `Audit for ${entityId} did not contain ${expectedOperations.join(", ")}; ` +
       `found ${operations.join(", ")}`,
   );
+}
+
+async function waitForRecalculation(table, ownerColumn, ownerId) {
+  assert.ok(
+    (table === "recalculation_queue" && ownerColumn === "warehouse_id") ||
+      (table === "equipment_recalculation_queue" &&
+        ownerColumn === "equipment_id"),
+    "unsupported recalculation queue",
+  );
+  const deadline = Date.now() + 45_000;
+  let status;
+  while (Date.now() < deadline) {
+    const result = await pool.query(
+      `SELECT status FROM ${table}
+       WHERE ${ownerColumn} = $1 AND product_type = 'kerosene'
+       ORDER BY created_at DESC, id DESC LIMIT 1`,
+      [ownerId],
+    );
+    status = result.rows[0]?.status;
+    if (status === "failed") {
+      assert.fail(`${table} recalculation failed for ${ownerId}`);
+    }
+    if (status === "completed") return;
+    await delay(250);
+  }
+  assert.fail(`Timed out waiting for ${table} recalculation; last status: ${status}`);
 }
 
 async function stopBrowser() {
@@ -529,6 +810,45 @@ test("authenticated browser can load the core business pages", async () => {
   const failures = [];
   const diagnostics = [];
   const stopListening = cdp.onEvent((method, params) => {
+    if (
+      method === "Network.requestWillBeSent" &&
+      params.request?.url.includes("/api/prices/find-active")
+    ) {
+      diagnostics.push(`Price lookup request: ${params.request.url}`);
+    }
+    if (
+      method === "Network.responseReceived" &&
+      params.response?.url.includes("/api/prices/find-active")
+    ) {
+      diagnostics.push(
+        `Price lookup response: ${params.response.status} ${params.response.url}`,
+      );
+    }
+    if (
+      method === "Network.responseReceived" &&
+      params.response?.url.includes("/api/warehouses/") &&
+      params.response.url.includes("/balance")
+    ) {
+      diagnostics.push(
+        `Warehouse balance response: ${params.response.status} ${params.response.url}`,
+      );
+    }
+    if (
+      method === "Network.requestWillBeSent" &&
+      params.request?.method === "POST" &&
+      params.request.url.endsWith("/api/movement") &&
+      params.request.postData
+    ) {
+      diagnostics.push(`Movement POST payload: ${params.request.postData}`);
+    }
+    if (
+      method === "Network.responseReceived" &&
+      params.response?.url.includes("/api/movement")
+    ) {
+      diagnostics.push(
+        `Movement API response: ${params.response.status} ${params.response.url}`,
+      );
+    }
     if (
       method === "Network.requestWillBeSent" &&
       params.request?.method === "POST" &&
@@ -903,6 +1223,560 @@ test("authenticated browser can load the core business pages", async () => {
       "the movement edit form to close after saving",
     );
     console.log("UI flow passed: movement draft created and edited in tonnes");
+
+    await cdp.evaluate(`(() => {
+      window.__uiOperationEvents = [];
+      const observer = new EventSource(
+        "/api/warehouses/sse/events?clientId=ui-operations-${runId}",
+      );
+      for (const name of [
+        "warehouse_recalculated",
+        "equipment_recalculated",
+        "entity_changed",
+      ]) {
+        observer.addEventListener(name, (event) => {
+          window.__uiOperationEvents.push({
+            name,
+            data: JSON.parse(event.data),
+          });
+        });
+      }
+      observer.addEventListener("message", (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === "connected") {
+          window.__uiOperationSseConnected = true;
+        }
+      });
+      window.__uiOperationSse = observer;
+      return true;
+    })()`);
+    await waitForExpression(
+      cdp,
+      "window.__uiOperationSseConnected === true",
+      "the UI operations SSE observer",
+    );
+
+    const operationalWarehouse = await pool.query(
+      "SELECT id FROM warehouses WHERE name = $1",
+      [fixtures.operationalWarehouseName],
+    );
+    const operationalWarehouseId = operationalWarehouse.rows[0].id;
+    const openMovementForm = async () => {
+      await clickTestId(cdp, "button-add-movement");
+      await waitForExpression(
+        cdp,
+        `!!document.querySelector('[data-testid="input-quantity-tonnes"]') &&
+         !!document.querySelector('[data-testid="select-movement-to"]')`,
+        "a new movement form for final operations",
+      );
+    };
+    const createReceipt = async ({ date, quantity, note }) => {
+      await openMovementForm();
+      await fillInput(cdp, '[data-testid="input-movement-date"]', date);
+      await selectComboboxOption(
+        cdp,
+        "select-movement-supplier",
+        fixtures.supplierName,
+      );
+      await selectComboboxOption(
+        cdp,
+        "select-movement-basis",
+        fixtures.baseName,
+      );
+      await selectComboboxOption(
+        cdp,
+        "select-movement-to",
+        fixtures.operationalWarehouseName,
+      );
+      try {
+        await waitForExpression(
+          cdp,
+          `document.querySelector('[role="dialog"]')
+            ?.innerText.includes("₽/т")`,
+          `an active purchase price for ${date}`,
+          20_000,
+        );
+      } catch (error) {
+        diagnostics.push(
+          `Price selection dialog: ${JSON.stringify(
+            await cdp.evaluate(`(() => ({
+              supplier: document.querySelector('[data-testid="select-movement-supplier"]')?.innerText,
+              basis: document.querySelector('[data-testid="select-movement-basis"]')?.innerText,
+              destination: document.querySelector('[data-testid="select-movement-to"]')?.innerText,
+              date: document.querySelector('[data-testid="input-movement-date"]')?.value,
+              price: document.querySelector('[data-testid="select-purchase-price"]')?.innerText,
+              recentLookups: performance.getEntriesByType("resource")
+                .map((item) => item.name)
+                .filter((name) => name.includes("/api/prices/find-active"))
+                .slice(-5),
+              dialog: document.querySelector('[role="dialog"]')?.innerText?.slice(-1200),
+            }))()`),
+          )}`,
+        );
+        throw error;
+      }
+      await fillInput(
+        cdp,
+        '[data-testid="input-quantity-tonnes"]',
+        quantity,
+      );
+      await fillInput(
+        cdp,
+        '[data-testid="input-movement-notes"]',
+        note,
+      );
+      await clickTestId(cdp, "button-create-movement");
+      let receipt;
+      try {
+        receipt = await waitForDatabaseRow(
+          `SELECT id, quantity_tonnes, input_mode, is_draft,
+                  movement_date, purchase_price_per_tonne, total_cost
+           FROM movement WHERE notes = $1`,
+          [note],
+          `final receipt ${note} created in the UI`,
+        );
+      } catch (error) {
+        diagnostics.push(
+          `Receipt dialog after submit: ${await cdp.evaluate(
+            "document.body?.innerText?.trim()?.slice(-1800) || ''",
+          )}`,
+        );
+        throw error;
+      }
+      assert.equal(receipt.is_draft, false);
+      assert.equal(receipt.input_mode, "tonnes");
+      return receipt;
+    };
+
+    const firstReceipt = await createReceipt({
+      date: "01.10.2026",
+      quantity: "1",
+      note: fixtures.receiptNote,
+    });
+    assert.equal(Number(firstReceipt.quantity_tonnes), 1);
+    assert.equal(Number(firstReceipt.purchase_price_per_tonne), 10_000);
+    assert.equal(Number(firstReceipt.total_cost), 10_000);
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [operationalWarehouseId],
+      "the first receipt's warehouse stock and cost",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1 &&
+        Number(row.average_cost_per_tonne) === 10_000,
+      45_000,
+    );
+
+    const secondReceipt = await createReceipt({
+      date: "10.10.2026",
+      quantity: "1",
+      note: fixtures.secondReceiptNote,
+    });
+    assert.equal(Number(secondReceipt.quantity_tonnes), 1);
+    assert.equal(Number(secondReceipt.purchase_price_per_tonne), 20_000);
+    assert.equal(Number(secondReceipt.total_cost), 20_000);
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [operationalWarehouseId],
+      "the weighted-average stock cost after the second receipt",
+      (row) =>
+        Number(row.current_balance_tonnes) === 2 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+
+    await openMovementForm();
+    await selectComboboxOption(
+      cdp,
+      "select-movement-type",
+      "Внутреннее перемещение",
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-movement-from",
+      fixtures.operationalWarehouseName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-movement-from"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.operationalWarehouseName)})`,
+      "the selected source warehouse",
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-movement-to",
+      fixtures.transferWarehouseName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-movement-to"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.transferWarehouseName)})`,
+      "the selected destination warehouse",
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-movement-carrier",
+      fixtures.carrierName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-movement-carrier"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.carrierName)})`,
+      "the selected internal-transfer carrier",
+    );
+    await fillInput(cdp, '[data-testid="input-movement-date"]', "20.10.2026");
+    await fillInput(cdp, '[data-testid="input-quantity-tonnes"]', "1.5");
+    await fillInput(
+      cdp,
+      '[data-testid="input-movement-notes"]',
+      fixtures.warehouseTransferNote,
+    );
+    try {
+      await waitForExpression(
+        cdp,
+        `!document.querySelector('[data-testid="button-create-movement"]')?.disabled`,
+        "the final warehouse transfer to pass balance validation",
+      );
+    } catch (error) {
+      diagnostics.push(
+        `Warehouse transfer form: ${JSON.stringify(
+          await cdp.evaluate(`(() => ({
+            buttonDisabled: document.querySelector('[data-testid="button-create-movement"]')?.disabled,
+            source: document.querySelector('[data-testid="select-movement-from"]')?.innerText,
+            destination: document.querySelector('[data-testid="select-movement-to"]')?.innerText,
+            date: document.querySelector('[data-testid="input-movement-date"]')?.value,
+            quantity: document.querySelector('[data-testid="input-quantity-tonnes"]')?.value,
+            dialog: document.querySelector('[role="dialog"]')?.innerText?.slice(-1200),
+            recentBalances: performance.getEntriesByType("resource")
+              .map((item) => item.name)
+              .filter((name) => name.includes("/balance"))
+              .slice(-5),
+          }))()`),
+        )}`,
+      );
+      throw error;
+    }
+    await clickTestId(cdp, "button-create-movement");
+    const warehouseTransfer = await waitForDatabaseRow(
+      `SELECT id, quantity_tonnes, input_mode, is_draft, total_cost
+       FROM movement WHERE notes = $1`,
+      [fixtures.warehouseTransferNote],
+      "the final warehouse transfer created through the UI",
+    );
+    assert.equal(warehouseTransfer.is_draft, false);
+    assert.equal(Number(warehouseTransfer.quantity_tonnes), 1.5);
+    assert.equal(warehouseTransfer.input_mode, "tonnes");
+    await waitForAuditOperations(warehouseTransfer.id, ["CREATE"]);
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [operationalWarehouseId],
+      "the source warehouse balance after the UI transfer",
+      (row) =>
+        Number(row.current_balance_tonnes) === 0.5 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    const transferWarehouse = await pool.query(
+      "SELECT id FROM warehouses WHERE name = $1",
+      [fixtures.transferWarehouseName],
+    );
+    const transferWarehouseId = transferWarehouse.rows[0].id;
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the destination warehouse balance after the UI transfer",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1.5 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+
+    await cdp.evaluate(`(() => {
+      window.history.pushState({}, "", "/lik/movement");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    })()`);
+    await waitFor(
+      cdp,
+      (state) => state.path === "/lik/movement" && state.mainText.length > 20,
+      "the equipment movement page",
+    );
+    await clickTestId(cdp, "button-add-equipment-movement");
+    await waitForExpression(
+      cdp,
+      `!!document.querySelector('[data-testid="input-quantity-tonnes"]') &&
+       !!document.querySelector('[data-testid="button-create-equipment-movement"]')`,
+      "the new equipment movement form",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-equipment-movement-date"]',
+      "24.10.2026",
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-equipment-movement-from-warehouse",
+      fixtures.transferWarehouseName,
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-equipment-movement-to-equipment",
+      fixtures.equipmentName,
+    );
+    await fillInput(cdp, '[data-testid="input-quantity-tonnes"]', "1.5");
+    await fillInput(
+      cdp,
+      'input[placeholder="Дополнительная информация..."]',
+      fixtures.equipmentTransferNote,
+    );
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[data-testid="button-create-equipment-movement"]')?.disabled`,
+      "the equipment transfer to pass stock validation",
+    );
+    await clickTestId(cdp, "button-create-equipment-movement");
+    const equipmentTransfer = await waitForDatabaseRow(
+      `SELECT id, quantity_tonnes, input_mode, is_draft, total_cost,
+              cost_per_tonne, movement_date
+       FROM equipment_movement WHERE notes = $1`,
+      [fixtures.equipmentTransferNote],
+      "the final warehouse-to-equipment transfer created in the UI",
+    );
+    assert.equal(equipmentTransfer.is_draft, false);
+    assert.equal(Number(equipmentTransfer.quantity_tonnes), 1.5);
+    assert.equal(equipmentTransfer.input_mode, "tonnes");
+    assert.equal(
+      new Date(equipmentTransfer.movement_date).toISOString().slice(0, 10),
+      "2026-10-24",
+    );
+    await waitForAuditOperations(equipmentTransfer.id, ["CREATE"]);
+    const equipmentRow = await pool.query(
+      "SELECT id FROM equipments WHERE name = $1",
+      [fixtures.equipmentName],
+    );
+    const equipmentId = equipmentRow.rows[0].id;
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [equipmentId],
+      "the transferred equipment balance and average cost",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1.5 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the empty source warehouse after the equipment transfer",
+      (row) => Number(row.current_balance_tonnes) === 0,
+      45_000,
+    );
+
+    await cdp.evaluate(`(() => {
+      window.history.pushState({}, "", "/lik/refueling");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    })()`);
+    await waitFor(
+      cdp,
+      (state) => state.path === "/lik/refueling" && state.mainText.length > 20,
+      "the fuel-equipment refueling page",
+    );
+    await clickTestId(cdp, "button-add-refueling");
+    await waitForExpression(
+      cdp,
+      `!!document.querySelector('[data-testid="select-supplier"]') &&
+       !!document.querySelector('[data-testid="select-buyer"]') &&
+       !!document.querySelector('[data-testid="select-equipment-tzk"]')`,
+      "the new refueling deal form linked to equipment",
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-supplier",
+      fixtures.supplierName,
+    );
+    await selectComboboxOption(cdp, "select-buyer", fixtures.buyerName);
+    await selectComboboxOption(
+      cdp,
+      "select-equipment-tzk",
+      fixtures.equipmentName,
+    );
+    await clickTestId(cdp, "switch-input-mode");
+    await waitForExpression(
+      cdp,
+      `!!document.querySelector('[data-testid="input-quantity-tonnes"]')`,
+      "the final refueling tonne input",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-refueling-date"]',
+      "30.10.2026",
+    );
+    await fillInput(cdp, '[data-testid="input-quantity-tonnes"]', "0.20001");
+    await fillInput(
+      cdp,
+      '[data-testid="input-notes"]',
+      fixtures.finalRefuelingNote,
+    );
+    await clickTestId(cdp, "button-submit-refueling");
+    const finalDeal = await waitForDatabaseRow(
+      `SELECT id, quantity_tonnes, input_mode, is_draft, equipment_id,
+              refueling_date, purchase_price_per_tonne, purchase_amount,
+              sale_amount, profit
+       FROM aircraft_refueling WHERE notes = $1`,
+      [fixtures.finalRefuelingNote],
+      "the final equipment-linked refueling deal created in the UI",
+    );
+    assert.equal(finalDeal.is_draft, false);
+    assert.equal(finalDeal.input_mode, "tonnes");
+    assert.equal(Number(finalDeal.quantity_tonnes), 0.20001);
+    assert.equal(finalDeal.equipment_id, equipmentId);
+    assert.equal(
+      new Date(finalDeal.refueling_date).toISOString().slice(0, 10),
+      "2026-10-30",
+    );
+    await waitForAuditOperations(finalDeal.id, ["CREATE"]);
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [equipmentId],
+      "the equipment balance after the linked sale",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1.29999 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+
+    await cdp.evaluate(`(() => {
+      window.history.pushState({}, "", "/movement");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    })()`);
+    await waitFor(
+      cdp,
+      (state) => state.path === "/movement" && state.mainText.length > 20,
+      "the movement list before editing a completed receipt",
+    );
+    await fillInput(
+      cdp,
+      'input[placeholder="Поиск..."]',
+      fixtures.supplierName,
+    );
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelectorAll("tbody tr"))
+        .some((row) => row.innerText.includes("01.10.2026"))`,
+      "the filtered completed receipt row",
+    );
+    await openEditMenuForRow(cdp, "01.10.2026");
+    await waitForExpression(
+      cdp,
+      `Number(document.querySelector('[data-testid="input-quantity-tonnes"]')
+        ?.value.replace(",", ".")) === 1`,
+      "the original completed receipt in the edit form",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-movement-date"]',
+      "05.10.2026",
+    );
+    await fillInput(cdp, '[data-testid="input-quantity-tonnes"]', "0.7");
+    await cdp.evaluate("window.__uiOperationEvents = []");
+    await clickTestId(cdp, "button-create-movement");
+    const updatedReceipt = await waitForDatabaseRow(
+      `SELECT id, quantity_tonnes, input_mode, is_draft, movement_date,
+              purchase_price_per_tonne, total_cost
+       FROM movement WHERE notes = $1`,
+      [fixtures.receiptNote],
+      "the backdated final receipt update",
+      (row) =>
+        Number(row.quantity_tonnes) === 0.7 &&
+        new Date(row.movement_date).toISOString().slice(0, 10) ===
+          "2026-10-05",
+    );
+    assert.equal(updatedReceipt.id, firstReceipt.id);
+    assert.equal(updatedReceipt.is_draft, false);
+    assert.equal(updatedReceipt.input_mode, "tonnes");
+    assert.equal(Number(updatedReceipt.total_cost), 7_000);
+    await waitForAuditOperations(updatedReceipt.id, ["CREATE", "UPDATE"]);
+
+    await waitForExpression(
+      cdp,
+      `window.__uiOperationEvents?.some((event) =>
+        event.name === "warehouse_recalculated" &&
+        event.data.warehouseId === ${JSON.stringify(operationalWarehouseId)} &&
+        event.data.productType === "kerosene")`,
+      "the SSE notification after warehouse recalculation",
+      45_000,
+    );
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      operationalWarehouseId,
+    );
+
+    const [warehouseStock, transferStock, equipmentStock, updatedDeal] =
+      await Promise.all([
+        pool.query(
+          `SELECT current_balance_tonnes, average_cost_per_tonne
+           FROM warehouses WHERE id = $1`,
+          [operationalWarehouseId],
+        ),
+        pool.query(
+          `SELECT current_balance_tonnes, average_cost_per_tonne
+           FROM warehouses WHERE id = $1`,
+          [transferWarehouseId],
+        ),
+        pool.query(
+          `SELECT current_balance_tonnes, average_cost_per_tonne
+           FROM equipments WHERE id = $1`,
+          [equipmentId],
+        ),
+        pool.query(
+          `SELECT quantity_tonnes, purchase_price_per_tonne,
+                  purchase_amount, sale_amount, profit, is_draft
+           FROM aircraft_refueling WHERE id = $1`,
+          [finalDeal.id],
+        ),
+      ]);
+    const expectedAverageCost = 27_000 / 1.7;
+    assert.equal(Number(warehouseStock.rows[0].current_balance_tonnes), 0.2);
+    assert.ok(
+      Math.abs(
+        Number(warehouseStock.rows[0].average_cost_per_tonne) -
+          expectedAverageCost,
+      ) < 0.01,
+      "the source warehouse average cost is recalculated after the backdated receipt edit",
+    );
+    assert.equal(Number(transferStock.rows[0].current_balance_tonnes), 0);
+    assert.equal(Number(equipmentStock.rows[0].current_balance_tonnes), 1.29999);
+    assert.ok(
+      Math.abs(
+        Number(equipmentStock.rows[0].average_cost_per_tonne) -
+          expectedAverageCost,
+      ) < 0.01,
+      "the linked equipment average cost follows the revised receipt",
+    );
+    assert.ok(
+      Math.abs(
+        Number(updatedDeal.rows[0].purchase_price_per_tonne) -
+          expectedAverageCost,
+      ) < 0.01,
+      "the final deal purchase rate reflects the revised equipment cost",
+    );
+    assert.equal(Number(updatedDeal.rows[0].quantity_tonnes), 0.20001);
+    assert.equal(Number(updatedDeal.rows[0].purchase_amount), 3_176.63);
+    assert.equal(Number(updatedDeal.rows[0].sale_amount), 4_000.2);
+    assert.equal(Number(updatedDeal.rows[0].profit), 823.57);
+    assert.equal(updatedDeal.rows[0].is_draft, false);
+    await waitForAuditOperations(finalDeal.id, ["CREATE"]);
+
+    await cdp.evaluate("window.__uiOperationSse?.close()");
+    console.log(
+      "UI flow passed: final receipt, warehouse/equipment transfers, linked sale, and backdated stock/economics/SSE recalculation",
+    );
 
     assert.deepEqual(failures, []);
   } finally {

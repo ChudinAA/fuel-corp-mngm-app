@@ -377,6 +377,7 @@ export function EquipmentMovementDialog({
                         <DateInput
                           value={field.value ?? undefined}
                           onChange={field.onChange}
+                          data-testid="input-equipment-movement-date"
                         />
                       </FormControl>
                       <FormMessage />
@@ -400,7 +401,7 @@ export function EquipmentMovementDialog({
                         value={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger data-testid="select-equipment-movement-type">
                             <SelectValue placeholder="Выберите тип" />
                           </SelectTrigger>
                         </FormControl>
@@ -493,6 +494,11 @@ export function EquipmentMovementDialog({
                           ? "Выберите склад"
                           : "Выберите СЗ"
                       }
+                      dataTestId={
+                        watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK
+                          ? "select-equipment-movement-from-warehouse"
+                          : "select-equipment-movement-from-equipment"
+                      }
                     />
                   </FormItem>
                   <div className="pt-2">
@@ -541,6 +547,11 @@ export function EquipmentMovementDialog({
                         watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE
                           ? "Выберите склад"
                           : "Выберите СЗ"
+                      }
+                      dataTestId={
+                        watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE
+                          ? "select-equipment-movement-to-warehouse"
+                          : "select-equipment-movement-to-equipment"
                       }
                     />
                   </FormItem>
@@ -613,6 +624,7 @@ export function EquipmentMovementDialog({
                 <Button
                   type="submit"
                   disabled={mutation.isPending || likBalance.status === "error"}
+                  data-testid="button-create-equipment-movement"
                 >
                   {mutation.isPending ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
