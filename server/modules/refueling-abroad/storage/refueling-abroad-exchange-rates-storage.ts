@@ -44,14 +44,22 @@ export class RefuelingAbroadExchangeRatesStorage {
     refuelingAbroadId: string,
     items: Omit<InsertRefuelingAbroadExchangeRate, "refuelingAbroadId">[],
   ): Promise<RefuelingAbroadExchangeRate[]> {
-    await this.deleteByRefuelingId(refuelingAbroadId);
-    if (items.length === 0) return [];
-    const dataWithId = items.map((item, index) => ({
-      ...item,
-      refuelingAbroadId,
-      chainPosition: item.chainPosition ?? index,
-    }));
-    return this.createMany(dataWithId);
+    return db.transaction(async (tx) => {
+      await tx
+        .delete(refuelingAbroadExchangeRates)
+        .where(eq(refuelingAbroadExchangeRates.refuelingAbroadId, refuelingAbroadId));
+
+      if (items.length === 0) return [];
+      const dataWithId = items.map((item, index) => ({
+        ...item,
+        refuelingAbroadId,
+        chainPosition: item.chainPosition ?? index,
+      }));
+      return tx
+        .insert(refuelingAbroadExchangeRates)
+        .values(dataWithId.map((item) => this.transformData(item)))
+        .returning();
+    });
   }
 
   private transformData(data: Partial<InsertRefuelingAbroadExchangeRate>): any {

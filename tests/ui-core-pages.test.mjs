@@ -2520,7 +2520,6 @@ test("authenticated browser can load the core business pages", async () => {
       bank_count: 1,
       exchange_rate_count: 1,
     });
-
     await openDeleteMenuForRow(cdp, fixtures.foreignSupplierName);
     await waitForExpression(
       cdp,
@@ -2554,11 +2553,18 @@ test("authenticated browser can load the core business pages", async () => {
     await waitForExpression(
       cdp,
       `(() => {
+        const panel = Array.from(document.querySelectorAll('[role="dialog"]'))
+          .find((dialog) =>
+            dialog.innerText.includes("Все заправки ВС Зарубеж"));
         const entry = document.querySelector(${foreignAuditEntrySelector});
-        return Boolean(entry && Array.from(entry.querySelectorAll("button"))
+        return Boolean(
+          panel &&
+          document.body.innerText.includes("Откат доступен") &&
+          entry &&
+          Array.from(entry.querySelectorAll("button"))
           .some((button) => button.innerText.trim() === "Откатить"));
       })()`,
-      "the exact foreign delete audit entry with its rollback action",
+      "the exact foreign delete audit entry with its rollback action and restore permission",
     );
     const openedForeignRollback = await cdp.evaluate(`(() => {
       const entry = document.querySelector(${foreignAuditEntrySelector});

@@ -111,17 +111,24 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
     refuelingAbroadId: string,
     intermediaries: Omit<InsertRefuelingAbroadIntermediary, "refuelingAbroadId">[]
   ): Promise<RefuelingAbroadIntermediary[]> {
-    await this.deleteByRefuelingId(refuelingAbroadId);
+    return db.transaction(async (tx) => {
+      await tx
+        .delete(refuelingAbroadIntermediaries)
+        .where(eq(refuelingAbroadIntermediaries.refuelingAbroadId, refuelingAbroadId));
 
-    if (intermediaries.length === 0) return [];
+      if (intermediaries.length === 0) return [];
 
-    const dataWithRefuelingId = intermediaries.map((item, index) => ({
-      ...item,
-      refuelingAbroadId,
-      orderIndex: item.orderIndex ?? index,
-    }));
+      const dataWithRefuelingId = intermediaries.map((item, index) => ({
+        ...item,
+        refuelingAbroadId,
+        orderIndex: item.orderIndex ?? index,
+      }));
 
-    return this.createMany(dataWithRefuelingId);
+      return tx
+        .insert(refuelingAbroadIntermediaries)
+        .values(dataWithRefuelingId.map((item) => this.transformData(item)))
+        .returning();
+    });
   }
 
   private transformData(data: Partial<InsertRefuelingAbroadIntermediary>): any {

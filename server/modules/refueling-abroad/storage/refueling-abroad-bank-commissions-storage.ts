@@ -44,14 +44,22 @@ export class RefuelingAbroadBankCommissionsStorage {
     refuelingAbroadId: string,
     items: Omit<InsertRefuelingAbroadBankCommission, "refuelingAbroadId">[],
   ): Promise<RefuelingAbroadBankCommission[]> {
-    await this.deleteByRefuelingId(refuelingAbroadId);
-    if (items.length === 0) return [];
-    const dataWithId = items.map((item, index) => ({
-      ...item,
-      refuelingAbroadId,
-      chainPosition: item.chainPosition ?? index,
-    }));
-    return this.createMany(dataWithId);
+    return db.transaction(async (tx) => {
+      await tx
+        .delete(refuelingAbroadBankCommissions)
+        .where(eq(refuelingAbroadBankCommissions.refuelingAbroadId, refuelingAbroadId));
+
+      if (items.length === 0) return [];
+      const dataWithId = items.map((item, index) => ({
+        ...item,
+        refuelingAbroadId,
+        chainPosition: item.chainPosition ?? index,
+      }));
+      return tx
+        .insert(refuelingAbroadBankCommissions)
+        .values(dataWithId.map((item) => this.transformData(item)))
+        .returning();
+    });
   }
 
   private transformData(data: Partial<InsertRefuelingAbroadBankCommission>): any {

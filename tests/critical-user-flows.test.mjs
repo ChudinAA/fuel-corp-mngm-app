@@ -459,6 +459,130 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     foreignDraftNomenclature.id,
   );
 
+  const foreignId = foreignDraft.id;
+  const intermediaryUrl = `/api/refueling-abroad/${foreignId}/intermediaries`;
+  const exchangeRatesUrl = `/api/refueling-abroad/${foreignId}/chain-exchange-rates`;
+  const bankCommissionsUrl = `/api/refueling-abroad/${foreignId}/chain-bank-commissions`;
+
+  const initialIntermediaries = [{
+    orderIndex: 0,
+    commissionFormula: "fixed",
+    manualCommissionUsd: 12,
+    commissionUsd: 12,
+    commissionRub: 960,
+    notes: "initial intermediary chain",
+  }];
+  const replacementIntermediaries = [{
+    ...initialIntermediaries[0],
+    manualCommissionUsd: 15,
+    commissionUsd: 15,
+    commissionRub: 1200,
+    notes: "replacement intermediary chain",
+  }];
+  const initialExchangeRates = [{
+    chainPosition: 0,
+    fromCurrencyCode: "USD",
+    toCurrencyCode: "EUR",
+    rate: 0.91,
+    rateDate: "2026-10-01",
+    notes: "initial exchange-rate chain",
+  }];
+  const replacementExchangeRates = [{
+    ...initialExchangeRates[0],
+    rate: 0.92,
+    notes: "replacement exchange-rate chain",
+  }];
+  const initialBankCommissions = [{
+    chainPosition: 0,
+    commissionType: "percent",
+    percent: 1.25,
+    minValue: 4,
+    bankName: "Initial bank",
+    notes: "initial bank commission chain",
+  }];
+  const replacementBankCommissions = [{
+    ...initialBankCommissions[0],
+    percent: 1.5,
+    minValue: 5,
+    bankName: "Replacement bank",
+    notes: "replacement bank commission chain",
+  }];
+
+  for (const [url, initial, replacement, field] of [
+    [intermediaryUrl, initialIntermediaries, replacementIntermediaries, "intermediaries"],
+    [exchangeRatesUrl, initialExchangeRates, replacementExchangeRates, "chainExchangeRates"],
+    [bankCommissionsUrl, initialBankCommissions, replacementBankCommissions, "bankCommissions"],
+  ]) {
+    const assertReplacementValues = (items, label) => {
+      assert.equal(items.length, 1, `${field} ${label} contains one row`);
+      assert.equal(items[0].notes, replacement[0].notes);
+      if (field === "intermediaries") {
+        assert.equal(Number(items[0].manualCommissionUsd), replacement[0].manualCommissionUsd);
+        assert.equal(Number(items[0].commissionUsd), replacement[0].commissionUsd);
+        assert.equal(Number(items[0].commissionRub), replacement[0].commissionRub);
+      } else if (field === "chainExchangeRates") {
+        assert.equal(items[0].fromCurrencyCode, replacement[0].fromCurrencyCode);
+        assert.equal(items[0].toCurrencyCode, replacement[0].toCurrencyCode);
+        assert.equal(Number(items[0].rate), replacement[0].rate);
+      } else {
+        assert.equal(items[0].bankName, replacement[0].bankName);
+        assert.equal(Number(items[0].percent), replacement[0].percent);
+        assert.equal(Number(items[0].minValue), replacement[0].minValue);
+      }
+    };
+
+    await api(url, { method: "PUT", body: initial });
+    await api(url, { method: "PUT", body: replacement });
+    const savedReplacement = await api(url);
+    assertReplacementValues(savedReplacement, "replacement");
+
+    await waitForAuditOperations("aircraft_refueling_abroad", foreignId, ["UPDATE"]);
+    const successfulAudit = await pool.query(
+      `SELECT old_data, new_data FROM audit_log
+       WHERE entity_type = 'aircraft_refueling_abroad'
+         AND entity_id = $1 AND operation = 'UPDATE'
+         AND new_data ? $2
+       ORDER BY created_at DESC, id DESC LIMIT 1`,
+      [foreignId, field],
+    );
+    assert.ok(successfulAudit.rows[0], `${field} successful replacement is audited`);
+    assert.match(
+      JSON.stringify(successfulAudit.rows[0].new_data),
+      /replacement/,
+      `${field} audit contains the replacement value`,
+    );
+
+    const auditCountBeforeFailure = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM audit_log
+       WHERE entity_type = 'aircraft_refueling_abroad'
+         AND entity_id = $1 AND operation = 'UPDATE' AND new_data ? $2`,
+      [foreignId, field],
+    );
+    const invalidReplacement = field === "intermediaries"
+      ? [{ ...replacement[0], intermediaryId: randomUUID() }]
+      : field === "chainExchangeRates"
+        ? [{ ...replacement[0], exchangeRateId: randomUUID() }]
+        : [{ ...replacement[0], percent: 100000000 }];
+    await api(url, {
+      method: "PUT",
+      body: invalidReplacement,
+      expectedStatus: 500,
+    });
+    const retainedAfterFailure = await api(url);
+    assertReplacementValues(retainedAfterFailure, "chain after failed insert");
+    const auditCountAfterFailure = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM audit_log
+       WHERE entity_type = 'aircraft_refueling_abroad'
+         AND entity_id = $1 AND operation = 'UPDATE' AND new_data ? $2`,
+      [foreignId, field],
+    );
+    assert.equal(
+      auditCountAfterFailure.rows[0].count,
+      auditCountBeforeFailure.rows[0].count,
+      `${field} failed replacement does not write audit`,
+    );
+  }
+
   const supplier = (
     await pool.query(
       `INSERT INTO suppliers (name) VALUES ('critical-flow-supplier') RETURNING id`,
