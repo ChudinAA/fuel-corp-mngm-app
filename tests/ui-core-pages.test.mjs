@@ -344,22 +344,57 @@ test("authenticated browser can load the core business pages", async () => {
     failures.length = 0;
 
     const pages = [
+      "/dashboard",
+      "/opt",
+      "/exchange",
+      "/exchange-advances",
+      "/exchange-directories",
+      "/movement",
       "/warehouses",
+      "/prices",
+      "/delivery",
+      "/counterparties",
+      "/directories",
+      "/abroad",
       "/refueling",
-      "/lik/equipment",
-      "/lik/movement",
+      "/storage-cards",
+      "/finance/cashflow",
+      "/finance/payment-calendar",
+      "/finance/price-calculation",
+      "/reports/current",
+      "/reports/analytics",
+      "/reports/registries",
       "/planning",
-      "/logistics-plan",
+      "/reports/gov-contracts",
+      "/reports/budget",
+      "/admin/users",
+      "/admin/roles",
+      "/admin/widgets",
+      "/admin/settings",
+      "/rent",
+      "/transportation",
+      "/lik/refueling",
+      "/lik/movement",
+      "/lik/equipment",
+      "/lik",
       "/exchange-deals",
       "/reports/management",
-      "/storage-cards",
+      "/logistics-plan",
     ];
 
-    for (const route of pages) {
+    for (const [index, route] of pages.entries()) {
       const failureStart = failures.length;
-      await cdp.send("Page.navigate", {
-        url: new URL(route, baseUrl).toString(),
-      });
+      if (index === 0) {
+        await cdp.send("Page.navigate", {
+          url: new URL(route, baseUrl).toString(),
+        });
+      } else {
+        await cdp.evaluate(`(() => {
+          window.history.pushState({}, "", ${JSON.stringify(route)});
+          window.dispatchEvent(new PopStateEvent("popstate"));
+          return window.location.pathname;
+        })()`);
+      }
       const state = await waitFor(
         cdp,
         (page) =>
