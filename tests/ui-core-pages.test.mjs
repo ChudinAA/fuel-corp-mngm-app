@@ -534,7 +534,12 @@ async function waitForAuditOperations(entityId, expectedOperations) {
   );
 }
 
-async function waitForRecalculation(table, ownerColumn, ownerId) {
+async function waitForRecalculation(
+  table,
+  ownerColumn,
+  ownerId,
+  { requireTask = true } = {},
+) {
   assert.ok(
     (table === "recalculation_queue" && ownerColumn === "warehouse_id") ||
       (table === "equipment_recalculation_queue" &&
@@ -542,22 +547,27 @@ async function waitForRecalculation(table, ownerColumn, ownerId) {
     "unsupported recalculation queue",
   );
   const deadline = Date.now() + 45_000;
-  let status;
+  let statuses = [];
   while (Date.now() < deadline) {
     const result = await pool.query(
       `SELECT status FROM ${table}
        WHERE ${ownerColumn} = $1 AND product_type = 'kerosene'
-       ORDER BY created_at DESC, id DESC LIMIT 1`,
+       ORDER BY created_at, id`,
       [ownerId],
     );
-    status = result.rows[0]?.status;
-    if (status === "failed") {
+    statuses = result.rows.map((row) => row.status);
+    if (statuses.length === 0 && !requireTask) return;
+    if (statuses.includes("failed")) {
       assert.fail(`${table} recalculation failed for ${ownerId}`);
     }
-    if (status === "completed") return;
+    if (statuses.length > 0 && statuses.every((status) => status === "completed")) {
+      return;
+    }
     await delay(250);
   }
-  assert.fail(`Timed out waiting for ${table} recalculation; last status: ${status}`);
+  assert.fail(
+    `Timed out waiting for ${table} recalculation; last statuses: ${JSON.stringify(statuses)}`,
+  );
 }
 
 async function stopBrowser() {
@@ -1664,6 +1674,143 @@ test("authenticated browser can load the core business pages", async () => {
       'input[placeholder="Поиск..."]',
       fixtures.supplierName,
     );
+    await openEditMenuForRow(cdp, "10.10.2026");
+    await waitForExpression(
+      cdp,
+      `Number(document.querySelector('[data-testid="input-quantity-tonnes"]')
+        ?.value.replace(",", ".")) === 1`,
+      "the original later completed receipt in the edit form",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-movement-date"]',
+      "08.10.2026",
+    );
+    await fillInput(cdp, '[data-testid="input-quantity-tonnes"]', "0.8");
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      operationalWarehouseId,
+      { requireTask: false },
+    );
+    await cdp.evaluate("window.__uiOperationEvents = []");
+    const queueBeforeLaterReceiptEdit = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM recalculation_queue
+       WHERE warehouse_id = $1 AND product_type = 'kerosene'`,
+      [operationalWarehouseId],
+    );
+    await clickTestId(cdp, "button-create-movement");
+    const updatedLaterReceipt = await waitForDatabaseRow(
+      `SELECT id, quantity_tonnes, input_mode, is_draft, movement_date,
+              purchase_price_per_tonne, total_cost
+       FROM movement WHERE notes = $1`,
+      [fixtures.secondReceiptNote],
+      "the later backdated receipt update",
+      (row) =>
+        Number(row.quantity_tonnes) === 0.8 &&
+        new Date(row.movement_date).toISOString().slice(0, 10) ===
+          "2026-10-08",
+    );
+    assert.equal(updatedLaterReceipt.id, secondReceipt.id);
+    assert.equal(updatedLaterReceipt.is_draft, false);
+    assert.equal(updatedLaterReceipt.input_mode, "tonnes");
+    assert.equal(Number(updatedLaterReceipt.purchase_price_per_tonne), 20_000);
+    assert.equal(Number(updatedLaterReceipt.total_cost), 16_000);
+    await waitForAuditOperations(updatedLaterReceipt.id, ["CREATE", "UPDATE"]);
+    await waitForExpression(
+      cdp,
+      `window.__uiOperationEvents?.some((event) =>
+        event.name === "warehouse_recalculated" &&
+        event.data.warehouseId === ${JSON.stringify(operationalWarehouseId)} &&
+        event.data.productType === "kerosene")`,
+      "the SSE notification after the later receipt recalculation",
+      45_000,
+    );
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      operationalWarehouseId,
+      { requireTask: false },
+    );
+    await delay(300);
+    const laterReceiptEvents = await cdp.evaluate(`window.__uiOperationEvents
+      .filter((event) =>
+        event.name === "warehouse_recalculated" &&
+        event.data.warehouseId === ${JSON.stringify(operationalWarehouseId)} &&
+        event.data.productType === "kerosene").length`);
+    assert.equal(
+      laterReceiptEvents,
+      1,
+      "the later receipt edit produces exactly one completed warehouse recalculation event",
+    );
+    const queueAfterLaterReceiptEdit = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM recalculation_queue
+       WHERE warehouse_id = $1 AND product_type = 'kerosene'`,
+      [operationalWarehouseId],
+    );
+    assert.equal(
+      queueAfterLaterReceiptEdit.rows[0].count,
+      queueBeforeLaterReceiptEdit.rows[0].count + 1,
+      "the later receipt edit queues exactly one warehouse recalculation",
+    );
+
+    const [intermediateWarehouse, intermediateEquipment, intermediateDeal] =
+      await Promise.all([
+        pool.query(
+          `SELECT current_balance_tonnes, average_cost_per_tonne
+           FROM warehouses WHERE id = $1`,
+          [operationalWarehouseId],
+        ),
+        pool.query(
+          `SELECT current_balance_tonnes, average_cost_per_tonne
+           FROM equipments WHERE id = $1`,
+          [equipmentId],
+        ),
+        pool.query(
+          `SELECT purchase_price_per_tonne, purchase_amount, sale_amount, profit
+           FROM aircraft_refueling WHERE id = $1`,
+          [finalDeal.id],
+        ),
+      ]);
+    const intermediateCostPerTonne = 26_000 / 1.8;
+    assert.equal(
+      Number(intermediateWarehouse.rows[0].current_balance_tonnes),
+      0.3,
+    );
+    assert.ok(
+      Math.abs(
+        Number(intermediateWarehouse.rows[0].average_cost_per_tonne) -
+          intermediateCostPerTonne,
+      ) < 0.01,
+      "the source warehouse cost reflects the later receipt edit",
+    );
+    assert.equal(
+      Number(intermediateEquipment.rows[0].current_balance_tonnes),
+      1.29999,
+    );
+    assert.ok(
+      Math.abs(
+        Number(intermediateEquipment.rows[0].average_cost_per_tonne) -
+          intermediateCostPerTonne,
+      ) < 0.01,
+      "the equipment cost reflects the later receipt edit",
+    );
+    assert.ok(
+      Math.abs(
+        Number(intermediateDeal.rows[0].purchase_price_per_tonne) -
+          intermediateCostPerTonne,
+      ) < 0.01,
+      "the linked deal cost reflects the later receipt edit",
+    );
+    assert.equal(Number(intermediateDeal.rows[0].purchase_amount), 2_889.03);
+    assert.equal(Number(intermediateDeal.rows[0].sale_amount), 4_000.2);
+    assert.equal(Number(intermediateDeal.rows[0].profit), 1_111.17);
+
+    await fillInput(
+      cdp,
+      'input[placeholder="Поиск..."]',
+      fixtures.supplierName,
+    );
     await waitForExpression(
       cdp,
       `Array.from(document.querySelectorAll("tbody tr"))
@@ -1683,7 +1830,17 @@ test("authenticated browser can load the core business pages", async () => {
       "05.10.2026",
     );
     await fillInput(cdp, '[data-testid="input-quantity-tonnes"]', "0.7");
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      operationalWarehouseId,
+    );
     await cdp.evaluate("window.__uiOperationEvents = []");
+    const queueBeforeEarlierReceiptEdit = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM recalculation_queue
+       WHERE warehouse_id = $1 AND product_type = 'kerosene'`,
+      [operationalWarehouseId],
+    );
     await clickTestId(cdp, "button-create-movement");
     const updatedReceipt = await waitForDatabaseRow(
       `SELECT id, quantity_tonnes, input_mode, is_draft, movement_date,
@@ -1716,40 +1873,70 @@ test("authenticated browser can load the core business pages", async () => {
       "warehouse_id",
       operationalWarehouseId,
     );
-
-    const [warehouseStock, transferStock, equipmentStock, updatedDeal] =
-      await Promise.all([
-        pool.query(
-          `SELECT current_balance_tonnes, average_cost_per_tonne
-           FROM warehouses WHERE id = $1`,
-          [operationalWarehouseId],
-        ),
-        pool.query(
-          `SELECT current_balance_tonnes, average_cost_per_tonne
-           FROM warehouses WHERE id = $1`,
-          [transferWarehouseId],
-        ),
-        pool.query(
-          `SELECT current_balance_tonnes, average_cost_per_tonne
-           FROM equipments WHERE id = $1`,
-          [equipmentId],
-        ),
-        pool.query(
-          `SELECT quantity_tonnes, purchase_price_per_tonne,
-                  purchase_amount, sale_amount, profit, is_draft
-           FROM aircraft_refueling WHERE id = $1`,
-          [finalDeal.id],
-        ),
-      ]);
-    const expectedAverageCost = 27_000 / 1.7;
-    assert.equal(Number(warehouseStock.rows[0].current_balance_tonnes), 0.2);
-    assert.ok(
-      Math.abs(
-        Number(warehouseStock.rows[0].average_cost_per_tonne) -
-          expectedAverageCost,
-      ) < 0.01,
-      "the source warehouse average cost is recalculated after the backdated receipt edit",
+    await delay(300);
+    const earlierReceiptEvents = await cdp.evaluate(`window.__uiOperationEvents
+      .filter((event) =>
+        event.name === "warehouse_recalculated" &&
+        event.data.warehouseId === ${JSON.stringify(operationalWarehouseId)} &&
+        event.data.productType === "kerosene").length`);
+    assert.equal(
+      earlierReceiptEvents,
+      1,
+      "the earlier receipt edit produces exactly one completed warehouse recalculation event",
     );
+    const queueAfterEarlierReceiptEdit = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM recalculation_queue
+       WHERE warehouse_id = $1 AND product_type = 'kerosene'`,
+      [operationalWarehouseId],
+    );
+    assert.equal(
+      queueAfterEarlierReceiptEdit.rows[0].count,
+      queueBeforeEarlierReceiptEdit.rows[0].count + 1,
+      "the earlier receipt edit queues exactly one warehouse recalculation",
+    );
+
+    const [
+      warehouseStock,
+      transferStock,
+      equipmentStock,
+      updatedDeal,
+      updatedWarehouseTransfer,
+      updatedEquipmentTransfer,
+    ] = await Promise.all([
+      pool.query(
+        `SELECT current_balance_tonnes, average_cost_per_tonne
+         FROM warehouses WHERE id = $1`,
+        [operationalWarehouseId],
+      ),
+      pool.query(
+        `SELECT current_balance_tonnes, average_cost_per_tonne
+         FROM warehouses WHERE id = $1`,
+        [transferWarehouseId],
+      ),
+      pool.query(
+        `SELECT current_balance_tonnes, average_cost_per_tonne
+         FROM equipments WHERE id = $1`,
+        [equipmentId],
+      ),
+      pool.query(
+        `SELECT quantity_tonnes, purchase_price_per_tonne,
+                purchase_amount, sale_amount, profit, is_draft
+         FROM aircraft_refueling WHERE id = $1`,
+        [finalDeal.id],
+      ),
+      pool.query(
+        `SELECT quantity_tonnes, total_cost
+         FROM movement WHERE id = $1`,
+        [warehouseTransfer.id],
+      ),
+      pool.query(
+        `SELECT quantity_tonnes, cost_per_tonne, total_cost
+         FROM equipment_movement WHERE id = $1`,
+        [equipmentTransfer.id],
+      ),
+    ]);
+    const expectedAverageCost = 23_000 / 1.5;
+    assert.equal(Number(warehouseStock.rows[0].current_balance_tonnes), 0);
     assert.equal(Number(transferStock.rows[0].current_balance_tonnes), 0);
     assert.equal(Number(equipmentStock.rows[0].current_balance_tonnes), 1.29999);
     assert.ok(
@@ -1767,10 +1954,24 @@ test("authenticated browser can load the core business pages", async () => {
       "the final deal purchase rate reflects the revised equipment cost",
     );
     assert.equal(Number(updatedDeal.rows[0].quantity_tonnes), 0.20001);
-    assert.equal(Number(updatedDeal.rows[0].purchase_amount), 3_176.63);
+    assert.equal(Number(updatedDeal.rows[0].purchase_amount), 3_066.82);
     assert.equal(Number(updatedDeal.rows[0].sale_amount), 4_000.2);
-    assert.equal(Number(updatedDeal.rows[0].profit), 823.57);
+    assert.equal(Number(updatedDeal.rows[0].profit), 933.38);
     assert.equal(updatedDeal.rows[0].is_draft, false);
+    assert.equal(Number(updatedWarehouseTransfer.rows[0].quantity_tonnes), 1.5);
+    assert.equal(Number(updatedWarehouseTransfer.rows[0].total_cost), 23_000);
+    assert.equal(
+      Number(updatedEquipmentTransfer.rows[0].quantity_tonnes),
+      1.5,
+    );
+    assert.ok(
+      Math.abs(
+        Number(updatedEquipmentTransfer.rows[0].cost_per_tonne) -
+          expectedAverageCost,
+      ) < 0.01,
+      "the equipment transfer per-tonne cost follows both backdated receipt edits",
+    );
+    assert.equal(Number(updatedEquipmentTransfer.rows[0].total_cost), 23_000);
     await waitForAuditOperations(finalDeal.id, ["CREATE"]);
 
     await cdp.evaluate("window.__uiOperationSse?.close()");
