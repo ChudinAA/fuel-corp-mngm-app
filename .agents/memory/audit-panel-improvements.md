@@ -75,6 +75,14 @@ description: Summary of audit panel UX improvements — width, field visibility,
 
 ---
 
+## Audit history freshness on reopen
+
+Audit history must refresh when the panel is reopened; avoid a positive stale window for the enabled query.
+
+**Why:** The UI flow reopened the panel after a recent delete, but a 30-second cache kept the new audit row and its rollback action out of the list.
+
+**How to apply:** Keep the audit query fresh on reopen and test open → write → close → reopen, selecting the exact audit row rather than the first rollback action.
+
 ## Session 4 fixes
 
 **UUID массивы (baseIds) показывали UUID в строке детали записи, но не в превью:**

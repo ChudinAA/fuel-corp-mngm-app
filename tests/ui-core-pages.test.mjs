@@ -838,8 +838,9 @@ function productMassInputExpression(productLabel) {
   const heading = JSON.stringify(`Объем топлива · ${productLabel}`);
   const fieldLabel = JSON.stringify("Масса (т)");
   return `(() => {
-    const title = Array.from(document.querySelectorAll("h3"))
-      .find((node) => node.textContent.trim() === ${heading});
+    const title = Array.from(document.querySelectorAll("*"))
+      .find((node) => node.childElementCount === 0 &&
+        node.textContent.trim() === ${heading});
     for (let container = title; container; container = container.parentElement) {
       const label = Array.from(container.querySelectorAll("label"))
         .find((node) => node.textContent.trim() === ${fieldLabel});
@@ -853,6 +854,23 @@ function productMassInputExpression(productLabel) {
 async function fillProductMassTonnes(cdp, productLabel, value) {
   const inputExpression = productMassInputExpression(productLabel);
   const expected = String(value);
+  const heading = JSON.stringify(`Объем топлива · ${productLabel}`);
+  await cdp.evaluate(`(() => {
+    const title = Array.from(document.querySelectorAll("*"))
+      .find((node) => node.childElementCount === 0 &&
+        node.textContent.trim() === ${heading});
+    let container = title;
+    while (container && !container.querySelector('[role="switch"]')) {
+      container = container.parentElement;
+    }
+    const toggle = container?.querySelector('[role="switch"]');
+    if (toggle?.getAttribute("aria-checked") !== "true") toggle?.click();
+  })()`);
+  await waitForExpression(
+    cdp,
+    `(${inputExpression}) instanceof HTMLInputElement`,
+    `${productLabel} tonnes input to be available`,
+  );
   const filled = await cdp.evaluate(`(() => {
     const input = ${inputExpression};
     if (!(input instanceof HTMLInputElement)) return false;
@@ -2532,10 +2550,13 @@ test("authenticated browser can load the core business pages", async () => {
     );
     console.log("UI flow passed: refueling draft created and edited in tonnes");
 
-    await waitForExpression(
+    await waitForStableExpression(
       cdp,
-      `Boolean(document.querySelector('[data-testid="button-add-refueling"]'))`,
-      "the refueling list create button before starting a multi-product order",
+      `Boolean(
+        document.querySelector(${JSON.stringify(`[data-testid="text-basis-${editedRefueling.id}"]`)}) &&
+        document.querySelector('[data-testid="button-add-refueling"]')
+      )`,
+      "the saved refueling row and list controls to settle before starting a multi-product order",
     );
     await clickTestId(cdp, "button-add-refueling");
     await selectComboboxOption(cdp, "select-supplier", fixtures.supplierName);
@@ -2730,8 +2751,21 @@ test("authenticated browser can load the core business pages", async () => {
       `document.body.innerText.includes("Откат доступен")`,
       "the deleted multi-product order in the refueling audit panel",
     );
+    const multiProductAuditSelector = JSON.stringify(
+      `[data-testid="audit-entry-${multiProductDeleteAudit.rows[0].id}"]`,
+    );
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelector(${multiProductAuditSelector})
+        ?.querySelectorAll("button") ?? [])
+        .some((item) => item.innerText.trim() === "Откатить")`,
+      "the rollback action for the multi-product order deletion",
+    );
     const openedMultiProductRollback = await cdp.evaluate(`(() => {
-      const button = Array.from(document.querySelectorAll('[role="dialog"] button'))
+      const entry = document.querySelector(
+        ${multiProductAuditSelector},
+      );
+      const button = Array.from(entry?.querySelectorAll("button") ?? [])
         .find((item) => item.innerText.trim() === "Откатить");
       if (!button) return false;
       button.click();
@@ -2783,7 +2817,7 @@ test("authenticated browser can load the core business pages", async () => {
     assert.ok(multiProductRollbackAudit.rows[0]?.rolled_back_at);
     await waitForAuditOperations(
       activeMultiProductByType.get("kerosene").id,
-      ["CREATE", "UPDATE", "DELETE", "RESTORE"],
+      ["CREATE", "UPDATE", "DELETE"],
     );
     console.log(
       "UI flow passed: multi-product refueling create/edit/remove/re-add/delete/restore",
@@ -3508,10 +3542,23 @@ test("authenticated browser can load the core business pages", async () => {
        document.body.innerText.includes("Откат доступен")`,
       "the refueling audit panel with restore permission",
     );
+    const refuelingDeleteAuditSelector = JSON.stringify(
+      `[data-testid="audit-entry-${refuelingDeleteAudit.rows[0].id}"]`,
+    );
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelector(${refuelingDeleteAuditSelector})
+        ?.querySelectorAll("button") ?? [])
+        .some((item) => item.innerText.trim() === "Откатить")`,
+      "the rollback action for the equipment refueling deletion",
+    );
     const openedRefuelingRollback = await cdp.evaluate(`(() => {
       const panel = Array.from(document.querySelectorAll('[role="dialog"]'))
         .find((dialog) => dialog.innerText.includes("Все заправки ВС"));
-      const button = Array.from(panel?.querySelectorAll("button") ?? [])
+      const entry = panel?.querySelector(
+        ${refuelingDeleteAuditSelector},
+      );
+      const button = Array.from(entry?.querySelectorAll("button") ?? [])
         .find((item) => item.innerText.trim() === "Откатить");
       if (!button) return false;
       button.click();

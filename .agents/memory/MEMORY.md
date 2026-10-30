@@ -9,7 +9,7 @@
 - [Refueling service fees](refueling-service-fees.md) — recharge adds enabled fees to sale amount while preserving zero profit; recalculation must retain the surcharge.
 - [Equipment transfer cost cascades](equipment-transfer-cost-cascades.md) — upstream recalculation may update movement cost before its source transaction row; receiving assets must use the movement as cost source.
 - [Refueling order volume rules](refueling-order-volume-semantics.md) — kerosene/PVKJ keep independent unit switches; service is kg-only and follows the total liquid volume.
-- [Audit panel improvements](audit-panel-improvements.md) — panel width 2xl; equipmentType hidden; service/agent/storage product labels; entityMeta summaries for all entities; backfill endpoint + UI button; П6 intermediaries/banks audit; warehouse baseIds/services visible; prices priceValues visible; advances audit hidden.
+- [Audit panel](audit-panel-improvements.md) — entity summaries, field visibility, backfill, abroad-chain audit; refresh history on every reopen to include recent writes.
 - [Audit double-normalization fix](audit-double-normalization.md) — root cause: middleware called normalizeAuditData before AuditService.log which also normalizes; arrays (services, baseIds, priceValues) were destroyed; fix: pass raw data to AuditService.log.
 - [SSE real-time updates](sse-realtime-updates.md) — entity_changed SSE event covers all transactional entities; clientId header filters initiator; 30s polling fallback; onerror must NOT close EventSource.
 - [Contracts and nomenclature compatibility](contracts-nomenclature-compatibility.md) — product types differ from integration kinds; preserve historical mappings and shared dialog mechanics.

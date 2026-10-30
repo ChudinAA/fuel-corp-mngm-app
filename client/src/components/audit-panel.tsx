@@ -361,6 +361,7 @@ function AuditEntryRow({
       <Collapsible open={expanded} onOpenChange={setExpanded}>
         <CollapsibleTrigger asChild>
           <div
+            data-testid={`audit-entry-${entry.id}`}
             className={cn(
               "group flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors select-none",
               "hover:bg-muted/60",

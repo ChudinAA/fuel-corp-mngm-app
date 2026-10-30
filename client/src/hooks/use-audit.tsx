@@ -55,7 +55,7 @@ export function useAudit({
       return res.json();
     },
     enabled: enabled && !!entityType,
-    staleTime: 30000, // 30 seconds
+    staleTime: 0, // Reopen audit history with fresh entries after recent writes.
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       const loadedCount = allPages.length * limit;
