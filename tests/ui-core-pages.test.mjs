@@ -1000,6 +1000,51 @@ async function openDeleteMenuForRow(cdp, rowText) {
   await openRowActionForRow(cdp, rowText, "Удалить");
 }
 
+async function openRowActionByTestId(cdp, markerTestId, actionText) {
+  const selector = `[data-testid="${markerTestId}"]`;
+  await waitForExpression(
+    cdp,
+    `Boolean(document.querySelector(${JSON.stringify(selector)}))`,
+    `table row marker ${markerTestId}`,
+  );
+  const opened = await cdp.evaluate(`(() => {
+    const marker = document.querySelector(${JSON.stringify(selector)});
+    const row = marker?.closest("tr");
+    const button = row?.querySelector("td:last-child button");
+    if (!button) return false;
+    button.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        pointerType: "mouse",
+        isPrimary: true,
+      }),
+    );
+    button.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        button: 0,
+        pointerType: "mouse",
+        isPrimary: true,
+      }),
+    );
+    button.click();
+    return true;
+  })()`);
+  assert.equal(
+    opened,
+    true,
+    `Expected an action menu for ${markerTestId}`,
+  );
+  await waitForExpression(
+    cdp,
+    `Array.from(document.querySelectorAll('[role="menuitem"]'))
+      .some((item) => item.innerText.trim() === ${JSON.stringify(actionText)})`,
+    `the ${actionText} action for ${markerTestId}`,
+  );
+  await clickMenuItemWithText(cdp, actionText);
+}
+
 async function waitForDatabaseRow(
   query,
   params,
@@ -2972,6 +3017,185 @@ test("authenticated browser can load the core business pages", async () => {
         Number(row.current_balance_tonnes) === 1.29999 &&
         Number(row.average_cost_per_tonne) === 15_000,
       45_000,
+    );
+    const equipmentLedgerBeforeDelete = await pool.query(
+      `SELECT COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active,
+              COUNT(*)::int AS total
+       FROM equipment_transactions
+       WHERE source_type = 'refueling' AND source_id = $1`,
+      [finalDeal.id],
+    );
+    assert.deepEqual(equipmentLedgerBeforeDelete.rows[0], {
+      active: 1,
+      total: 1,
+    });
+
+    await openRowActionByTestId(
+      cdp,
+      `text-basis-${finalDeal.id}`,
+      "Удалить",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить заказ заправки?")`,
+      "the equipment refueling deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    await waitForDatabaseRow(
+      `SELECT deleted_at FROM aircraft_refueling WHERE id = $1`,
+      [finalDeal.id],
+      "the final equipment refueling soft-deleted through the UI",
+      (row) => Boolean(row.deleted_at),
+    );
+    await waitForAuditOperations(finalDeal.id, ["CREATE", "DELETE"]);
+    await waitForRecalculation(
+      "equipment_recalculation_queue",
+      "equipment_id",
+      equipmentId,
+      { requireTask: false },
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [equipmentId],
+      "the equipment balance after deleting the final refueling",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1.5 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    const equipmentLedgerAfterDelete = await pool.query(
+      `SELECT COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active,
+              COUNT(*)::int AS total
+       FROM equipment_transactions
+       WHERE source_type = 'refueling' AND source_id = $1`,
+      [finalDeal.id],
+    );
+    assert.deepEqual(equipmentLedgerAfterDelete.rows[0], {
+      active: 0,
+      total: 1,
+    });
+    const refuelingDeleteAudit = await pool.query(
+      `SELECT id FROM audit_log
+       WHERE entity_id = $1 AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [finalDeal.id],
+    );
+    assert.ok(
+      refuelingDeleteAudit.rows[0]?.id,
+      "the UI deletion should have an audit entry",
+    );
+    await waitForExpression(
+      cdp,
+      `!document.querySelector(${JSON.stringify(`[data-testid="text-basis-${finalDeal.id}"]`)})`,
+      "the deleted equipment refueling to disappear from the table",
+    );
+    await clickButtonWithText(cdp, "История");
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelectorAll('[role="dialog"]'))
+        .some((dialog) => dialog.innerText.includes("Все заправки ВС")) &&
+       document.body.innerText.includes("Откат доступен")`,
+      "the refueling audit panel with restore permission",
+    );
+    const openedRefuelingRollback = await cdp.evaluate(`(() => {
+      const panel = Array.from(document.querySelectorAll('[role="dialog"]'))
+        .find((dialog) => dialog.innerText.includes("Все заправки ВС"));
+      const button = Array.from(panel?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(
+      openedRefuelingRollback,
+      true,
+      "the deleted refueling audit entry should offer rollback",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалённая запись будет восстановлена со всеми данными.")`,
+      "confirmation that the audit rollback restores the equipment refueling",
+    );
+    const confirmedRefuelingRollback = await cdp.evaluate(`(() => {
+      const dialog = document.querySelector('[role="alertdialog"]');
+      const button = Array.from(dialog?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(confirmedRefuelingRollback, true);
+    await waitForDatabaseRow(
+      `SELECT deleted_at FROM aircraft_refueling WHERE id = $1`,
+      [finalDeal.id],
+      "the final equipment refueling restored through the audit UI",
+      (row) => row.deleted_at === null,
+    );
+    await waitForAuditOperations(finalDeal.id, [
+      "CREATE",
+      "DELETE",
+      "RESTORE",
+    ]);
+    await waitForRecalculation(
+      "equipment_recalculation_queue",
+      "equipment_id",
+      equipmentId,
+      { requireTask: false },
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [equipmentId],
+      "the equipment balance after restoring the final refueling",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1.29999 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    const equipmentLedgerAfterRestore = await pool.query(
+      `SELECT COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active,
+              COUNT(*)::int AS total
+       FROM equipment_transactions
+       WHERE source_type = 'refueling' AND source_id = $1`,
+      [finalDeal.id],
+    );
+    assert.deepEqual(equipmentLedgerAfterRestore.rows[0], {
+      active: 1,
+      total: 1,
+    });
+    const restoredFinalDeal = await waitForDatabaseRow(
+      `SELECT purchase_price_per_tonne, purchase_amount, sale_amount, profit
+       FROM aircraft_refueling WHERE id = $1`,
+      [finalDeal.id],
+      "the restored refueling economics",
+    );
+    for (const field of [
+      "purchase_price_per_tonne",
+      "purchase_amount",
+      "sale_amount",
+      "profit",
+    ]) {
+      assert.equal(
+        Number(restoredFinalDeal[field]),
+        Number(finalDeal[field]),
+        `restoring the final refueling preserves ${field}`,
+      );
+    }
+    const rolledBackRefuelingDelete = await pool.query(
+      "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+      [refuelingDeleteAudit.rows[0].id],
+    );
+    assert.ok(rolledBackRefuelingDelete.rows[0]?.rolled_back_at);
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector(${JSON.stringify(`[data-testid="text-basis-${finalDeal.id}"]`)}))`,
+      "the restored equipment refueling to return to the active table",
+    );
+    console.log(
+      "UI flow passed: equipment refueling delete/restore preserves stock, ledger, and economics",
     );
 
     await cdp.evaluate(`(() => {
