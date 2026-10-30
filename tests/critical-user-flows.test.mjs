@@ -2386,3 +2386,320 @@ test("parallel warehouse and equipment recalculations preserve stock and report 
     }
   }
 });
+
+test("concurrent warehouse and equipment recalculations keep linked transfer costs current", async () => {
+  const productType = "kerosene";
+  const afterDate = "2026-10-02T00:00:00.000Z";
+  const transferDate = "2026-10-03T00:00:00.000Z";
+  const quantityTonnes = 0.25;
+  const correctedCostPerTonne = 20_000;
+  const correctedTotalCost = quantityTonnes * correctedCostPerTonne;
+  const fixtureId = randomUUID();
+  const warehouseTaskIds = [];
+  const equipmentTaskIds = [];
+  let warehouseId;
+  let equipmentId;
+  let sourceTransactionId;
+  let destinationTransactionId;
+  let movementId;
+  let fixtureTransactionOpen = false;
+  let productLockHeld = false;
+  const fixtureClient = await pool.connect();
+  const lockClient = await pool.connect();
+
+  const readTaskStates = async () => {
+    const [warehouseTasks, equipmentTasks] = await Promise.all([
+      pool.query(
+        `SELECT id, status FROM recalculation_queue WHERE id = ANY($1::uuid[])`,
+        [warehouseTaskIds],
+      ),
+      pool.query(
+        `SELECT id, status FROM equipment_recalculation_queue WHERE id = ANY($1::uuid[])`,
+        [equipmentTaskIds],
+      ),
+    ]);
+    return [...warehouseTasks.rows, ...equipmentTasks.rows];
+  };
+  const waitForTaskStates = async (expectedStatus, timeoutMs = 30_000) => {
+    const deadline = Date.now() + timeoutMs;
+    let tasks = [];
+    while (Date.now() < deadline) {
+      tasks = await readTaskStates();
+      assert.equal(
+        tasks.length,
+        warehouseTaskIds.length + equipmentTaskIds.length,
+        "both linked recalculation tasks are queued",
+      );
+      assert.ok(
+        !tasks.some((task) => task.status === "failed"),
+        `linked recalculation tasks have no failures: ${JSON.stringify(tasks)}`,
+      );
+      if (tasks.every((task) => task.status === expectedStatus)) return tasks;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.fail(
+      `Timed out waiting for linked recalculation tasks to become ${expectedStatus}: ${JSON.stringify(tasks)}`,
+    );
+  };
+
+  try {
+    // Hold the same product lock as the workers until both have claimed their
+    // tasks. This makes the two-worker overlap deterministic instead of relying
+    // on the workers' polling timers to happen to line up.
+    await lockClient.query(
+      `SELECT pg_advisory_lock(hashtext('stock-recalculation:' || $1)::bigint)`,
+      [productType],
+    );
+    productLockHeld = true;
+
+    await fixtureClient.query("BEGIN");
+    fixtureTransactionOpen = true;
+    warehouseId = (
+      await fixtureClient.query(
+        `INSERT INTO warehouses
+           (name, current_balance_tonnes, average_cost_per_tonne,
+            pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+         VALUES ($1, 1, 10000, 0, 0)
+         RETURNING id`,
+        [`critical-linked-recalc-warehouse-${fixtureId}`],
+      )
+    ).rows[0].id;
+    equipmentId = (
+      await fixtureClient.query(
+        `INSERT INTO equipments
+           (name, current_balance_tonnes, average_cost_per_tonne,
+            pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+         VALUES ($1, 0, 0, 0, 0)
+         RETURNING id`,
+        [`critical-linked-recalc-equipment-${fixtureId}`],
+      )
+    ).rows[0].id;
+
+    await fixtureClient.query(
+      `INSERT INTO warehouse_transactions
+         (warehouse_id, transaction_type, product_type, quantity_tonnes,
+          source_type, balance_before_tonnes, balance_after_tonnes,
+          average_cost_before_per_tonne, average_cost_after_per_tonne,
+          sum, price_per_tonne, transaction_date)
+       VALUES ($1, 'inventory', $2, 1, 'critical_linked_recalc',
+               0, 1, 0, 10000, 10000, 10000, '2026-10-01T00:00:00.000Z')`,
+      [warehouseId, productType],
+    );
+    await fixtureClient.query(
+      `INSERT INTO warehouse_transactions
+         (warehouse_id, transaction_type, product_type, quantity_tonnes,
+          source_type, balance_before_tonnes, balance_after_tonnes,
+          average_cost_before_per_tonne, average_cost_after_per_tonne,
+          sum, price_per_tonne, transaction_date)
+       VALUES ($1, 'inventory', $2, 1, 'critical_linked_recalc',
+               1, 1, 10000, 20000, 10000, 20000, $3)`,
+      [warehouseId, productType, afterDate],
+    );
+
+    movementId = (
+      await fixtureClient.query(
+        `INSERT INTO equipment_movement
+           (movement_date, movement_type, product_type, from_warehouse_id,
+            to_equipment_id, quantity_tonnes, cost_per_tonne, total_cost,
+            is_draft, notes)
+         VALUES ($1, 'storage_to_tzk', $2, $3, $4, $5, 10000, 2500,
+                 false, 'critical linked recalculation transfer')
+         RETURNING id`,
+        [transferDate, productType, warehouseId, equipmentId, quantityTonnes],
+      )
+    ).rows[0].id;
+    sourceTransactionId = (
+      await fixtureClient.query(
+        `INSERT INTO warehouse_transactions
+           (warehouse_id, transaction_type, product_type, quantity_tonnes,
+            source_type, source_id, balance_before_tonnes, balance_after_tonnes,
+            average_cost_before_per_tonne, average_cost_after_per_tonne,
+            sum, price_per_tonne, transaction_date)
+         VALUES ($1, 'transfer_out', $2, $3, 'movement', $4,
+                 1, 0.75, 20000, 20000, 2500, 10000, $5)
+         RETURNING id`,
+        [
+          warehouseId,
+          productType,
+          -quantityTonnes,
+          movementId,
+          transferDate,
+        ],
+      )
+    ).rows[0].id;
+    destinationTransactionId = (
+      await fixtureClient.query(
+        `INSERT INTO equipment_transactions
+           (equipment_id, transaction_type, product_type, quantity_tonnes,
+            source_type, source_id, balance_before_tonnes, balance_after_tonnes,
+            average_cost_before_per_tonne, average_cost_after_per_tonne,
+            sum, price_per_tonne, transaction_date)
+         VALUES ($1, 'transfer_in', $2, $3, 'movement', $4,
+                 0, $3, 0, 10000, 2500, 10000, $5)
+         RETURNING id`,
+        [equipmentId, productType, quantityTonnes, movementId, transferDate],
+      )
+    ).rows[0].id;
+    await fixtureClient.query(
+      `UPDATE equipment_movement
+       SET transaction_id = $2, source_warehouse_transaction_id = $3
+       WHERE id = $1`,
+      [movementId, destinationTransactionId, sourceTransactionId],
+    );
+
+    warehouseTaskIds.push(
+      (
+        await fixtureClient.query(
+          `INSERT INTO recalculation_queue (warehouse_id, product_type, after_date)
+           VALUES ($1, $2, $3) RETURNING id`,
+          [warehouseId, productType, afterDate],
+        )
+      ).rows[0].id,
+    );
+    equipmentTaskIds.push(
+      (
+        await fixtureClient.query(
+          `INSERT INTO equipment_recalculation_queue
+             (equipment_id, product_type, after_date)
+           VALUES ($1, $2, $3) RETURNING id`,
+          [equipmentId, productType, afterDate],
+        )
+      ).rows[0].id,
+    );
+    await fixtureClient.query("COMMIT");
+    fixtureTransactionOpen = false;
+
+    const processingTasks = await waitForTaskStates("processing");
+    assert.equal(processingTasks.length, 2);
+
+    await lockClient.query(
+      `SELECT pg_advisory_unlock(hashtext('stock-recalculation:' || $1)::bigint)`,
+      [productType],
+    );
+    productLockHeld = false;
+    await waitForTaskStates("completed");
+
+    assertStock(
+      await getStock("warehouses", warehouseId),
+      1 - quantityTonnes,
+      correctedCostPerTonne,
+      "warehouse source after linked concurrent recalculation",
+    );
+    assertStock(
+      await getStock("equipments", equipmentId),
+      quantityTonnes,
+      correctedCostPerTonne,
+      "equipment destination after linked concurrent recalculation",
+    );
+
+    const transfer = await pool.query(
+      `SELECT cost_per_tonne, total_cost
+       FROM equipment_movement WHERE id = $1`,
+      [movementId],
+    );
+    assert.equal(transfer.rows.length, 1);
+    assert.ok(
+      Math.abs(Number(transfer.rows[0].cost_per_tonne) - correctedCostPerTonne) < 0.011,
+      "the corrected transfer unit cost is not overwritten by an older value",
+    );
+    assert.ok(
+      Math.abs(Number(transfer.rows[0].total_cost) - correctedTotalCost) < 0.011,
+      "the corrected transfer total cost persists",
+    );
+
+    const sourceLedger = await pool.query(
+      `SELECT transaction_type, quantity_tonnes, sum, balance_after_tonnes,
+              average_cost_after_per_tonne, deleted_at
+       FROM warehouse_transactions WHERE id = $1`,
+      [sourceTransactionId],
+    );
+    assert.equal(sourceLedger.rows.length, 1);
+    assert.equal(sourceLedger.rows[0].transaction_type, "transfer_out");
+    assert.equal(Number(sourceLedger.rows[0].quantity_tonnes), -quantityTonnes);
+    assert.equal(Number(sourceLedger.rows[0].balance_after_tonnes), 0.75);
+    assert.ok(
+      Math.abs(Number(sourceLedger.rows[0].sum) - correctedTotalCost) < 0.011,
+      "the warehouse source ledger records the corrected transfer cost",
+    );
+    assert.equal(Number(sourceLedger.rows[0].average_cost_after_per_tonne), correctedCostPerTonne);
+    assert.equal(sourceLedger.rows[0].deleted_at, null);
+
+    const destinationLedger = await pool.query(
+      `SELECT transaction_type, quantity_tonnes, sum, balance_after_tonnes,
+              average_cost_after_per_tonne, deleted_at
+       FROM equipment_transactions WHERE id = $1`,
+      [destinationTransactionId],
+    );
+    assert.equal(destinationLedger.rows.length, 1);
+    assert.equal(destinationLedger.rows[0].transaction_type, "transfer_in");
+    assert.equal(Number(destinationLedger.rows[0].quantity_tonnes), quantityTonnes);
+    assert.equal(Number(destinationLedger.rows[0].balance_after_tonnes), quantityTonnes);
+    assert.ok(
+      Math.abs(Number(destinationLedger.rows[0].sum) - correctedTotalCost) < 0.011,
+      "the equipment destination ledger receives the corrected transfer cost",
+    );
+    assert.equal(Number(destinationLedger.rows[0].average_cost_after_per_tonne), correctedCostPerTonne);
+    assert.equal(destinationLedger.rows[0].deleted_at, null);
+  } finally {
+    if (productLockHeld) {
+      await lockClient
+        .query(
+          `SELECT pg_advisory_unlock(hashtext('stock-recalculation:' || $1)::bigint)`,
+          [productType],
+        )
+        .catch(() => {});
+    }
+    if (fixtureTransactionOpen) {
+      await fixtureClient.query("ROLLBACK").catch(() => {});
+      fixtureTransactionOpen = false;
+    }
+    try {
+      await fixtureClient.query("BEGIN");
+      await fixtureClient.query(
+        `DELETE FROM recalculation_queue WHERE id = ANY($1::uuid[])`,
+        [warehouseTaskIds],
+      );
+      await fixtureClient.query(
+        `DELETE FROM equipment_recalculation_queue WHERE id = ANY($1::uuid[])`,
+        [equipmentTaskIds],
+      );
+      if (movementId) {
+        await fixtureClient.query(
+          `DELETE FROM equipment_movement WHERE id = $1`,
+          [movementId],
+        );
+      }
+      if (equipmentId) {
+        await fixtureClient.query(
+          `DELETE FROM equipment_transactions WHERE equipment_id = $1`,
+          [equipmentId],
+        );
+      }
+      if (warehouseId) {
+        await fixtureClient.query(
+          `DELETE FROM warehouse_transactions WHERE warehouse_id = $1`,
+          [warehouseId],
+        );
+        await fixtureClient.query(`DELETE FROM warehouses WHERE id = $1`, [
+          warehouseId,
+        ]);
+      }
+      if (equipmentId) {
+        await fixtureClient.query(`DELETE FROM equipments WHERE id = $1`, [
+          equipmentId,
+        ]);
+      }
+      await fixtureClient.query("COMMIT");
+      fixtureTransactionOpen = false;
+    } catch (error) {
+      if (fixtureTransactionOpen) {
+        await fixtureClient.query("ROLLBACK");
+        fixtureTransactionOpen = false;
+      }
+      throw error;
+    } finally {
+      fixtureClient.release();
+      lockClient.release();
+    }
+  }
+});
