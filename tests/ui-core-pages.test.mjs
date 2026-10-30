@@ -1315,7 +1315,30 @@ test("authenticated browser can load the core business pages", async () => {
   const cdp = await connectCdp(target.webSocketDebuggerUrl);
   const failures = [];
   const diagnostics = [];
+  const operationWritePayloads = [];
   const stopListening = cdp.onEvent((method, params) => {
+    if (
+      method === "Network.requestWillBeSent" &&
+      ["POST", "PATCH", "PUT"].includes(params.request?.method) &&
+      params.request?.postData
+    ) {
+      const path = new URL(params.request.url).pathname;
+      if (
+        path === "/api/refueling" ||
+        path.startsWith("/api/refueling/") ||
+        /^\/api\/movement(?:\/[^/]+)?$/.test(path)
+      ) {
+        try {
+          operationWritePayloads.push({
+            path,
+            method: params.request.method,
+            payload: JSON.parse(params.request.postData),
+          });
+        } catch {
+          diagnostics.push(`Could not parse operation write payload for ${path}`);
+        }
+      }
+    }
     if (
       method === "Network.requestWillBeSent" &&
       params.request?.url.includes("/api/prices/find-active")
@@ -1946,6 +1969,34 @@ test("authenticated browser can load the core business pages", async () => {
       "the contract automatically selected for the chosen supplier",
     );
 
+    const refuelingPriceRows = await pool.query(
+      `SELECT p.id, p.counterparty_role
+       FROM prices p
+       LEFT JOIN suppliers supplier
+         ON p.counterparty_role = 'supplier'
+        AND p.counterparty_id = supplier.id
+       LEFT JOIN customers buyer
+         ON p.counterparty_role = 'buyer'
+        AND p.counterparty_id = buyer.id
+       WHERE p.product_type = 'kerosene'
+         AND p.counterparty_type = 'refueling'
+         AND p.basis_id = (SELECT id FROM bases WHERE name = $3)
+         AND CURRENT_DATE BETWEEN p.date_from AND p.date_to
+         AND (
+           (p.counterparty_role = 'supplier' AND supplier.name = $1)
+           OR (p.counterparty_role = 'buyer' AND buyer.name = $2)
+         )`,
+      [fixtures.supplierName, fixtures.buyerName, fixtures.baseName],
+    );
+    const expectedRefuelingPriceIds = Object.fromEntries(
+      refuelingPriceRows.rows.map((row) => [row.counterparty_role, row.id]),
+    );
+    assert.deepEqual(
+      Object.keys(expectedRefuelingPriceIds).sort(),
+      ["buyer", "supplier"],
+      "the UI fixture must provide active refueling purchase and sale prices",
+    );
+
     await cdp.evaluate(`(() => {
       window.history.pushState({}, "", "/refueling");
       window.dispatchEvent(new PopStateEvent("popstate"));
@@ -1997,6 +2048,22 @@ test("authenticated browser can load the core business pages", async () => {
       "automatic refueling basis selection",
     );
     await selectComboboxOption(cdp, "select-buyer", fixtures.buyerName);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-purchase-price"]')
+         ?.innerText.trim() &&
+       document.querySelector('[data-testid="select-sale-price"]')
+         ?.innerText.trim()`,
+      "active purchase and sale prices in the refueling form",
+    );
+    const createdRefuelingPriceLabels = await cdp.evaluate(`(() => ({
+      purchase: document.querySelector('[data-testid="select-purchase-price"]')
+        ?.innerText.trim() || "",
+      sale: document.querySelector('[data-testid="select-sale-price"]')
+        ?.innerText.trim() || "",
+    }))()`);
+    assert.ok(createdRefuelingPriceLabels.purchase);
+    assert.ok(createdRefuelingPriceLabels.sale);
     await clickTestId(cdp, "switch-input-mode");
     await waitForExpression(
       cdp,
@@ -2015,7 +2082,9 @@ test("authenticated browser can load the core business pages", async () => {
     );
     await clickButtonWithText(cdp, "Сохранить черновик");
     const createdRefueling = await waitForDatabaseRow(
-      `SELECT id, quantity_tonnes, input_mode, is_draft, nomenclature_id
+      `SELECT id, quantity_tonnes, input_mode, is_draft, nomenclature_id,
+              purchase_price_id, purchase_price_index,
+              sale_price_id, sale_price_index
        FROM aircraft_refueling WHERE notes = $1`,
       [fixtures.refuelingNote],
       "the refueling draft created through the UI",
@@ -2024,6 +2093,29 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(Number(createdRefueling.quantity_tonnes), 0.12345);
     assert.equal(createdRefueling.is_draft, true);
     assert.equal(createdRefueling.nomenclature_id, nomenclatureIds.kerosene);
+    assert.equal(
+      createdRefueling.purchase_price_id,
+      expectedRefuelingPriceIds.supplier,
+    );
+    assert.equal(Number(createdRefueling.purchase_price_index), 0);
+    assert.equal(createdRefueling.sale_price_id, expectedRefuelingPriceIds.buyer);
+    assert.equal(Number(createdRefueling.sale_price_index), 0);
+    const refuelingCreatePayload = operationWritePayloads
+      .filter((entry) => entry.path === "/api/refueling" && entry.method === "POST")
+      .at(-1)?.payload;
+    assert.ok(refuelingCreatePayload, "capture the refueling create payload");
+    assert.equal(
+      refuelingCreatePayload.purchasePriceId,
+      expectedRefuelingPriceIds.supplier,
+    );
+    assert.equal(refuelingCreatePayload.purchasePriceIndex, 0);
+    assert.equal(
+      refuelingCreatePayload.salePriceId,
+      expectedRefuelingPriceIds.buyer,
+    );
+    assert.equal(refuelingCreatePayload.salePriceIndex, 0);
+    assert.equal("selectedPurchasePriceId" in refuelingCreatePayload, false);
+    assert.equal("selectedSalePriceId" in refuelingCreatePayload, false);
     await waitForAuditOperations(createdRefueling.id, ["CREATE"]);
     await waitForExpression(
       cdp,
@@ -2049,6 +2141,21 @@ test("authenticated browser can load the core business pages", async () => {
         ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
       "the saved refueling nomenclature in the edit form",
     );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-purchase-price"]')
+         ?.innerText.trim() &&
+       document.querySelector('[data-testid="select-sale-price"]')
+         ?.innerText.trim()`,
+      "the saved purchase and sale prices in the refueling edit form",
+    );
+    const editedRefuelingPriceLabels = await cdp.evaluate(`(() => ({
+      purchase: document.querySelector('[data-testid="select-purchase-price"]')
+        ?.innerText.trim() || "",
+      sale: document.querySelector('[data-testid="select-sale-price"]')
+        ?.innerText.trim() || "",
+    }))()`);
+    assert.deepEqual(editedRefuelingPriceLabels, createdRefuelingPriceLabels);
     await fillInput(
       cdp,
       '[data-testid="input-quantity-tonnes"]',
@@ -2061,7 +2168,9 @@ test("authenticated browser can load the core business pages", async () => {
     );
     await clickButtonWithText(cdp, "Сохранить черновик");
     const editedRefueling = await waitForDatabaseRow(
-      `SELECT id, quantity_tonnes, input_mode, is_draft, nomenclature_id
+      `SELECT id, quantity_tonnes, input_mode, is_draft, nomenclature_id,
+              purchase_price_id, purchase_price_index,
+              sale_price_id, sale_price_index
        FROM aircraft_refueling WHERE notes = $1`,
       [fixtures.refuelingNote],
       "the refueling draft updated through the UI",
@@ -2071,6 +2180,35 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(editedRefueling.input_mode, "tonnes");
     assert.equal(editedRefueling.is_draft, true);
     assert.equal(editedRefueling.nomenclature_id, nomenclatureIds.kerosene);
+    assert.equal(editedRefueling.purchase_price_id, expectedRefuelingPriceIds.supplier);
+    assert.equal(Number(editedRefueling.purchase_price_index), 0);
+    assert.equal(editedRefueling.sale_price_id, expectedRefuelingPriceIds.buyer);
+    assert.equal(Number(editedRefueling.sale_price_index), 0);
+    const refuelingEditPayload = operationWritePayloads
+      .filter((entry) => entry.path.startsWith("/api/refueling/"))
+      .at(-1)?.payload;
+    assert.ok(
+      refuelingEditPayload,
+      `capture the refueling edit payload; observed writes: ${JSON.stringify(
+        operationWritePayloads.map(({ path, method }) => ({ path, method })),
+      )}`,
+    );
+    const refuelingEditDealPayload =
+      refuelingEditPayload.deals?.find(
+        (deal) => deal.notes === fixtures.refuelingNote,
+      ) ?? refuelingEditPayload;
+    assert.equal(
+      refuelingEditDealPayload.purchasePriceId,
+      expectedRefuelingPriceIds.supplier,
+      `refueling edit request should preserve the canonical price ID: ${JSON.stringify(
+        refuelingEditDealPayload,
+      )}`,
+    );
+    assert.equal(refuelingEditDealPayload.purchasePriceIndex, 0);
+    assert.equal(refuelingEditDealPayload.salePriceId, expectedRefuelingPriceIds.buyer);
+    assert.equal(refuelingEditDealPayload.salePriceIndex, 0);
+    assert.equal("selectedPurchasePriceId" in refuelingEditDealPayload, false);
+    assert.equal("selectedSalePriceId" in refuelingEditDealPayload, false);
     await waitForAuditOperations(editedRefueling.id, ["CREATE", "UPDATE"]);
     await waitForExpression(
       cdp,
@@ -2078,6 +2216,26 @@ test("authenticated browser can load the core business pages", async () => {
       "the refueling edit form to close after saving",
     );
     console.log("UI flow passed: refueling draft created and edited in tonnes");
+
+    const movementPriceRows = await pool.query(
+      `SELECT p.id
+       FROM prices p
+       JOIN suppliers supplier
+         ON p.counterparty_id = supplier.id
+       WHERE p.product_type = 'kerosene'
+         AND p.counterparty_type = 'wholesale'
+         AND p.counterparty_role = 'supplier'
+         AND p.basis_id = (SELECT id FROM bases WHERE name = $2)
+         AND supplier.name = $1
+         AND CURRENT_DATE BETWEEN p.date_from AND p.date_to`,
+      [fixtures.supplierName, fixtures.baseName],
+    );
+    assert.equal(
+      movementPriceRows.rows.length,
+      1,
+      "the movement fixture must provide one active supplier purchase price",
+    );
+    const expectedMovementPriceId = movementPriceRows.rows[0].id;
 
     await cdp.evaluate(`(() => {
       window.history.pushState({}, "", "/movement");
@@ -2120,6 +2278,20 @@ test("authenticated browser can load the core business pages", async () => {
         ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
       "the default kerosene nomenclature after restoring movement product",
     );
+    await selectComboboxOption(cdp, "select-supplier", fixtures.supplierName);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-basis"]')
+         ?.innerText.includes(${JSON.stringify(fixtures.baseName)}) &&
+       document.querySelector('[data-testid="select-purchase-price"]')
+         ?.innerText.trim()`,
+      "the supplier basis and active purchase price in the movement form",
+    );
+    const createdMovementPriceLabel = await cdp.evaluate(
+      `document.querySelector('[data-testid="select-purchase-price"]')
+        ?.innerText.trim() || ""`,
+    );
+    assert.ok(createdMovementPriceLabel);
     await selectComboboxOption(
       cdp,
       "select-movement-to",
@@ -2138,7 +2310,7 @@ test("authenticated browser can load the core business pages", async () => {
     await clickTestId(cdp, "button-save-draft");
     const createdMovement = await waitForDatabaseRow(
       `SELECT id, quantity_tonnes, input_mode, is_draft, to_warehouse_id,
-              nomenclature_id
+              nomenclature_id, purchase_price_id, purchase_price_index
        FROM movement WHERE notes = $1`,
       [fixtures.movementNote],
       "the movement draft created through the UI",
@@ -2147,6 +2319,15 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(createdMovement.input_mode, "tonnes");
     assert.equal(createdMovement.is_draft, true);
     assert.equal(createdMovement.nomenclature_id, nomenclatureIds.kerosene);
+    assert.equal(createdMovement.purchase_price_id, expectedMovementPriceId);
+    assert.equal(Number(createdMovement.purchase_price_index), 0);
+    const movementCreatePayload = operationWritePayloads
+      .filter((entry) => entry.path === "/api/movement" && entry.method === "POST")
+      .at(-1)?.payload;
+    assert.ok(movementCreatePayload, "capture the movement create payload");
+    assert.equal(movementCreatePayload.purchasePriceId, expectedMovementPriceId);
+    assert.equal(movementCreatePayload.purchasePriceIndex, 0);
+    assert.equal("selectedPurchasePriceId" in movementCreatePayload, false);
     await waitForAuditOperations(createdMovement.id, ["CREATE"]);
     await waitForExpression(
       cdp,
@@ -2172,6 +2353,17 @@ test("authenticated browser can load the core business pages", async () => {
         ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
       "the saved movement nomenclature in the edit form",
     );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-purchase-price"]')
+         ?.innerText.trim()`,
+      "the saved purchase price in the movement edit form",
+    );
+    const editedMovementPriceLabel = await cdp.evaluate(
+      `document.querySelector('[data-testid="select-purchase-price"]')
+        ?.innerText.trim() || ""`,
+    );
+    assert.equal(editedMovementPriceLabel, createdMovementPriceLabel);
     await fillInput(
       cdp,
       '[data-testid="input-quantity-tonnes"]',
@@ -2185,7 +2377,7 @@ test("authenticated browser can load the core business pages", async () => {
     await clickTestId(cdp, "button-save-draft");
     const editedMovement = await waitForDatabaseRow(
       `SELECT id, quantity_tonnes, input_mode, is_draft, to_warehouse_id,
-              nomenclature_id
+              nomenclature_id, purchase_price_id, purchase_price_index
        FROM movement WHERE notes = $1`,
       [fixtures.movementNote],
       "the movement draft updated through the UI",
@@ -2195,6 +2387,15 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal(editedMovement.input_mode, "tonnes");
     assert.equal(editedMovement.is_draft, true);
     assert.equal(editedMovement.nomenclature_id, nomenclatureIds.kerosene);
+    assert.equal(editedMovement.purchase_price_id, expectedMovementPriceId);
+    assert.equal(Number(editedMovement.purchase_price_index), 0);
+    const movementEditPayload = operationWritePayloads
+      .filter((entry) => entry.path.startsWith("/api/movement/"))
+      .at(-1)?.payload;
+    assert.ok(movementEditPayload, "capture the movement edit payload");
+    assert.equal(movementEditPayload.purchasePriceId, expectedMovementPriceId);
+    assert.equal(movementEditPayload.purchasePriceIndex, 0);
+    assert.equal("selectedPurchasePriceId" in movementEditPayload, false);
     await waitForAuditOperations(editedMovement.id, ["CREATE", "UPDATE"]);
     const warehouseBalance = await pool.query(
       `SELECT current_balance_tonnes
