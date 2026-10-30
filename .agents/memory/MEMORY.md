@@ -18,7 +18,7 @@
 - [Integration test process isolation](test-process-isolation.md) — каждый отдельный API-test процесс должен самостоятельно получать свою авторизованную HTTP-сессию.
 - [Local PostgreSQL test cluster](local-postgres-test-cluster.md) — temporary PostgreSQL clusters in Replit need a writable socket directory passed to `pg_ctl`.
 - [Заказы заправки: восстановление и E2E](refueling-order-restoration-e2e.md) — восстанавливать только строки, удалённые одной операцией; пересчёты тестировать с приходными движениями.
-- [Critical-flow recalculation waits](critical-flow-recalculation-waits.md) — wait for queues, and serialize warehouse/equipment workers by product to prevent cross-entity races.
+- [Critical-flow recalculation waits](critical-flow-recalculation-waits.md) — keep product-scoped cross-worker locking; measured queue delay came from the five-second poll cadence, not lock contention.
 - [Mass units and precision](mass-unit-migration-policy.md) — masses display up to five decimals with trailing zeroes trimmed; prices display two; historical rates prefer saved totals.
 - [Mass-unit DB target validation](mass-unit-db-target-validation.md) — verify the dump source matches the app's active DB URL before trusting migration profiles.
 - [Tonne-authoritative recalc writes](mass-unit-recalculation-dual-fields.md) — every indirect cost cascade must update tonne fields alongside legacy kg mirrors, or readers can return stale rates.

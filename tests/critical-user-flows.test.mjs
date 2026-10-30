@@ -2139,3 +2139,250 @@ test("warehouse inventory endpoint operates on tonne-only stock fields", async (
   assert.ok(Number.isFinite(Number(row.sum)));
   assert.equal(Number(row.price_per_tonne), 12345.67);
 });
+
+test("parallel warehouse and equipment recalculations preserve stock and report queue latency", async () => {
+  const productType = "kerosene";
+  const entityCount = 3;
+  const transactionsPerEntity = 16;
+  const saleQuantityTonnes = 0.001;
+  const initialBalanceTonnes = 2;
+  const expectedBalanceTonnes =
+    initialBalanceTonnes - (transactionsPerEntity - 1) * saleQuantityTonnes;
+  const expectedAverageCostPerTonne = 12_000;
+  const afterDate = "2026-10-01T00:00:00.000Z";
+  const loadId = randomUUID();
+  const warehousesForLoad = [];
+  const equipmentsForLoad = [];
+  const warehouseTaskIds = [];
+  const equipmentTaskIds = [];
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    for (let index = 0; index < entityCount; index++) {
+      const warehouse = (
+        await client.query(
+          `INSERT INTO warehouses
+             (name, current_balance_tonnes, average_cost_per_tonne,
+              pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+           VALUES ($1, $2, $3, 0, 0)
+           RETURNING id`,
+          [`recalc-load-${loadId}-warehouse-${index}`, initialBalanceTonnes, expectedAverageCostPerTonne],
+        )
+      ).rows[0];
+      const equipment = (
+        await client.query(
+          `INSERT INTO equipments
+             (name, current_balance_tonnes, average_cost_per_tonne,
+              pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+           VALUES ($1, $2, $3, 0, 0)
+           RETURNING id`,
+          [`recalc-load-${loadId}-equipment-${index}`, initialBalanceTonnes, expectedAverageCostPerTonne],
+        )
+      ).rows[0];
+      warehousesForLoad.push(warehouse.id);
+      equipmentsForLoad.push(equipment.id);
+
+      await client.query(
+        `INSERT INTO warehouse_transactions
+           (warehouse_id, transaction_type, product_type, quantity_tonnes,
+            source_type, balance_before_tonnes, balance_after_tonnes,
+            average_cost_before_per_tonne, average_cost_after_per_tonne,
+            sum, price_per_tonne, transaction_date)
+         VALUES ($1, 'inventory', $2, $3, 'critical_recalculation_load',
+                 0, $3, 0, $4, $5, $4, '2026-09-30T00:00:00.000Z')`,
+        [
+          warehouse.id,
+          productType,
+          initialBalanceTonnes,
+          expectedAverageCostPerTonne,
+          initialBalanceTonnes * expectedAverageCostPerTonne,
+        ],
+      );
+      await client.query(
+        `INSERT INTO equipment_transactions
+           (equipment_id, transaction_type, product_type, quantity_tonnes,
+            source_type, balance_before_tonnes, balance_after_tonnes,
+            average_cost_before_per_tonne, average_cost_after_per_tonne,
+            sum, price_per_tonne, transaction_date)
+         VALUES ($1, 'inventory', $2, $3, 'critical_recalculation_load',
+                 0, $3, 0, $4, $5, $4, '2026-09-30T00:00:00.000Z')`,
+        [
+          equipment.id,
+          productType,
+          initialBalanceTonnes,
+          expectedAverageCostPerTonne,
+          initialBalanceTonnes * expectedAverageCostPerTonne,
+        ],
+      );
+
+      await client.query(
+        `INSERT INTO warehouse_transactions
+           (warehouse_id, transaction_type, product_type, quantity_tonnes,
+            sum, price_per_tonne, transaction_date)
+         SELECT $1, 'expense', $2, -$3::numeric,
+                $3::numeric * $4::numeric, $4::numeric,
+                $5::timestamp + (n * interval '1 minute')
+         FROM generate_series(1, $6) AS n`,
+        [
+          warehouse.id,
+          productType,
+          saleQuantityTonnes,
+          expectedAverageCostPerTonne,
+          afterDate,
+          transactionsPerEntity - 1,
+        ],
+      );
+      await client.query(
+        `INSERT INTO equipment_transactions
+           (equipment_id, transaction_type, product_type, quantity_tonnes,
+            sum, price_per_tonne, transaction_date)
+         SELECT $1, 'expense', $2, $3::numeric,
+                $4::numeric * $5::numeric, $5::numeric,
+                $6::timestamp + (n * interval '1 minute')
+         FROM generate_series(1, $7) AS n`,
+        [
+          equipment.id,
+          productType,
+          saleQuantityTonnes,
+          saleQuantityTonnes,
+          expectedAverageCostPerTonne,
+          afterDate,
+          transactionsPerEntity - 1,
+        ],
+      );
+
+      warehouseTaskIds.push(
+        (
+          await client.query(
+            `INSERT INTO recalculation_queue
+               (warehouse_id, product_type, after_date, status)
+             VALUES ($1, $2, $3, 'pending')
+             RETURNING id`,
+            [warehouse.id, productType, afterDate],
+          )
+        ).rows[0].id,
+      );
+      equipmentTaskIds.push(
+        (
+          await client.query(
+            `INSERT INTO equipment_recalculation_queue
+               (equipment_id, product_type, after_date, status)
+             VALUES ($1, $2, $3, 'pending')
+             RETURNING id`,
+            [equipment.id, productType, afterDate],
+          )
+        ).rows[0].id,
+      );
+    }
+    await client.query("COMMIT");
+
+    const waitForLoadTasks = async (table, taskIds) => {
+      const deadline = Date.now() + 60_000;
+      let tasks = [];
+      while (Date.now() < deadline) {
+        const result = await pool.query(
+          `SELECT id, status, error_message,
+                  EXTRACT(EPOCH FROM (processing_started_at - created_at)) * 1000
+                    AS queue_wait_ms,
+                  EXTRACT(EPOCH FROM (processed_at - processing_started_at)) * 1000
+                    AS processing_ms,
+                  EXTRACT(EPOCH FROM (processed_at - created_at)) * 1000
+                    AS end_to_end_ms
+           FROM ${table}
+           WHERE id = ANY($1::uuid[])
+           ORDER BY created_at, id`,
+          [taskIds],
+        );
+        tasks = result.rows;
+        assert.equal(tasks.length, taskIds.length, `${table} load tasks are present`);
+        assert.ok(
+          !tasks.some((task) => task.status === "failed"),
+          `${table} load tasks have no failures: ${JSON.stringify(tasks)}`,
+        );
+        if (tasks.every((task) => task.status === "completed")) return tasks;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      assert.fail(`Timed out waiting for ${table} load tasks: ${JSON.stringify(tasks)}`);
+    };
+
+    const [warehouseTasks, equipmentTasks] = await Promise.all([
+      waitForLoadTasks("recalculation_queue", warehouseTaskIds),
+      waitForLoadTasks("equipment_recalculation_queue", equipmentTaskIds),
+    ]);
+    const tasks = [...warehouseTasks, ...equipmentTasks];
+    const durations = (key) => tasks.map((task) => Number(task[key]));
+    const summarize = (values) => ({
+      average: Math.round(values.reduce((sum, value) => sum + value, 0) / values.length),
+      max: Math.round(Math.max(...values)),
+    });
+    const metrics = {
+      taskCount: tasks.length,
+      perWorker: entityCount,
+      transactionsPerTask: transactionsPerEntity,
+      queueWaitMs: summarize(durations("queue_wait_ms")),
+      processingMs: summarize(durations("processing_ms")),
+      endToEndMs: summarize(durations("end_to_end_ms")),
+    };
+    console.log(`[RecalculationLoadTest] ${JSON.stringify(metrics)}`);
+    assert.ok(
+      tasks.every(
+        (task) =>
+          Number.isFinite(Number(task.queue_wait_ms)) &&
+          Number.isFinite(Number(task.processing_ms)) &&
+          Number.isFinite(Number(task.end_to_end_ms)),
+      ),
+      "queue wait and end-to-end durations are recorded for every task",
+    );
+
+    for (const warehouseId of warehousesForLoad) {
+      assertStock(
+        await getStock("warehouses", warehouseId),
+        expectedBalanceTonnes,
+        expectedAverageCostPerTonne,
+        `warehouse ${warehouseId} after parallel recalculation`,
+      );
+    }
+    for (const equipmentId of equipmentsForLoad) {
+      assertStock(
+        await getStock("equipments", equipmentId),
+        expectedBalanceTonnes,
+        expectedAverageCostPerTonne,
+        `equipment ${equipmentId} after parallel recalculation`,
+      );
+    }
+  } finally {
+    await client.query("ROLLBACK").catch(() => {});
+    await client.query("BEGIN");
+    try {
+      await client.query(
+        `DELETE FROM recalculation_queue WHERE id = ANY($1::uuid[])`,
+        [warehouseTaskIds],
+      );
+      await client.query(
+        `DELETE FROM equipment_recalculation_queue WHERE id = ANY($1::uuid[])`,
+        [equipmentTaskIds],
+      );
+      await client.query(
+        `DELETE FROM warehouse_transactions WHERE warehouse_id = ANY($1::uuid[])`,
+        [warehousesForLoad],
+      );
+      await client.query(
+        `DELETE FROM equipment_transactions WHERE equipment_id = ANY($1::uuid[])`,
+        [equipmentsForLoad],
+      );
+      await client.query(`DELETE FROM warehouses WHERE id = ANY($1::uuid[])`, [
+        warehousesForLoad,
+      ]);
+      await client.query(`DELETE FROM equipments WHERE id = ANY($1::uuid[])`, [
+        equipmentsForLoad,
+      ]);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+});
