@@ -24,3 +24,4 @@
 - [Tonne-authoritative recalc writes](mass-unit-recalculation-dual-fields.md) — every indirect cost cascade must update tonne fields alongside legacy kg mirrors, or readers can return stale rates.
 - [Migration rehearsal transactions](mass-unit-rehearsal-transactions.md) — replay migrations with their own BEGIN/COMMIT outside temporary probe transactions; nested COMMIT commits the outer PostgreSQL transaction.
 - [UI combobox browser tests](ui-combobox-testing.md) — close stale popovers and choose only visible options when automating shared comboboxes through Chromium.
+- [Nomenclature defaults in operations](nomenclature-defaults.md) — new operations, including drafts, must always use the default nomenclature for their product type.
