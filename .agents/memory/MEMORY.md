@@ -27,3 +27,4 @@
 - [UI fixture economics isolation](ui-fixture-economics.md) — keep fee-bearing supplier-basis fixture rows separate from baseline deal-economics fixtures.
 - [Nomenclature defaults in operations](nomenclature-defaults.md) — new operations, including drafts, must always use the default nomenclature for their product type.
 - [OPT form/API boundaries](opt-form-contract-boundaries.md) — choose mixed-party bases by type and send canonical price IDs/indices, not UI selectors or route IDs.
+- [Equipment stock after deletion](equipment-zero-balance-cost.md) — an empty equipment balance can retain its last average cost; assert quantity and valuation separately.

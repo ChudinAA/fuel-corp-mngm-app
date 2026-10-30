@@ -1504,6 +1504,49 @@ async function waitForAuditOperations(entityId, expectedOperations) {
   );
 }
 
+async function restoreDeletedAuditEntry(cdp, auditId, panelTitle) {
+  await clickButtonWithText(cdp, "История");
+  const auditEntrySelector = `[data-testid="audit-entry-${auditId}"]`;
+  const rollbackReady = `(() => {
+    const panel = Array.from(document.querySelectorAll('[role="dialog"]'))
+      .find((dialog) => dialog.innerText.includes(${JSON.stringify(panelTitle)}));
+    const entry = panel?.querySelector(${JSON.stringify(auditEntrySelector)});
+    return Boolean(entry && Array.from(entry.querySelectorAll("button"))
+      .some((button) => button.innerText.trim() === "Откатить"));
+  })()`;
+  await waitForExpression(
+    cdp,
+    rollbackReady,
+    `the ${panelTitle} audit entry and restore action`,
+  );
+  const opened = await cdp.evaluate(`(() => {
+    const panel = Array.from(document.querySelectorAll('[role="dialog"]'))
+      .find((dialog) => dialog.innerText.includes(${JSON.stringify(panelTitle)}));
+    const entry = panel?.querySelector(${JSON.stringify(auditEntrySelector)});
+    const button = Array.from(entry?.querySelectorAll("button") ?? [])
+      .find((item) => item.innerText.trim() === "Откатить");
+    if (!button) return false;
+    button.click();
+    return true;
+  })()`);
+  assert.equal(opened, true, `Expected a restore action in ${panelTitle}`);
+  await waitForExpression(
+    cdp,
+    `document.querySelector('[role="alertdialog"]')
+      ?.innerText.includes("Удалённая запись будет восстановлена со всеми данными.")`,
+    `confirmation that the ${panelTitle} record will be restored`,
+  );
+  const confirmed = await cdp.evaluate(`(() => {
+    const dialog = document.querySelector('[role="alertdialog"]');
+    const button = Array.from(dialog?.querySelectorAll("button") ?? [])
+      .find((item) => item.innerText.trim() === "Откатить");
+    if (!button) return false;
+    button.click();
+    return true;
+  })()`);
+  assert.equal(confirmed, true, `Expected to confirm restoring ${panelTitle}`);
+}
+
 async function waitForRecalculation(
   table,
   ownerColumn,
@@ -5309,6 +5352,139 @@ test("authenticated browser can load the core business pages", async () => {
         Number(row.average_cost_per_tonne) === 15_000,
       45_000,
     );
+    await openRowActionByTestId(
+      cdp,
+      `movement-row-${warehouseTransfer.id}`,
+      "Удалить",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить перемещение?")`,
+      "the warehouse-transfer deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM movement WHERE id = $1",
+      [warehouseTransfer.id],
+      "the warehouse transfer soft-deleted through the UI",
+      (row) => Boolean(row.deleted_at),
+    );
+    await waitForAuditOperations(warehouseTransfer.id, ["CREATE", "DELETE"]);
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      operationalWarehouseId,
+      { requireTask: false },
+    );
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      transferWarehouseId,
+      { requireTask: false },
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [operationalWarehouseId],
+      "the source warehouse after deleting the transfer",
+      (row) =>
+        Number(row.current_balance_tonnes) === 2 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the destination warehouse after deleting the transfer",
+      (row) =>
+        Number(row.current_balance_tonnes) === 0 &&
+        Number(row.average_cost_per_tonne) === 0,
+      45_000,
+    );
+    const warehouseTransferDeleteAudit = await pool.query(
+      `SELECT id FROM audit_log
+       WHERE entity_type = 'movement' AND entity_id = $1
+         AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [warehouseTransfer.id],
+    );
+    assert.ok(warehouseTransferDeleteAudit.rows[0]?.id);
+    await restoreDeletedAuditEntry(
+      cdp,
+      warehouseTransferDeleteAudit.rows[0].id,
+      "Все перемещения (включая удаленные)",
+    );
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM movement WHERE id = $1",
+      [warehouseTransfer.id],
+      "the warehouse transfer restored through audit history",
+      (row) => row.deleted_at === null,
+    );
+    await waitForAuditOperations(warehouseTransfer.id, [
+      "CREATE",
+      "DELETE",
+      "RESTORE",
+    ]);
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      operationalWarehouseId,
+      { requireTask: false },
+    );
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      transferWarehouseId,
+      { requireTask: false },
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [operationalWarehouseId],
+      "the source warehouse after restoring the transfer",
+      (row) =>
+        Number(row.current_balance_tonnes) === 0.5 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the destination warehouse after restoring the transfer",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1.5 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    const restoredWarehouseTransferLedgers = await pool.query(
+      `SELECT COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS active
+       FROM warehouse_transactions
+       WHERE source_type = 'movement' AND source_id = $1`,
+      [warehouseTransfer.id],
+    );
+    assert.deepEqual(restoredWarehouseTransferLedgers.rows[0], {
+      total: 2,
+      active: 2,
+    });
+    const rolledBackWarehouseTransferDelete = await pool.query(
+      "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+      [warehouseTransferDeleteAudit.rows[0].id],
+    );
+    assert.ok(rolledBackWarehouseTransferDelete.rows[0]?.rolled_back_at);
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector(
+        '[data-testid="movement-row-${warehouseTransfer.id}"]'
+      ))`,
+      "the restored warehouse transfer in the active table",
+    );
+    console.log(
+      "UI flow passed: warehouse transfer delete/restore preserves both balances and exactly two ledger entries",
+    );
 
     await cdp.evaluate(`(() => {
       window.history.pushState({}, "", "/lik/movement");
@@ -5391,6 +5567,148 @@ test("authenticated browser can load the core business pages", async () => {
       "the empty source warehouse after the equipment transfer",
       (row) => Number(row.current_balance_tonnes) === 0,
       45_000,
+    );
+    await fillInput(
+      cdp,
+      'input[placeholder="Поиск по примечаниям..."]',
+      fixtures.equipmentTransferNote,
+    );
+    await openDeleteMenuForRow(cdp, "24.10.2026");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить перемещение?")`,
+      "the equipment-transfer deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM equipment_movement WHERE id = $1",
+      [equipmentTransfer.id],
+      "the equipment transfer soft-deleted through the UI",
+      (row) => Boolean(row.deleted_at),
+    );
+    await waitForAuditOperations(equipmentTransfer.id, ["CREATE", "DELETE"]);
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      transferWarehouseId,
+      { requireTask: false },
+    );
+    await waitForRecalculation(
+      "equipment_recalculation_queue",
+      "equipment_id",
+      equipmentId,
+      { requireTask: false },
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the source warehouse after deleting the equipment transfer",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1.5 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [equipmentId],
+      "the equipment balance after deleting the transfer",
+      (row) =>
+        Number(row.current_balance_tonnes) === 0 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    const equipmentTransferDeleteAudit = await pool.query(
+      `SELECT id FROM audit_log
+       WHERE entity_type = 'equipment_movement' AND entity_id = $1
+         AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [equipmentTransfer.id],
+    );
+    assert.ok(equipmentTransferDeleteAudit.rows[0]?.id);
+    await restoreDeletedAuditEntry(
+      cdp,
+      equipmentTransferDeleteAudit.rows[0].id,
+      "Все перемещения ЛИК",
+    );
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM equipment_movement WHERE id = $1",
+      [equipmentTransfer.id],
+      "the equipment transfer restored through audit history",
+      (row) => row.deleted_at === null,
+    );
+    await waitForAuditOperations(equipmentTransfer.id, [
+      "CREATE",
+      "DELETE",
+      "RESTORE",
+    ]);
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      transferWarehouseId,
+      { requireTask: false },
+    );
+    await waitForRecalculation(
+      "equipment_recalculation_queue",
+      "equipment_id",
+      equipmentId,
+      { requireTask: false },
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the source warehouse after restoring the equipment transfer",
+      (row) =>
+        Number(row.current_balance_tonnes) === 0 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [equipmentId],
+      "the equipment balance after restoring the transfer",
+      (row) =>
+        Number(row.current_balance_tonnes) === 1.5 &&
+        Number(row.average_cost_per_tonne) === 15_000,
+      45_000,
+    );
+    const restoredEquipmentTransferLedgers = await pool.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM warehouse_transactions
+          WHERE source_type = 'movement' AND source_id = $1) AS warehouse_total,
+         (SELECT COUNT(*)::int FROM warehouse_transactions
+          WHERE source_type = 'movement' AND source_id = $1
+            AND deleted_at IS NULL) AS warehouse_active,
+         (SELECT COUNT(*)::int FROM equipment_transactions
+          WHERE source_type = 'movement' AND source_id = $1) AS equipment_total,
+         (SELECT COUNT(*)::int FROM equipment_transactions
+          WHERE source_type = 'movement' AND source_id = $1
+            AND deleted_at IS NULL) AS equipment_active`,
+      [equipmentTransfer.id],
+    );
+    assert.deepEqual(restoredEquipmentTransferLedgers.rows[0], {
+      warehouse_total: 1,
+      warehouse_active: 1,
+      equipment_total: 1,
+      equipment_active: 1,
+    });
+    const rolledBackEquipmentTransferDelete = await pool.query(
+      "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+      [equipmentTransferDeleteAudit.rows[0].id],
+    );
+    assert.ok(rolledBackEquipmentTransferDelete.rows[0]?.rolled_back_at);
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelectorAll("tbody tr"))
+        .some((row) => row.innerText.includes("24.10.2026"))`,
+      "the restored equipment transfer in the active table",
+    );
+    console.log(
+      "UI flow passed: equipment transfer delete/restore preserves both balances and one ledger entry per side",
     );
 
     await cdp.evaluate(`(() => {
