@@ -173,6 +173,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
     const watchNomenclatureId = form.watch("nomenclatureId");
     const watchBasisId = form.watch("basisId");
     const watchCustomerBasisId = form.watch("customerBasisId");
+    const autoSelectedDeliveryLocationIdRef = useRef<string | null>(null);
 
     const selectedSupplier = suppliers?.find((s) => s.id === watchSupplierId);
     const selectedBuyer = customers?.find((c) => c.id === watchBuyerId);
@@ -326,20 +327,46 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
     useEffect(() => {
       // Только при создании новой сделки (не при редактировании)
       if (isEditing) return;
-      if (!autoDetectedTariff) return;
+
+      const previousAutoLocationId = autoSelectedDeliveryLocationIdRef.current;
+      const currentLocationIsAutoSelected =
+        Boolean(previousAutoLocationId) &&
+        watchDeliveryLocationId === previousAutoLocationId;
+      if (previousAutoLocationId && !currentLocationIsAutoSelected) {
+        autoSelectedDeliveryLocationIdRef.current = null;
+      }
+      if (!autoDetectedTariff) {
+        if (currentLocationIsAutoSelected) {
+          form.setValue("deliveryLocationId", "", { shouldDirty: true });
+          autoSelectedDeliveryLocationIdRef.current = null;
+        }
+        return;
+      }
 
       // Авто-устанавливаем перевозчика, если он ещё не выбран
       if (!watchCarrierId && autoDetectedTariff.carrierId) {
         form.setValue("carrierId", autoDetectedTariff.carrierId, { shouldDirty: true });
       }
 
-      // Авто-устанавливаем точку доставки, если тариф через точку и точка ещё не выбрана
+      if (autoDetectedTariff.tariffType !== "via_location") {
+        // Убираем только точку, которую подставила сама форма: тариф базис → базис
+        // или склад → базис имеет приоритет над ранее найденным тарифом через точку.
+        if (currentLocationIsAutoSelected) {
+          form.setValue("deliveryLocationId", "", { shouldDirty: true });
+          autoSelectedDeliveryLocationIdRef.current = null;
+        }
+        return;
+      }
+
+      const nextAutoLocationId = autoDetectedTariff.deliveryLocationId;
       if (
-        !watchDeliveryLocationId &&
-        autoDetectedTariff.tariffType === "via_location" &&
-        autoDetectedTariff.deliveryLocationId
+        nextAutoLocationId &&
+        (!watchDeliveryLocationId || currentLocationIsAutoSelected)
       ) {
-        form.setValue("deliveryLocationId", autoDetectedTariff.deliveryLocationId, { shouldDirty: true });
+        if (watchDeliveryLocationId !== nextAutoLocationId) {
+          form.setValue("deliveryLocationId", nextAutoLocationId, { shouldDirty: true });
+        }
+        autoSelectedDeliveryLocationIdRef.current = nextAutoLocationId;
       }
     }, [
       autoDetectedTariff,

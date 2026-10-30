@@ -60,8 +60,12 @@ export class EquipmentRecalculationWorker {
           await tx.execute(sql`SET LOCAL statement_timeout = '60s'`);
           await tx.execute(sql`SET LOCAL lock_timeout = '30s'`);
 
+          // Equipment recalculation can cascade into warehouses that are also
+          // being recalculated by the warehouse worker. Use the same
+          // product-scoped lock in both workers to prevent stale transfer
+          // costs from winning a concurrent write.
           await tx.execute(
-            sql`SELECT pg_advisory_xact_lock(hashtext(${task.equipmentId} || ${task.productType}))`,
+            sql`SELECT pg_advisory_xact_lock(hashtext(${"stock-recalculation:"} || ${task.productType || "kerosene"}))`,
           );
 
           await EquipmentRecalculationService.recalculateEquipmentFromDate(

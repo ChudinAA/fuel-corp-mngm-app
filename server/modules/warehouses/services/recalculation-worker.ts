@@ -63,8 +63,12 @@ export class RecalculationWorker {
           await tx.execute(sql`SET LOCAL statement_timeout = '60s'`);
           await tx.execute(sql`SET LOCAL lock_timeout = '30s'`);
 
+          // Warehouse and equipment recalculations can both update the same
+          // receiving warehouse through a transfer. Serialize those cascades
+          // by product so a task using a pre-cascade movement cost cannot
+          // overwrite the corrected cost from the other worker.
           await tx.execute(
-            sql`SELECT pg_advisory_xact_lock(hashtext(${task.warehouseId} || ${task.productType}))`,
+            sql`SELECT pg_advisory_xact_lock(hashtext(${"stock-recalculation:"} || ${task.productType || "kerosene"}))`,
           );
 
           const visitedWarehouses = new Set<string>();

@@ -695,7 +695,46 @@ async function waitForExpression(cdp, expression, label, timeoutMs = 12_000) {
     }
     await delay(150);
   }
-  throw new Error(`Timed out waiting for ${label}; last value: ${lastValue}`);
+  let pageSnapshot = "";
+  try {
+    pageSnapshot = await cdp.evaluate(
+      "document.body?.innerText?.slice(-2500) || ''",
+    );
+  } catch {
+    // Keep the original timeout if the page is navigating or has closed.
+  }
+  throw new Error(
+    `Timed out waiting for ${label}; last value: ${lastValue}; visible page text: ${JSON.stringify(pageSnapshot)}`,
+  );
+}
+
+async function waitForStableExpression(
+  cdp,
+  expression,
+  label,
+  timeoutMs = 12_000,
+  stableForMs = 450,
+) {
+  const deadline = Date.now() + timeoutMs;
+  let stableSince = null;
+  let lastValue;
+  while (Date.now() < deadline) {
+    try {
+      lastValue = await cdp.evaluate(expression);
+      if (lastValue) {
+        stableSince ??= Date.now();
+        if (Date.now() - stableSince >= stableForMs) return lastValue;
+      } else {
+        stableSince = null;
+      }
+    } catch {
+      stableSince = null;
+    }
+    await delay(150);
+  }
+  throw new Error(
+    `Timed out waiting for stable ${label}; last value: ${lastValue}`,
+  );
 }
 
 async function clickTestId(cdp, testId) {
@@ -1544,6 +1583,11 @@ test("authenticated browser can load the core business pages", async () => {
     });
 
     await navigateToRoute(cdp, "/opt");
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector('[data-testid="button-add-opt"]'))`,
+      "the OPT create button after opening the page",
+    );
     await clickTestId(cdp, "button-add-opt");
     await selectComboboxOption(cdp, "select-supplier", fixtures.mixedSupplierName);
     const wholesaleBases = await getVisibleComboboxOptions(cdp, "select-basis");
@@ -1608,6 +1652,12 @@ test("authenticated browser can load the core business pages", async () => {
         ?.innerText.includes(${JSON.stringify(fixtures.carrierName)}) &&
        document.body.innerText.includes("Тариф найден по маршруту базис → базис")`,
       "the base-to-base tariff and carrier automatically selected",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-delivery-location"]')
+        ?.innerText.includes("Выберите место")`,
+      "no delivery location left selected for the base-to-base tariff",
     );
     await fillInput(cdp, '[data-testid="input-tonnes"]', "1");
     await waitForExpression(
@@ -1725,7 +1775,11 @@ test("authenticated browser can load the core business pages", async () => {
       "the OPT edit form to close after saving",
     );
 
-    await navigateToRoute(cdp, "/opt");
+    await waitForStableExpression(
+      cdp,
+      `Boolean(document.querySelector('[data-testid="button-add-opt"]'))`,
+      "the OPT create button after closing the edit form",
+    );
     await clickTestId(cdp, "button-add-opt");
     await selectComboboxOption(cdp, "select-supplier", fixtures.mixedSupplierName);
     await selectComboboxOption(cdp, "select-buyer", fixtures.wholesaleBuyerName);
@@ -1751,6 +1805,11 @@ test("authenticated browser can load the core business pages", async () => {
 
     await navigateToRoute(cdp, "/prices");
     await navigateToRoute(cdp, "/opt");
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector('[data-testid="button-add-opt"]'))`,
+      "the OPT create button after navigating from prices",
+    );
     await clickTestId(cdp, "button-add-opt");
     await selectComboboxOption(
       cdp,
@@ -1784,6 +1843,11 @@ test("authenticated browser can load the core business pages", async () => {
 
     await navigateToRoute(cdp, "/prices");
     await navigateToRoute(cdp, "/opt");
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector('[data-testid="button-add-opt"]'))`,
+      "the OPT create button before testing inactive tariffs",
+    );
     await clickTestId(cdp, "button-add-opt");
     await selectComboboxOption(
       cdp,
@@ -1805,8 +1869,51 @@ test("authenticated browser can load the core business pages", async () => {
     await fillInput(cdp, '[data-testid="input-tonnes"]', "1");
     await waitForExpression(
       cdp,
-      `document.body.innerText.includes("Не выбрана точка поставки")`,
-      "the delivery validation when no active tariff matches",
+      `document.querySelector('[data-testid="input-tonnes"]')?.value === "1" &&
+       document.body.innerText.includes("Доставка\\n—")`,
+      "no delivery cost calculated when only an inactive tariff matches",
+    );
+
+    await navigateToRoute(cdp, "/prices");
+    await navigateToRoute(cdp, "/opt");
+    await waitForStableExpression(
+      cdp,
+      `Boolean(document.querySelector('[data-testid="button-add-opt"]'))`,
+      "the OPT create button before the manual-location scenario",
+    );
+    await clickTestId(cdp, "button-add-opt");
+    await selectComboboxOption(cdp, "select-supplier", fixtures.mixedSupplierName);
+    await selectComboboxOption(cdp, "select-buyer", fixtures.wholesaleBuyerName);
+    await selectComboboxOption(
+      cdp,
+      "select-buyer-basis",
+      fixtures.wholesaleDeliveryBaseName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-delivery-location"]')
+         ?.innerText.includes("Выберите место") &&
+       document.body.innerText.includes("Тариф найден по маршруту базис → базис")`,
+      "the base-to-base form to start without an auto-selected location",
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-delivery-location",
+      fixtures.deliveryLocationName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-delivery-location"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.deliveryLocationName)}) &&
+       document.body.innerText.includes("Тариф найден по маршруту базис → базис")`,
+      "the manually selected delivery location to remain selected",
+    );
+    await fillInput(cdp, '[data-testid="input-tonnes"]', "1");
+    await waitForExpression(
+      cdp,
+      `document.body.innerText.includes("625") &&
+       document.body.innerText.includes("Тариф найден по маршруту базис → базис")`,
+      "the manual delivery location to override the base-to-base tariff",
     );
 
     await navigateToRoute(cdp, "/prices");
