@@ -3,10 +3,12 @@ import {
   Clock3,
   Loader2,
   Package,
+  RotateCcw,
   Warehouse,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PRODUCT_TYPE } from "@shared/constants";
 
@@ -26,6 +28,9 @@ export interface RecalculationIssue {
 interface RecalculationIssuesAlertProps {
   issues: RecalculationIssue[];
   isLoading?: boolean;
+  isAdmin?: boolean;
+  restartingIssueId?: string | null;
+  onRestart?: (issue: RecalculationIssue) => void;
 }
 
 function formatDate(value: string): string {
@@ -56,7 +61,17 @@ function formatProductType(productType: string): string {
   }
 }
 
-function RecalculationIssueRow({ issue }: { issue: RecalculationIssue }) {
+function RecalculationIssueRow({
+  issue,
+  isAdmin,
+  isRestarting,
+  onRestart,
+}: {
+  issue: RecalculationIssue;
+  isAdmin: boolean;
+  isRestarting: boolean;
+  onRestart?: (issue: RecalculationIssue) => void;
+}) {
   const isFailed = issue.status === "failed";
   const isProcessing = issue.status === "processing";
   const RecordIcon = issue.recordType === "warehouse" ? Warehouse : Package;
@@ -106,23 +121,42 @@ function RecalculationIssueRow({ issue }: { issue: RecalculationIssue }) {
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground sm:flex-col sm:items-end sm:gap-2">
-          <span
-            className={`inline-flex items-center gap-1.5 font-medium ${
-              isFailed
-                ? "text-destructive"
-                : "text-amber-800 dark:text-amber-300"
-            }`}
-          >
-            <StatusIcon
-              aria-hidden="true"
-              className={`h-3.5 w-3.5 ${isProcessing ? "animate-spin" : ""}`}
-            />
-            {statusLabel}
-          </span>
-          <span>С {formatDate(issue.afterDate)}</span>
-          <span>
-            Попытка {issue.attempts} из {issue.maxAttempts}
-          </span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:flex-col sm:items-end sm:gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 font-medium ${
+                isFailed
+                  ? "text-destructive"
+                  : "text-amber-800 dark:text-amber-300"
+              }`}
+            >
+              <StatusIcon
+                aria-hidden="true"
+                className={`h-3.5 w-3.5 ${isProcessing ? "animate-spin" : ""}`}
+              />
+              {statusLabel}
+            </span>
+            <span>С {formatDate(issue.afterDate)}</span>
+            <span>
+              Попытка {issue.attempts} из {issue.maxAttempts}
+            </span>
+          </div>
+          {isAdmin && isFailed && onRestart && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={isRestarting}
+              onClick={() => onRestart(issue)}
+              aria-label={`Перезапустить пересчёт: ${issue.recordName}`}
+            >
+              {isRestarting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="mr-2 h-4 w-4" />
+              )}
+              Перезапустить
+            </Button>
+          )}
         </div>
       </div>
     </li>
@@ -132,6 +166,9 @@ function RecalculationIssueRow({ issue }: { issue: RecalculationIssue }) {
 export function RecalculationIssuesAlert({
   issues,
   isLoading = false,
+  isAdmin = false,
+  restartingIssueId = null,
+  onRestart,
 }: RecalculationIssuesAlertProps) {
   if (isLoading) {
     return (
@@ -188,7 +225,13 @@ export function RecalculationIssuesAlert({
         </p>
         <ul className="space-y-2">
           {issues.map((issue) => (
-            <RecalculationIssueRow key={issue.id} issue={issue} />
+            <RecalculationIssueRow
+              key={issue.id}
+              issue={issue}
+              isAdmin={isAdmin}
+              isRestarting={restartingIssueId === issue.id}
+              onRestart={onRestart}
+            />
           ))}
         </ul>
       </AlertDescription>

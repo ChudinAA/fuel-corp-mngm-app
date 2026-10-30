@@ -1,7 +1,11 @@
 import type { Express } from "express";
 import { storage } from "../../../storage/index";
 import { z } from "zod";
-import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import {
+  requireAdministrator,
+  requireAuth,
+  requirePermission,
+} from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { AuditService } from "../../audit/services/audit-service";
@@ -52,6 +56,28 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       } catch (error) {
         console.error("Failed to load warehouse recalculation issues:", error);
         res.status(500).json({ message: "Не удалось получить статус пересчёта складов" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/warehouses/recalculation-issues/:id/restart",
+    requireAuth,
+    requireAdministrator,
+    async (req, res) => {
+      try {
+        const restarted = await RecalculationQueueService.restartFailedTask(
+          req.params.id,
+        );
+        if (!restarted) {
+          return res.status(409).json({
+            message: "Пересчёт уже не находится в состоянии ошибки",
+          });
+        }
+        res.json({ message: "Пересчёт склада поставлен в очередь" });
+      } catch (error) {
+        console.error("Failed to restart warehouse recalculation:", error);
+        res.status(500).json({ message: "Не удалось перезапустить пересчёт склада" });
       }
     },
   );

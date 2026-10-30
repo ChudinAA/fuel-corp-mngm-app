@@ -148,6 +148,27 @@ export class EquipmentRecalculationQueueService {
       .where(eq(equipmentRecalculationQueue.id, taskId));
   }
 
+  static async restartFailedTask(taskId: string): Promise<boolean> {
+    const restarted = await db
+      .update(equipmentRecalculationQueue)
+      .set({
+        status: RECALCULATION_STATUS.PENDING,
+        attempts: 0,
+        errorMessage: null,
+        processingStartedAt: null,
+        processedAt: null,
+      })
+      .where(
+        and(
+          eq(equipmentRecalculationQueue.id, taskId),
+          eq(equipmentRecalculationQueue.status, RECALCULATION_STATUS.FAILED),
+        ),
+      )
+      .returning({ id: equipmentRecalculationQueue.id });
+
+    return restarted.length > 0;
+  }
+
   static async markAsFailed(taskId: string, errorMessage: string) {
     const task = await db.query.equipmentRecalculationQueue.findFirst({
       where: eq(equipmentRecalculationQueue.id, taskId),

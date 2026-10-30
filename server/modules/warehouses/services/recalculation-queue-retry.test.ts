@@ -13,6 +13,72 @@ type QueueScenario = {
   service: typeof RecalculationQueueService | typeof EquipmentRecalculationQueueService;
 };
 
+async function assertManualRestartPreservesTarget(
+  t: test.TestContext,
+  scenario: QueueScenario,
+) {
+  const dbObject = db as any;
+  const query = db.query[scenario.queryName] as any;
+  const task: Record<string, any> = {
+    id: `${scenario.queryName}-failed-task`,
+    [scenario.recordIdField]: `${scenario.queryName}-record`,
+    productType: "diesel",
+    afterDate: "2026-10-30T00:00:00.000Z",
+    status: RECALCULATION_STATUS.FAILED,
+    attempts: MAX_AUTOMATIC_RECALCULATION_ATTEMPTS,
+    errorMessage: "recalculation failed",
+    processingStartedAt: new Date(),
+    processedAt: new Date(),
+    priority: 7,
+  };
+  const originalTarget = {
+    recordId: task[scenario.recordIdField],
+    productType: task.productType,
+    afterDate: task.afterDate,
+    priority: task.priority,
+  };
+
+  Object.defineProperty(dbObject, "update", {
+    configurable: true,
+    value: (table: unknown) => {
+      assert.equal(table, scenario.queueTable);
+      return {
+        set: (values: Record<string, unknown>) => ({
+          where: () => ({
+            returning: async () => {
+              if (task.status !== RECALCULATION_STATUS.FAILED) return [];
+              Object.assign(task, values);
+              return [{ id: task.id }];
+            },
+          }),
+        }),
+      };
+    },
+  });
+
+  t.after(() => {
+    delete query.findFirst;
+    delete dbObject.update;
+  });
+
+  assert.equal(await scenario.service.restartFailedTask(task.id), true);
+  assert.equal(task.status, RECALCULATION_STATUS.PENDING);
+  assert.equal(task.attempts, 0);
+  assert.equal(task.errorMessage, null);
+  assert.equal(task.processingStartedAt, null);
+  assert.equal(task.processedAt, null);
+  assert.deepEqual(
+    {
+      recordId: task[scenario.recordIdField],
+      productType: task.productType,
+      afterDate: task.afterDate,
+      priority: task.priority,
+    },
+    originalTarget,
+  );
+  assert.equal(await scenario.service.restartFailedTask(task.id), false);
+}
+
 async function assertRetriesThenFails(
   t: test.TestContext,
   scenario: QueueScenario,
@@ -119,6 +185,28 @@ test("equipment recalculation retries failures until the attempt limit", async (
     "../../warehouses-equipment/entities/equipment"
   );
   await assertRetriesThenFails(t, {
+    queryName: "equipmentRecalculationQueue",
+    queueTable: equipmentRecalculationQueue,
+    recordIdField: "equipmentId",
+    service: EquipmentRecalculationQueueService,
+  });
+});
+
+test("warehouse manual restart preserves the failed recalculation target", async (t) => {
+  const { recalculationQueue } = await import("@shared/schema");
+  await assertManualRestartPreservesTarget(t, {
+    queryName: "recalculationQueue",
+    queueTable: recalculationQueue,
+    recordIdField: "warehouseId",
+    service: RecalculationQueueService,
+  });
+});
+
+test("equipment manual restart preserves the failed recalculation target", async (t) => {
+  const { equipmentRecalculationQueue } = await import(
+    "../../warehouses-equipment/entities/equipment"
+  );
+  await assertManualRestartPreservesTarget(t, {
     queryName: "equipmentRecalculationQueue",
     queueTable: equipmentRecalculationQueue,
     recordIdField: "equipmentId",

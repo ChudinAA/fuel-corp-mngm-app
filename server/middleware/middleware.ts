@@ -23,6 +23,35 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+export function requireAdministrator(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Необходима авторизация" });
+  }
+
+  const userId = req.session.userId;
+  void (async () => {
+    try {
+      const user = await storage.users.getUser(userId);
+      if (!user?.roleId) {
+        return res.status(403).json({ message: "Недостаточно прав доступа" });
+      }
+
+      const role = await storage.roles.getRole(user.roleId);
+      if (role?.name !== "Админ" && role?.name !== "Ген.дир") {
+        return res.status(403).json({ message: "Недостаточно прав доступа" });
+      }
+
+      next();
+    } catch {
+      res.status(500).json({ message: "Ошибка проверки прав доступа" });
+    }
+  })();
+}
+
 export function requirePermission(module: string, action: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.session.userId) {

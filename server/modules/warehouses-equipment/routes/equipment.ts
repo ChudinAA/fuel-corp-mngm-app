@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { equipmentStorage } from "../storage/equipment-storage";
 import { insertEquipmentSchema } from "../entities/equipment";
-import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import {
+  requireAdministrator,
+  requireAuth,
+  requirePermission,
+} from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
@@ -22,6 +26,31 @@ export function registerEquipmentRoutes(app: Router) {
       } catch (error) {
         console.error("Failed to load equipment recalculation issues:", error);
         res.status(500).json({ message: "Не удалось получить статус пересчёта оборудования" });
+      }
+    },
+  );
+
+  router.post(
+    "/recalculation-issues/:id/restart",
+    requireAuth,
+    requireAdministrator,
+    async (req, res) => {
+      try {
+        const restarted =
+          await EquipmentRecalculationQueueService.restartFailedTask(
+            req.params.id,
+          );
+        if (!restarted) {
+          return res.status(409).json({
+            message: "Пересчёт уже не находится в состоянии ошибки",
+          });
+        }
+        res.json({ message: "Пересчёт оборудования поставлен в очередь" });
+      } catch (error) {
+        console.error("Failed to restart equipment recalculation:", error);
+        res.status(500).json({
+          message: "Не удалось перезапустить пересчёт оборудования",
+        });
       }
     },
   );

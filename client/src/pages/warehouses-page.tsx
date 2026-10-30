@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Plus, Search, Warehouse, History, Globe, Plane, Pin } from "lucide-reac
 import { AuditPanel } from "@/components/audit-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { WarehouseWithTonnes as WarehouseType } from "./warehouses/types";
 import { WarehouseCard } from "./warehouses/components/warehouse-card";
 import { AddWarehouseDialog } from "./warehouses/components/add-warehouse-dialog";
@@ -29,7 +30,9 @@ export default function WarehousesPage() {
     useState<WarehouseType | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const canViewWarehouses = hasPermission("warehouses", "view");
   const canViewEquipment = hasPermission("equipment", "view");
 
@@ -69,6 +72,36 @@ export default function WarehousesPage() {
   const hasRecalculationIssuesError =
     (canViewWarehouses && isWarehouseIssuesError) ||
     (canViewEquipment && isEquipmentIssuesError);
+  const restartRecalculationMutation = useMutation({
+    mutationFn: async (issue: RecalculationIssue) => {
+      const url =
+        issue.recordType === "warehouse"
+          ? `/api/warehouses/recalculation-issues/${issue.id}/restart`
+          : `/api/warehouses-equipment/recalculation-issues/${issue.id}/restart`;
+      await apiRequest("POST", url);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["/api/warehouses/recalculation-issues"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["/api/warehouses-equipment/recalculation-issues"],
+        }),
+      ]);
+      toast({
+        title: "Пересчёт поставлен в очередь",
+        description: "Статус пересчёта обновлён.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Не удалось перезапустить пересчёт",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const filteredWarehouses =
     warehouses?.filter((w) => {
@@ -124,7 +157,14 @@ export default function WarehousesPage() {
           <RecalculationIssuesAlert issues={[]} isLoading />
         )}
         {!isLoadingRecalculationIssues && recalculationIssues.length > 0 && (
-          <RecalculationIssuesAlert issues={recalculationIssues} />
+          <RecalculationIssuesAlert
+            issues={recalculationIssues}
+            isAdmin={isAdmin}
+            restartingIssueId={restartRecalculationMutation.isPending
+              ? restartRecalculationMutation.variables?.id
+              : null}
+            onRestart={(issue) => restartRecalculationMutation.mutate(issue)}
+          />
         )}
         {hasRecalculationIssuesError && (
           <Alert variant="destructive">
