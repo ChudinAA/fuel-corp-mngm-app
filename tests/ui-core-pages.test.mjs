@@ -27,6 +27,7 @@ const fixtures = {
   inactiveTariffSupplierName: `ui-inactive-tariff-supplier-${runId}`,
   warehouseSupplierName: `ui-warehouse-supplier-${runId}`,
   warehouseRefuelingSupplierName: `ui-warehouse-refueling-supplier-${runId}`,
+  warehouseRefuelingCompetitorSupplierName: `aaa-ui-refueling-competitor-${runId}`,
   foreignSupplierName: `ui-foreign-supplier-${runId}`,
   foreignIntermediaryName: `ui-foreign-intermediary-${runId}`,
   buyerName: `ui-smoke-buyer-${runId}`,
@@ -51,6 +52,7 @@ const fixtures = {
   transferWarehouseName: `ui-operations-transfer-warehouse-${runId}`,
   warehouseSupplierWarehouseName: `ui-wholesale-supplier-warehouse-${runId}`,
   warehouseRefuelingWarehouseName: `ui-refueling-supplier-warehouse-${runId}`,
+  warehouseRefuelingCompetitorWarehouseName: `aaa-ui-refueling-competitor-warehouse-${runId}`,
   deliveryLocationName: `ui-wholesale-delivery-location-${runId}`,
   equipmentName: `ui-operations-equipment-${runId}`,
   carrierName: `ui-operations-carrier-${runId}`,
@@ -149,6 +151,10 @@ async function seedUiFixtures() {
     "INSERT INTO suppliers (name, is_warehouse) VALUES ($1, true) RETURNING id",
     [fixtures.warehouseRefuelingSupplierName],
   );
+  const warehouseRefuelingCompetitorSupplier = await pool.query(
+    "INSERT INTO suppliers (name, is_warehouse) VALUES ($1, true) RETURNING id",
+    [fixtures.warehouseRefuelingCompetitorSupplierName],
+  );
   const foreignSupplier = await pool.query(
     "INSERT INTO suppliers (name, is_foreign) VALUES ($1, true) RETURNING id",
     [fixtures.foreignSupplierName],
@@ -160,7 +166,7 @@ async function seedUiFixtures() {
   await pool.query(
     `INSERT INTO supplier_bases (supplier_id, base_id)
      VALUES ($1, $2), ($3, $4), ($3, $5), ($6, $7), ($8, $9),
-            ($10, $11), ($12, $13)`,
+            ($10, $11), ($12, $13), ($14, $15)`,
     [
       supplier.rows[0].id,
       basisIds[fixtures.baseName],
@@ -174,6 +180,8 @@ async function seedUiFixtures() {
       warehouseSupplier.rows[0].id,
       basisIds[fixtures.warehouseTariffSourceBaseName],
       warehouseRefuelingSupplier.rows[0].id,
+      basisIds[fixtures.baseName],
+      warehouseRefuelingCompetitorSupplier.rows[0].id,
       basisIds[fixtures.baseName],
     ],
   );
@@ -245,6 +253,18 @@ async function seedUiFixtures() {
      RETURNING id`,
     [fixtures.warehouseSupplierWarehouseName, warehouseSupplier.rows[0].id],
   );
+  const warehouseRefuelingCompetitorWarehouse = await pool.query(
+    `INSERT INTO warehouses
+       (name, current_balance_tonnes, average_cost_per_tonne,
+        pvkj_balance_tonnes, pvkj_average_cost_per_tonne, equipment_type,
+        supplier_id)
+     VALUES ($1, 0, 0, 0, 0, 'common', $2)
+     RETURNING id`,
+    [
+      fixtures.warehouseRefuelingCompetitorWarehouseName,
+      warehouseRefuelingCompetitorSupplier.rows[0].id,
+    ],
+  );
   const warehouseRefuelingWarehouse = await pool.query(
     `INSERT INTO warehouses
        (name, current_balance_tonnes, average_cost_per_tonne,
@@ -267,6 +287,13 @@ async function seedUiFixtures() {
   await pool.query(
     "INSERT INTO warehouse_bases (warehouse_id, base_id) VALUES ($1, $2)",
     [warehouseRefuelingWarehouse.rows[0].id, basisIds[fixtures.baseName]],
+  );
+  await pool.query(
+    "INSERT INTO warehouse_bases (warehouse_id, base_id) VALUES ($1, $2)",
+    [
+      warehouseRefuelingCompetitorWarehouse.rows[0].id,
+      basisIds[fixtures.baseName],
+    ],
   );
   await pool.query(
     "UPDATE warehouses SET supplier_id = $1 WHERE id = $2",
@@ -410,6 +437,29 @@ async function seedUiFixtures() {
       fixtures.supplierName,
       fixtures.baseName,
       fixtures.operationalWarehouseName,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_id, counterparty_type, counterparty_role,
+        basis, basis_id, nomenclature_id, price_values, date_from, date_to,
+        volume_unit, price_unit, contract_limit_enabled)
+     VALUES
+       ('kerosene', $1, 'wholesale', 'supplier', $2, $3, $4,
+        ARRAY['{"price":10000}'], '2026-10-01', '2026-10-05',
+        'tonne', 'tonne', false),
+       ('kerosene', $1, 'wholesale', 'supplier', $2, $3, $4,
+        ARRAY['{"price":20000}'], '2026-10-06', '2026-10-31',
+        'tonne', 'tonne', false),
+       ('pvkj', $1, 'wholesale', 'supplier', $2, $3, $5,
+        ARRAY['{"price":12000}'], '2026-10-01', '2026-10-31',
+        'tonne', 'tonne', false)`,
+    [
+      warehouseRefuelingSupplier.rows[0].id,
+      fixtures.baseName,
+      basisIds[fixtures.baseName],
+      nomenclatureIds.kerosene,
+      nomenclatureIds.pvkj,
     ],
   );
   await pool.query(
@@ -707,6 +757,7 @@ async function cleanUiFixtures() {
         fixtures.operationalWarehouseName,
         fixtures.transferWarehouseName,
         fixtures.warehouseRefuelingWarehouseName,
+        fixtures.warehouseRefuelingCompetitorWarehouseName,
       ]],
     );
   }
@@ -730,6 +781,7 @@ async function cleanUiFixtures() {
         fixtures.inactiveTariffSupplierName,
         fixtures.warehouseSupplierName,
         fixtures.warehouseRefuelingSupplierName,
+        fixtures.warehouseRefuelingCompetitorSupplierName,
         fixtures.foreignSupplierName,
       ],
       [
@@ -754,6 +806,7 @@ async function cleanUiFixtures() {
       fixtures.transferWarehouseName,
       fixtures.warehouseSupplierWarehouseName,
       fixtures.warehouseRefuelingWarehouseName,
+      fixtures.warehouseRefuelingCompetitorWarehouseName,
     ]],
   );
   await pool.query(
@@ -765,6 +818,7 @@ async function cleanUiFixtures() {
       fixtures.inactiveTariffSupplierName,
       fixtures.warehouseSupplierName,
       fixtures.warehouseRefuelingSupplierName,
+      fixtures.warehouseRefuelingCompetitorSupplierName,
       fixtures.foreignSupplierName,
     ]],
   );
@@ -792,6 +846,7 @@ async function cleanUiFixtures() {
       fixtures.transferWarehouseName,
       fixtures.warehouseSupplierWarehouseName,
       fixtures.warehouseRefuelingWarehouseName,
+      fixtures.warehouseRefuelingCompetitorWarehouseName,
     ],
   ]);
   await pool.query("DELETE FROM equipments WHERE name = $1", [
@@ -815,6 +870,7 @@ async function cleanUiFixtures() {
         fixtures.inactiveTariffSupplierName,
         fixtures.warehouseSupplierName,
         fixtures.warehouseRefuelingSupplierName,
+        fixtures.warehouseRefuelingCompetitorSupplierName,
         fixtures.foreignSupplierName,
       ],
       [fixtures.buyerName, fixtures.wholesaleBuyerName, fixtures.foreignBuyerName],
@@ -843,6 +899,7 @@ async function cleanUiFixtures() {
       fixtures.transferWarehouseName,
       fixtures.warehouseSupplierWarehouseName,
       fixtures.warehouseRefuelingWarehouseName,
+      fixtures.warehouseRefuelingCompetitorWarehouseName,
     ],
   ]);
   await pool.query("DELETE FROM suppliers WHERE name = ANY($1::text[])", [[
@@ -851,6 +908,7 @@ async function cleanUiFixtures() {
     fixtures.inactiveTariffSupplierName,
     fixtures.warehouseSupplierName,
     fixtures.warehouseRefuelingSupplierName,
+    fixtures.warehouseRefuelingCompetitorSupplierName,
     fixtures.foreignSupplierName,
   ]]);
   await pool.query("DELETE FROM customers WHERE name = ANY($1::text[])", [[
@@ -967,6 +1025,22 @@ async function fillInput(cdp, selector, value) {
     return true;
   })()`);
   assert.equal(filled, true, `Expected input ${selector} to exist`);
+}
+
+async function fillTextarea(cdp, selector, value) {
+  const filled = await cdp.evaluate(`(() => {
+    const textarea = document.querySelector(${JSON.stringify(selector)});
+    if (!(textarea instanceof HTMLTextAreaElement)) return false;
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    ).set;
+    setter.call(textarea, ${JSON.stringify(String(value))});
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    textarea.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  })()`);
+  assert.equal(filled, true, `Expected textarea ${selector} to exist`);
 }
 
 function productMassInputExpression(productLabel) {
@@ -1718,6 +1792,39 @@ test("authenticated browser can load the core business pages", async () => {
   const diagnostics = [];
   const operationWritePayloads = [];
   const completedOperationWriteResponses = new Map();
+  const waitForOperationWriteResponse = async (
+    path,
+    method,
+    payloadPredicate,
+    label,
+    timeoutMs = 12_000,
+  ) => {
+    const deadline = Date.now() + timeoutMs;
+    let matchingWrite;
+    let matchingResponse;
+    while (Date.now() < deadline) {
+      matchingWrite = [...operationWritePayloads]
+        .reverse()
+        .find(
+          (entry) =>
+            entry.path === path &&
+            entry.method === method &&
+            payloadPredicate(entry.payload),
+        );
+      matchingResponse = matchingWrite
+        ? completedOperationWriteResponses.get(matchingWrite.requestId)
+        : undefined;
+      if (matchingWrite && matchingResponse) {
+        return { write: matchingWrite, response: matchingResponse };
+      }
+      await delay(100);
+    }
+    throw new Error(
+      `Timed out waiting for ${label}; matching write: ${JSON.stringify(
+        matchingWrite,
+      )}; response: ${JSON.stringify(matchingResponse)}`,
+    );
+  };
   const stopListening = cdp.onEvent((method, params) => {
     if (
       method === "Network.responseReceived" &&
@@ -2649,6 +2756,12 @@ test("authenticated browser can load the core business pages", async () => {
 
     await navigateToRoute(cdp, "/transportation");
     await clickTestId(cdp, "button-add-transportation");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
+      "the default kerosene nomenclature in a new transportation draft",
+    );
     await selectComboboxOption(
       cdp,
       "select-buyer",
@@ -2694,6 +2807,12 @@ test("authenticated browser can load the core business pages", async () => {
     );
     const expectedTransportationPriceId = transportationPriceRows.rows[0]?.id;
     assert.ok(expectedTransportationPriceId);
+    const transportationBuyer = await pool.query(
+      "SELECT id FROM customers WHERE name = $1",
+      [fixtures.wholesaleBuyerName],
+    );
+    const expectedTransportationBuyerId = transportationBuyer.rows[0]?.id;
+    assert.ok(expectedTransportationBuyerId);
     await selectComboboxOption(cdp, "select-sale-price", "47");
     await waitForExpression(
       cdp,
@@ -2702,6 +2821,28 @@ test("authenticated browser can load the core business pages", async () => {
       "the second transportation service price tier to be selected",
     );
     await clickTestId(cdp, "button-save-draft");
+    const transportationCreateWrite = await waitForOperationWriteResponse(
+      "/api/transportation",
+      "POST",
+      (payload) => payload.buyerId === expectedTransportationBuyerId,
+      "transportation draft create request and response",
+    );
+    assert.ok(
+      transportationCreateWrite.response.status >= 200 &&
+        transportationCreateWrite.response.status < 300,
+      `transportation create failed with HTTP ${transportationCreateWrite.response.status}: ${JSON.stringify(
+        transportationCreateWrite.write.payload,
+      )}`,
+    );
+    assert.equal(
+      transportationCreateWrite.write.payload.nomenclatureId,
+      nomenclatureIds.kerosene,
+    );
+    assert.equal(
+      transportationCreateWrite.write.payload.salePriceId,
+      expectedTransportationPriceId,
+    );
+    assert.equal(transportationCreateWrite.write.payload.salePriceIndex, 1);
     const createdTransportationDraft = await waitForDatabaseRow(
       `SELECT id, sale_price_id, sale_price_index,
               purchase_price_id, purchase_price_index, quantity_tonnes, is_draft
@@ -2718,12 +2859,7 @@ test("authenticated browser can load the core business pages", async () => {
         Number(row.sale_price_index) === 1,
     );
     assert.equal(createdTransportationDraft.purchase_price_id, null);
-    const transportationCreatePayload = operationWritePayloads
-      .filter(
-        (entry) =>
-          entry.path === "/api/transportation" && entry.method === "POST",
-      )
-      .at(-1)?.payload;
+    const transportationCreatePayload = transportationCreateWrite.write.payload;
     assert.ok(
       transportationCreatePayload,
       "capture the transportation create payload",
@@ -2801,6 +2937,243 @@ test("authenticated browser can load the core business pages", async () => {
     assert.equal("contractNumber" in transportationEditPayload, false);
     console.log(
       "UI flow passed: transportation service price ID/index saved and prefilled on edit",
+    );
+
+    const transportationFinalNote = `ui-transportation-final-${runId}`;
+    await clickTestId(
+      cdp,
+      `row-transportation-${createdTransportationDraft.id}`,
+    );
+    await waitForExpression(
+      cdp,
+      `(() => {
+        const dialog = document.querySelector('[role="dialog"][data-state="open"]');
+        return Boolean(
+          dialog?.querySelector('[data-testid="input-quantity-tonnes"]') &&
+          dialog.querySelector('[data-testid="select-sale-price"]')
+            ?.innerText.includes("47")
+        );
+      })()`,
+      "the edited transportation draft to retain its selected price before finalization",
+    );
+    await fillInput(
+      cdp,
+      '[role="dialog"][data-state="open"] [data-testid="input-quantity-tonnes"]',
+      "2",
+    );
+    await fillTextarea(
+      cdp,
+      '[role="dialog"][data-state="open"] [data-testid="input-notes"]',
+      transportationFinalNote,
+    );
+    await clickTestId(cdp, "button-submit");
+    const finalizedTransportationWrite = await waitForOperationWriteResponse(
+      `/api/transportation/${createdTransportationDraft.id}`,
+      "PATCH",
+      (payload) => payload.buyerId === expectedTransportationBuyerId,
+      "final transportation update request and response",
+    );
+    assert.ok(
+      finalizedTransportationWrite.response.status >= 200 &&
+        finalizedTransportationWrite.response.status < 300,
+      `transportation finalization failed with HTTP ${finalizedTransportationWrite.response.status}`,
+    );
+    const finalizedTransportation = await waitForDatabaseRow(
+      `SELECT id, is_draft, quantity_tonnes, sale_price_id,
+              sale_price_index, sale_amount, notes
+       FROM transportation WHERE id = $1`,
+      [createdTransportationDraft.id],
+      "the transportation draft finalized as a priced operation",
+      (row) =>
+        row.is_draft === false &&
+        Number(row.quantity_tonnes) === 2 &&
+        row.sale_price_id === expectedTransportationPriceId &&
+        Number(row.sale_price_index) === 1 &&
+        row.notes === transportationFinalNote,
+    );
+    assert.ok(Number(finalizedTransportation.sale_amount) > 0);
+    assert.equal(
+      finalizedTransportationWrite.write.payload.nomenclatureId,
+      nomenclatureIds.kerosene,
+    );
+    assert.equal(
+      finalizedTransportationWrite.write.payload.salePriceId,
+      expectedTransportationPriceId,
+    );
+    assert.equal(finalizedTransportationWrite.write.payload.salePriceIndex, 1);
+
+    await clickTestId(
+      cdp,
+      `row-transportation-${createdTransportationDraft.id}`,
+    );
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector(
+        '[role="dialog"][data-state="open"] [data-testid="input-quantity-tonnes"]'
+      ))`,
+      "the final transportation edit form",
+    );
+    await fillInput(
+      cdp,
+      '[role="dialog"][data-state="open"] [data-testid="input-quantity-tonnes"]',
+      "3",
+    );
+    await fillTextarea(
+      cdp,
+      '[role="dialog"][data-state="open"] [data-testid="input-notes"]',
+      `${transportationFinalNote}-edited`,
+    );
+    await clickTestId(cdp, "button-submit");
+    const editedFinalTransportationWrite =
+      await waitForOperationWriteResponse(
+        `/api/transportation/${createdTransportationDraft.id}`,
+        "PATCH",
+        (payload) => payload.buyerId === expectedTransportationBuyerId,
+        "final transportation edit request and response",
+      );
+    assert.ok(
+      editedFinalTransportationWrite.response.status >= 200 &&
+        editedFinalTransportationWrite.response.status < 300,
+      `transportation edit failed with HTTP ${editedFinalTransportationWrite.response.status}`,
+    );
+    const editedFinalTransportation = await waitForDatabaseRow(
+      `SELECT id, is_draft, quantity_tonnes, sale_price_id,
+              sale_price_index, sale_amount, notes
+       FROM transportation WHERE id = $1`,
+      [createdTransportationDraft.id],
+      "the edited final transportation and recalculated amount",
+      (row) =>
+        row.is_draft === false &&
+        Number(row.quantity_tonnes) === 3 &&
+        row.sale_price_id === expectedTransportationPriceId &&
+        Number(row.sale_price_index) === 1 &&
+        row.notes === `${transportationFinalNote}-edited`,
+    );
+    assert.ok(
+      Number(editedFinalTransportation.sale_amount) >
+        Number(finalizedTransportation.sale_amount),
+      "increasing transportation mass increases the saved service amount",
+    );
+
+    await openRowActionByTestId(
+      cdp,
+      `row-transportation-${createdTransportationDraft.id}`,
+      "Удалить",
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить перевозку?")`,
+      "the final transportation deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM transportation WHERE id = $1",
+      [createdTransportationDraft.id],
+      "the final transportation soft-deleted through the UI",
+      (row) => Boolean(row.deleted_at),
+    );
+    await waitForAuditOperations(createdTransportationDraft.id, [
+      "CREATE",
+      "UPDATE",
+      "DELETE",
+    ]);
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[data-testid="row-transportation-${createdTransportationDraft.id}"]')`,
+      "the deleted final transportation to disappear from the active table",
+    );
+    const transportationDeleteAudit = await pool.query(
+      `SELECT id FROM audit_log
+       WHERE entity_id = $1 AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [createdTransportationDraft.id],
+    );
+    assert.ok(transportationDeleteAudit.rows[0]?.id);
+
+    await clickButtonWithText(cdp, "История");
+    const transportationDeleteAuditSelector =
+      `[data-testid="audit-entry-${transportationDeleteAudit.rows[0].id}"]`;
+    const transportationAuditRollbackReady = `(() => {
+      const panel = Array.from(document.querySelectorAll('[role="dialog"]'))
+        .find((dialog) =>
+          dialog.innerText.includes("Все перевозки (включая удалённые)"),
+        );
+      const row = panel?.querySelector(
+        ${JSON.stringify(transportationDeleteAuditSelector)},
+      );
+      return Boolean(row && Array.from(row.querySelectorAll("button"))
+        .some((item) => item.innerText.trim() === "Откатить"));
+    })()`;
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelectorAll('[role="dialog"]'))
+        .some((dialog) =>
+          dialog.innerText.includes("Все перевозки (включая удалённые)"),
+        )`,
+      "the all-transportation audit panel",
+    );
+    await waitForExpression(
+      cdp,
+      transportationAuditRollbackReady,
+      "the final transportation delete audit entry and restore action",
+    );
+    const openedTransportationRollback = await cdp.evaluate(`(() => {
+      const panel = Array.from(document.querySelectorAll('[role="dialog"]'))
+        .find((dialog) =>
+          dialog.innerText.includes("Все перевозки (включая удалённые)"),
+        );
+      const row = panel?.querySelector(
+        ${JSON.stringify(transportationDeleteAuditSelector)},
+      );
+      const button = Array.from(row?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(openedTransportationRollback, true);
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалённая запись будет восстановлена со всеми данными.")`,
+      "confirmation that the final transportation will be restored",
+    );
+    const confirmedTransportationRollback = await cdp.evaluate(`(() => {
+      const dialog = document.querySelector('[role="alertdialog"]');
+      const button = Array.from(dialog?.querySelectorAll("button") ?? [])
+        .find((item) => item.innerText.trim() === "Откатить");
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    assert.equal(confirmedTransportationRollback, true);
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM transportation WHERE id = $1",
+      [createdTransportationDraft.id],
+      "the final transportation restored through audit history",
+      (row) => row.deleted_at === null,
+    );
+    await waitForAuditOperations(createdTransportationDraft.id, [
+      "CREATE",
+      "UPDATE",
+      "DELETE",
+      "RESTORE",
+    ]);
+    const rolledBackTransportationDelete = await pool.query(
+      "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+      [transportationDeleteAudit.rows[0].id],
+    );
+    assert.ok(rolledBackTransportationDelete.rows[0]?.rolled_back_at);
+    await waitForExpression(
+      cdp,
+      `Boolean(document.querySelector(
+        '[data-testid="row-transportation-${createdTransportationDraft.id}"]'
+      ))`,
+      "the restored final transportation in the active table",
+    );
+    console.log(
+      "UI flow passed: final transportation create, edit, delete, audit restore, quantity, and service amount",
     );
 
     await navigateToRoute(cdp, "/opt");
@@ -4038,6 +4411,7 @@ test("authenticated browser can load the core business pages", async () => {
       quantity,
       note,
       warehouseName = fixtures.operationalWarehouseName,
+      supplierName = fixtures.supplierName,
       productType = "Керосин",
       nomenclatureName = fixtures.nomenclatureNames.kerosene,
     }) => {
@@ -4046,7 +4420,7 @@ test("authenticated browser can load the core business pages", async () => {
       await selectComboboxOption(
         cdp,
         "select-movement-supplier",
-        fixtures.supplierName,
+        supplierName,
       );
       await selectComboboxOption(
         cdp,
@@ -4193,6 +4567,7 @@ test("authenticated browser can load the core business pages", async () => {
       quantity: "1",
       note: fixtures.warehouseRefuelingFirstReceiptNote,
       warehouseName: fixtures.warehouseRefuelingWarehouseName,
+      supplierName: fixtures.warehouseRefuelingSupplierName,
     });
     assert.equal(
       Number(warehouseRefuelingFirstReceipt.purchase_price_per_tonne),
@@ -4203,6 +4578,7 @@ test("authenticated browser can load the core business pages", async () => {
       quantity: "1",
       note: fixtures.warehouseRefuelingSecondReceiptNote,
       warehouseName: fixtures.warehouseRefuelingWarehouseName,
+      supplierName: fixtures.warehouseRefuelingSupplierName,
     });
     assert.equal(
       Number(warehouseRefuelingSecondReceipt.purchase_price_per_tonne),
@@ -4213,6 +4589,7 @@ test("authenticated browser can load the core business pages", async () => {
       quantity: "1",
       note: fixtures.warehouseRefuelingPvkjReceiptNote,
       warehouseName: fixtures.warehouseRefuelingWarehouseName,
+      supplierName: fixtures.warehouseRefuelingSupplierName,
       productType: "ПВКЖ",
       nomenclatureName: fixtures.nomenclatureNames.pvkj,
     });
@@ -4311,6 +4688,12 @@ test("authenticated browser can load the core business pages", async () => {
         [note],
       );
       assert.equal(rows.rows.length, expectedRowCount);
+      assert.ok(
+        rows.rows.every(
+          (row) => row.warehouse_id === warehouseRefuelingWarehouseId,
+        ),
+        "every refueling product uses the warehouse linked to the selected supplier",
+      );
       assert.ok(
         rows.rows.every(
           (row) =>
