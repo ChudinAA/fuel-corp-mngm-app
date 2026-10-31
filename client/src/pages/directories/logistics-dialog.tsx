@@ -107,6 +107,7 @@ type LogisticsFormData = z.infer<typeof logisticsFormSchema>;
 interface AddLogisticsDialogProps {
   carriers: LogisticsCarrier[];
   editItem?: { type: string; data: any } | null;
+  showCreateTrigger?: boolean;
   onEditComplete?: () => void;
   isInline?: boolean;
   inlineOpen?: boolean;
@@ -123,6 +124,7 @@ interface AddLogisticsDialogProps {
 export function AddLogisticsDialog({
   carriers,
   editItem,
+  showCreateTrigger = true,
   onEditComplete,
   isInline = false,
   inlineOpen = false,
@@ -409,7 +411,7 @@ export function AddLogisticsDialog({
   return (
     <>
     <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={handleOpenChange}>
-      {!isInline && (
+      {!isInline && showCreateTrigger && (
         <DialogTrigger asChild>
           <Button size="sm" data-testid="button-add-logistics">
             <Plus className="mr-2 h-4 w-4" />

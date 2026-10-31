@@ -53,6 +53,7 @@ export function CustomersTab() {
     refetchOnWindowFocus: true,
   });
   const canMaintainCounterparties = isAdmin || integrationMode?.counterpartyMasterDataEnabled === false;
+  const canCreateCounterparties = hasPermission("counterparties", "create") && canMaintainCounterparties;
 
   const { data: customers, isLoading } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
@@ -105,10 +106,11 @@ export function CustomersTab() {
                 data-testid="input-search-customers"
               />
             </div>
-            {hasPermission("counterparties", "create") && canMaintainCounterparties && (
+            {(canCreateCounterparties || hasPermission("counterparties", "edit")) && (
               <AddCustomerDialog
                 bases={bases}
                 editCustomer={editingCustomer}
+                showCreateTrigger={canCreateCounterparties}
                 onEditComplete={() => setEditingCustomer(null)}
               />
             )}

@@ -92,6 +92,7 @@ type SupplierFormData = z.infer<typeof supplierFormSchema>;
 interface AddSupplierDialogProps {
   bases: Base[];
   editItem?: Supplier | null;
+  showCreateTrigger?: boolean;
   onEditComplete?: () => void;
   isInline?: boolean;
   inlineOpen?: boolean;
@@ -102,6 +103,7 @@ interface AddSupplierDialogProps {
 export function AddSupplierDialog({
   bases,
   editItem,
+  showCreateTrigger = true,
   onEditComplete,
   isInline = false,
   inlineOpen = false,
@@ -390,7 +392,7 @@ export function AddSupplierDialog({
   return (
     <>
     <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={handleOpenChange}>
-      {!isInline && (
+      {!isInline && showCreateTrigger && (
         <DialogTrigger asChild>
           <Button size="sm" data-testid="button-add-supplier">
             <Plus className="mr-2 h-4 w-4" />

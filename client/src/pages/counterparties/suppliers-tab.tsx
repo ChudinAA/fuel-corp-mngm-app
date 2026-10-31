@@ -85,6 +85,7 @@ export function SuppliersTab() {
     refetchOnWindowFocus: true,
   });
   const canMaintainCounterparties = isAdmin || integrationMode?.counterpartyMasterDataEnabled === false;
+  const canCreateCounterparties = hasPermission("counterparties", "create") && canMaintainCounterparties;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -130,10 +131,11 @@ export function SuppliersTab() {
                 data-testid="input-search-suppliers"
               />
             </div>
-            {hasPermission("counterparties", "create") && canMaintainCounterparties && (
+            {(canCreateCounterparties || hasPermission("counterparties", "edit")) && (
               <AddSupplierDialog
                 bases={bases}
                 editItem={editingItem}
+                showCreateTrigger={canCreateCounterparties}
                 onEditComplete={() => setEditingItem(null)}
               />
             )}

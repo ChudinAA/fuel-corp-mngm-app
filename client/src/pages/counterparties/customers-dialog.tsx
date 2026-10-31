@@ -79,6 +79,7 @@ type CustomerFormData = z.infer<typeof customerFormSchema>;
 interface AddCustomerDialogProps {
   bases?: Base[];
   editCustomer?: Customer | null;
+  showCreateTrigger?: boolean;
   onEditComplete?: () => void;
   isInline?: boolean;
   inlineOpen?: boolean;
@@ -89,6 +90,7 @@ interface AddCustomerDialogProps {
 export function AddCustomerDialog({
   bases = [],
   editCustomer,
+  showCreateTrigger = true,
   onEditComplete,
   isInline = false,
   inlineOpen = false,
@@ -302,7 +304,7 @@ export function AddCustomerDialog({
   return (
     <>
     <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={handleOpenChange}>
-      {!isInline && (
+      {!isInline && showCreateTrigger && (
         <DialogTrigger asChild>
           <Button size="sm" data-testid="button-add-customer">
             <Plus className="mr-2 h-4 w-4" />

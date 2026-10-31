@@ -84,6 +84,7 @@ export function GenericLogisticsTab({
     refetchOnWindowFocus: true,
   });
   const canMaintainCarrier = type !== "carrier" || isAdmin || integrationMode?.counterpartyMasterDataEnabled === false;
+  const canCreateLogistics = hasPermission("directories", "create") && canMaintainCarrier;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -318,10 +319,11 @@ export function GenericLogisticsTab({
                 className="pl-9"
               />
             </div>
-            {hasPermission("directories", "create") && canMaintainCarrier && (
+            {(canCreateLogistics || hasPermission("directories", "edit")) && (
               <AddLogisticsDialog
                 carriers={carriers}
                 editItem={editingItem}
+                showCreateTrigger={canCreateLogistics}
                 onEditComplete={() => setEditingItem(null)}
                 defaultType={type}
               />
