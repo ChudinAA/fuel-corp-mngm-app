@@ -44,7 +44,6 @@ export const movement = pgTable(
     purchasePricePerTonne: decimal("purchase_price_per_tonne", { precision: 22, scale: 6 }),
     purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
     purchasePriceIndex: integer("purchase_price_index").default(0),
-    deliveryPrice: decimal("delivery_price", { precision: 19, scale: 6 }),
     deliveryPricePerTonne: decimal("delivery_price_per_tonne", { precision: 22, scale: 6 }),
     deliveryCost: decimal("delivery_cost", { precision: 15, scale: 2 }),
     storageCost: decimal("storage_cost", { precision: 15, scale: 2 }),
