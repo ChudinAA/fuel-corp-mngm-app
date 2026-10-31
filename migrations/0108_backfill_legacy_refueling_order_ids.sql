@@ -54,7 +54,7 @@ WITH candidate_groups AS MATERIALIZED (
     AND r.refueling_order_id IS NULL
     AND COALESCE(r.equipment_type, 'common') = 'common'
     AND r.order_number IS NOT NULL
-    AND BTRIM(r.order_number) <> ''
+    AND r.order_number ~ '[^[:space:]]'
     -- Do not create a second ID beside an existing order for the same RT/date.
     AND NOT EXISTS (
       SELECT 1

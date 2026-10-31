@@ -26,7 +26,7 @@ WITH rt_groups AS (
   FROM public.aircraft_refueling AS r
   WHERE COALESCE(r.equipment_type, 'common') = 'common'
     AND r.order_number IS NOT NULL
-    AND BTRIM(r.order_number) <> ''
+    AND r.order_number ~ '[^[:space:]]'
   GROUP BY r.order_number, r.refueling_date::date
 )
 SELECT
