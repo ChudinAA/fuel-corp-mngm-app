@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Users } from "lucide-react";
 import { SuppliersTab } from "./suppliers-tab";
 import { CustomersTab } from "./customers-tab";
 
 export default function CounterpartiesPage() {
+  const [location] = useLocation();
   const [activeTab, setActiveTab] = useState<"suppliers" | "customers">("suppliers");
+
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (requestedTab === "suppliers" || requestedTab === "customers") setActiveTab(requestedTab);
+  }, [location]);
 
   return (
     <div className="space-y-6">

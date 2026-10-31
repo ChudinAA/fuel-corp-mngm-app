@@ -12,6 +12,7 @@ import {
   serial,
   uuid,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -25,8 +26,12 @@ import { bases } from "../../bases/entities/bases";
 export const logisticsCarriers = pgTable("logistics_carriers", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
+  fullName: text("full_name"),
   description: text("description"),
   inn: text("inn"),
+  external1cId: text("id_1c"),
+  integrationStatus: text("integration_status"),
+  integrationPendingReview: boolean("integration_pending_review").notNull().default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -37,6 +42,7 @@ export const logisticsCarriers = pgTable("logistics_carriers", {
 }, (table) => ({
   nameIdx: index("logistics_carriers_name_idx").on(table.name),
   isActiveIdx: index("logistics_carriers_is_active_idx").on(table.isActive),
+  external1cIdUnique: uniqueIndex("logistics_carriers_id_1c_unique").on(table.external1cId).where(sql`${table.external1cId} IS NOT NULL`),
 }));
 
 // Места доставки

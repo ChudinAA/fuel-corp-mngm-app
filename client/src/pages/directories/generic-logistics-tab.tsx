@@ -41,7 +41,7 @@ export function GenericLogisticsTab({
   title,
   icon: Icon,
 }: GenericLogisticsTabProps) {
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [search, setSearch] = useState("");
   const [editingItem, setEditingItem] = useState<{
     type: string;
@@ -74,6 +74,11 @@ export function GenericLogisticsTab({
   const { data: bases = [] } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
   });
+  const { data: integrationMode } = useQuery<{ counterpartyMasterDataEnabled: boolean }>({
+    queryKey: ["/api/integrations/1c/mode"],
+    enabled: type === "carrier" && !isAdmin,
+  });
+  const canMaintainCarrier = type !== "carrier" || isAdmin || integrationMode?.counterpartyMasterDataEnabled === false;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -162,7 +167,7 @@ export function GenericLogisticsTab({
         onClick: () => setEditingItem({ type, data: item }),
         permission: { module: "directories" as const, action: "edit" as const },
       },
-      {
+      ...(canMaintainCarrier ? [{
         id: "delete",
         label: "Удалить",
         icon: Trash2,
@@ -172,7 +177,7 @@ export function GenericLogisticsTab({
         },
         variant: "destructive" as const,
         permission: { module: "directories" as const, action: "delete" as const },
-      },
+      }] : []),
     ];
 
     const actionCell = (
@@ -184,8 +189,14 @@ export function GenericLogisticsTab({
     switch (type) {
       case "carrier":
         return (
-          <TableRow key={item.id}>
-            <TableCell className="font-medium">{item.name}</TableCell>
+          <TableRow key={item.id} className={item.integrationPendingReview ? "bg-amber-50/70 dark:bg-amber-950/20" : ""}>
+            <TableCell className="font-medium">
+              <div className="flex flex-wrap items-center gap-2">
+                {item.name}
+                {item.integrationPendingReview && <span className="rounded border border-amber-500 px-1.5 py-0.5 text-xs text-amber-700 dark:text-amber-300">Ожидает проверки 1С</span>}
+              </div>
+              {item.fullName && <div className="mt-1 text-xs font-normal text-muted-foreground">{item.fullName}</div>}
+            </TableCell>
             <TableCell className="text-sm text-muted-foreground">{item.inn || "—"}</TableCell>
             <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
               {item.description || "—"}
@@ -293,7 +304,7 @@ export function GenericLogisticsTab({
                 className="pl-9"
               />
             </div>
-            {hasPermission("directories", "create") && (
+            {hasPermission("directories", "create") && canMaintainCarrier && (
               <AddLogisticsDialog
                 carriers={carriers}
                 editItem={editingItem}

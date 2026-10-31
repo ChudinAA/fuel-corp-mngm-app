@@ -343,6 +343,7 @@ export function AddCustomerDialog({
                         <Input
                           placeholder="Сокращенное название"
                           data-testid="input-customer-name"
+                          disabled={Boolean(editCustomer?.external1cId)}
                           {...field}
                         />
                       </FormControl>
@@ -382,6 +383,7 @@ export function AddCustomerDialog({
                     <Input
                       placeholder="Полное название"
                       data-testid="input-customer-fullname"
+                      disabled={Boolean(editCustomer?.external1cId)}
                       {...field}
                     />
                   </FormControl>
@@ -400,6 +402,7 @@ export function AddCustomerDialog({
                     <Input
                       placeholder="7712345678"
                       data-testid="input-customer-inn"
+                      disabled={Boolean(editCustomer?.external1cId)}
                       {...field}
                     />
                   </FormControl>

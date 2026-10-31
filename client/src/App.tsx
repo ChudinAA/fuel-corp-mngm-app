@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "./lib/queryClient";
 
 import AuthPage from "@/pages/auth-page";
 import CustomizableDashboard from "@/pages/dashboard/index";
@@ -40,6 +42,7 @@ import DirectoriesPage from "@/pages/directories-page";
 import UsersPage from "@/pages/admin/users-page";
 import RolesPage from "@/pages/admin/roles-page";
 import SettingsPage from "@/pages/admin/settings-page";
+import Integration1CPage from "@/pages/admin/integrations-1c-page";
 import WidgetsPage from "@/pages/admin/widgets-page";
 import CashflowPage from "@/pages/finance/cashflow-page";
 import PaymentCalendarPage from "@/pages/finance/payment-calendar-page";
@@ -83,9 +86,20 @@ function ProtectedRoute({
 }
 
 function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAdmin } = useAuth();
+  const [, setLocation] = useLocation();
 
   useWarehouseSSE(!!user);
+  const { data: integrationStatus } = useQuery<{ pendingReviewCount: number }>({
+    queryKey: ["/api/admin/integrations/1c/status"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/admin/integrations/1c/status");
+      if (!response.ok) throw new Error("Не удалось получить уведомления интеграции");
+      return response.json();
+    },
+    enabled: !!user && isAdmin,
+    refetchInterval: 60_000,
+  });
 
   if (isLoading) {
     return (
@@ -130,13 +144,24 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-9 w-9">
-                    <Bell className="h-4 w-4" />
+                    <span className="relative">
+                      <Bell className="h-4 w-4" />
+                      {!!integrationStatus?.pendingReviewCount && isAdmin && (
+                        <span className="absolute -right-2 -top-2 min-w-4 rounded-full bg-destructive px-1 text-[10px] leading-4 text-destructive-foreground">
+                          {integrationStatus.pendingReviewCount > 99 ? "99+" : integrationStatus.pendingReviewCount}
+                        </span>
+                      )}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem className="text-muted-foreground italic">
-                    В разработке
-                  </DropdownMenuItem>
+                  {isAdmin && integrationStatus?.pendingReviewCount ? (
+                    <DropdownMenuItem onSelect={() => setLocation("/admin/integrations-1c")}>
+                      Новые записи из 1С: {integrationStatus.pendingReviewCount}
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem className="text-muted-foreground italic">В разработке</DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -345,6 +370,12 @@ function Router() {
       <Route path="/admin/settings">
         <AppLayout>
           <ProtectedRoute component={SettingsPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/admin/integrations-1c">
+        <AppLayout>
+          <ProtectedRoute component={Integration1CPage} />
         </AppLayout>
       </Route>
 

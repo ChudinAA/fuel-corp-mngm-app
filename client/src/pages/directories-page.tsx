@@ -1,5 +1,6 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Building2, Car, Container, User, DollarSign, Plane, FileText, Package } from "lucide-react";
 import { BasesTab } from "./directories/bases-tab";
@@ -10,7 +11,13 @@ import { ContractsTab } from "./directories/contracts-tab";
 import { NomenclatureTab } from "./directories/nomenclature-tab";
 
 export default function DirectoriesPage() {
+  const [location] = useLocation();
   const [activeTab, setActiveTab] = useState<string>("bases");
+
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (requestedTab) setActiveTab(requestedTab);
+  }, [location]);
 
   return (
     <div className="space-y-6">

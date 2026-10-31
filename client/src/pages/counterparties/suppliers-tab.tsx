@@ -53,7 +53,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 
 export function SuppliersTab() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [search, setSearch] = useState("");
   const [editingItem, setEditingItem] = useState<Supplier | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -75,6 +75,11 @@ export function SuppliersTab() {
   const { data: bases = [] } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
   });
+  const { data: integrationMode } = useQuery<{ counterpartyMasterDataEnabled: boolean }>({
+    queryKey: ["/api/integrations/1c/mode"],
+    enabled: !isAdmin,
+  });
+  const canMaintainCounterparties = isAdmin || integrationMode?.counterpartyMasterDataEnabled === false;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -120,7 +125,7 @@ export function SuppliersTab() {
                 data-testid="input-search-suppliers"
               />
             </div>
-            {hasPermission("counterparties", "create") && (
+            {hasPermission("counterparties", "create") && canMaintainCounterparties && (
               <AddSupplierDialog
                 bases={bases}
                 editItem={editingItem}
@@ -171,12 +176,14 @@ export function SuppliersTab() {
                     filteredSuppliers.map((supplier) => (
                       <TableRow
                         key={supplier.id}
+                        className={supplier.integrationPendingReview ? "bg-amber-50/70 dark:bg-amber-950/20" : ""}
                         data-testid={`row-supplier-${supplier.id}`}
                       >
                         <TableCell className="font-medium">
                           <TooltipProvider>
                             <div className="flex items-center gap-1.5">
                               <span>{supplier.name}</span>
+                              {supplier.integrationPendingReview && <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-300">Ожидает проверки 1С</Badge>}
                               {supplier.isWarehouse && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -319,7 +326,7 @@ export function SuppliersTab() {
                                   action: "edit",
                                 },
                               },
-                              {
+                              ...(canMaintainCounterparties ? [{
                                 id: "delete",
                                 label: "Удалить",
                                 icon: Trash2,
@@ -337,7 +344,7 @@ export function SuppliersTab() {
                                   action: "delete",
                                 },
                                 separatorAfter: true,
-                              },
+                              }] : []),
                             ]}
                             audit={{
                               entityType: "suppliers",

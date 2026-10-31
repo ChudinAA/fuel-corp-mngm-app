@@ -12,6 +12,7 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
+import { enforceIntegrationMasterData, protectLinkedCounterpartyMasterFields } from "../../integrations/routes/integrations";
 
 export function registerLogisticsRoutes(app: Express) {
   // ============ LOGISTICS CARRIERS ============
@@ -44,6 +45,7 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/carriers",
     requireAuth,
     requirePermission("directories", "create"),
+    enforceIntegrationMasterData,
     auditLog({
       entityType: ENTITY_TYPES.LOGISTICS_CARRIER,
       operation: AUDIT_OPERATIONS.CREATE,
@@ -74,6 +76,7 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/carriers/:id",
     requireAuth,
     requirePermission("directories", "edit"),
+    protectLinkedCounterpartyMasterFields("carrier"),
     auditLog({
       entityType: ENTITY_TYPES.LOGISTICS_CARRIER,
       operation: AUDIT_OPERATIONS.UPDATE,
@@ -104,6 +107,7 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/carriers/:id",
     requireAuth,
     requirePermission("directories", "delete"),
+    enforceIntegrationMasterData,
     auditLog({
       entityType: ENTITY_TYPES.LOGISTICS_CARRIER,
       operation: AUDIT_OPERATIONS.DELETE,

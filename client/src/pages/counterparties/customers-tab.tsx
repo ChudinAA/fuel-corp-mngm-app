@@ -42,7 +42,12 @@ export function CustomersTab() {
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
+  const { data: integrationMode } = useQuery<{ counterpartyMasterDataEnabled: boolean }>({
+    queryKey: ["/api/integrations/1c/mode"],
+    enabled: !isAdmin,
+  });
+  const canMaintainCounterparties = isAdmin || integrationMode?.counterpartyMasterDataEnabled === false;
 
   const { data: customers, isLoading } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
@@ -95,7 +100,7 @@ export function CustomersTab() {
                 data-testid="input-search-customers"
               />
             </div>
-            {hasPermission("counterparties", "create") && (
+            {hasPermission("counterparties", "create") && canMaintainCounterparties && (
               <AddCustomerDialog
                 bases={bases}
                 editCustomer={editingCustomer}
@@ -146,10 +151,14 @@ export function CustomersTab() {
                     filteredItems.map((item) => (
                       <TableRow
                         key={item.id}
+                        className={item.integrationPendingReview ? "bg-amber-50/70 dark:bg-amber-950/20" : ""}
                         data-testid={`row-customer-${item.id}`}
                       >
                         <TableCell className="font-medium">
-                          {item.name}
+                          <div className="flex flex-wrap items-center gap-2">
+                            {item.name}
+                            {item.integrationPendingReview && <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-300">Ожидает проверки 1С</Badge>}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
@@ -227,7 +236,7 @@ export function CustomersTab() {
                                   action: "edit",
                                 },
                               },
-                              {
+                              ...(canMaintainCounterparties ? [{
                                 id: "delete",
                                 label: "Удалить",
                                 icon: Trash2,
@@ -241,7 +250,7 @@ export function CustomersTab() {
                                   action: "delete",
                                 },
                                 separatorAfter: true,
-                              },
+                              }] : []),
                             ]}
                             audit={{
                               entityType: "customers",

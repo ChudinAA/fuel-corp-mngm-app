@@ -41,6 +41,7 @@ import { registerExchangeDealsRoutes } from "./modules/exchange-deals/routes/exc
 import { registerExchangeAdvancesRoutes } from "./modules/exchange-advances/routes/exchange-advances";
 import { registerLogisticsPlanRoutes } from "./modules/logistics-plan/routes/logistics-plan";
 import { registerCatalogRoutes } from "./modules/catalogs/routes/catalogs";
+import { registerIntegrationRoutes } from "./modules/integrations/routes/integrations";
 import { SSEService } from "./services/sse-service";
 
 export async function registerRoutes(
@@ -110,6 +111,7 @@ export async function registerRoutes(
   registerExchangeAdvancesRoutes(app);
   registerLogisticsPlanRoutes(app);
   registerCatalogRoutes(app);
+  registerIntegrationRoutes(app);
 
   return httpServer;
 }

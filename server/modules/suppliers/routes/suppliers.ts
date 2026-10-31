@@ -7,6 +7,7 @@ import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
 import { SupplierBasisPriceRateInputError } from "../supplier-basis-price-rates";
+import { enforceIntegrationMasterData, protectLinkedCounterpartyMasterFields } from "../../integrations/routes/integrations";
 
 export function registerSuppliersRoutes(app: Express) {
   app.get(
@@ -37,6 +38,7 @@ export function registerSuppliersRoutes(app: Express) {
     "/api/suppliers",
     requireAuth,
     requireAnyPermission(["directories", "counterparties"], "create"),
+    enforceIntegrationMasterData,
     auditLog({
       entityType: ENTITY_TYPES.SUPPLIER,
       operation: AUDIT_OPERATIONS.CREATE,
@@ -141,6 +143,7 @@ export function registerSuppliersRoutes(app: Express) {
     "/api/suppliers/:id",
     requireAuth,
     requireAnyPermission(["directories", "counterparties"], "edit"),
+    protectLinkedCounterpartyMasterFields("supplier"),
     auditLog({
       entityType: ENTITY_TYPES.SUPPLIER,
       operation: AUDIT_OPERATIONS.UPDATE,
@@ -279,6 +282,7 @@ export function registerSuppliersRoutes(app: Express) {
     "/api/suppliers/:id",
     requireAuth,
     requireAnyPermission(["directories", "counterparties"], "delete"),
+    enforceIntegrationMasterData,
     auditLog({
       entityType: ENTITY_TYPES.SUPPLIER,
       operation: AUDIT_OPERATIONS.DELETE,

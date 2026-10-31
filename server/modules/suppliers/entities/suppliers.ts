@@ -12,6 +12,7 @@ import {
   serial,
   uuid,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -29,6 +30,9 @@ export const suppliers = pgTable(
     name: text("name").notNull(),
     fullName: text("full_name"),
     inn: text("inn"),
+    external1cId: text("id_1c"),
+    integrationStatus: text("integration_status"),
+    integrationPendingReview: boolean("integration_pending_review").notNull().default(false),
     supplyNomenclature: text("supply_nomenclature"),
     iata: text("iata"),
     description: text("description"),
@@ -58,6 +62,7 @@ export const suppliers = pgTable(
       table.isIntermediary,
     ),
     isForeignIdx: index("suppliers_is_foreign_idx").on(table.isForeign),
+    external1cIdUnique: uniqueIndex("suppliers_id_1c_unique").on(table.external1cId).where(sql`${table.external1cId} IS NOT NULL`),
   }),
 );
 

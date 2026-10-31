@@ -307,6 +307,12 @@ const getAdminMenuItems = (hasPermission: (p: string) => boolean) =>
       icon: Settings,
       permission: "settings.view",
     },
+    {
+      title: "Интеграция 1С",
+      url: "/admin/integrations-1c",
+      icon: Key,
+      permission: "admin.view",
+    },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
 export function AppSidebar() {

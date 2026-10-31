@@ -152,6 +152,7 @@ export function AddLogisticsDialog({
       description: "",
       isActive: true,
       inn: "",
+      fullName: "",
       contactPerson: "",
       phone: "",
       address: "",
@@ -181,6 +182,7 @@ export function AddLogisticsDialog({
     const currentBaseId = form.getValues("baseId");
 
     form.setValue("inn", "");
+    form.setValue("fullName", "");
     form.setValue("contactPerson", "");
     form.setValue("phone", "");
     form.setValue("address", "");
@@ -212,6 +214,7 @@ export function AddLogisticsDialog({
           : "/api/logistics/carriers";
         payload = {
           name: data.name,
+          fullName: data.fullName || null,
           description: data.description,
           inn: data.inn,
           contactPerson: data.contactPerson,
@@ -294,6 +297,7 @@ export function AddLogisticsDialog({
         description: "",
         isActive: true,
         inn: "",
+        fullName: "",
         contactPerson: "",
         phone: "",
         address: "",
@@ -331,6 +335,7 @@ export function AddLogisticsDialog({
 
       if (editItem.type === "carrier") {
         formData.name = data.name;
+        formData.fullName = data.fullName || "";
         formData.description = data.description || "";
         formData.inn = data.inn || "";
         formData.contactPerson = data.contactPerson || "";
@@ -378,6 +383,7 @@ export function AddLogisticsDialog({
         description: "",
         isActive: true,
         inn: "",
+        fullName: "",
         contactPerson: "",
         phone: "",
         address: "",
@@ -476,6 +482,7 @@ export function AddLogisticsDialog({
                           : "Название"
                       }
                       data-testid="input-logistics-name"
+                      disabled={selectedType === "carrier" && Boolean(editItem?.data.external1cId)}
                       {...field}
                     />
                   </FormControl>
@@ -488,6 +495,24 @@ export function AddLogisticsDialog({
               <>
                 <FormField
                   control={form.control}
+                  name="fullName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Полное название</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Полное название перевозчика"
+                          data-testid="input-logistics-fullname"
+                          disabled={Boolean(editItem?.data.external1cId)}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="inn"
                   render={({ field }) => (
                     <FormItem>
@@ -496,6 +521,7 @@ export function AddLogisticsDialog({
                         <Input
                           placeholder="ИНН"
                           data-testid="input-logistics-inn"
+                          disabled={Boolean(editItem?.data.external1cId)}
                           {...field}
                         />
                       </FormControl>

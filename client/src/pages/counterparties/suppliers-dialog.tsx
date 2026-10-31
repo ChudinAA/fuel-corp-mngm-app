@@ -428,6 +428,7 @@ export function AddSupplierDialog({
                         <Input
                           placeholder="Сокращенное название"
                           data-testid="input-supplier-name"
+                          disabled={Boolean(editItem?.external1cId)}
                           {...field}
                         />
                       </FormControl>
@@ -467,6 +468,7 @@ export function AddSupplierDialog({
                     <Input
                       placeholder="Полное название"
                       data-testid="input-supplier-fullname"
+                      disabled={Boolean(editItem?.external1cId)}
                       {...field}
                     />
                   </FormControl>
@@ -485,6 +487,7 @@ export function AddSupplierDialog({
                     <Input
                       placeholder="ИНН организации"
                       data-testid="input-supplier-inn"
+                      disabled={Boolean(editItem?.external1cId)}
                       {...field}
                       value={field.value ?? ""}
                     />

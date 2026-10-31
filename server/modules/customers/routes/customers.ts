@@ -6,6 +6,7 @@ import { requireAuth, requirePermission, requireAnyPermission } from "../../../m
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
+import { enforceIntegrationMasterData, protectLinkedCounterpartyMasterFields } from "../../integrations/routes/integrations";
 
 export function registerCustomersRoutes(app: Express) {
   app.get(
@@ -37,6 +38,7 @@ export function registerCustomersRoutes(app: Express) {
     "/api/customers",
     requireAuth,
     requireAnyPermission(["directories", "counterparties"], "create"),
+    enforceIntegrationMasterData,
     auditLog({
       entityType: ENTITY_TYPES.CUSTOMER,
       operation: AUDIT_OPERATIONS.CREATE,
@@ -75,6 +77,7 @@ export function registerCustomersRoutes(app: Express) {
     "/api/customers/:id",
     requireAuth,
     requireAnyPermission(["directories", "counterparties"], "edit"),
+    protectLinkedCounterpartyMasterFields("customer"),
     auditLog({
       entityType: ENTITY_TYPES.CUSTOMER,
       operation: AUDIT_OPERATIONS.UPDATE,
@@ -114,6 +117,7 @@ export function registerCustomersRoutes(app: Express) {
     "/api/customers/:id",
     requireAuth,
     requireAnyPermission(["directories", "counterparties"], "delete"),
+    enforceIntegrationMasterData,
     auditLog({
       entityType: ENTITY_TYPES.CUSTOMER,
       operation: AUDIT_OPERATIONS.DELETE,

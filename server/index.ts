@@ -7,9 +7,14 @@ import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
 import { RecalculationWorker } from "./modules/warehouses/services/recalculation-worker";
 import { EquipmentRecalculationWorker } from "./modules/warehouses-equipment/services/equipment-recalculation-worker";
+import { integrationRequestLogger } from "./modules/integrations/middleware/integration-request-logger";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Capture every request to the dedicated 1C API, including malformed JSON,
+// without recording request bodies, query strings, or Authorization headers.
+app.use("/api/integrations/1c/v1", integrationRequestLogger);
 
 declare module "http" {
   interface IncomingMessage {
@@ -69,7 +74,15 @@ app.use((req, res, next) => {
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
+    // Response bodies may contain one-time credentials or sensitive business data.
+    // Request diagnostics are recorded by the dedicated integration logger.
+    if (
+      process.env.DEBUG_NETWORK === "true" &&
+      !path.startsWith("/api/integrations/1c") &&
+      !path.startsWith("/api/admin/integrations/1c")
+    ) {
+      capturedJsonResponse = bodyJson;
+    }
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 

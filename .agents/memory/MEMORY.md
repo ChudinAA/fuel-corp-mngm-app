@@ -16,6 +16,7 @@
 - [Browser verification constraints](browser-verification.md) — Chromium includes non-page targets; verify the app target and active dialogs before trusting UI test results.
 - [Stock-test database isolation](stock-test-database-isolation.md) — использовать только временный локальный PostgreSQL-кластер, без отдельно настраиваемой тестовой БД.
 - [Integration test process isolation](test-process-isolation.md) — каждый отдельный API-test процесс должен самостоятельно получать свою авторизованную HTTP-сессию.
+- [Правила мастер-данных 1С](1c-counterparty-master-data.md) — ИНН и названия контрагентов принадлежат 1С; новые записи ожидают проверки администратора.
 - [Local PostgreSQL test cluster](local-postgres-test-cluster.md) — temporary PostgreSQL clusters in Replit need a writable socket directory passed to `pg_ctl`.
 - [Заказы заправки: восстановление и E2E](refueling-order-restoration-e2e.md) — восстанавливать только строки, удалённые одной операцией; пересчёты тестировать с приходными движениями.
 - [Critical-flow recalculation waits](critical-flow-recalculation-waits.md) — keep product-scoped cross-worker locking; measured queue delay came from the five-second poll cadence, not lock contention.
