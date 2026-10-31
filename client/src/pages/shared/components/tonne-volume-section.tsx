@@ -9,7 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { litresAndDensityToTonnes, formatTonnes } from "@shared/units";
+import {
+  litresAndDensityToTonnes,
+  formatTonnes,
+  formatTonnesForInput,
+} from "@shared/units";
 import type { UseFormReturn } from "react-hook-form";
 
 export type TonneVolumeInputMode = "liters" | "tonnes";
@@ -67,10 +71,14 @@ export function TonneVolumeSection({
                         form.getValues("quantityLiters"),
                         form.getValues("density"),
                       );
-                      form.setValue("quantityTonnes", tonnes?.toString() ?? "", {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
+                      form.setValue(
+                        "quantityTonnes",
+                        tonnes === null ? "" : formatTonnesForInput(tonnes),
+                        {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        },
+                      );
                     } else {
                       const tonnes = Number(form.getValues("quantityTonnes"));
                       const density = Number(form.getValues("density"));

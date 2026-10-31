@@ -17,7 +17,7 @@ import {
   EQUIPMENT_TYPE,
 } from "@shared/constants";
 import { format } from "date-fns";
-import { formatTonnes } from "@shared/units";
+import { formatTonnes, formatTonnesForInput } from "@shared/units";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
@@ -1067,7 +1067,9 @@ export const RefuelingForm = forwardRef<
             quantityLiters: "",
             density: String(safeDensity),
             quantityTonnes:
-              normalizedTonnes > 0 ? String(normalizedTonnes) : "",
+              normalizedTonnes > 0
+                ? formatTonnesForInput(normalizedTonnes)
+                : "",
           }
         : {
             inputMode: "liters",
@@ -1079,7 +1081,9 @@ export const RefuelingForm = forwardRef<
                   : "",
             density: String(safeDensity),
             quantityTonnes:
-              normalizedTonnes > 0 ? String(normalizedTonnes) : "",
+              normalizedTonnes > 0
+                ? formatTonnesForInput(normalizedTonnes)
+                : "",
           };
     if (isPrimaryProductIncluded && watchProductType === PRODUCT_TYPE.SERVICE) {
       form.setValue("inputMode", "tonnes", { shouldDirty: true });
@@ -1155,7 +1159,7 @@ export const RefuelingForm = forwardRef<
       inputMode: "tonnes",
       quantityLiters: "",
       density: current?.density || "0.8",
-      quantityTonnes: String(serviceQuantityTonnes),
+      quantityTonnes: formatTonnesForInput(serviceQuantityTonnes),
     });
     if (isPrimaryProductIncluded && watchProductType === PRODUCT_TYPE.SERVICE) {
       const nextVolume = syncedVolume();

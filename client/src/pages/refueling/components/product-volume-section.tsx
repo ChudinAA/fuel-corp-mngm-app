@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { CalculatedField } from "../calculated-field";
-import { formatTonnes } from "@shared/units";
+import { formatTonnes, formatTonnesForInput } from "@shared/units";
 
 export interface RefuelingVolume {
   inputMode: "liters" | "tonnes";
@@ -49,7 +49,7 @@ export function ProductVolumeSection({
         inputMode: "tonnes",
         quantityTonnes:
           calculatedTonnes > 0
-            ? String(calculatedTonnes)
+            ? formatTonnesForInput(calculatedTonnes)
             : value.quantityTonnes,
       });
       return;
