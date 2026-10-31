@@ -27,6 +27,14 @@ type PendingPage = {
   nextCursor: number | null;
 };
 
+type ChangeLogPage = {
+  changes: any[];
+  totalCount: number;
+  pageSize: number;
+  hasMore: boolean;
+  nextCursor: number | null;
+};
+
 const typeNames: Record<string, string> = {
   supplier: "Поставщик",
   customer: "Покупатель",
@@ -65,6 +73,7 @@ export default function Integration1CPage() {
   const { toast } = useToast();
   const [newKey, setNewKey] = useState<string | null>(null);
   const [pendingDialogOpen, setPendingDialogOpen] = useState(false);
+  const [changesDialogOpen, setChangesDialogOpen] = useState(false);
   const [detailDialog, setDetailDialog] = useState<{ title: string; description: string; data: unknown } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [excludedIds, setExcludedIds] = useState<Set<number>>(new Set());
@@ -90,6 +99,25 @@ export default function Integration1CPage() {
     getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextCursor : undefined,
     enabled: isAdmin && pendingDialogOpen,
   });
+  const { data: changesPreview } = useQuery<ChangeLogPage>({
+    queryKey: ["/api/admin/integrations/1c/changes", "preview"],
+    queryFn: async () => checkResponse(await apiRequest("GET", "/api/admin/integrations/1c/changes?limit=3")),
+    enabled: isAdmin,
+  });
+  const changesQuery = useInfiniteQuery<ChangeLogPage>({
+    queryKey: ["/api/admin/integrations/1c/changes", "pages"],
+    initialPageParam: null as number | null,
+    queryFn: async ({ pageParam }) => {
+      const cursor = pageParam === null ? "" : `&beforeId=${pageParam}`;
+      return checkResponse(await apiRequest("GET", `/api/admin/integrations/1c/changes?limit=50${cursor}`));
+    },
+    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextCursor : undefined,
+    enabled: isAdmin && changesDialogOpen,
+  });
+  const visibleChangeLogs = useMemo(
+    () => changesQuery.data?.pages.flatMap((page) => page.changes) ?? [],
+    [changesQuery.data],
+  );
   const visiblePendingItems = useMemo(
     () => pendingQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [pendingQuery.data],
@@ -106,7 +134,7 @@ export default function Integration1CPage() {
   });
   const logPages = requestLogsQuery.data?.pages ?? [];
   const requestLogs = logPages.flatMap((page: any) => page.requests ?? []);
-  const changeLogs = logPages[0]?.changes ?? [];
+  const changePreviews = changesPreview?.changes ?? [];
   const selectedCount = allSelected
     ? Math.max(0, (status?.pendingReviewCount ?? 0) - excludedIds.size)
     : selectedIds.size;
@@ -119,6 +147,7 @@ export default function Integration1CPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/admin/integrations/1c/status"] });
     queryClient.invalidateQueries({ queryKey: ["/api/admin/integrations/1c/pending"] });
     queryClient.invalidateQueries({ queryKey: ["/api/admin/integrations/1c/logs"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/integrations/1c/changes"] });
     queryClient.invalidateQueries({ queryKey: ["/api/integrations/1c/mode"] });
   };
   const keyMutation = useMutation({
@@ -426,43 +455,90 @@ export default function Integration1CPage() {
       </Card>
 
       <Card className="min-w-0">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Последние изменения контрагентов</CardTitle>
-          <CardDescription className="text-sm">До 50 последних результатов обработки с переходом к деталям в отдельном окне.</CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 pb-3">
+          <div className="min-w-0">
+            <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+              Последние изменения контрагентов
+              <Badge variant={changesPreview?.totalCount ? "secondary" : "outline"}>{changesPreview?.totalCount ?? 0}</Badge>
+            </CardTitle>
+            <CardDescription className="mt-1 text-sm">Результаты синхронизации и изменения записей из 1С.</CardDescription>
+          </div>
+          <Button size="sm" variant="outline" disabled={!changesPreview?.totalCount} onClick={() => setChangesDialogOpen(true)}>
+            <Eye className="mr-2 h-4 w-4" />Открыть список
+          </Button>
         </CardHeader>
-        <CardContent className="min-w-0 space-y-2">
-          {changeLogs.length === 0 ? <p className="text-sm text-muted-foreground">Изменений пока нет.</p> : changeLogs.map((row: any) => (
-            <article key={row.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-2.5">
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <Badge variant="outline">{typeNames[row.entityType] ?? row.entityType}</Badge>
-                  <Badge variant={row.outcome === "error" || row.outcome === "conflict" ? "destructive" : "secondary"}>
+        <CardContent className="min-w-0">
+          {changePreviews.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Изменений пока нет.</p>
+          ) : (
+            <div className="flex min-w-0 flex-wrap gap-2">
+              {changePreviews.map((row: any) => (
+                <span key={row.id} className="flex max-w-full items-center gap-2 rounded-full border px-3 py-1 text-xs">
+                  <span className="truncate">{typeNames[row.entityType] ?? row.entityType}</span>
+                  <Badge variant={row.outcome === "error" || row.outcome === "conflict" ? "destructive" : "secondary"} className="h-5 px-1.5">
                     {outcomeNames[row.outcome] ?? row.outcome}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">{row.operation}</span>
-                  {row.errorCode && <code className="text-xs text-destructive">{row.errorCode}</code>}
-                </div>
-                <p className="break-all text-xs text-muted-foreground">
-                  {new Date(row.createdAt).toLocaleString("ru-RU")} · Id_1c: {row.external1cId}
-                </p>
-                <p className="break-all font-mono text-[11px] text-muted-foreground">Request ID: {row.requestId}</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                onClick={() => setDetailDialog({
-                  title: "Поля изменения",
-                  description: `${typeNames[row.entityType] ?? row.entityType} · ${row.external1cId}`,
-                  data: { incoming: row.incomingData, old: row.oldData, new: row.newData, error: row.errorMessage },
-                })}
-              >
-                <Eye className="mr-2 h-4 w-4" />Поля
-              </Button>
-            </article>
-          ))}
+                </span>
+              ))}
+              {(changesPreview?.totalCount ?? 0) > changePreviews.length && (
+                <span className="self-center text-xs text-muted-foreground">и ещё {(changesPreview?.totalCount ?? 0) - changePreviews.length}</span>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <Dialog open={changesDialogOpen} onOpenChange={setChangesDialogOpen}>
+        <DialogContent className="flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="shrink-0 border-b px-5 py-4 pr-12 text-left">
+            <DialogTitle>Последние изменения контрагентов</DialogTitle>
+            <DialogDescription>
+              {changesPreview?.totalCount ?? 0} результатов · страницы по 50 записей. Нажмите «Поля», чтобы увидеть данные обработки.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-5 py-4">
+            {changesQuery.isLoading ? (
+              <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Загрузка изменений…</div>
+            ) : visibleChangeLogs.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Изменений пока нет.</p>
+            ) : visibleChangeLogs.map((row: any) => (
+              <article key={row.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-2.5">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <Badge variant="outline">{typeNames[row.entityType] ?? row.entityType}</Badge>
+                    <Badge variant={row.outcome === "error" || row.outcome === "conflict" ? "destructive" : "secondary"}>
+                      {outcomeNames[row.outcome] ?? row.outcome}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{row.operation}</span>
+                    {row.errorCode && <code className="text-xs text-destructive">{row.errorCode}</code>}
+                  </div>
+                  <p className="break-all text-xs text-muted-foreground">
+                    {new Date(row.createdAt).toLocaleString("ru-RU")} · Id_1c: {row.external1cId ?? "—"}
+                  </p>
+                  <p className="break-all font-mono text-[11px] text-muted-foreground">Request ID: {row.requestId}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => setDetailDialog({
+                    title: "Поля изменения",
+                    description: `${typeNames[row.entityType] ?? row.entityType} · ${row.external1cId ?? "без Id_1c"}`,
+                    data: { incoming: row.incomingData, old: row.oldData, new: row.newData, error: row.errorMessage },
+                  })}
+                >
+                  <Eye className="mr-2 h-4 w-4" />Поля
+                </Button>
+              </article>
+            ))}
+            {changesQuery.hasNextPage && (
+              <Button variant="outline" className="w-full" onClick={() => changesQuery.fetchNextPage()} disabled={changesQuery.isFetchingNextPage}>
+                {changesQuery.isFetchingNextPage ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Загрузка…</> : "Загрузить ещё 50"}
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={pendingDialogOpen} onOpenChange={onPendingDialogChange}>
         <DialogContent className="flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0">

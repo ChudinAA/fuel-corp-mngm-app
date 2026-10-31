@@ -233,6 +233,18 @@ test("1C API authenticates, syncs counterparties, audits changes and paginates r
     "pending review pages do not duplicate imported entities",
   );
 
+  const changePageOne = await fetchJson("/api/admin/integrations/1c/changes?limit=2");
+  assert.equal(changePageOne.response.status, 200);
+  assert.equal(changePageOne.data.pageSize, 2);
+  assert.equal(changePageOne.data.changes.length, 2);
+  assert.equal(changePageOne.data.totalCount, 4);
+  assert.equal(changePageOne.data.hasMore, true);
+  const changePageTwo = await fetchJson(`/api/admin/integrations/1c/changes?limit=2&beforeId=${changePageOne.data.nextCursor}`);
+  assert.equal(changePageTwo.data.changes.length, 2);
+  assert.equal(changePageTwo.data.hasMore, false);
+  const firstChangeIds = new Set(changePageOne.data.changes.map((item) => item.id));
+  assert.ok(changePageTwo.data.changes.every((item) => !firstChangeIds.has(item.id)));
+
   const adminEdit = await fetchJson(`/api/suppliers/${supplier.rows[0].id}`, {
     method: "PATCH",
     body: {

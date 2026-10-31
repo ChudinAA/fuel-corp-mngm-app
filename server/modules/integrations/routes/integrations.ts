@@ -593,6 +593,40 @@ export function registerIntegrationRoutes(app: Express) {
     res.json({ reviewed: true, action });
   }));
 
+  app.get(`${adminBase}/changes`, requireAdministrator, asyncRoute(async (req, res) => {
+    const rawCursor = req.query.beforeId;
+    const cursor = rawCursor === undefined ? null :
+      typeof rawCursor === "string" && /^\d+$/.test(rawCursor) ? Number(rawCursor) : NaN;
+    if (cursor !== null && (!Number.isSafeInteger(cursor) || cursor < 1)) {
+      return res.status(400).json({ message: "Некорректный курсор списка изменений" });
+    }
+    const rawLimit = req.query.limit;
+    const requestedPageSize = rawLimit === undefined ? 50 :
+      typeof rawLimit === "string" && /^\d+$/.test(rawLimit) ? Number(rawLimit) : NaN;
+    if (!Number.isSafeInteger(requestedPageSize) || requestedPageSize < 1 || requestedPageSize > 50) {
+      return res.status(400).json({ message: "Размер страницы должен быть от 1 до 50" });
+    }
+    const conditions = [eq(integrationChangeLogs.integration, "1c")];
+    if (cursor !== null) conditions.push(lt(integrationChangeLogs.id, cursor));
+    const [rows, totalResult] = await Promise.all([
+      db.select().from(integrationChangeLogs)
+        .where(and(...conditions))
+        .orderBy(desc(integrationChangeLogs.id))
+        .limit(requestedPageSize + 1),
+      db.select({ count: sql<number>`count(*)::int` }).from(integrationChangeLogs)
+        .where(eq(integrationChangeLogs.integration, "1c")),
+    ]);
+    const hasMore = rows.length > requestedPageSize;
+    const changes = rows.slice(0, requestedPageSize);
+    res.json({
+      changes,
+      totalCount: totalResult[0]?.count ?? 0,
+      pageSize: requestedPageSize,
+      hasMore,
+      nextCursor: hasMore ? changes[changes.length - 1]?.id ?? null : null,
+    });
+  }));
+
   app.get(`${adminBase}/logs`, requireAdministrator, asyncRoute(async (req, res) => {
     const rawCursor = req.query.beforeId;
     const cursor = rawCursor === undefined ? null :
