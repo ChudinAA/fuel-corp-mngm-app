@@ -34,6 +34,41 @@ const incomingItems = [
   { type: "supplier", id_1c: externalIds.deletedSupplier, inn: demoInns.deleted, name: "DEMO 1C — Помеченный на удаление поставщик", full_name: "Демо: запись удалена в 1С", status: "deletion_marked" },
   { type: "carrier", id_1c: externalIds.unknownDeletion, name: "DEMO 1C — Удаление неизвестной записи", status: "deletion_marked" },
 ];
+const extraPendingItems = Array.from({ length: 60 }, (_, index) => {
+  const type = ["supplier", "customer", "carrier"][index % 3];
+  const ordinal = String(index + 1).padStart(3, "0");
+  const sequence = String(index + 1).padStart(12, "0");
+  const typeLabel = type === "supplier" ? "поставщик" : type === "customer" ? "покупатель" : "перевозчик";
+  const typeKey = type.toUpperCase();
+  const status = type === "supplier" ? "active" : type === "customer" ? "enabled" : "активен";
+  return {
+    type,
+    entityId: `f1c10000-1000-4000-8000-${sequence}`,
+    id_1c: `f1c10000-0000-4000-8000-${sequence}`,
+    inn: `DEMO-1C-${typeKey}-${ordinal}`,
+    name: `DEMO 1C — ${typeLabel} ${ordinal}`,
+    full_name: `Тестовая полная запись ${typeLabel} номер ${ordinal}`,
+    status,
+  };
+});
+const demoIdsByType = {
+  supplier: {
+    entity: [entityIds.supplier, entityIds.matchedSupplier, entityIds.deletedSupplier, ...extraPendingItems.filter((item) => item.type === "supplier").map((item) => item.entityId)],
+    external: [externalIds.supplier, externalIds.matchedSupplier, externalIds.deletedSupplier, ...extraPendingItems.filter((item) => item.type === "supplier").map((item) => item.id_1c)],
+    inn: [demoInns.supplier, demoInns.matched, demoInns.deleted, ...extraPendingItems.filter((item) => item.type === "supplier").map((item) => item.inn)],
+  },
+  customer: {
+    entity: [entityIds.customer, ...extraPendingItems.filter((item) => item.type === "customer").map((item) => item.entityId)],
+    external: [externalIds.customer, ...extraPendingItems.filter((item) => item.type === "customer").map((item) => item.id_1c)],
+    inn: [demoInns.customer, ...extraPendingItems.filter((item) => item.type === "customer").map((item) => item.inn)],
+  },
+  carrier: {
+    entity: [entityIds.carrier, ...extraPendingItems.filter((item) => item.type === "carrier").map((item) => item.entityId)],
+    external: [externalIds.carrier, ...extraPendingItems.filter((item) => item.type === "carrier").map((item) => item.id_1c)],
+    inn: [demoInns.carrier, ...extraPendingItems.filter((item) => item.type === "carrier").map((item) => item.inn)],
+  },
+};
+const allIncomingItems = [...incomingItems, ...extraPendingItems];
 
 function assertDevelopmentEnvironment() {
   const host = process.env.REPLIT_DEV_DOMAIN ?? "";
@@ -78,15 +113,15 @@ async function cleanupDemo() {
     await client.query("BEGIN");
     const supplierRows = await client.query(
       "SELECT id FROM suppliers WHERE id = ANY($1::uuid[]) FOR UPDATE",
-      [[entityIds.supplier, entityIds.matchedSupplier, entityIds.deletedSupplier]],
+      [demoIdsByType.supplier.entity],
     );
     const customerRows = await client.query(
-      "SELECT id FROM customers WHERE id = $1 FOR UPDATE",
-      [entityIds.customer],
+      "SELECT id FROM customers WHERE id = ANY($1::uuid[]) FOR UPDATE",
+      [demoIdsByType.customer.entity],
     );
     const carrierRows = await client.query(
-      "SELECT id FROM logistics_carriers WHERE id = $1 FOR UPDATE",
-      [entityIds.carrier],
+      "SELECT id FROM logistics_carriers WHERE id = ANY($1::uuid[]) FOR UPDATE",
+      [demoIdsByType.carrier.entity],
     );
     const supplierIds = supplierRows.rows.map((row) => row.id);
     const customerIds = customerRows.rows.map((row) => row.id);
@@ -127,23 +162,21 @@ async function seedDemo() {
     const existing = await client.query(
       `SELECT EXISTS(
          SELECT 1 FROM suppliers WHERE id = ANY($1::uuid[]) OR id_1c = ANY($2::text[]) OR inn = ANY($3::text[])
-         UNION ALL SELECT 1 FROM customers WHERE id = $4 OR id_1c = $5 OR inn = $6
-         UNION ALL SELECT 1 FROM logistics_carriers WHERE id = $7 OR id_1c = $8 OR inn = $9
+         UNION ALL SELECT 1 FROM customers WHERE id = ANY($4::uuid[]) OR id_1c = ANY($5::text[]) OR inn = ANY($6::text[])
+         UNION ALL SELECT 1 FROM logistics_carriers WHERE id = ANY($7::uuid[]) OR id_1c = ANY($8::text[]) OR inn = ANY($9::text[])
          UNION ALL SELECT 1 FROM integration_request_logs WHERE request_id = $10
        ) AS found`,
       [
-        [entityIds.supplier, entityIds.matchedSupplier, entityIds.deletedSupplier],
-        [externalIds.supplier, externalIds.matchedSupplier, externalIds.deletedSupplier],
-        [demoInns.supplier, demoInns.matched, demoInns.deleted],
-        entityIds.customer, externalIds.customer, demoInns.customer,
-        entityIds.carrier, externalIds.carrier, demoInns.carrier, requestId,
+        demoIdsByType.supplier.entity, demoIdsByType.supplier.external, demoIdsByType.supplier.inn,
+        demoIdsByType.customer.entity, demoIdsByType.customer.external, demoIdsByType.customer.inn,
+        demoIdsByType.carrier.entity, demoIdsByType.carrier.external, demoIdsByType.carrier.inn, requestId,
       ],
     );
     if (existing.rows[0]?.found) {
       throw new Error("Демо-данные уже существуют или их идентификаторы заняты. Сначала проверьте данные.");
     }
 
-    const inputLength = Buffer.byteLength(JSON.stringify({ items: incomingItems }));
+    const inputLength = Buffer.byteLength(JSON.stringify({ items: allIncomingItems }));
     const results = [];
     await client.query(
       `INSERT INTO suppliers (id, name, full_name, inn, is_active, integration_pending_review)
@@ -200,6 +233,21 @@ async function seedDemo() {
       { type: "customer", item: incomingItems[1], id: customer.rows[0].id },
       { type: "carrier", item: incomingItems[2], id: carrier.rows[0].id },
     ];
+    for (const item of extraPendingItems) {
+      const inserted = item.type === "customer"
+        ? await client.query(
+          `INSERT INTO customers (id, name, full_name, inn, id_1c, integration_status, integration_pending_review, module, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6, true, 'both', true) RETURNING id`,
+          [item.entityId, item.name, item.full_name, item.inn, item.id_1c, item.status],
+        )
+        : await client.query(
+          `INSERT INTO ${item.type === "supplier" ? "suppliers" : "logistics_carriers"}
+             (id, name, full_name, inn, id_1c, integration_status, integration_pending_review, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6, true, true) RETURNING id`,
+          [item.entityId, item.name, item.full_name, item.inn, item.id_1c, item.status],
+        );
+      newEntitySnapshots.push({ type: item.type, item, id: inserted.rows[0].id });
+    }
     for (const { type, item, id } of newEntitySnapshots) {
       await client.query(
         `INSERT INTO integration_change_logs
@@ -247,7 +295,7 @@ async function seedDemo() {
     const responseSummary = {
       request_id: requestId,
       count: results.length,
-      counts: { created: 3, updated: 1, deleted: 1, skipped: 1 },
+      counts: { created: 63, updated: 1, deleted: 1, skipped: 1 },
       results,
     };
     const responseLength = Buffer.byteLength(JSON.stringify(responseSummary));
@@ -257,11 +305,11 @@ async function seedDemo() {
          request_content_type, request_content_length, response_content_type, response_content_length, response_summary)
        VALUES ($1, 'POST', '/api/integrations/1c/v1/counterparties/sync', 200, 38, $2, '127.0.0.1',
          '1C Demo Fixture — synthetic UI data', 'application/json', $3, 'application/json', $4, $5::jsonb)`,
-      [requestId, incomingItems.length, inputLength, responseLength, JSON.stringify(responseSummary)],
+       [requestId, allIncomingItems.length, inputLength, responseLength, JSON.stringify(responseSummary)],
     );
     await client.query("COMMIT");
 
-    console.log(`Созданы демо-записи: 3 новых на проверке, 1 сопоставленная по ИНН, 1 удалённая и 1 пропущенное неизвестное удаление. ID запроса: ${requestId}`);
+    console.log(`Созданы демо-записи: 63 новых на проверке (по 21 каждого типа), 1 сопоставленная по ИНН, 1 удалённая и 1 пропущенное неизвестное удаление. ID запроса: ${requestId}`);
     console.log("Это синтетические данные только для просмотра UI; API-ключ и настройки интеграции не менялись.");
     console.log("После проверки выполните: npm run demo:1c:cleanup");
   } catch (error) {

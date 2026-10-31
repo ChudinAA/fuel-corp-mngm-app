@@ -25,6 +25,7 @@ import {
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
+import { IntegrationPendingReviewActions } from "@/components/integration-1c/pending-review-actions";
 import { Pencil, Trash2, Search, Users, History } from "lucide-react";
 import { AddCustomerDialog } from "./customers-dialog";
 import type { Base, Customer } from "@shared/schema";
@@ -228,40 +229,49 @@ export function CustomersTab() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <EntityActionsMenu
-                            actions={[
-                              {
-                                id: "edit",
-                                label: "Редактировать",
-                                icon: Pencil,
-                                onClick: () => setEditingCustomer(item),
-                                permission: {
-                                  module: "counterparties",
-                                  action: "edit",
+                          <div className="flex items-center justify-end gap-1">
+                            {isAdmin && item.integrationPendingReview && (
+                              <IntegrationPendingReviewActions
+                                type="customer"
+                                entityId={item.id}
+                                entityName={item.name}
+                              />
+                            )}
+                            <EntityActionsMenu
+                              actions={[
+                                {
+                                  id: "edit",
+                                  label: "Редактировать",
+                                  icon: Pencil,
+                                  onClick: () => setEditingCustomer(item),
+                                  permission: {
+                                    module: "counterparties",
+                                    action: "edit",
+                                  },
                                 },
-                              },
-                              ...(canMaintainCounterparties ? [{
-                                id: "delete",
-                                label: "Удалить",
-                                icon: Trash2,
-                                onClick: () => {
-                                  setCustomerToDelete(item);
-                                  setDeleteDialogOpen(true);
-                                },
-                                variant: "destructive" as const,
-                                permission: {
-                                  module: "counterparties",
-                                  action: "delete",
-                                },
-                                separatorAfter: true,
-                              }] : []),
-                            ]}
-                            audit={{
-                              entityType: "customers",
-                              entityId: item.id,
-                              entityName: item.name,
-                            }}
-                          />
+                                ...(canMaintainCounterparties ? [{
+                                  id: "delete",
+                                  label: "Удалить",
+                                  icon: Trash2,
+                                  onClick: () => {
+                                    setCustomerToDelete(item);
+                                    setDeleteDialogOpen(true);
+                                  },
+                                  variant: "destructive" as const,
+                                  permission: {
+                                    module: "counterparties",
+                                    action: "delete",
+                                  },
+                                  separatorAfter: true,
+                                }] : []),
+                              ]}
+                              audit={{
+                                entityType: "customers",
+                                entityId: item.id,
+                                entityName: item.name,
+                              }}
+                            />
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

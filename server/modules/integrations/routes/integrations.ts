@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Express, Request, Response, NextFunction } from "express";
-import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../../db";
 import { requireAdministrator, requireAuth } from "../../../middleware/middleware";
@@ -294,6 +294,60 @@ async function isAdministrator(userId?: string) {
   return role?.name === "Админ" || role?.name === "Ген.дир";
 }
 
+async function reviewPendingChanges(options: {
+  ids?: number[];
+  all?: boolean;
+  excludeIds?: number[];
+  action: "approve" | "reject";
+  userId: string;
+}) {
+  const reviewed = await db.transaction(async (tx) => {
+    const conditions = [
+      eq(integrationChangeLogs.outcome, "created"),
+      isNull(integrationChangeLogs.reviewedAt),
+    ];
+    if (options.ids) conditions.push(inArray(integrationChangeLogs.id, options.ids));
+    if (options.all && options.excludeIds?.length) {
+      conditions.push(notInArray(integrationChangeLogs.id, options.excludeIds));
+    }
+    const changes = await tx.select().from(integrationChangeLogs)
+      .where(and(...conditions))
+      .orderBy(integrationChangeLogs.id)
+      .for("update");
+    if (!changes.length) return { count: 0, entityTypes: [] as CounterpartyType[] };
+
+    const groups = new Map<CounterpartyType, { entityIds: string[]; changeIds: number[] }>();
+    for (const change of changes) {
+      const type = change.entityType as CounterpartyType;
+      if (!tableByType[type]) continue;
+      const group = groups.get(type) ?? { entityIds: [], changeIds: [] };
+      if (change.entityId) group.entityIds.push(change.entityId);
+      group.changeIds.push(change.id);
+      groups.set(type, group);
+    }
+
+    for (const [type, group] of groups) {
+      const table: any = tableByType[type];
+      if (group.entityIds.length) {
+        const entityPatch = options.action === "reject"
+          ? { deletedAt: sql`NOW()`, deletedById: options.userId, integrationPendingReview: false }
+          : { integrationPendingReview: false, updatedAt: sql`NOW()` };
+        await tx.update(table).set(entityPatch).where(inArray(table.id, group.entityIds));
+      }
+      await tx.update(integrationChangeLogs)
+        .set({ reviewedAt: sql`NOW()`, reviewedById: options.userId })
+        .where(inArray(integrationChangeLogs.id, group.changeIds));
+    }
+    return { count: changes.length, entityTypes: [...groups.keys()] };
+  });
+
+  for (const type of reviewed.entityTypes) {
+    const topic = type === "supplier" ? "suppliers" : type === "customer" ? "customers" : "logistics-directories";
+    SSEService.notifyEntityChanged(topic);
+  }
+  return reviewed.count;
+}
+
 export function registerIntegrationRoutes(app: Express) {
   app.get("/api/integrations/1c/mode", requireAuth, asyncRoute(async (_req, res) => {
     res.json({ counterpartyMasterDataEnabled: await getMasterDataMode() });
@@ -376,9 +430,20 @@ export function registerIntegrationRoutes(app: Express) {
     ).orderBy(desc(integrationApiKeys.createdAt)).limit(1);
     const [pending] = await db.select({ count: sql<number>`count(*)::int` }).from(integrationChangeLogs)
       .where(and(eq(integrationChangeLogs.outcome, "created"), isNull(integrationChangeLogs.reviewedAt)));
+    const pendingByType: Record<string, number> = {};
+    for (const type of allowedEntities) {
+      const [typeCount] = await db.select({ count: sql<number>`count(*)::int` }).from(integrationChangeLogs)
+        .where(and(
+          eq(integrationChangeLogs.outcome, "created"),
+          isNull(integrationChangeLogs.reviewedAt),
+          eq(integrationChangeLogs.entityType, type),
+        ));
+      pendingByType[type] = typeCount?.count ?? 0;
+    }
     res.json({
       activeKey: activeKey ?? null,
       pendingReviewCount: pending?.count ?? 0,
+      pendingByType,
     });
   }));
 
@@ -426,17 +491,43 @@ export function registerIntegrationRoutes(app: Express) {
     res.json({ revoked: true });
   }));
 
-  app.get(`${adminBase}/pending`, requireAdministrator, asyncRoute(async (_req, res) => {
+  app.get(`${adminBase}/pending`, requireAdministrator, asyncRoute(async (req, res) => {
+    const rawCursor = req.query.beforeId;
+    const cursor = rawCursor === undefined ? null :
+      typeof rawCursor === "string" && /^\d+$/.test(rawCursor) ? Number(rawCursor) : NaN;
+    if (cursor !== null && (!Number.isSafeInteger(cursor) || cursor < 1)) {
+      return res.status(400).json({ message: "Некорректный курсор списка проверки" });
+    }
+    const rawLimit = req.query.limit;
+    const requestedPageSize = rawLimit === undefined ? 50 :
+      typeof rawLimit === "string" && /^\d+$/.test(rawLimit) ? Number(rawLimit) : NaN;
+    if (!Number.isSafeInteger(requestedPageSize) || requestedPageSize < 1 || requestedPageSize > 50) {
+      return res.status(400).json({ message: "Размер страницы должен быть от 1 до 50" });
+    }
+    const pageSize = requestedPageSize;
+    const conditions = [
+      eq(integrationChangeLogs.outcome, "created"),
+      isNull(integrationChangeLogs.reviewedAt),
+    ];
+    if (cursor !== null) conditions.push(lt(integrationChangeLogs.id, cursor));
     const rows = await db.select().from(integrationChangeLogs)
-      .where(and(eq(integrationChangeLogs.outcome, "created"), isNull(integrationChangeLogs.reviewedAt)))
-      .orderBy(desc(integrationChangeLogs.createdAt)).limit(200);
-    const pendingItems = await Promise.all(rows.map(async (row) => {
+      .where(and(...conditions))
+      .orderBy(desc(integrationChangeLogs.id))
+      .limit(pageSize + 1);
+    const hasMore = rows.length > pageSize;
+    const pageRows = rows.slice(0, pageSize);
+    const pendingItems = await Promise.all(pageRows.map(async (row) => {
       const table: any = tableByType[row.entityType as CounterpartyType];
       if (!table || !row.entityId) return { ...row, currentEntity: null };
       const [currentEntity] = await db.select().from(table).where(eq(table.id, row.entityId)).limit(1);
       return { ...row, currentEntity: currentEntity ?? null };
     }));
-    res.json(pendingItems);
+    res.json({
+      items: pendingItems,
+      pageSize,
+      hasMore,
+      nextCursor: hasMore ? pageRows[pageRows.length - 1]?.id ?? null : null,
+    });
   }));
 
   app.post(`${adminBase}/changes/:id/review`, requireAdministrator, asyncRoute(async (req, res) => {
@@ -445,29 +536,60 @@ export function registerIntegrationRoutes(app: Express) {
     if (!Number.isInteger(id) || id < 1 || !["approve", "reject"].includes(action)) {
       return res.status(400).json({ message: "Некорректное действие подтверждения" });
     }
-    const [change] = await db.select().from(integrationChangeLogs)
-      .where(and(eq(integrationChangeLogs.id, id), eq(integrationChangeLogs.outcome, "created"), isNull(integrationChangeLogs.reviewedAt)))
-      .limit(1);
-    if (!change) return res.status(404).json({ message: "Новая запись не найдена или уже обработана" });
-    const table: any = tableByType[change.entityType as CounterpartyType];
-    if (!table || !change.entityId) return res.status(400).json({ message: "Неподдерживаемый тип записи" });
-
-    await db.transaction(async (tx) => {
-      if (action === "reject") {
-        await tx.update(table)
-          .set({ deletedAt: sql`NOW()`, deletedById: req.session.userId!, integrationPendingReview: false })
-          .where(eq(table.id, change.entityId));
-      } else {
-        await tx.update(table)
-          .set({ integrationPendingReview: false, updatedAt: sql`NOW()` })
-          .where(eq(table.id, change.entityId));
-      }
-      await tx.update(integrationChangeLogs)
-        .set({ reviewedAt: sql`NOW()`, reviewedById: req.session.userId! })
-        .where(eq(integrationChangeLogs.id, id));
+    const count = await reviewPendingChanges({
+      ids: [id],
+      action,
+      userId: req.session.userId!,
     });
-    const topic = change.entityType === "supplier" ? "suppliers" : change.entityType === "customer" ? "customers" : "logistics-directories";
-    SSEService.notifyEntityChanged(topic);
+    if (!count) return res.status(404).json({ message: "Новая запись не найдена или уже обработана" });
+    res.json({ reviewed: true, action });
+  }));
+
+  app.post(`${adminBase}/changes/review-bulk`, requireAdministrator, asyncRoute(async (req, res) => {
+    const { ids, all, excludeIds, action } = req.body ?? {};
+    const isIdList = Array.isArray(ids) && ids.length > 0 && ids.length <= 5000 &&
+      ids.every((id: unknown) => Number.isSafeInteger(id) && (id as number) > 0);
+    const isSelectAll = all === true && (excludeIds === undefined ||
+      (Array.isArray(excludeIds) && excludeIds.length <= 5000 &&
+        excludeIds.every((id: unknown) => Number.isSafeInteger(id) && (id as number) > 0)));
+    if ((!isIdList && !isSelectAll) || !["approve", "reject"].includes(action)) {
+      return res.status(400).json({ message: "Укажите выбранные записи или выберите все ожидающие проверки" });
+    }
+    if (isIdList && new Set(ids).size !== ids.length) {
+      return res.status(400).json({ message: "Список содержит повторяющиеся записи" });
+    }
+    const count = await reviewPendingChanges({
+      ids: isIdList ? ids : undefined,
+      all: isSelectAll,
+      excludeIds: isSelectAll ? excludeIds ?? [] : [],
+      action,
+      userId: req.session.userId!,
+    });
+    res.json({ reviewed: count, action });
+  }));
+
+  app.post(`${adminBase}/entities/:type/:entityId/review`, requireAdministrator, asyncRoute(async (req, res) => {
+    const type = req.params.type as CounterpartyType;
+    const action = req.body?.action;
+    if (!tableByType[type] || !["approve", "reject"].includes(action)) {
+      return res.status(400).json({ message: "Некорректное действие проверки контрагента" });
+    }
+    const [change] = await db.select({ id: integrationChangeLogs.id }).from(integrationChangeLogs)
+      .where(and(
+        eq(integrationChangeLogs.entityType, type),
+        eq(integrationChangeLogs.entityId, req.params.entityId),
+        eq(integrationChangeLogs.outcome, "created"),
+        isNull(integrationChangeLogs.reviewedAt),
+      ))
+      .orderBy(desc(integrationChangeLogs.id))
+      .limit(1);
+    if (!change) return res.status(404).json({ message: "Запись уже обработана или не ожидает проверки" });
+    const count = await reviewPendingChanges({
+      ids: [change.id],
+      action,
+      userId: req.session.userId!,
+    });
+    if (!count) return res.status(404).json({ message: "Запись уже обработана или не ожидает проверки" });
     res.json({ reviewed: true, action });
   }));
 

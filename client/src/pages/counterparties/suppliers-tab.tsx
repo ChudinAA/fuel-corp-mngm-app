@@ -28,6 +28,7 @@ import {
   EntityAction,
 } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
+import { IntegrationPendingReviewActions } from "@/components/integration-1c/pending-review-actions";
 import { formatPricePerTonne } from "@shared/units";
 import { formatStoredBasisRatePerTonne } from "@/pages/shared/utils/basis-price-units";
 import {
@@ -318,44 +319,53 @@ export function SuppliersTab() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <EntityActionsMenu
-                            actions={[
-                              {
-                                id: "edit",
-                                label: "Редактировать",
-                                icon: Pencil,
-                                onClick: () => setEditingItem(supplier),
-                                permission: {
-                                  module: "counterparties",
-                                  action: "edit",
+                          <div className="flex items-center justify-end gap-1">
+                            {isAdmin && supplier.integrationPendingReview && (
+                              <IntegrationPendingReviewActions
+                                type="supplier"
+                                entityId={supplier.id}
+                                entityName={supplier.name}
+                              />
+                            )}
+                            <EntityActionsMenu
+                              actions={[
+                                {
+                                  id: "edit",
+                                  label: "Редактировать",
+                                  icon: Pencil,
+                                  onClick: () => setEditingItem(supplier),
+                                  permission: {
+                                    module: "counterparties",
+                                    action: "edit",
+                                  },
                                 },
-                              },
-                              ...(canMaintainCounterparties ? [{
-                                id: "delete",
-                                label: "Удалить",
-                                icon: Trash2,
-                                onClick: () => {
-                                  setItemToDelete({
-                                    id: supplier.id,
-                                    name: supplier.name,
-                                    hasWarehouse: !!supplier.warehouseId,
-                                  });
-                                  setDeleteDialogOpen(true);
-                                },
-                                variant: "destructive" as const,
-                                permission: {
-                                  module: "counterparties",
-                                  action: "delete",
-                                },
-                                separatorAfter: true,
-                              }] : []),
-                            ]}
-                            audit={{
-                              entityType: "suppliers",
-                              entityId: supplier.id,
-                              entityName: supplier.name,
-                            }}
-                          />
+                                ...(canMaintainCounterparties ? [{
+                                  id: "delete",
+                                  label: "Удалить",
+                                  icon: Trash2,
+                                  onClick: () => {
+                                    setItemToDelete({
+                                      id: supplier.id,
+                                      name: supplier.name,
+                                      hasWarehouse: !!supplier.warehouseId,
+                                    });
+                                    setDeleteDialogOpen(true);
+                                  },
+                                  variant: "destructive" as const,
+                                  permission: {
+                                    module: "counterparties",
+                                    action: "delete",
+                                  },
+                                  separatorAfter: true,
+                                }] : []),
+                              ]}
+                              audit={{
+                                entityType: "suppliers",
+                                entityId: supplier.id,
+                                entityName: supplier.name,
+                              }}
+                            />
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

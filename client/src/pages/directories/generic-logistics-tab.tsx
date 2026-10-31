@@ -25,6 +25,7 @@ import {
 import { Search, Pencil, Trash2 } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AddLogisticsDialog } from "./logistics-dialog";
+import { IntegrationPendingReviewActions } from "@/components/integration-1c/pending-review-actions";
 import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import type { Base } from "@shared/schema";
@@ -186,7 +187,16 @@ export function GenericLogisticsTab({
 
     const actionCell = (
       <TableCell>
-        <EntityActionsMenu actions={actions} />
+        <div className="flex items-center justify-end gap-1">
+          {type === "carrier" && isAdmin && item.integrationPendingReview && (
+            <IntegrationPendingReviewActions
+              type="carrier"
+              entityId={item.id}
+              entityName={item.name}
+            />
+          )}
+          <EntityActionsMenu actions={actions} />
+        </div>
       </TableCell>
     );
 

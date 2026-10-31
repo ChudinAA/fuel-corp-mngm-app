@@ -218,6 +218,21 @@ test("1C API authenticates, syncs counterparties, audits changes and paginates r
   assert.equal(matched.rows[0].id_1c, ids.matchedSupplier);
   assert.equal(matched.rows[0].integration_pending_review, false);
 
+  const pendingPageOne = await fetchJson("/api/admin/integrations/1c/pending?limit=2");
+  assert.equal(pendingPageOne.response.status, 200);
+  assert.equal(pendingPageOne.data.items.length, 2);
+  assert.equal(pendingPageOne.data.pageSize, 2);
+  assert.equal(pendingPageOne.data.hasMore, true);
+  const pendingPageTwo = await fetchJson(`/api/admin/integrations/1c/pending?limit=2&beforeId=${pendingPageOne.data.nextCursor}`);
+  assert.equal(pendingPageTwo.data.items.length, 1);
+  assert.equal(pendingPageTwo.data.hasMore, false);
+  const pendingImportedItems = [...pendingPageOne.data.items, ...pendingPageTwo.data.items];
+  assert.equal(
+    new Set(pendingImportedItems.map((item) => item.entityId)).size,
+    3,
+    "pending review pages do not duplicate imported entities",
+  );
+
   const adminEdit = await fetchJson(`/api/suppliers/${supplier.rows[0].id}`, {
     method: "PATCH",
     body: {
@@ -280,6 +295,39 @@ test("1C API authenticates, syncs counterparties, audits changes and paginates r
     cookie: editorCookie,
   });
   assert.equal(deleteAsEditor.response.status, 403);
+  const reviewAsEditor = await fetchJson(`/api/admin/integrations/1c/entities/supplier/${supplier.rows[0].id}/review`, {
+    method: "POST",
+    cookie: editorCookie,
+    body: { action: "approve" },
+  });
+  assert.equal(reviewAsEditor.response.status, 403, "only administrators may review 1C records");
+
+  const approveOne = await fetchJson("/api/admin/integrations/1c/changes/review-bulk", {
+    method: "POST",
+    body: { ids: [pendingImportedItems.find((item) => item.entityType === "supplier").id], action: "approve" },
+  });
+  assert.equal(approveOne.response.status, 200);
+  assert.equal(approveOne.data.reviewed, 1);
+  const supplierAfterReview = await pool.query("SELECT integration_pending_review FROM suppliers WHERE id = $1", [supplier.rows[0].id]);
+  assert.equal(supplierAfterReview.rows[0].integration_pending_review, false);
+
+  const rejectCustomerInline = await fetchJson(`/api/admin/integrations/1c/entities/customer/${customer.rows[0].id}/review`, {
+    method: "POST",
+    body: { action: "reject" },
+  });
+  assert.equal(rejectCustomerInline.response.status, 200);
+  const customerAfterReview = await pool.query("SELECT integration_pending_review, deleted_at FROM customers WHERE id = $1", [customer.rows[0].id]);
+  assert.equal(customerAfterReview.rows[0].integration_pending_review, false);
+  assert.ok(customerAfterReview.rows[0].deleted_at, "inline rejection softly deletes the new entity");
+
+  const approveAllRemaining = await fetchJson("/api/admin/integrations/1c/changes/review-bulk", {
+    method: "POST",
+    body: { all: true, excludeIds: [], action: "approve" },
+  });
+  assert.equal(approveAllRemaining.response.status, 200);
+  assert.equal(approveAllRemaining.data.reviewed, 1, "select-all acts on all remaining pending records");
+  const pendingAfterReview = await fetchJson("/api/admin/integrations/1c/status");
+  assert.equal(pendingAfterReview.data.pendingReviewCount, 0);
 
   const update = await fetchJson(`${apiRoot}/counterparties/sync`, {
     method: "POST",
