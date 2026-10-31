@@ -5,6 +5,7 @@ import {
   type EquipmentMovementInputMode,
 } from "../unit-calculations";
 import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
+import { useEquipmentBalance } from "@/hooks/use-equipment-balance";
 
 interface UseLikCalculationsProps {
   form: any;
@@ -55,6 +56,14 @@ export function useLikCalculations({
     watchMovementDate instanceof Date ? watchMovementDate : undefined,
     watchProductType,
   );
+  const { data: equipmentBalanceData } = useEquipmentBalance(
+    !isStorageToTzk && watchFromEquipmentId
+      ? watchFromEquipmentId
+      : undefined,
+    watchMovementDate instanceof Date ? watchMovementDate : undefined,
+    watchProductType,
+    true,
+  );
 
   const averageCostPerTonne = useMemo(() => {
     const sourceWarehouse = isStorageToTzk
@@ -79,6 +88,14 @@ export function useLikCalculations({
           ? Number(balanceData.averageCostPerTonne)
           : null;
       if (liveRate !== null && Number.isFinite(liveRate)) return liveRate;
+    } else {
+      const liveRate =
+        equipmentBalanceData &&
+        typeof equipmentBalanceData === "object" &&
+        "averageCostPerTonne" in equipmentBalanceData
+          ? Number(equipmentBalanceData.averageCostPerTonne)
+          : null;
+      if (liveRate !== null && Number.isFinite(liveRate)) return liveRate;
     }
 
     if (explicitSourceRate == null) return 0;
@@ -87,6 +104,7 @@ export function useLikCalculations({
   }, [
     isStorageToTzk,
     balanceData,
+    equipmentBalanceData,
     watchFromWarehouseId,
     watchFromEquipmentId,
     watchProductType,

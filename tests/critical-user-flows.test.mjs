@@ -2311,7 +2311,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     "return cost uses the equipment average at the backdated date",
   );
   const equipmentReturnEquipmentRow = await pool.query(
-    `SELECT transaction_type, quantity_tonnes, sum, deleted_at
+    `SELECT id, transaction_type, quantity_tonnes, sum, deleted_at
      FROM equipment_transactions WHERE id = $1`,
     [equipmentReturnRecord.sourceTransactionId],
   );
@@ -2324,7 +2324,7 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   );
   assert.equal(equipmentReturnEquipmentRow.rows[0].deleted_at, null);
   const equipmentReturnWarehouseRow = await pool.query(
-    `SELECT transaction_type, quantity_tonnes, sum, deleted_at
+    `SELECT id, transaction_type, quantity_tonnes, sum, deleted_at
      FROM warehouse_transactions WHERE id = $1`,
     [equipmentReturnRecord.warehouseTransactionId],
   );
@@ -2336,6 +2336,10 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     "warehouse destination ledger receives the recalculated transfer cost",
   );
   assert.equal(equipmentReturnWarehouseRow.rows[0].deleted_at, null);
+  const originalEquipmentReturnLedgerIds = {
+    equipment: equipmentReturnEquipmentRow.rows[0].id,
+    warehouse: equipmentReturnWarehouseRow.rows[0].id,
+  };
 
   await waitForAuditOperations("equipment_movement", equipmentReturnId, ["CREATE", "UPDATE"]);
   await api(`/api/equipment-movement/${equipmentReturnId}`, { method: "DELETE" });
@@ -2404,13 +2408,59 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
   const restoredReturnRows = await pool.query(
     `SELECT
        (SELECT COUNT(*)::int FROM equipment_transactions
-        WHERE source_type = 'movement' AND source_id = $1 AND deleted_at IS NULL) AS equipment_count,
+        WHERE source_type = 'movement' AND source_id = $1) AS equipment_total,
+       (SELECT COUNT(*)::int FROM equipment_transactions
+        WHERE source_type = 'movement' AND source_id = $1
+          AND deleted_at IS NULL) AS equipment_active,
        (SELECT COUNT(*)::int FROM warehouse_transactions
-        WHERE source_type = 'movement' AND source_id = $1 AND deleted_at IS NULL) AS warehouse_count`,
+        WHERE source_type = 'movement' AND source_id = $1) AS warehouse_total,
+       (SELECT COUNT(*)::int FROM warehouse_transactions
+        WHERE source_type = 'movement' AND source_id = $1
+          AND deleted_at IS NULL) AS warehouse_active`,
     [equipmentReturnId],
   );
-  assert.equal(restoredReturnRows.rows[0].equipment_count, 1);
-  assert.equal(restoredReturnRows.rows[0].warehouse_count, 1);
+  assert.deepEqual(restoredReturnRows.rows[0], {
+    equipment_total: 1,
+    equipment_active: 1,
+    warehouse_total: 1,
+    warehouse_active: 1,
+  });
+  const restoredEquipmentReturnLedgers = await pool.query(
+    `SELECT id, transaction_type, quantity_tonnes, sum, deleted_at
+     FROM equipment_transactions
+     WHERE source_type = 'movement' AND source_id = $1`,
+    [equipmentReturnId],
+  );
+  assert.equal(restoredEquipmentReturnLedgers.rows.length, 1);
+  assert.equal(
+    restoredEquipmentReturnLedgers.rows[0].id,
+    originalEquipmentReturnLedgerIds.equipment,
+    "audit restore reactivates the original equipment ledger row",
+  );
+  assert.equal(restoredEquipmentReturnLedgers.rows[0].transaction_type, "transfer_out");
+  assert.equal(Number(restoredEquipmentReturnLedgers.rows[0].quantity_tonnes), -0.006);
+  assert.ok(
+    Math.abs(Number(restoredEquipmentReturnLedgers.rows[0].sum) - 60) < 0.011,
+  );
+  assert.equal(restoredEquipmentReturnLedgers.rows[0].deleted_at, null);
+  const restoredWarehouseReturnLedgers = await pool.query(
+    `SELECT id, transaction_type, quantity_tonnes, sum, deleted_at
+     FROM warehouse_transactions
+     WHERE source_type = 'movement' AND source_id = $1`,
+    [equipmentReturnId],
+  );
+  assert.equal(restoredWarehouseReturnLedgers.rows.length, 1);
+  assert.equal(
+    restoredWarehouseReturnLedgers.rows[0].id,
+    originalEquipmentReturnLedgerIds.warehouse,
+    "audit restore reactivates the original warehouse ledger row",
+  );
+  assert.equal(restoredWarehouseReturnLedgers.rows[0].transaction_type, "transfer_in");
+  assert.equal(Number(restoredWarehouseReturnLedgers.rows[0].quantity_tonnes), 0.006);
+  assert.ok(
+    Math.abs(Number(restoredWarehouseReturnLedgers.rows[0].sum) - 60) < 0.011,
+  );
+  assert.equal(restoredWarehouseReturnLedgers.rows[0].deleted_at, null);
 
   // Cashflow transactions are the monetary ledger: CRUD and audit rollback
   // must preserve date-based totals and linked movement references.

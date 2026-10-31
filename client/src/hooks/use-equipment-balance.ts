@@ -9,6 +9,7 @@ export function useEquipmentBalance(
   equipmentId: string | undefined,
   date: Date | undefined,
   productType?: string,
+  alwaysFresh = false,
 ) {
   return useQuery({
     queryKey: [
@@ -18,6 +19,9 @@ export function useEquipmentBalance(
       date ? format(date, "yyyy-MM-dd") : undefined,
       productType,
     ],
+    ...(alwaysFresh
+      ? { staleTime: 0, refetchOnMount: "always" as const }
+      : {}),
     queryFn: async () => {
        if (productType === PRODUCT_TYPE.SERVICE) {
          return {

@@ -72,6 +72,7 @@ const fixtures = {
   foreignRefuelingNote: `ui-foreign-refueling-${runId}`,
   warehouseTransferNote: `ui-operations-warehouse-transfer-${runId}`,
   equipmentTransferNote: `ui-operations-equipment-transfer-${runId}`,
+  equipmentReturnNote: `ui-operations-equipment-return-${runId}`,
   finalRefuelingNote: `ui-operations-final-refueling-${runId}`,
 };
 let browser;
@@ -669,8 +670,8 @@ async function cleanUiFixtures() {
       ]],
     ),
     pool.query(
-      "SELECT id FROM equipment_movement WHERE notes = $1",
-      [fixtures.equipmentTransferNote],
+      "SELECT id FROM equipment_movement WHERE notes = ANY($1::text[])",
+      [[fixtures.equipmentTransferNote, fixtures.equipmentReturnNote]],
     ),
     pool.query(
       "SELECT id FROM opt WHERE notes = ANY($1::text[])",
@@ -6531,6 +6532,353 @@ test("authenticated browser can load the core business pages", async () => {
     await waitForAuditOperations(legacyMovement.rows[0].id, ["UPDATE"]);
     console.log(
       "UI flow passed: legacy movement keeps blank nomenclature until product type changes, then saves the new default",
+    );
+
+    await navigateToRoute(cdp, "/lik/movement");
+    await clickTestId(cdp, "button-add-equipment-movement");
+    await waitForExpression(
+      cdp,
+      `!!document.querySelector('[data-testid="select-equipment-movement-type"]') &&
+       !!document.querySelector('[data-testid="button-create-equipment-movement"]')`,
+      "the new equipment-to-warehouse return form",
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-equipment-movement-type",
+      "СЗ -> Склад",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-equipment-movement-date"]',
+      "30.10.2026",
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-equipment-movement-from-equipment",
+      fixtures.equipmentName,
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-equipment-movement-to-warehouse",
+      fixtures.transferWarehouseName,
+    );
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.kerosene)})`,
+      "the default kerosene nomenclature for the equipment return",
+    );
+    const equipmentBeforeReturn = await pool.query(
+      `SELECT id, current_balance_tonnes, average_cost_per_tonne
+       FROM equipments WHERE name = $1`,
+      [fixtures.equipmentName],
+    );
+    assert.equal(equipmentBeforeReturn.rows.length, 1);
+    const equipmentReturnBefore = equipmentBeforeReturn.rows[0];
+    const warehouseBeforeReturn = await pool.query(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+    );
+    const warehouseReturnBefore = warehouseBeforeReturn.rows[0];
+    const expectedReturnCostPerTonne = Number(
+      equipmentReturnBefore.average_cost_per_tonne,
+    );
+    const returnQuantityTonnes = 0.001;
+    await fillInput(
+      cdp,
+      '[data-testid="input-quantity-tonnes"]',
+      String(returnQuantityTonnes),
+    );
+    await fillInput(
+      cdp,
+      'input[placeholder="Дополнительная информация..."]',
+      fixtures.equipmentReturnNote,
+    );
+    await waitForExpression(
+      cdp,
+      `(() => {
+        const expected = new Intl.NumberFormat("ru-RU", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(${expectedReturnCostPerTonne});
+        return Array.from(document.querySelectorAll('[role="dialog"]'))
+          .some((dialog) => dialog.innerText.includes(expected + " ₽/т"));
+      })()`,
+      "the current equipment average cost to appear in the return form",
+    );
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[data-testid="button-create-equipment-movement"]')?.disabled`,
+      "the equipment return to pass stock validation",
+    );
+    await clickTestId(cdp, "button-create-equipment-movement");
+    const equipmentReturn = await waitForDatabaseRow(
+      `SELECT id, movement_type, quantity_tonnes, input_mode, is_draft,
+              total_cost, cost_per_tonne, nomenclature_id,
+              from_equipment_id, to_warehouse_id
+       FROM equipment_movement WHERE notes = $1`,
+      [fixtures.equipmentReturnNote],
+      "the equipment-to-warehouse return created in the UI",
+    );
+    assert.equal(equipmentReturn.movement_type, "tzk_to_storage");
+    assert.equal(Number(equipmentReturn.quantity_tonnes), returnQuantityTonnes);
+    assert.equal(equipmentReturn.input_mode, "tonnes");
+    assert.equal(equipmentReturn.is_draft, false);
+    assert.equal(equipmentReturn.nomenclature_id, nomenclatureIds.kerosene);
+    assert.equal(equipmentReturn.from_equipment_id, equipmentReturnBefore.id);
+    assert.equal(equipmentReturn.to_warehouse_id, transferWarehouseId);
+    assert.ok(
+      Math.abs(Number(equipmentReturn.cost_per_tonne) - expectedReturnCostPerTonne) <
+        0.011,
+      `the UI return uses the equipment's current average cost; expected ${expectedReturnCostPerTonne}, got ${equipmentReturn.cost_per_tonne}`,
+    );
+    assert.ok(
+      Math.abs(
+        Number(equipmentReturn.total_cost) -
+          returnQuantityTonnes * expectedReturnCostPerTonne,
+      ) < 0.011,
+      "the UI return preserves the calculated transfer cost",
+    );
+    await waitForAuditOperations(equipmentReturn.id, ["CREATE"]);
+    await waitForRecalculation(
+      "equipment_recalculation_queue",
+      "equipment_id",
+      equipmentReturnBefore.id,
+      { requireTask: false },
+    );
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      transferWarehouseId,
+      { requireTask: false },
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [equipmentReturnBefore.id],
+      "the equipment balance after returning fuel to the warehouse",
+      (row) =>
+        Math.abs(
+          Number(row.current_balance_tonnes) -
+            (Number(equipmentReturnBefore.current_balance_tonnes) -
+              returnQuantityTonnes),
+        ) < 0.000001 &&
+        Math.abs(
+          Number(row.average_cost_per_tonne) - expectedReturnCostPerTonne,
+        ) < 0.011,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the warehouse balance after receiving returned fuel",
+      (row) => {
+        const expectedQuantity =
+          Number(warehouseReturnBefore.current_balance_tonnes) +
+          returnQuantityTonnes;
+        const expectedAverage =
+          (Number(warehouseReturnBefore.current_balance_tonnes) *
+            Number(warehouseReturnBefore.average_cost_per_tonne) +
+            Number(equipmentReturn.total_cost)) /
+          expectedQuantity;
+        return (
+          Math.abs(Number(row.current_balance_tonnes) - expectedQuantity) <
+            0.000001 &&
+          Math.abs(Number(row.average_cost_per_tonne) - expectedAverage) <
+            0.011
+        );
+      },
+      45_000,
+    );
+    await fillInput(
+      cdp,
+      'input[placeholder="Поиск по примечаниям..."]',
+      fixtures.equipmentReturnNote,
+    );
+    await openDeleteMenuForRow(cdp, "30.10.2026");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить перемещение?")`,
+      "the equipment-return deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM equipment_movement WHERE id = $1",
+      [equipmentReturn.id],
+      "the equipment return soft-deleted through the UI",
+      (row) => Boolean(row.deleted_at),
+    );
+    await waitForAuditOperations(equipmentReturn.id, ["CREATE", "DELETE"]);
+    await waitForRecalculation(
+      "equipment_recalculation_queue",
+      "equipment_id",
+      equipmentReturnBefore.id,
+      { requireTask: false },
+    );
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      transferWarehouseId,
+      { requireTask: false },
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [equipmentReturnBefore.id],
+      "the equipment balance after deleting the return",
+      (row) =>
+        Math.abs(
+          Number(row.current_balance_tonnes) -
+            Number(equipmentReturnBefore.current_balance_tonnes),
+        ) < 0.000001 &&
+        Math.abs(
+          Number(row.average_cost_per_tonne) - expectedReturnCostPerTonne,
+        ) < 0.011,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the warehouse balance after deleting the return",
+      (row) =>
+        Math.abs(
+          Number(row.current_balance_tonnes) -
+            Number(warehouseReturnBefore.current_balance_tonnes),
+        ) < 0.000001 &&
+        Math.abs(
+          Number(row.average_cost_per_tonne) -
+            (Number(warehouseReturnBefore.current_balance_tonnes) === 0
+              ? 0
+              : Number(warehouseReturnBefore.average_cost_per_tonne)),
+        ) < 0.011,
+      45_000,
+    );
+    const deletedEquipmentReturnLedgers = await pool.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM equipment_transactions
+          WHERE source_type = 'movement' AND source_id = $1
+            AND deleted_at IS NOT NULL) AS equipment_deleted,
+         (SELECT COUNT(*)::int FROM warehouse_transactions
+          WHERE source_type = 'movement' AND source_id = $1
+            AND deleted_at IS NOT NULL) AS warehouse_deleted`,
+      [equipmentReturn.id],
+    );
+    assert.deepEqual(deletedEquipmentReturnLedgers.rows[0], {
+      equipment_deleted: 1,
+      warehouse_deleted: 1,
+    });
+    const equipmentReturnDeleteAudit = await pool.query(
+      `SELECT id FROM audit_log
+       WHERE entity_type = 'equipment_movement' AND entity_id = $1
+         AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [equipmentReturn.id],
+    );
+    assert.ok(equipmentReturnDeleteAudit.rows[0]?.id);
+    await restoreDeletedAuditEntry(
+      cdp,
+      equipmentReturnDeleteAudit.rows[0].id,
+      "Все перемещения ЛИК",
+    );
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM equipment_movement WHERE id = $1",
+      [equipmentReturn.id],
+      "the equipment return restored through audit history",
+      (row) => row.deleted_at === null,
+    );
+    await waitForAuditOperations(equipmentReturn.id, [
+      "CREATE",
+      "DELETE",
+      "RESTORE",
+    ]);
+    await waitForRecalculation(
+      "equipment_recalculation_queue",
+      "equipment_id",
+      equipmentReturnBefore.id,
+      { requireTask: false },
+    );
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      transferWarehouseId,
+      { requireTask: false },
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [equipmentReturnBefore.id],
+      "the equipment balance after restoring the return",
+      (row) =>
+        Math.abs(
+          Number(row.current_balance_tonnes) -
+            (Number(equipmentReturnBefore.current_balance_tonnes) -
+              returnQuantityTonnes),
+        ) < 0.000001 &&
+        Math.abs(
+          Number(row.average_cost_per_tonne) - expectedReturnCostPerTonne,
+        ) < 0.011,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT current_balance_tonnes, average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the warehouse balance after restoring the return",
+      (row) => {
+        const expectedQuantity =
+          Number(warehouseReturnBefore.current_balance_tonnes) +
+          returnQuantityTonnes;
+        const expectedAverage =
+          (Number(warehouseReturnBefore.current_balance_tonnes) *
+            Number(warehouseReturnBefore.average_cost_per_tonne) +
+            Number(equipmentReturn.total_cost)) /
+          expectedQuantity;
+        return (
+          Math.abs(Number(row.current_balance_tonnes) - expectedQuantity) <
+            0.000001 &&
+          Math.abs(Number(row.average_cost_per_tonne) - expectedAverage) <
+            0.011
+        );
+      },
+      45_000,
+    );
+    const restoredEquipmentReturnLedgers = await pool.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM warehouse_transactions
+          WHERE source_type = 'movement' AND source_id = $1) AS warehouse_total,
+         (SELECT COUNT(*)::int FROM warehouse_transactions
+          WHERE source_type = 'movement' AND source_id = $1
+            AND deleted_at IS NULL) AS warehouse_active,
+         (SELECT COUNT(*)::int FROM equipment_transactions
+          WHERE source_type = 'movement' AND source_id = $1) AS equipment_total,
+         (SELECT COUNT(*)::int FROM equipment_transactions
+          WHERE source_type = 'movement' AND source_id = $1
+            AND deleted_at IS NULL) AS equipment_active`,
+      [equipmentReturn.id],
+    );
+    assert.deepEqual(restoredEquipmentReturnLedgers.rows[0], {
+      warehouse_total: 1,
+      warehouse_active: 1,
+      equipment_total: 1,
+      equipment_active: 1,
+    });
+    const rolledBackEquipmentReturnDelete = await pool.query(
+      "SELECT rolled_back_at FROM audit_log WHERE id = $1",
+      [equipmentReturnDeleteAudit.rows[0].id],
+    );
+    assert.ok(rolledBackEquipmentReturnDelete.rows[0]?.rolled_back_at);
+    await waitForExpression(
+      cdp,
+      `Array.from(document.querySelectorAll("tbody tr"))
+        .some((row) => row.innerText.includes("30.10.2026"))`,
+      "the restored equipment return in the active table",
+    );
+    console.log(
+      "UI flow passed: equipment-to-warehouse return create/delete/audit restore preserves both balances and one active ledger entry per side",
     );
 
     await cdp.evaluate("window.__uiOperationSse?.close()");
