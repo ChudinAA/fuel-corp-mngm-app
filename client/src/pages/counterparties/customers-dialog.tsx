@@ -95,7 +95,7 @@ export function AddCustomerDialog({
   onInlineOpenChange,
   onCreated,
 }: AddCustomerDialogProps) {
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
@@ -343,7 +343,7 @@ export function AddCustomerDialog({
                         <Input
                           placeholder="Сокращенное название"
                           data-testid="input-customer-name"
-                          disabled={Boolean(editCustomer?.external1cId)}
+                          disabled={Boolean(editCustomer?.external1cId) && !isAdmin}
                           {...field}
                         />
                       </FormControl>
@@ -383,7 +383,7 @@ export function AddCustomerDialog({
                     <Input
                       placeholder="Полное название"
                       data-testid="input-customer-fullname"
-                      disabled={Boolean(editCustomer?.external1cId)}
+                      disabled={Boolean(editCustomer?.external1cId) && !isAdmin}
                       {...field}
                     />
                   </FormControl>
@@ -402,7 +402,7 @@ export function AddCustomerDialog({
                     <Input
                       placeholder="7712345678"
                       data-testid="input-customer-inn"
-                      disabled={Boolean(editCustomer?.external1cId)}
+                      disabled={Boolean(editCustomer?.external1cId) && !isAdmin}
                       {...field}
                     />
                   </FormControl>

@@ -131,7 +131,7 @@ export function AddLogisticsDialog({
   defaultType,
 }: AddLogisticsDialogProps) {
 
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
@@ -482,7 +482,7 @@ export function AddLogisticsDialog({
                           : "Название"
                       }
                       data-testid="input-logistics-name"
-                      disabled={selectedType === "carrier" && Boolean(editItem?.data.external1cId)}
+                      disabled={selectedType === "carrier" && Boolean(editItem?.data.external1cId) && !isAdmin}
                       {...field}
                     />
                   </FormControl>
@@ -503,7 +503,7 @@ export function AddLogisticsDialog({
                         <Input
                           placeholder="Полное название перевозчика"
                           data-testid="input-logistics-fullname"
-                          disabled={Boolean(editItem?.data.external1cId)}
+                          disabled={Boolean(editItem?.data.external1cId) && !isAdmin}
                           {...field}
                         />
                       </FormControl>
@@ -521,7 +521,7 @@ export function AddLogisticsDialog({
                         <Input
                           placeholder="ИНН"
                           data-testid="input-logistics-inn"
-                          disabled={Boolean(editItem?.data.external1cId)}
+                          disabled={Boolean(editItem?.data.external1cId) && !isAdmin}
                           {...field}
                         />
                       </FormControl>

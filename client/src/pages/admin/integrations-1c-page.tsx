@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -8,7 +8,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -16,7 +15,6 @@ import { AlertTriangle, Check, Clipboard, KeyRound, Loader2, RefreshCw, ShieldCh
 
 type IntegrationStatus = {
   activeKey: { id: string; keyPrefix: string; createdAt: string } | null;
-  counterpartyMasterDataEnabled: boolean;
   pendingReviewCount: number;
 };
 
@@ -58,16 +56,25 @@ export default function Integration1CPage() {
     queryFn: async () => checkResponse(await apiRequest("GET", "/api/admin/integrations/1c/pending")),
     enabled: isAdmin,
   });
-  const { data: logs } = useQuery<any>({
+  const requestLogsQuery = useInfiniteQuery({
     queryKey: ["/api/admin/integrations/1c/logs"],
-    queryFn: async () => checkResponse(await apiRequest("GET", "/api/admin/integrations/1c/logs")),
+    initialPageParam: null as number | null,
+    queryFn: async ({ pageParam }) => {
+      const cursor = pageParam === null ? "" : `?beforeId=${pageParam}`;
+      return checkResponse(await apiRequest("GET", `/api/admin/integrations/1c/logs${cursor}`));
+    },
+    getNextPageParam: (lastPage: any) => lastPage.hasMoreRequests ? lastPage.nextCursor : undefined,
     enabled: isAdmin,
   });
+  const logPages = requestLogsQuery.data?.pages ?? [];
+  const requestLogs = logPages.flatMap((page: any) => page.requests ?? []);
+  const changeLogs = logPages[0]?.changes ?? [];
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/admin/integrations/1c/status"] });
     queryClient.invalidateQueries({ queryKey: ["/api/admin/integrations/1c/pending"] });
     queryClient.invalidateQueries({ queryKey: ["/api/admin/integrations/1c/logs"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/integrations/1c/mode"] });
   };
   const keyMutation = useMutation({
     mutationFn: async () => checkResponse(await apiRequest("POST", "/api/admin/integrations/1c/api-key")),
@@ -86,17 +93,6 @@ export default function Integration1CPage() {
       toast({ title: "Ключ отозван" });
     },
     onError: (error: Error) => toast({ title: "Не удалось отозвать ключ", description: error.message, variant: "destructive" }),
-  });
-  const modeMutation = useMutation({
-    mutationFn: async (enabled: boolean) => checkResponse(await apiRequest("PATCH", "/api/admin/integrations/1c/settings", {
-      counterpartyMasterDataEnabled: enabled,
-    })),
-    onSuccess: () => {
-      refresh();
-      queryClient.invalidateQueries({ queryKey: ["/api/integrations/1c/mode"] });
-      toast({ title: "Настройки мастер-данных сохранены" });
-    },
-    onError: (error: Error) => toast({ title: "Не удалось изменить настройки", description: error.message, variant: "destructive" }),
   });
   const reviewMutation = useMutation({
     mutationFn: async ({ id, action }: { id: number; action: "approve" | "reject" }) =>
@@ -142,7 +138,7 @@ export default function Integration1CPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5" />API-ключ</CardTitle>
           <CardDescription>
-            Секрет не хранится в открытом виде и не может быть показан повторно. Перевыпуск сразу отзывает предыдущий ключ. Создание первого ключа автоматически включает режим мастер-данных 1С.
+            Ключ показывается один раз, в базе хранится только его хеш. После его создания обычные пользователи смогут редактировать контрагентов, но не менять поля, полученные из 1С, и не создавать или удалять записи. Администраторы сохраняют полный доступ.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -189,25 +185,6 @@ export default function Integration1CPage() {
               </AlertDescription>
             </Alert>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Мастер-данные контрагентов</CardTitle>
-          <CardDescription>Включённый режим запрещает обычным пользователям создавать и удалять контрагентов. Администраторы сохраняют доступ к ручным операциям.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between gap-4">
-          <div>
-            <p className="font-medium">{status.counterpartyMasterDataEnabled ? "1С — источник мастер-данных" : "Режим отключён"}</p>
-            <p className="text-sm text-muted-foreground">ИНН и наименования уже связанных записей защищены независимо от этого переключателя.</p>
-          </div>
-          <Switch
-            checked={status.counterpartyMasterDataEnabled}
-            onCheckedChange={(enabled) => modeMutation.mutate(enabled)}
-            disabled={modeMutation.isPending}
-            aria-label="Режим мастер-данных 1С"
-          />
         </CardContent>
       </Card>
 
@@ -261,41 +238,68 @@ export default function Integration1CPage() {
       <Card>
         <CardHeader>
           <CardTitle>Журнал запросов</CardTitle>
-          <CardDescription>Последние запросы и результаты по элементам. Секреты и заголовки авторизации не записываются.</CardDescription>
+          <CardDescription>По 50 запросов на страницу. Тело запроса и API-ключ не сохраняются; доступны метаданные, ответ и результаты синхронизации.</CardDescription>
         </CardHeader>
         <CardContent>
-          {(logs?.requests ?? []).length === 0 ? <p className="text-sm text-muted-foreground">Запросов пока не было.</p> : (
+          {requestLogsQuery.isLoading ? <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Загрузка журнала…</div> :
+          requestLogs.length === 0 ? <p className="text-sm text-muted-foreground">Запросов пока не было.</p> : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Время</TableHead><TableHead>Метод</TableHead><TableHead>Путь</TableHead><TableHead>HTTP</TableHead><TableHead>Элементов</TableHead><TableHead>Длительность</TableHead><TableHead>Request ID</TableHead>
+                  <TableHead>Время</TableHead><TableHead>Метод и путь</TableHead><TableHead>HTTP</TableHead><TableHead>Источник</TableHead><TableHead>Клиент</TableHead><TableHead>Трафик</TableHead><TableHead>Элементы</TableHead><TableHead>Время</TableHead><TableHead>Ошибка / ответ</TableHead><TableHead>Request ID</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {logs.requests.map((row: any) => (
+                  {requestLogs.map((row: any) => (
                     <TableRow key={row.id}>
                       <TableCell className="whitespace-nowrap">{new Date(row.createdAt).toLocaleString("ru-RU")}</TableCell>
-                      <TableCell><code>{row.method}</code></TableCell>
-                      <TableCell><code>{row.path}</code></TableCell>
+                      <TableCell className="min-w-64"><code>{row.method} {row.path}</code></TableCell>
                       <TableCell><Badge variant={row.statusCode >= 400 ? "destructive" : "outline"}>{row.statusCode}</Badge></TableCell>
+                      <TableCell className="font-mono text-xs">{row.clientIp ?? "—"}</TableCell>
+                      <TableCell className="max-w-48 truncate text-xs" title={row.userAgent ?? ""}>{row.userAgent ?? "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs" title={`${row.requestContentType ?? "тип запроса неизвестен"} → ${row.responseContentType ?? "тип ответа неизвестен"}`}>
+                        {row.requestContentLength ?? "—"} Б / {row.responseContentLength ?? "—"} Б
+                      </TableCell>
                       <TableCell>{row.itemCount ?? "—"}</TableCell>
                       <TableCell>{row.durationMs} мс</TableCell>
+                      <TableCell className="min-w-48">
+                        {row.errorCode ? <Badge variant="destructive">{row.errorCode}</Badge> : "—"}
+                        {row.errorMessage && <p className="mt-1 max-w-56 text-xs text-muted-foreground">{row.errorMessage}</p>}
+                        {row.responseSummary && <details className="mt-1 max-w-72">
+                          <summary className="cursor-pointer text-xs text-primary">Ответ и результаты</summary>
+                          <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 text-xs">{JSON.stringify(row.responseSummary, null, 2)}</pre>
+                        </details>}
+                        {row.apiKeyId && <p className="mt-1 text-xs text-muted-foreground">Ключ ID: {row.apiKeyId.slice(0, 8)}</p>}
+                      </TableCell>
                       <TableCell><code className="text-xs">{row.requestId}</code></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              {requestLogsQuery.hasNextPage && (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => requestLogsQuery.fetchNextPage()}
+                    disabled={requestLogsQuery.isFetchingNextPage}
+                    className="w-full max-w-xs gap-2"
+                    data-testid="button-load-more-integration-requests"
+                  >
+                    {requestLogsQuery.isFetchingNextPage ? <><Loader2 className="h-4 w-4 animate-spin" />Загрузка...</> : "Загрузить еще"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
-          {(logs?.changes ?? []).length > 0 && (
+          {changeLogs.length > 0 && (
             <div className="mt-6">
               <h3 className="mb-2 font-medium">Последние изменения контрагентов</h3>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead>Время</TableHead><TableHead>Тип</TableHead><TableHead>Id_1c</TableHead><TableHead>Операция</TableHead><TableHead>Результат</TableHead><TableHead>Код</TableHead>
+                    <TableHead>Время</TableHead><TableHead>Тип</TableHead><TableHead>Id_1c</TableHead><TableHead>Операция</TableHead><TableHead>Результат</TableHead><TableHead>Код</TableHead><TableHead>Request ID</TableHead><TableHead>Данные</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
-                    {logs.changes.map((row: any) => (
+                    {changeLogs.map((row: any) => (
                       <TableRow key={row.id}>
                         <TableCell className="whitespace-nowrap">{new Date(row.createdAt).toLocaleString("ru-RU")}</TableCell>
                         <TableCell>{typeNames[row.entityType] ?? row.entityType}</TableCell>
@@ -303,6 +307,20 @@ export default function Integration1CPage() {
                         <TableCell>{row.operation}</TableCell>
                         <TableCell>{outcomeNames[row.outcome] ?? row.outcome}</TableCell>
                         <TableCell>{row.errorCode ?? "—"}</TableCell>
+                        <TableCell><code className="text-xs">{row.requestId}</code></TableCell>
+                        <TableCell>
+                          <details className="min-w-40">
+                            <summary className="cursor-pointer text-xs text-primary">Показать поля</summary>
+                            <pre className="mt-1 max-h-56 max-w-96 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 text-xs">
+                              {JSON.stringify({
+                                incoming: row.incomingData,
+                                old: row.oldData,
+                                new: row.newData,
+                                error: row.errorMessage,
+                              }, null, 2)}
+                            </pre>
+                          </details>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

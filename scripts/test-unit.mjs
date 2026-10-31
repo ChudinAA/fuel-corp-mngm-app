@@ -7,6 +7,7 @@ const projectRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const testRoots = ["client/src", "server/modules", "shared", "tests"];
 const integrationOwnedTests = new Set([
   "tests/critical-user-flows.test.mjs",
+  "tests/1c-integration-api.test.mjs",
   "tests/sse-recalculation.test.mjs",
   "tests/planning-logistics-flow.test.mjs",
   "tests/ui-core-pages.test.mjs",

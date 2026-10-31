@@ -56,6 +56,7 @@ async function stopApp() {
 }
 
 async function main({ createDatabase, run }) {
+  const only1c = process.argv.includes("--only-1c");
   const databaseEnvironment = await createDatabase("critical_flows");
   const appPort = await freePort();
   const baseUrl = `http://127.0.0.1:${appPort}`;
@@ -87,6 +88,16 @@ async function main({ createDatabase, run }) {
     console.log("Starting the app with a generated, isolated test account...");
     const child = startApp(appEnv);
     await waitForApp(child, baseUrl);
+    if (only1c) {
+      await run(
+        process.execPath,
+        ["--test", "tests/1c-integration-api.test.mjs"],
+        appEnv,
+      );
+      await stopApp();
+      console.log("1C integration API tests passed.");
+      return;
+    }
     await run(
       process.execPath,
       ["--test", "tests/critical-user-flows.test.mjs"],
@@ -100,6 +111,11 @@ async function main({ createDatabase, run }) {
     await run(
       process.execPath,
       ["--test", "tests/planning-logistics-flow.test.mjs"],
+      appEnv,
+    );
+    await run(
+      process.execPath,
+      ["--test", "tests/1c-integration-api.test.mjs"],
       appEnv,
     );
     await run(

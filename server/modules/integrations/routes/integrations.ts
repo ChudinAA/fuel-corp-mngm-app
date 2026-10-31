@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Express, Request, Response, NextFunction } from "express";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../../db";
 import { requireAdministrator, requireAuth } from "../../../middleware/middleware";
@@ -277,8 +277,11 @@ async function syncItem(item: z.infer<typeof counterpartySyncItemSchema>, reques
 }
 
 async function getMasterDataMode() {
-  const [settings] = await db.select().from(integrationSettings).where(eq(integrationSettings.id, 1)).limit(1);
-  return settings?.counterpartyMasterDataEnabled ?? false;
+  const [activeKey] = await db.select({ id: integrationApiKeys.id })
+    .from(integrationApiKeys)
+    .where(and(eq(integrationApiKeys.integration, "1c"), isNull(integrationApiKeys.revokedAt)))
+    .limit(1);
+  return Boolean(activeKey);
 }
 
 async function isAdministrator(userId?: string) {
@@ -319,6 +322,7 @@ export function registerIntegrationRoutes(app: Express) {
           });
         }
       }
+      req.integrationItemCount = all.length;
       res.json({ items: all, count: all.length });
     } catch (error) {
       console.error("[1C integration] Counterparty export failed:", (error as Error)?.message);
@@ -327,6 +331,7 @@ export function registerIntegrationRoutes(app: Express) {
   });
 
   app.post(`${apiPrefix}/counterparties/sync`, authenticateIntegration, asyncRoute(async (req, res) => {
+    req.integrationItemCount = Array.isArray(req.body?.items) ? req.body.items.length : null;
     const parsed = counterpartySyncBatchSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -369,12 +374,10 @@ export function registerIntegrationRoutes(app: Express) {
     }).from(integrationApiKeys).where(
       and(eq(integrationApiKeys.integration, "1c"), isNull(integrationApiKeys.revokedAt)),
     ).orderBy(desc(integrationApiKeys.createdAt)).limit(1);
-    const [settings] = await db.select().from(integrationSettings).where(eq(integrationSettings.id, 1)).limit(1);
     const [pending] = await db.select({ count: sql<number>`count(*)::int` }).from(integrationChangeLogs)
       .where(and(eq(integrationChangeLogs.outcome, "created"), isNull(integrationChangeLogs.reviewedAt)));
     res.json({
       activeKey: activeKey ?? null,
-      counterpartyMasterDataEnabled: settings?.counterpartyMasterDataEnabled ?? false,
       pendingReviewCount: pending?.count ?? 0,
     });
   }));
@@ -408,27 +411,19 @@ export function registerIntegrationRoutes(app: Express) {
   }));
 
   app.delete(`${adminBase}/api-key`, requireAdministrator, asyncRoute(async (req, res) => {
-    await db.update(integrationApiKeys).set({ revokedAt: sql`NOW()`, revokedById: req.session.userId! })
-      .where(and(eq(integrationApiKeys.integration, "1c"), isNull(integrationApiKeys.revokedAt)));
-    res.json({ revoked: true });
-  }));
-
-  app.patch(`${adminBase}/settings`, requireAdministrator, asyncRoute(async (req, res) => {
-    const parsed = z.object({ counterpartyMasterDataEnabled: z.boolean() }).strict().safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: "Некорректные настройки интеграции" });
-    await db.insert(integrationSettings).values({
-      id: 1,
-      counterpartyMasterDataEnabled: parsed.data.counterpartyMasterDataEnabled,
-      updatedById: req.session.userId!,
-    }).onConflictDoUpdate({
-      target: integrationSettings.id,
-      set: {
-        counterpartyMasterDataEnabled: parsed.data.counterpartyMasterDataEnabled,
-        updatedAt: sql`NOW()`,
+    await db.transaction(async (tx) => {
+      await tx.update(integrationApiKeys).set({ revokedAt: sql`NOW()`, revokedById: req.session.userId! })
+        .where(and(eq(integrationApiKeys.integration, "1c"), isNull(integrationApiKeys.revokedAt)));
+      await tx.insert(integrationSettings).values({
+        id: 1,
+        counterpartyMasterDataEnabled: false,
         updatedById: req.session.userId!,
-      },
+      }).onConflictDoUpdate({
+        target: integrationSettings.id,
+        set: { counterpartyMasterDataEnabled: false, updatedAt: sql`NOW()`, updatedById: req.session.userId! },
+      });
     });
-    res.json({ counterpartyMasterDataEnabled: parsed.data.counterpartyMasterDataEnabled });
+    res.json({ revoked: true });
   }));
 
   app.get(`${adminBase}/pending`, requireAdministrator, asyncRoute(async (_req, res) => {
@@ -477,12 +472,34 @@ export function registerIntegrationRoutes(app: Express) {
   }));
 
   app.get(`${adminBase}/logs`, requireAdministrator, asyncRoute(async (req, res) => {
-    const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
-    const [requests, changes] = await Promise.all([
-      db.select().from(integrationRequestLogs).orderBy(desc(integrationRequestLogs.createdAt)).limit(limit),
-      db.select().from(integrationChangeLogs).orderBy(desc(integrationChangeLogs.createdAt)).limit(limit),
-    ]);
-    res.json({ requests, changes });
+    const rawCursor = req.query.beforeId;
+    const cursor = rawCursor === undefined ? null :
+      typeof rawCursor === "string" && /^\d+$/.test(rawCursor) ? Number(rawCursor) : NaN;
+    if (cursor !== null && (!Number.isSafeInteger(cursor) || cursor < 1)) {
+      return res.status(400).json({ message: "Некорректный курсор журнала" });
+    }
+    const pageSize = 50;
+    const conditions = [eq(integrationRequestLogs.integration, "1c")];
+    if (cursor !== null) conditions.push(lt(integrationRequestLogs.id, cursor));
+    const rows = await db.select().from(integrationRequestLogs)
+      .where(and(...conditions))
+      .orderBy(desc(integrationRequestLogs.id))
+      .limit(pageSize + 1);
+    const hasMoreRequests = rows.length > pageSize;
+    const requests = rows.slice(0, pageSize);
+    const changes = cursor === null
+      ? await db.select().from(integrationChangeLogs)
+        .where(eq(integrationChangeLogs.integration, "1c"))
+        .orderBy(desc(integrationChangeLogs.id))
+        .limit(pageSize)
+      : [];
+    res.json({
+      requests,
+      changes,
+      pageSize,
+      hasMoreRequests,
+      nextCursor: hasMoreRequests ? requests[requests.length - 1]?.id ?? null : null,
+    });
   }));
 }
 
@@ -505,6 +522,7 @@ export function protectLinkedCounterpartyMasterFields(type: CounterpartyType) {
     }
 
     try {
+      if (await isAdministrator(req.session.userId)) return next();
       const table: any = tableByType[type];
       const [entity] = await db.select().from(table).where(eq(table.id, req.params.id)).limit(1);
       if (!entity?.external1cId) return next();

@@ -77,6 +77,10 @@ export function GenericLogisticsTab({
   const { data: integrationMode } = useQuery<{ counterpartyMasterDataEnabled: boolean }>({
     queryKey: ["/api/integrations/1c/mode"],
     enabled: type === "carrier" && !isAdmin,
+    staleTime: 0,
+    refetchInterval: 30_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
   const canMaintainCarrier = type !== "carrier" || isAdmin || integrationMode?.counterpartyMasterDataEnabled === false;
 

@@ -46,6 +46,10 @@ export function CustomersTab() {
   const { data: integrationMode } = useQuery<{ counterpartyMasterDataEnabled: boolean }>({
     queryKey: ["/api/integrations/1c/mode"],
     enabled: !isAdmin,
+    staleTime: 0,
+    refetchInterval: 30_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
   const canMaintainCounterparties = isAdmin || integrationMode?.counterpartyMasterDataEnabled === false;
 

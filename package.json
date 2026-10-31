@@ -15,6 +15,9 @@
     "test:restore-stock": "npm run test:restore-stock-guards && node scripts/test-restore-stock.mjs",
     "test:restore-stock-guards": "node --test tests/test-restore-stock-runner.test.mjs",
     "test:critical-flows": "node scripts/test-critical-flows.mjs",
+    "test:1c-integration": "node scripts/test-critical-flows.mjs --only-1c",
+    "demo:1c": "NODE_ENV=development node scripts/demo-1c-integration.mjs seed",
+    "demo:1c:cleanup": "NODE_ENV=development node scripts/demo-1c-integration.mjs cleanup",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

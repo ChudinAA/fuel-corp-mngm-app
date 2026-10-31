@@ -73,6 +73,9 @@ const supplierFormSchema = z.object({
   withVAT: z.boolean().default(false),
   isActive: z.boolean().default(true),
 });
+const supplierEditFormSchema = supplierFormSchema.extend({
+  baseIds: z.array(z.string()),
+});
 
 type BasisPriceEntry = {
   servicePrice: string;
@@ -105,7 +108,7 @@ export function AddSupplierDialog({
   onInlineOpenChange,
   onCreated,
 }: AddSupplierDialogProps) {
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
@@ -124,7 +127,7 @@ export function AddSupplierDialog({
   });
 
   const form = useForm<SupplierFormData>({
-    resolver: zodResolver(supplierFormSchema),
+    resolver: zodResolver(editItem ? supplierEditFormSchema : supplierFormSchema),
     defaultValues: {
       name: "",
       fullName: "",
@@ -428,7 +431,7 @@ export function AddSupplierDialog({
                         <Input
                           placeholder="Сокращенное название"
                           data-testid="input-supplier-name"
-                          disabled={Boolean(editItem?.external1cId)}
+                          disabled={Boolean(editItem?.external1cId) && !isAdmin}
                           {...field}
                         />
                       </FormControl>
@@ -468,7 +471,7 @@ export function AddSupplierDialog({
                     <Input
                       placeholder="Полное название"
                       data-testid="input-supplier-fullname"
-                      disabled={Boolean(editItem?.external1cId)}
+                      disabled={Boolean(editItem?.external1cId) && !isAdmin}
                       {...field}
                     />
                   </FormControl>
@@ -487,7 +490,7 @@ export function AddSupplierDialog({
                     <Input
                       placeholder="ИНН организации"
                       data-testid="input-supplier-inn"
-                      disabled={Boolean(editItem?.external1cId)}
+                      disabled={Boolean(editItem?.external1cId) && !isAdmin}
                       {...field}
                       value={field.value ?? ""}
                     />
