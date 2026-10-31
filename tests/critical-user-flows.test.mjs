@@ -106,13 +106,24 @@ async function waitForAuditOperations(entityType, entityId, operations) {
   );
 }
 
-async function getStock(table, id) {
+async function getStock(table, id, productType = "kerosene") {
   assert.ok(
     table === "warehouses" || table === "equipments",
     `unsupported stock table: ${table}`,
   );
+  assert.ok(
+    productType === "kerosene" || productType === "pvkj",
+    `unsupported stock product: ${productType}`,
+  );
+  const quantityColumn =
+    productType === "pvkj" ? "pvkj_balance_tonnes" : "current_balance_tonnes";
+  const costColumn =
+    productType === "pvkj"
+      ? "pvkj_average_cost_per_tonne"
+      : "average_cost_per_tonne";
   const result = await pool.query(
-    `SELECT current_balance_tonnes, average_cost_per_tonne
+    `SELECT ${quantityColumn} AS current_balance_tonnes,
+            ${costColumn} AS average_cost_per_tonne
      FROM ${table} WHERE id = $1`,
     [id],
   );
@@ -134,7 +145,13 @@ function assertStock(actual, quantityTonnes, averageCostPerTonne, label) {
   );
 }
 
-async function waitForCompletedQueue(table, ownerColumn, ownerId, productType) {
+async function waitForCompletedQueue(
+  table,
+  ownerColumn,
+  ownerId,
+  productType,
+  { requireTask = true } = {},
+) {
   const deadline = Date.now() + 45_000;
   let rows = [];
   while (Date.now() < deadline) {
@@ -149,6 +166,7 @@ async function waitForCompletedQueue(table, ownerColumn, ownerId, productType) {
       !rows.some((row) => row.status === "failed"),
       `${table} has no failed recalculation tasks`,
     );
+    if (rows.length === 0 && !requireTask) return rows;
     if (rows.length > 0 && rows.every((row) => row.status === "completed")) {
       return rows;
     }
@@ -2461,6 +2479,230 @@ test("authenticated refueling and OPT flows reconcile inventory, audit, and retr
     Math.abs(Number(restoredWarehouseReturnLedgers.rows[0].sum) - 60) < 0.011,
   );
   assert.equal(restoredWarehouseReturnLedgers.rows[0].deleted_at, null);
+
+  // PVKJ returns use the separate PVKJ balances and restore one row in each
+  // inventory ledger, independently of the kerosene lifecycle above.
+  const pvkjReturnFixture = randomUUID();
+  const pvkjReturnWarehouse = (
+    await pool.query(
+      `INSERT INTO warehouses
+         (name, current_balance_tonnes, average_cost_per_tonne,
+          pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+       VALUES ($1, 0, 0, 0, 0)
+       RETURNING id`,
+      [`critical-flow-pvkj-return-warehouse-${pvkjReturnFixture}`],
+    )
+  ).rows[0];
+  const pvkjReturnEquipment = (
+    await pool.query(
+      `INSERT INTO equipments
+         (name, current_balance_tonnes, average_cost_per_tonne,
+          pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
+       VALUES ($1, 0, 0, 0.02, 12000)
+       RETURNING id`,
+      [`critical-flow-pvkj-return-equipment-${pvkjReturnFixture}`],
+    )
+  ).rows[0];
+  await pool.query(
+    `INSERT INTO equipment_transactions
+       (equipment_id, transaction_type, product_type, source_type,
+        quantity_tonnes, price_per_tonne, balance_before_tonnes,
+        balance_after_tonnes, average_cost_before_per_tonne,
+        average_cost_after_per_tonne, sum, transaction_date)
+     VALUES ($1, 'receipt', 'pvkj', 'critical_flow_seed',
+             0.02, 12000, 0, 0.02, 0, 12000, 240, '2026-10-01T00:00:00.000Z')`,
+    [pvkjReturnEquipment.id],
+  );
+  const pvkjReturnQuantityTonnes = 0.005;
+  const pvkjReturnCostPerTonne = 12_000;
+  const pvkjReturnTotalCost =
+    pvkjReturnQuantityTonnes * pvkjReturnCostPerTonne;
+  const pvkjEquipmentBeforeReturn = await getStock(
+    "equipments",
+    pvkjReturnEquipment.id,
+    "pvkj",
+  );
+  const pvkjWarehouseBeforeReturn = await getStock(
+    "warehouses",
+    pvkjReturnWarehouse.id,
+    "pvkj",
+  );
+  const pvkjEquipmentReturn = await api("/api/equipment-movement", {
+    method: "POST",
+    expectedStatus: 201,
+    body: {
+      movementDate: "2026-10-30T09:00:00.000Z",
+      movementType: "tzk_to_storage",
+      productType: "pvkj",
+      nomenclatureId: pvkjNomenclature.id,
+      fromEquipmentId: pvkjReturnEquipment.id,
+      toWarehouseId: pvkjReturnWarehouse.id,
+      quantityTonnes: String(pvkjReturnQuantityTonnes),
+      totalCost: pvkjReturnTotalCost,
+      costPerTonne: pvkjReturnCostPerTonne,
+      isDraft: false,
+      notes: `critical flow PVKJ equipment return ${pvkjReturnFixture}`,
+    },
+  });
+  const pvkjEquipmentReturnId = pvkjEquipmentReturn.id;
+  assert.ok(pvkjEquipmentReturnId, "PVKJ equipment return is created");
+  assert.equal(pvkjEquipmentReturn.productType, "pvkj");
+  assert.equal(pvkjEquipmentReturn.nomenclatureId, pvkjNomenclature.id);
+  assertStock(
+    await getStock("equipments", pvkjReturnEquipment.id, "pvkj"),
+    pvkjEquipmentBeforeReturn.quantityTonnes - pvkjReturnQuantityTonnes,
+    pvkjReturnCostPerTonne,
+    "PVKJ equipment after return create",
+  );
+  assertStock(
+    await getStock("warehouses", pvkjReturnWarehouse.id, "pvkj"),
+    pvkjWarehouseBeforeReturn.quantityTonnes + pvkjReturnQuantityTonnes,
+    pvkjReturnCostPerTonne,
+    "PVKJ warehouse after return create",
+  );
+  const pvkjReturnRecord = await pool.query(
+    `SELECT product_type, nomenclature_id, quantity_tonnes, cost_per_tonne,
+            total_cost, deleted_at
+     FROM equipment_movement WHERE id = $1`,
+    [pvkjEquipmentReturnId],
+  );
+  assert.equal(pvkjReturnRecord.rows[0].product_type, "pvkj");
+  assert.equal(pvkjReturnRecord.rows[0].nomenclature_id, pvkjNomenclature.id);
+  assert.equal(
+    Number(pvkjReturnRecord.rows[0].quantity_tonnes),
+    pvkjReturnQuantityTonnes,
+  );
+  assert.ok(
+    Math.abs(Number(pvkjReturnRecord.rows[0].cost_per_tonne) -
+      pvkjReturnCostPerTonne) < 0.011,
+  );
+  assert.ok(
+    Math.abs(Number(pvkjReturnRecord.rows[0].total_cost) -
+      pvkjReturnTotalCost) < 0.011,
+  );
+  const createdPvkjReturnLedgers = await pool.query(
+    `SELECT
+       (SELECT COUNT(*)::int FROM equipment_transactions
+        WHERE source_type = 'movement' AND source_id = $1
+          AND deleted_at IS NULL) AS equipment_active,
+       (SELECT COUNT(*)::int FROM warehouse_transactions
+        WHERE source_type = 'movement' AND source_id = $1
+          AND deleted_at IS NULL) AS warehouse_active`,
+    [pvkjEquipmentReturnId],
+  );
+  assert.deepEqual(createdPvkjReturnLedgers.rows[0], {
+    equipment_active: 1,
+    warehouse_active: 1,
+  });
+  await waitForAuditOperations(
+    "equipment_movement",
+    pvkjEquipmentReturnId,
+    ["CREATE"],
+  );
+
+  await api(`/api/equipment-movement/${pvkjEquipmentReturnId}`, {
+    method: "DELETE",
+  });
+  await waitForCompletedQueue(
+    "equipment_recalculation_queue",
+    "equipment_id",
+    pvkjReturnEquipment.id,
+    "pvkj",
+    { requireTask: false },
+  );
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    pvkjReturnWarehouse.id,
+    "pvkj",
+    { requireTask: false },
+  );
+  assertStock(
+    await getStock("equipments", pvkjReturnEquipment.id, "pvkj"),
+    pvkjEquipmentBeforeReturn.quantityTonnes,
+    pvkjEquipmentBeforeReturn.averageCostPerTonne,
+    "PVKJ equipment after return delete",
+  );
+  assertStock(
+    await getStock("warehouses", pvkjReturnWarehouse.id, "pvkj"),
+    pvkjWarehouseBeforeReturn.quantityTonnes,
+    pvkjWarehouseBeforeReturn.averageCostPerTonne,
+    "PVKJ warehouse after return delete",
+  );
+  const deletedPvkjReturnLedgers = await pool.query(
+    `SELECT
+       (SELECT COUNT(*)::int FROM equipment_transactions
+        WHERE source_type = 'movement' AND source_id = $1
+          AND deleted_at IS NOT NULL) AS equipment_deleted,
+       (SELECT COUNT(*)::int FROM warehouse_transactions
+        WHERE source_type = 'movement' AND source_id = $1
+          AND deleted_at IS NOT NULL) AS warehouse_deleted`,
+    [pvkjEquipmentReturnId],
+  );
+  assert.deepEqual(deletedPvkjReturnLedgers.rows[0], {
+    equipment_deleted: 1,
+    warehouse_deleted: 1,
+  });
+  const pvkjReturnDeleteAuditId = await latestAuditId(
+    "equipment_movement",
+    pvkjEquipmentReturnId,
+  );
+  const restoredPvkjEquipmentReturn = await api(
+    `/api/audit/rollback/${pvkjReturnDeleteAuditId}`,
+    { method: "POST", body: {} },
+  );
+  assert.equal(restoredPvkjEquipmentReturn.success, true);
+  await waitForCompletedQueue(
+    "equipment_recalculation_queue",
+    "equipment_id",
+    pvkjReturnEquipment.id,
+    "pvkj",
+    { requireTask: false },
+  );
+  await waitForCompletedQueue(
+    "recalculation_queue",
+    "warehouse_id",
+    pvkjReturnWarehouse.id,
+    "pvkj",
+    { requireTask: false },
+  );
+  assertStock(
+    await getStock("equipments", pvkjReturnEquipment.id, "pvkj"),
+    pvkjEquipmentBeforeReturn.quantityTonnes - pvkjReturnQuantityTonnes,
+    pvkjReturnCostPerTonne,
+    "PVKJ equipment after audit restore",
+  );
+  assertStock(
+    await getStock("warehouses", pvkjReturnWarehouse.id, "pvkj"),
+    pvkjWarehouseBeforeReturn.quantityTonnes + pvkjReturnQuantityTonnes,
+    pvkjReturnCostPerTonne,
+    "PVKJ warehouse after audit restore",
+  );
+  await waitForAuditOperations(
+    "equipment_movement",
+    pvkjEquipmentReturnId,
+    ["CREATE", "DELETE", "RESTORE"],
+  );
+  const restoredPvkjReturnLedgers = await pool.query(
+    `SELECT
+       (SELECT COUNT(*)::int FROM equipment_transactions
+        WHERE source_type = 'movement' AND source_id = $1) AS equipment_total,
+       (SELECT COUNT(*)::int FROM equipment_transactions
+        WHERE source_type = 'movement' AND source_id = $1
+          AND deleted_at IS NULL) AS equipment_active,
+       (SELECT COUNT(*)::int FROM warehouse_transactions
+        WHERE source_type = 'movement' AND source_id = $1) AS warehouse_total,
+       (SELECT COUNT(*)::int FROM warehouse_transactions
+        WHERE source_type = 'movement' AND source_id = $1
+          AND deleted_at IS NULL) AS warehouse_active`,
+    [pvkjEquipmentReturnId],
+  );
+  assert.deepEqual(restoredPvkjReturnLedgers.rows[0], {
+    equipment_total: 1,
+    equipment_active: 1,
+    warehouse_total: 1,
+    warehouse_active: 1,
+  });
 
   // Cashflow transactions are the monetary ledger: CRUD and audit rollback
   // must preserve date-based totals and linked movement references.

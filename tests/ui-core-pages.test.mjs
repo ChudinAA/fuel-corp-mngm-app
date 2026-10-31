@@ -73,6 +73,7 @@ const fixtures = {
   warehouseTransferNote: `ui-operations-warehouse-transfer-${runId}`,
   equipmentTransferNote: `ui-operations-equipment-transfer-${runId}`,
   equipmentReturnNote: `ui-operations-equipment-return-${runId}`,
+  equipmentPvkjReturnNote: `ui-operations-equipment-pvkj-return-${runId}`,
   finalRefuelingNote: `ui-operations-final-refueling-${runId}`,
 };
 let browser;
@@ -400,9 +401,19 @@ async function seedUiFixtures() {
     `INSERT INTO equipments
        (name, current_balance_tonnes, average_cost_per_tonne,
         pvkj_balance_tonnes, pvkj_average_cost_per_tonne)
-     VALUES ($1, 0, 0, 0, 0)
+      VALUES ($1, 0, 0, 0.05, 12000)
      RETURNING id`,
     [fixtures.equipmentName],
+  );
+  await pool.query(
+    `INSERT INTO equipment_transactions
+       (equipment_id, transaction_type, product_type, source_type,
+        quantity_tonnes, price_per_tonne, balance_before_tonnes,
+        balance_after_tonnes, average_cost_before_per_tonne,
+        average_cost_after_per_tonne, sum, transaction_date)
+     VALUES ($1, 'receipt', 'pvkj', 'ui_test_seed',
+             0.05, 12000, 0, 0.05, 0, 12000, 600, '2026-10-01T00:00:00.000Z')`,
+    [equipment.rows[0].id],
   );
   const unit = await pool.query(
     `INSERT INTO units_of_measure (short_name, full_name)
@@ -671,7 +682,11 @@ async function cleanUiFixtures() {
     ),
     pool.query(
       "SELECT id FROM equipment_movement WHERE notes = ANY($1::text[])",
-      [[fixtures.equipmentTransferNote, fixtures.equipmentReturnNote]],
+      [[
+        fixtures.equipmentTransferNote,
+        fixtures.equipmentReturnNote,
+        fixtures.equipmentPvkjReturnNote,
+      ]],
     ),
     pool.query(
       "SELECT id FROM opt WHERE notes = ANY($1::text[])",
@@ -6877,8 +6892,339 @@ test("authenticated browser can load the core business pages", async () => {
         .some((row) => row.innerText.includes("30.10.2026"))`,
       "the restored equipment return in the active table",
     );
+    await clickTestId(cdp, "button-add-equipment-movement");
+    await waitForExpression(
+      cdp,
+      `!!document.querySelector('[data-testid="select-equipment-movement-type"]') &&
+       !!document.querySelector('[data-testid="button-create-equipment-movement"]')`,
+      "the new PVKJ equipment-to-warehouse return form",
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-equipment-movement-type",
+      "СЗ -> Склад",
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-equipment-movement-date"]',
+      "30.10.2026",
+    );
+    await selectComboboxOption(cdp, "select-equipment-product", "ПВКЖ");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[data-testid="select-nomenclature"]')
+        ?.innerText.includes(${JSON.stringify(fixtures.nomenclatureNames.pvkj)})`,
+      "the default PVKJ nomenclature for the equipment return",
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-nomenclature",
+      fixtures.nomenclatureNames.pvkj,
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-equipment-movement-from-equipment",
+      fixtures.equipmentName,
+    );
+    await selectComboboxOption(
+      cdp,
+      "select-equipment-movement-to-warehouse",
+      fixtures.transferWarehouseName,
+    );
+    const equipmentBeforePvkjReturn = await pool.query(
+      `SELECT id, pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM equipments WHERE name = $1`,
+      [fixtures.equipmentName],
+    );
+    assert.equal(equipmentBeforePvkjReturn.rows.length, 1);
+    const pvkjEquipmentBefore = equipmentBeforePvkjReturn.rows[0];
+    const warehouseBeforePvkjReturn = await pool.query(
+      `SELECT pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+    );
+    const pvkjWarehouseBefore = warehouseBeforePvkjReturn.rows[0];
+    assert.equal(Number(pvkjEquipmentBefore.pvkj_balance_tonnes), 0.05);
+    assert.equal(Number(pvkjWarehouseBefore.pvkj_balance_tonnes), 0);
+    const pvkjReturnQuantityTonnes = 0.001;
+    const expectedPvkjReturnCostPerTonne = Number(
+      pvkjEquipmentBefore.pvkj_average_cost_per_tonne,
+    );
+    await fillInput(
+      cdp,
+      '[data-testid="input-quantity-tonnes"]',
+      String(pvkjReturnQuantityTonnes),
+    );
+    await fillInput(
+      cdp,
+      'input[placeholder="Дополнительная информация..."]',
+      fixtures.equipmentPvkjReturnNote,
+    );
+    await waitForExpression(
+      cdp,
+      `(() => {
+        const expected = new Intl.NumberFormat("ru-RU", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(${expectedPvkjReturnCostPerTonne});
+        return Array.from(document.querySelectorAll('[role="dialog"]'))
+          .some((dialog) => dialog.innerText.includes(expected + " ₽/т"));
+      })()`,
+      "the current equipment PVKJ average cost to appear in the return form",
+    );
+    await waitForExpression(
+      cdp,
+      `!document.querySelector('[data-testid="button-create-equipment-movement"]')?.disabled`,
+      "the PVKJ equipment return to pass stock validation",
+    );
+    await clickTestId(cdp, "button-create-equipment-movement");
+    const pvkjEquipmentReturn = await waitForDatabaseRow(
+      `SELECT id, movement_type, product_type, quantity_tonnes, input_mode,
+              is_draft, total_cost, cost_per_tonne, nomenclature_id,
+              from_equipment_id, to_warehouse_id
+       FROM equipment_movement WHERE notes = $1`,
+      [fixtures.equipmentPvkjReturnNote],
+      "the PVKJ equipment-to-warehouse return created in the UI",
+    );
+    assert.equal(pvkjEquipmentReturn.movement_type, "tzk_to_storage");
+    assert.equal(pvkjEquipmentReturn.product_type, "pvkj");
+    assert.equal(Number(pvkjEquipmentReturn.quantity_tonnes), pvkjReturnQuantityTonnes);
+    assert.equal(pvkjEquipmentReturn.input_mode, "tonnes");
+    assert.equal(pvkjEquipmentReturn.is_draft, false);
+    assert.equal(pvkjEquipmentReturn.nomenclature_id, nomenclatureIds.pvkj);
+    assert.equal(pvkjEquipmentReturn.from_equipment_id, pvkjEquipmentBefore.id);
+    assert.equal(pvkjEquipmentReturn.to_warehouse_id, transferWarehouseId);
+    assert.ok(
+      Math.abs(
+        Number(pvkjEquipmentReturn.cost_per_tonne) -
+          expectedPvkjReturnCostPerTonne,
+      ) < 0.011,
+      "the PVKJ return uses the equipment's current average cost",
+    );
+    assert.ok(
+      Math.abs(
+        Number(pvkjEquipmentReturn.total_cost) -
+          pvkjReturnQuantityTonnes * expectedPvkjReturnCostPerTonne,
+      ) < 0.011,
+      "the PVKJ return preserves the calculated transfer cost",
+    );
+    await waitForAuditOperations(pvkjEquipmentReturn.id, ["CREATE"]);
+    await waitForRecalculation(
+      "equipment_recalculation_queue",
+      "equipment_id",
+      pvkjEquipmentBefore.id,
+      { requireTask: false, productType: "pvkj" },
+    );
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      transferWarehouseId,
+      { requireTask: false, productType: "pvkj" },
+    );
+    await waitForDatabaseRow(
+      `SELECT pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [pvkjEquipmentBefore.id],
+      "the equipment PVKJ balance after return",
+      (row) =>
+        Math.abs(
+          Number(row.pvkj_balance_tonnes) -
+            (Number(pvkjEquipmentBefore.pvkj_balance_tonnes) -
+              pvkjReturnQuantityTonnes),
+        ) < 0.000001 &&
+        Math.abs(
+          Number(row.pvkj_average_cost_per_tonne) -
+            expectedPvkjReturnCostPerTonne,
+        ) < 0.011,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the warehouse PVKJ balance after return",
+      (row) =>
+        Math.abs(
+          Number(row.pvkj_balance_tonnes) -
+            (Number(pvkjWarehouseBefore.pvkj_balance_tonnes) +
+              pvkjReturnQuantityTonnes),
+        ) < 0.000001 &&
+        Math.abs(
+          Number(row.pvkj_average_cost_per_tonne) -
+            expectedPvkjReturnCostPerTonne,
+        ) < 0.011,
+      45_000,
+    );
+    await fillInput(
+      cdp,
+      'input[placeholder="Поиск по примечаниям..."]',
+      fixtures.equipmentPvkjReturnNote,
+    );
+    await openDeleteMenuForRow(cdp, "30.10.2026");
+    await waitForExpression(
+      cdp,
+      `document.querySelector('[role="alertdialog"]')
+        ?.innerText.includes("Удалить перемещение?")`,
+      "the PVKJ equipment-return deletion confirmation",
+    );
+    await clickButtonWithText(cdp, "Удалить");
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM equipment_movement WHERE id = $1",
+      [pvkjEquipmentReturn.id],
+      "the PVKJ return soft-deleted through the UI",
+      (row) => Boolean(row.deleted_at),
+    );
+    await waitForAuditOperations(pvkjEquipmentReturn.id, ["CREATE", "DELETE"]);
+    await waitForRecalculation(
+      "equipment_recalculation_queue",
+      "equipment_id",
+      pvkjEquipmentBefore.id,
+      { requireTask: false, productType: "pvkj" },
+    );
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      transferWarehouseId,
+      { requireTask: false, productType: "pvkj" },
+    );
+    await waitForDatabaseRow(
+      `SELECT pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [pvkjEquipmentBefore.id],
+      "the equipment PVKJ balance after deleting the return",
+      (row) =>
+        Math.abs(
+          Number(row.pvkj_balance_tonnes) -
+            Number(pvkjEquipmentBefore.pvkj_balance_tonnes),
+        ) < 0.000001 &&
+        Math.abs(
+          Number(row.pvkj_average_cost_per_tonne) -
+            expectedPvkjReturnCostPerTonne,
+        ) < 0.011,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the warehouse PVKJ balance after deleting the return",
+      (row) =>
+        Math.abs(
+          Number(row.pvkj_balance_tonnes) -
+            Number(pvkjWarehouseBefore.pvkj_balance_tonnes),
+        ) < 0.000001 &&
+        Math.abs(
+          Number(row.pvkj_average_cost_per_tonne) -
+            Number(pvkjWarehouseBefore.pvkj_average_cost_per_tonne),
+        ) < 0.011,
+      45_000,
+    );
+    const deletedPvkjReturnLedgers = await pool.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM equipment_transactions
+          WHERE source_type = 'movement' AND source_id = $1
+            AND deleted_at IS NOT NULL) AS equipment_deleted,
+         (SELECT COUNT(*)::int FROM warehouse_transactions
+          WHERE source_type = 'movement' AND source_id = $1
+            AND deleted_at IS NOT NULL) AS warehouse_deleted`,
+      [pvkjEquipmentReturn.id],
+    );
+    assert.deepEqual(deletedPvkjReturnLedgers.rows[0], {
+      equipment_deleted: 1,
+      warehouse_deleted: 1,
+    });
+    const pvkjReturnDeleteAudit = await pool.query(
+      `SELECT id FROM audit_log
+       WHERE entity_type = 'equipment_movement' AND entity_id = $1
+         AND operation = 'DELETE'
+       ORDER BY created_at DESC LIMIT 1`,
+      [pvkjEquipmentReturn.id],
+    );
+    assert.ok(pvkjReturnDeleteAudit.rows[0]?.id);
+    await restoreDeletedAuditEntry(
+      cdp,
+      pvkjReturnDeleteAudit.rows[0].id,
+      "Все перемещения ЛИК",
+    );
+    await waitForDatabaseRow(
+      "SELECT deleted_at FROM equipment_movement WHERE id = $1",
+      [pvkjEquipmentReturn.id],
+      "the PVKJ return restored through audit history",
+      (row) => row.deleted_at === null,
+    );
+    await waitForAuditOperations(pvkjEquipmentReturn.id, [
+      "CREATE",
+      "DELETE",
+      "RESTORE",
+    ]);
+    await waitForRecalculation(
+      "equipment_recalculation_queue",
+      "equipment_id",
+      pvkjEquipmentBefore.id,
+      { requireTask: false, productType: "pvkj" },
+    );
+    await waitForRecalculation(
+      "recalculation_queue",
+      "warehouse_id",
+      transferWarehouseId,
+      { requireTask: false, productType: "pvkj" },
+    );
+    await waitForDatabaseRow(
+      `SELECT pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM equipments WHERE id = $1`,
+      [pvkjEquipmentBefore.id],
+      "the equipment PVKJ balance after restoring the return",
+      (row) =>
+        Math.abs(
+          Number(row.pvkj_balance_tonnes) -
+            (Number(pvkjEquipmentBefore.pvkj_balance_tonnes) -
+              pvkjReturnQuantityTonnes),
+        ) < 0.000001 &&
+        Math.abs(
+          Number(row.pvkj_average_cost_per_tonne) -
+            expectedPvkjReturnCostPerTonne,
+        ) < 0.011,
+      45_000,
+    );
+    await waitForDatabaseRow(
+      `SELECT pvkj_balance_tonnes, pvkj_average_cost_per_tonne
+       FROM warehouses WHERE id = $1`,
+      [transferWarehouseId],
+      "the warehouse PVKJ balance after restoring the return",
+      (row) =>
+        Math.abs(
+          Number(row.pvkj_balance_tonnes) -
+            (Number(pvkjWarehouseBefore.pvkj_balance_tonnes) +
+              pvkjReturnQuantityTonnes),
+        ) < 0.000001 &&
+        Math.abs(
+          Number(row.pvkj_average_cost_per_tonne) -
+            expectedPvkjReturnCostPerTonne,
+        ) < 0.011,
+      45_000,
+    );
+    const restoredPvkjReturnLedgers = await pool.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM equipment_transactions
+          WHERE source_type = 'movement' AND source_id = $1) AS equipment_total,
+         (SELECT COUNT(*)::int FROM equipment_transactions
+          WHERE source_type = 'movement' AND source_id = $1
+            AND deleted_at IS NULL) AS equipment_active,
+         (SELECT COUNT(*)::int FROM warehouse_transactions
+          WHERE source_type = 'movement' AND source_id = $1) AS warehouse_total,
+         (SELECT COUNT(*)::int FROM warehouse_transactions
+          WHERE source_type = 'movement' AND source_id = $1
+            AND deleted_at IS NULL) AS warehouse_active`,
+      [pvkjEquipmentReturn.id],
+    );
+    assert.deepEqual(restoredPvkjReturnLedgers.rows[0], {
+      equipment_total: 1,
+      equipment_active: 1,
+      warehouse_total: 1,
+      warehouse_active: 1,
+    });
     console.log(
-      "UI flow passed: equipment-to-warehouse return create/delete/audit restore preserves both balances and one active ledger entry per side",
+      "UI flow passed: kerosene and PVKJ equipment returns preserve balances, costs, and one active ledger entry per side",
     );
 
     await cdp.evaluate("window.__uiOperationSse?.close()");
