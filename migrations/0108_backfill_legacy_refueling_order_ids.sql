@@ -4,7 +4,8 @@
 --
 -- Only fills refueling_order_id. Does not change deal values, stock movements,
 -- or rows that already have an order ID.
--- Groups are exact RT number + calendar date, matching the legacy list ordering.
+-- Groups are exact non-placeholder RT number + calendar date, matching the
+-- legacy list ordering. A dash ("-") is treated as missing RT data.
 -- Only active common-aircraft rows are included; NULL equipment_type is treated
 -- as "common". LIK rows, deleted rows, blank RT numbers, and ambiguous groups
 -- are intentionally left unchanged.
@@ -55,6 +56,7 @@ WITH candidate_groups AS MATERIALIZED (
     AND COALESCE(r.equipment_type, 'common') = 'common'
     AND r.order_number IS NOT NULL
     AND r.order_number ~ '[^[:space:]]'
+    AND r.order_number !~ '^[[:space:]]*-[[:space:]]*$'
     -- Do not create a second ID beside an existing order for the same RT/date.
     AND NOT EXISTS (
       SELECT 1

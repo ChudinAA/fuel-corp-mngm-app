@@ -2,8 +2,9 @@
 -- Run this first in Production SQL Console. Migrate only rows marked READY.
 --
 -- Scope matches the migration: active common-aircraft rows (NULL equipment_type
--- is treated as "common"), exact RT number, same calendar date, no existing
--- order ID anywhere in that group, and 2-3 distinct supported product types.
+-- is treated as "common"), exact non-placeholder RT number, same calendar date,
+-- no existing order ID anywhere in that group, and 2-3 distinct product types.
+-- A dash ("-") is treated as missing RT data.
 
 WITH rt_groups AS (
   SELECT
@@ -27,6 +28,7 @@ WITH rt_groups AS (
   WHERE COALESCE(r.equipment_type, 'common') = 'common'
     AND r.order_number IS NOT NULL
     AND r.order_number ~ '[^[:space:]]'
+    AND r.order_number !~ '^[[:space:]]*-[[:space:]]*$'
   GROUP BY r.order_number, r.refueling_date::date
 )
 SELECT
