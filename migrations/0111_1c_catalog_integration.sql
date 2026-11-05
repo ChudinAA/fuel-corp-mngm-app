@@ -16,7 +16,7 @@ BEGIN
       'SELECT EXISTS (
         SELECT 1 FROM %I
         WHERE id_1c IS NOT NULL
-          AND id_1c !~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''
+          AND id_1c::text !~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''
       )',
       table_name
     ) INTO invalid_ids;
@@ -25,7 +25,7 @@ BEGIN
     END IF;
     EXECUTE format(
       'SELECT EXISTS (
-        SELECT id_1c FROM %I
+        SELECT id_1c::text FROM %I
         WHERE id_1c IS NOT NULL
         GROUP BY id_1c HAVING count(*) > 1
       )',
@@ -56,14 +56,18 @@ ALTER TABLE nomenclature
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'counterparty_contracts_counterparty_1c_pair_check'
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'counterparty_contracts_counterparty_1c_pair_check'
+      AND conrelid = 'counterparty_contracts'::regclass
   ) THEN
     ALTER TABLE counterparty_contracts
       ADD CONSTRAINT counterparty_contracts_counterparty_1c_pair_check
       CHECK ((counterparty_id_1c IS NULL) = (counterparty_type IS NULL));
   END IF;
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'counterparty_contracts_counterparty_1c_type_check'
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'counterparty_contracts_counterparty_1c_type_check'
+      AND conrelid = 'counterparty_contracts'::regclass
   ) THEN
     ALTER TABLE counterparty_contracts
       ADD CONSTRAINT counterparty_contracts_counterparty_1c_type_check

@@ -290,7 +290,7 @@ export default function Integration1CPage() {
     <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
       <header className="min-w-0">
         <h1 className="text-2xl font-semibold">Интеграция с 1С</h1>
-        <p className="text-sm text-muted-foreground">Ключ API, проверка новых контрагентов и история обмена.</p>
+        <p className="text-sm text-muted-foreground">Ключ API, обмен справочниками и история синхронизаций.</p>
       </header>
 
       <Card className="min-w-0">

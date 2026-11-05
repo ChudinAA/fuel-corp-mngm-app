@@ -96,6 +96,12 @@ const ENTITY_QUERY_KEYS: Record<string, string[][]> = {
     ["/api/logistics/trailers"],
     ["/api/logistics/delivery-locations"],
   ],
+  directories: [
+    ["/api/contracts"],
+    ["/api/nomenclature"],
+    ["/api/nomenclature-types"],
+    ["/api/units-of-measure"],
+  ],
 };
 
 export function useWarehouseSSE(isAuthenticated: boolean) {

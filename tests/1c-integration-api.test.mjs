@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import pg from "pg";
 
@@ -103,6 +104,41 @@ async function waitForRequestLog(requestId) {
   assert.fail(`Timed out waiting for integration request log ${requestId}`);
 }
 
+async function verifyCatalogMigration() {
+  const client = await pool.connect();
+  const migrationSql = await readFile(new URL("../migrations/0111_1c_catalog_integration.sql", import.meta.url), "utf8");
+  const tempTables = ["counterparty_contracts", "nomenclature_types", "units_of_measure", "nomenclature"];
+  try {
+    await client.query("CREATE TEMP TABLE counterparty_contracts (id_1c text)");
+    await client.query("CREATE TEMP TABLE nomenclature_types (id_1c text)");
+    await client.query("CREATE TEMP TABLE units_of_measure (id_1c text)");
+    await client.query("CREATE TEMP TABLE nomenclature (id_1c text)");
+    const validId = randomUUID();
+    await client.query("INSERT INTO counterparty_contracts (id_1c) VALUES ($1)", [validId]);
+    await client.query(migrationSql);
+    const migratedType = await client.query(
+      "SELECT pg_typeof(id_1c)::text AS type FROM counterparty_contracts WHERE id_1c = $1::uuid",
+      [validId],
+    );
+    assert.equal(migratedType.rows[0]?.type, "uuid", "the migration converts existing text UUIDs");
+    const linkType = await client.query(
+      "SELECT pg_typeof(counterparty_id_1c)::text AS type FROM counterparty_contracts LIMIT 1",
+    );
+    assert.equal(linkType.rows[0]?.type, "uuid", "the contract counterparty link is a UUID");
+
+    await client.query(`DROP TABLE ${tempTables.join(", ")}`);
+    await client.query("CREATE TEMP TABLE counterparty_contracts (id_1c text)");
+    await client.query("CREATE TEMP TABLE nomenclature_types (id_1c text)");
+    await client.query("CREATE TEMP TABLE units_of_measure (id_1c text)");
+    await client.query("CREATE TEMP TABLE nomenclature (id_1c text)");
+    await client.query("INSERT INTO nomenclature (id_1c) VALUES ('not-a-uuid')");
+    await assert.rejects(client.query(migrationSql), /non-UUID values/i);
+    await client.query("ROLLBACK");
+  } finally {
+    client.release();
+  }
+}
+
 after(async () => {
   try {
     if (trackedRequestIds.size) {
@@ -144,8 +180,9 @@ after(async () => {
   }
 });
 
-test("1C API authenticates, syncs counterparties, audits changes and paginates request logs", async () => {
+test("1C API authenticates and syncs counterparties, contracts and catalogs with audit and access control", async () => {
   assert.ok(baseUrl, "E2E_BASE_URL is required");
+  await verifyCatalogMigration();
   await loginAdmin();
 
   const initialStatus = await fetchJson("/api/admin/integrations/1c/status");
@@ -303,14 +340,47 @@ test("1C API authenticates, syncs counterparties, audits changes and paginates r
   });
   assert.equal(syncedContract.response.status, 200);
   assert.equal(syncedContract.data.results[0].outcome, "created");
+  const updatedContractSync = await fetchJson(`${apiRoot}/contracts/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [{
+      id_1c: ids.contract,
+      contract_name: `1C contract updated ${suffix}`,
+      contract_number: `C-${suffix}`,
+      contract_date: "2026-11-05",
+      counterparty_type: "supplier",
+      counterparty_id_1c: ids.supplier,
+      status: "active",
+    }] },
+  });
+  assert.equal(updatedContractSync.data.results[0].outcome, "updated", "repeated Id_1c updates the existing contract");
   const [contractFromDb, itemFromDb] = await Promise.all([
     pool.query("SELECT * FROM counterparty_contracts WHERE id_1c = $1::uuid", [ids.contract]),
     pool.query("SELECT * FROM nomenclature WHERE id_1c = $1::uuid", [ids.nomenclature]),
   ]);
+  assert.equal(contractFromDb.rows[0].contract_name, `1C contract updated ${suffix}`);
   assert.equal(contractFromDb.rows[0].supplier_id, supplier.rows[0].id);
   assert.equal(contractFromDb.rows[0].counterparty_id_1c, ids.supplier);
   assert.equal(itemFromDb.rows[0].unit_id, (await pool.query("SELECT id FROM units_of_measure WHERE id_1c = $1::uuid", [ids.unit])).rows[0].id);
   assert.equal(itemFromDb.rows[0].nomenclature_type_id, (await pool.query("SELECT id FROM nomenclature_types WHERE id_1c = $1::uuid", [ids.nomenclatureType])).rows[0].id);
+  const id1cColumns = await pool.query(
+    `SELECT table_name, data_type
+     FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = ANY($1::text[])
+       AND column_name = 'id_1c'`,
+    [["counterparty_contracts", "nomenclature_types", "units_of_measure", "nomenclature"]],
+  );
+  assert.equal(id1cColumns.rows.length, 4);
+  assert.ok(id1cColumns.rows.every((column) => column.data_type === "uuid"), "catalog Id_1c fields use UUID columns");
+  const contractLinkColumns = await pool.query(
+    `SELECT column_name, data_type FROM information_schema.columns
+     WHERE table_schema = current_schema() AND table_name = 'counterparty_contracts'
+       AND column_name IN ('counterparty_id_1c', 'parent_id_1c')`,
+  );
+  assert.equal(contractLinkColumns.rows.length, 2);
+  assert.ok(contractLinkColumns.rows.every((column) => column.data_type === "uuid"));
 
   const contractWithoutParty = await fetchJson(`${apiRoot}/contracts/sync`, {
     method: "POST",
@@ -329,6 +399,14 @@ test("1C API authenticates, syncs counterparties, audits changes and paginates r
 
   const exportedCatalog = await fetchJson(`${apiRoot}/contracts`, { token: firstKey, cookie: null });
   assert.ok(exportedCatalog.data.items.some((item) => item.id_1c === ids.contract));
+  const [exportedTypes, exportedUnits, exportedNomenclature] = await Promise.all([
+    fetchJson(`${apiRoot}/nomenclature-types`, { token: firstKey, cookie: null }),
+    fetchJson(`${apiRoot}/units-of-measure`, { token: firstKey, cookie: null }),
+    fetchJson(`${apiRoot}/nomenclature`, { token: firstKey, cookie: null }),
+  ]);
+  assert.ok(exportedTypes.data.items.some((item) => item.id_1c === ids.nomenclatureType));
+  assert.ok(exportedUnits.data.items.some((item) => item.id_1c === ids.unit));
+  assert.ok(exportedNomenclature.data.items.some((item) => item.id_1c === ids.nomenclature));
   const publicOpenApi = await fetchJson("/api/integrations/1c/openapi.json", { cookie: null });
   assert.equal(publicOpenApi.response.status, 200);
   assert.ok(publicOpenApi.data.paths["/contracts/sync"]);

@@ -9,6 +9,12 @@ Keep one contracts directory with concrete supplier, buyer and carrier foreign k
 
 **How to apply:** new counterparty categories require an explicit extension of the ownership constraint and validation, not arbitrary polymorphic IDs.
 
+For 1C-linked contracts, resolve the external owner by `(counterparty_type, counterparty_id_1c)` and preserve the existing concrete local owner FK. Non-admin users may CRUD only records without `id_1c`; only the integration API may set external IDs/statuses.
+
+**Why:** 1C is authoritative for linked master records, while the application still relies on concrete local FKs for contracts and transactions.
+
+**How to apply:** keep linked-record checks server-side across every create/update/delete path, and do not replace existing owner FKs with a polymorphic external reference.
+
 Do not automatically assign the default nomenclature item to historical prices or deals. Preserve legacy text contract information until the user explicitly maps a record to a directory entry.
 
 **Why:** a default is a preference for new input, not evidence of which nomenclature was used historically. Guessing would silently relabel business records.
