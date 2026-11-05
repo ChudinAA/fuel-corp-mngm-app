@@ -17,6 +17,7 @@ import { FilePlus2, FileText, Pencil, Plus, Search, Trash2 } from "lucide-react"
 
 type Contract = {
   id: string;
+  id1c?: string | null;
   contractName: string;
   contractNumber: string;
   contractDate: string;
@@ -31,7 +32,7 @@ type Party = { id: string; name: string };
 
 export function ContractsTab() {
   const { toast } = useToast();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [search, setSearch] = useState("");
   const [recordType, setRecordType] = useState("all");
   const [partyType, setPartyType] = useState("all");
@@ -125,6 +126,7 @@ export function ContractsTab() {
                       {item.parentContractId && <span className="shrink-0 text-muted-foreground" aria-hidden="true">↳</span>}
                       <p className="truncate font-medium">{item.contractName}</p>
                       {item.parentContractId && <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">Приложение</Badge>}
+                      {item.id1c && <Badge variant="outline" className="shrink-0 text-[10px]">1С</Badge>}
                     </div>
                     <p className="truncate text-sm text-muted-foreground">№ {item.contractNumber} <span className="sm:hidden">· {item.contractDate?.slice(0, 10) || "—"}</span></p>
                     <span className="mt-1 flex min-w-0 items-center gap-1.5 sm:hidden">
@@ -140,14 +142,16 @@ export function ContractsTab() {
                   <span className="hidden text-xs text-muted-foreground sm:block">{item.parentContractId ? "" : `${contracts.filter((c) => c.parentContractId === item.id).length} прил.`}</span>
                   <div className="flex items-center justify-end gap-1">
                     {!item.parentContractId && hasPermission("directories", "create") && <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={`Добавить приложение к ${item.contractName}`} title="Добавить приложение" onClick={() => openAppendix(item)}><FilePlus2 className="h-4 w-4" /></Button>}
-                  <EntityActionsMenu
-                    triggerClassName="h-8 w-8"
-                    audit={{ entityType: "counterparty_contracts", entityId: item.id, entityName: item.contractName }}
-                    actions={[
-                      { id: "edit", label: "Изменить", icon: Pencil, onClick: () => openEdit(item), permission: { module: "directories", action: "edit" } },
-                      { id: "delete", label: "Удалить", icon: Trash2, onClick: () => setDeleting(item), variant: "destructive", permission: { module: "directories", action: "delete" } },
-                    ]}
-                  />
+                  {(!item.id1c || isAdmin) && (
+                    <EntityActionsMenu
+                      triggerClassName="h-8 w-8"
+                      audit={{ entityType: "counterparty_contracts", entityId: item.id, entityName: item.contractName }}
+                      actions={[
+                        { id: "edit", label: "Изменить", icon: Pencil, onClick: () => openEdit(item), permission: { module: "directories", action: "edit" } },
+                        { id: "delete", label: "Удалить", icon: Trash2, onClick: () => setDeleting(item), variant: "destructive", permission: { module: "directories", action: "delete" } },
+                      ]}
+                    />
+                  )}
                   </div>
                 </div>
               ))}

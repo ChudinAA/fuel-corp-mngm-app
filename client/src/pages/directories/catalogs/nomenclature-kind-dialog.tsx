@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { DialogDescription, DialogHeader, DialogTitle, MinimizableDialog, MinimizableDialogContent } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 
-export type NomenclatureType = { id: string; name: string; code: string };
+export type NomenclatureType = { id: string; id1c?: string | null; name: string; code: string };
 interface Props {
   open: boolean;
   editItem: NomenclatureType | null;

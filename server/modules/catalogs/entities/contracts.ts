@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { pgTable, uuid, text, date, timestamp, index, check, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, date, timestamp, index, uniqueIndex, check, foreignKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
@@ -11,7 +11,11 @@ export const counterpartyContracts = pgTable(
   "counterparty_contracts",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    id1c: text("id_1c"),
+    id1c: uuid("id_1c"),
+    counterparty1cId: uuid("counterparty_id_1c"),
+    counterpartyType: text("counterparty_type"),
+    parent1cId: uuid("parent_id_1c"),
+    integrationStatus: text("integration_status"),
     contractName: text("contract_name").notNull(),
     contractNumber: text("contract_number").notNull(),
     contractDate: date("contract_date").notNull(),
@@ -40,6 +44,15 @@ export const counterpartyContracts = pgTable(
       "counterparty_contracts_one_counterparty_check",
       sql`num_nonnulls(${table.supplierId}, ${table.buyerId}, ${table.carrierId}) = 1`,
     ),
+    counterparty1cPairCheck: check(
+      "counterparty_contracts_counterparty_1c_pair_check",
+      sql`(${table.counterparty1cId} IS NULL) = (${table.counterpartyType} IS NULL)`,
+    ),
+    counterparty1cTypeCheck: check(
+      "counterparty_contracts_counterparty_1c_type_check",
+      sql`${table.counterpartyType} IS NULL OR ${table.counterpartyType} IN ('supplier', 'customer', 'carrier')`,
+    ),
+    id1cUnique: uniqueIndex("counterparty_contracts_id_1c_unique").on(table.id1c).where(sql`${table.id1c} IS NOT NULL`),
   }),
 );
 
@@ -63,6 +76,11 @@ export const counterpartyContractBaseSchema = createInsertSchema(counterpartyCon
     supplierId: z.string().uuid().nullable().optional(),
     buyerId: z.string().uuid().nullable().optional(),
     carrierId: z.string().uuid().nullable().optional(),
+    id1c: z.string().uuid().nullable().optional(),
+    counterparty1cId: z.string().uuid().nullable().optional(),
+    counterpartyType: z.enum(["supplier", "customer", "carrier"]).nullable().optional(),
+    parent1cId: z.string().uuid().nullable().optional(),
+    integrationStatus: z.string().nullable().optional(),
     parentContractId: z.string().uuid().nullable().optional(),
     contractDate: z.string().min(1, "Укажите дату договора"),
   });

@@ -18,9 +18,10 @@ import { Package, Pencil, Plus, Search, Ruler, Trash2, Shapes } from "lucide-rea
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ProductType = "kerosene" | "pvkj" | "service";
-type UnitRow = { id: string; shortName: string; fullName: string; conversionFactor: string | null; referenceUnitId: string | null };
+type UnitRow = { id: string; id1c?: string | null; shortName: string; fullName: string; conversionFactor: string | null; referenceUnitId: string | null };
 type ItemRow = {
   id: string;
+  id1c?: string | null;
   productType: ProductType | null;
   nomenclatureTypeId: string | null;
   typeName?: string | null;
@@ -35,7 +36,7 @@ const productLabels: Record<ProductType, string> = { kerosene: "Керосин",
 
 export function NomenclatureTab() {
   const { toast } = useToast();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const canCreate = hasPermission("directories", "create");
   const canEdit = hasPermission("directories", "edit");
   const [search, setSearch] = useState("");
@@ -149,14 +150,14 @@ export function NomenclatureTab() {
                   const typeName = item.typeName || types.find((type) => type.id === item.nomenclatureTypeId)?.name || "Не задан";
                   const pending = defaultMutation.isPending && defaultMutation.variables?.item.id === item.id;
                   return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_64px_36px] items-center gap-2 border-t px-3 py-3 transition-colors hover:bg-muted/20 sm:px-4 md:grid-cols-[minmax(0,1fr)_minmax(110px,.65fr)_minmax(100px,.7fr)_68px_36px] md:gap-2">
-                    <div className="min-w-0"><p className="truncate font-medium">{item.name}</p><p className="truncate text-xs text-muted-foreground md:hidden">{item.unitShortName || "—"} · {typeName}</p></div>
+                     <div className="min-w-0"><div className="flex min-w-0 items-center gap-1.5"><p className="truncate font-medium">{item.name}</p>{item.id1c && <Badge variant="outline" className="shrink-0 text-[10px]">1С</Badge>}</div><p className="truncate text-xs text-muted-foreground md:hidden">{item.unitShortName || "—"} · {typeName}</p></div>
                     <div className="hidden min-w-0 md:block"><p className="truncate text-sm">{item.unitShortName || "—"}</p><p className="truncate text-xs text-muted-foreground">{item.unitFullName}</p></div>
                     <div className="hidden min-w-0 md:block"><Badge variant="outline" className={`max-w-full truncate ${!item.nomenclatureTypeId ? "text-muted-foreground" : ""}`}>{typeName}</Badge></div>
-                    <span className="flex justify-center"><Switch aria-label={`По умолчанию: ${item.name}`} checked={!!item.isDefault} disabled={!canEdit || pending || !item.productType} onCheckedChange={(checked) => defaultMutation.mutate({ item, isDefault: checked })} /></span>
-                    <EntityActionsMenu triggerClassName="h-8 w-8" audit={{ entityType: "nomenclature", entityId: item.id, entityName: item.name }} actions={[
-                      { id: "edit", label: "Изменить", icon: Pencil, onClick: () => editItem(item), permission: { module: "directories", action: "edit" } },
-                      { id: "delete", label: "Удалить", icon: Trash2, onClick: () => setDeleting({ id: item.id, name: item.name, kind: "item" }), variant: "destructive", permission: { module: "directories", action: "delete" } },
-                    ]} />
+                     <span className="flex justify-center"><Switch aria-label={`По умолчанию: ${item.name}`} checked={!!item.isDefault} disabled={!canEdit || pending || !item.productType || (!!item.id1c && !isAdmin)} onCheckedChange={(checked) => defaultMutation.mutate({ item, isDefault: checked })} /></span>
+                     {(!item.id1c || isAdmin) ? <EntityActionsMenu triggerClassName="h-8 w-8" audit={{ entityType: "nomenclature", entityId: item.id, entityName: item.name }} actions={[
+                       { id: "edit", label: "Изменить", icon: Pencil, onClick: () => editItem(item), permission: { module: "directories", action: "edit" } },
+                       { id: "delete", label: "Удалить", icon: Trash2, onClick: () => setDeleting({ id: item.id, name: item.name, kind: "item" }), variant: "destructive", permission: { module: "directories", action: "delete" } },
+                     ]} /> : <span className="h-8 w-8" aria-label="Синхронизировано с 1С" />}
                   </div>;
                 })}
               </div>)}
@@ -174,11 +175,11 @@ export function NomenclatureTab() {
                 typesError ? <div className="flex items-center justify-between gap-2 p-4 text-sm text-destructive"><span>Не удалось загрузить виды</span><Button size="sm" variant="outline" onClick={() => refetchTypes()}>Повторить</Button></div> :
                 types.length === 0 ? <div className="p-5 text-center text-sm text-muted-foreground">Виды пока не добавлены.</div> :
                 types.map((type) => <div key={type.id} className="flex items-center justify-between gap-2 border-t px-3 py-2.5 first:border-t-0">
-                  <span className="min-w-0 truncate text-sm font-medium">{type.name}</span>
-                  <EntityActionsMenu triggerClassName="h-8 w-8" audit={{ entityType: "nomenclature_types", entityId: type.id, entityName: type.name }} actions={[
+                   <span className="flex min-w-0 items-center gap-1.5"><span className="truncate text-sm font-medium">{type.name}</span>{type.id1c && <Badge variant="outline" className="shrink-0 text-[10px]">1С</Badge>}</span>
+                   {(!type.id1c || isAdmin) ? <EntityActionsMenu triggerClassName="h-8 w-8" audit={{ entityType: "nomenclature_types", entityId: type.id, entityName: type.name }} actions={[
                     { id: "edit", label: "Изменить", icon: Pencil, onClick: () => { setEditingKind(type); setKindDialogOpen(true); }, permission: { module: "directories", action: "edit" } },
                     { id: "delete", label: "Удалить", icon: Trash2, onClick: () => setDeleting({ id: type.id, name: type.name, kind: "type" }), variant: "destructive", permission: { module: "directories", action: "delete" } },
-                  ]} />
+                   ]} /> : <span className="h-8 w-8" aria-label="Синхронизировано с 1С" />}
                 </div>)}
             </div>
           </section>
@@ -196,11 +197,11 @@ export function NomenclatureTab() {
                   const reference = units.find((candidate) => candidate.id === unit.referenceUnitId);
                   const factor = unit.conversionFactor ? Number(unit.conversionFactor) : null;
                   return <div key={unit.id} className="grid grid-cols-[minmax(0,1fr)_36px] items-center gap-2 border-t px-3 py-2.5 first:border-t-0">
-                    <div className="min-w-0"><p className="truncate text-sm font-medium">{unit.shortName} <span className="font-normal text-muted-foreground">· {unit.fullName}</span></p><p className="truncate text-xs text-muted-foreground">{factor && reference ? `1 ${unit.shortName} = ${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 6 }).format(factor)} ${reference.shortName}` : "Без пересчёта"}</p></div>
-                    <EntityActionsMenu triggerClassName="h-8 w-8" audit={{ entityType: "units_of_measure", entityId: unit.id, entityName: unit.shortName }} actions={[
+                     <div className="min-w-0"><p className="flex min-w-0 items-center gap-1.5 text-sm font-medium"><span className="truncate">{unit.shortName} <span className="font-normal text-muted-foreground">· {unit.fullName}</span></span>{unit.id1c && <Badge variant="outline" className="shrink-0 text-[10px]">1С</Badge>}</p><p className="truncate text-xs text-muted-foreground">{factor && reference ? `1 ${unit.shortName} = ${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 6 }).format(factor)} ${reference.shortName}` : "Без пересчёта"}</p></div>
+                     {(!unit.id1c || isAdmin) ? <EntityActionsMenu triggerClassName="h-8 w-8" audit={{ entityType: "units_of_measure", entityId: unit.id, entityName: unit.shortName }} actions={[
                       { id: "edit", label: "Изменить", icon: Pencil, onClick: () => editUnit(unit), permission: { module: "directories", action: "edit" } },
                       { id: "delete", label: "Удалить", icon: Trash2, onClick: () => setDeleting({ id: unit.id, name: unit.shortName, kind: "unit" }), variant: "destructive", permission: { module: "directories", action: "delete" } },
-                    ]} />
+                     ]} /> : <span className="h-8 w-8" aria-label="Синхронизировано с 1С" />}
                   </div>;
                 })}
             </div>

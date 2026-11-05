@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, NextFunction, Request, Response } from "express";
 import { storage } from "../../../storage";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog } from "../../audit/middleware/audit-middleware";
@@ -11,6 +11,32 @@ import {
   insertUnitOfMeasureSchema,
 } from "../entities";
 import { z } from "zod";
+
+const managed1cFields = ["id1c", "integrationStatus", "counterparty1cId", "counterpartyType", "parent1cId"];
+
+function rejectManaged1cFields(req: Request, res: Response, next: NextFunction) {
+  if (managed1cFields.some((field) => Object.prototype.hasOwnProperty.call(req.body ?? {}, field))) {
+    return res.status(400).json({ message: "Поля синхронизации с 1С можно изменять только через API интеграции" });
+  }
+  next();
+}
+
+function allowOnlyUnlinkedForNonAdmin(getRecord: (id: string) => Promise<any>) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = await storage.users.getUser(req.session.userId!);
+      const role = user?.roleId ? await storage.roles.getRole(user.roleId) : null;
+      if (role?.name === "Админ" || role?.name === "Ген.дир") return next();
+      const record = await getRecord(req.params.id);
+      if (record?.id1c) {
+        return res.status(403).json({ message: "Связанную с 1С запись может менять или удалять только администратор" });
+      }
+      next();
+    } catch {
+      res.status(500).json({ message: "Не удалось проверить связь записи с 1С" });
+    }
+  };
+}
 
 export function registerCatalogRoutes(app: Express) {
   const view = requirePermission("directories", "view");
@@ -30,7 +56,7 @@ export function registerCatalogRoutes(app: Express) {
       res.status(500).json({ message: "Не удалось загрузить договоры" });
     }
   });
-  app.post("/api/contracts", requireAuth, create, auditLog({
+  app.post("/api/contracts", requireAuth, create, rejectManaged1cFields, auditLog({
     entityType: ENTITY_TYPES.CONTRACT,
     operation: AUDIT_OPERATIONS.CREATE,
     getNewData: (req) => req.body,
@@ -48,7 +74,7 @@ export function registerCatalogRoutes(app: Express) {
       res.status(error instanceof z.ZodError ? 400 : 500).json({ message: error instanceof z.ZodError ? error.errors[0]?.message : "Не удалось создать договор" });
     }
   });
-  app.patch("/api/contracts/:id", requireAuth, edit, auditLog({
+  app.patch("/api/contracts/:id", requireAuth, edit, allowOnlyUnlinkedForNonAdmin((id) => storage.catalogs.getContract(id)), rejectManaged1cFields, auditLog({
     entityType: ENTITY_TYPES.CONTRACT,
     operation: AUDIT_OPERATIONS.UPDATE,
     getOldData: (req) => storage.catalogs.getContract(req.params.id),
@@ -73,7 +99,7 @@ export function registerCatalogRoutes(app: Express) {
       res.status(error instanceof z.ZodError ? 400 : 500).json({ message: error instanceof z.ZodError ? error.errors[0]?.message : "Не удалось обновить договор" });
     }
   });
-  app.delete("/api/contracts/:id", requireAuth, remove, auditLog({
+  app.delete("/api/contracts/:id", requireAuth, remove, allowOnlyUnlinkedForNonAdmin((id) => storage.catalogs.getContract(id)), auditLog({
     entityType: ENTITY_TYPES.CONTRACT,
     operation: AUDIT_OPERATIONS.DELETE,
     getOldData: (req) => storage.catalogs.getContract(req.params.id),
@@ -94,6 +120,7 @@ export function registerCatalogRoutes(app: Express) {
     entityType: ENTITY_TYPES.NOMENCLATURE_TYPE,
     parse: insertNomenclatureTypeSchema,
     get: (id) => storage.catalogs.getNomenclatureType(id),
+    guard: (id) => storage.catalogs.getNomenclatureType(id),
     create: (data) => storage.catalogs.createType(data),
     update: (id, data) => storage.catalogs.updateType(id, data),
     delete: (id, userId) => storage.catalogs.deleteType(id, userId),
@@ -103,6 +130,7 @@ export function registerCatalogRoutes(app: Express) {
     entityType: ENTITY_TYPES.UNIT_OF_MEASURE,
     parse: insertUnitOfMeasureSchema,
     get: (id) => storage.catalogs.getUnit(id),
+    guard: (id) => storage.catalogs.getUnit(id),
     create: (data) => storage.catalogs.createUnit(data),
     update: (id, data) => storage.catalogs.updateUnit(id, data),
     delete: (id, userId) => storage.catalogs.deleteUnit(id, userId),
@@ -112,6 +140,7 @@ export function registerCatalogRoutes(app: Express) {
     entityType: ENTITY_TYPES.NOMENCLATURE,
     parse: insertNomenclatureSchema,
     get: (id) => storage.catalogs.getNomenclatureItem(id),
+    guard: (id) => storage.catalogs.getNomenclatureItem(id),
     create: (data) => storage.catalogs.createNomenclature(data),
     update: (id, data) => storage.catalogs.updateNomenclature(id, data),
     delete: (id, userId) => storage.catalogs.deleteNomenclature(id, userId),
@@ -123,11 +152,12 @@ function registerSimpleCatalog(app: Express, config: {
   entityType: any;
   parse: z.AnyZodObject;
   get: (id: string) => Promise<any>;
+  guard: (id: string) => Promise<any>;
   create: (data: any) => Promise<any>;
   update: (id: string, data: any) => Promise<any>;
   delete: (id: string, userId: string) => Promise<any>;
 }) {
-  app.post(config.path, requireAuth, requirePermission("directories", "create"), auditLog({
+  app.post(config.path, requireAuth, requirePermission("directories", "create"), rejectManaged1cFields, auditLog({
     entityType: config.entityType,
     operation: AUDIT_OPERATIONS.CREATE,
     getNewData: (req) => req.body,
@@ -139,7 +169,7 @@ function registerSimpleCatalog(app: Express, config: {
       res.status(error instanceof z.ZodError ? 400 : 500).json({ message: error instanceof z.ZodError ? error.errors[0]?.message : "Не удалось создать запись справочника" });
     }
   });
-  app.patch(`${config.path}/:id`, requireAuth, requirePermission("directories", "edit"), auditLog({
+  app.patch(`${config.path}/:id`, requireAuth, requirePermission("directories", "edit"), allowOnlyUnlinkedForNonAdmin(config.guard), rejectManaged1cFields, auditLog({
     entityType: config.entityType,
     operation: AUDIT_OPERATIONS.UPDATE,
     getOldData: (req) => config.get(req.params.id),
@@ -154,7 +184,7 @@ function registerSimpleCatalog(app: Express, config: {
       res.status(error instanceof z.ZodError ? 400 : 500).json({ message: error instanceof z.ZodError ? error.errors[0]?.message : "Не удалось обновить запись справочника" });
     }
   });
-  app.delete(`${config.path}/:id`, requireAuth, requirePermission("directories", "delete"), auditLog({
+  app.delete(`${config.path}/:id`, requireAuth, requirePermission("directories", "delete"), allowOnlyUnlinkedForNonAdmin(config.guard), auditLog({
     entityType: config.entityType,
     operation: AUDIT_OPERATIONS.DELETE,
     getOldData: (req) => config.get(req.params.id),

@@ -15,6 +15,10 @@ const ids = {
   matchedSupplier: randomUUID(),
   unknownDeletion: randomUUID(),
   ambiguous: randomUUID(),
+  contract: randomUUID(),
+  nomenclatureType: randomUUID(),
+  unit: randomUUID(),
+  nomenclature: randomUUID(),
 };
 const inns = {
   supplier: `1C-TEST-${suffix}-S`,
@@ -26,6 +30,8 @@ const inns = {
 const trackedRequestIds = new Set();
 const apiKeyIds = new Set();
 const paginationLogIds = [];
+let editorContractId;
+let editorNomenclatureId;
 let adminCookie;
 let testEditorRoleId;
 const testEditorEmail = `1c-editor-${suffix}@example.test`;
@@ -109,7 +115,12 @@ after(async () => {
     }
     await pool.query("DELETE FROM integration_change_logs WHERE id_1c = ANY($1::text[])", [[
       ids.supplier, ids.customer, ids.carrier, ids.matchedSupplier, ids.unknownDeletion, ids.ambiguous,
+      ids.contract, ids.nomenclatureType, ids.unit, ids.nomenclature,
     ]]);
+    await pool.query("DELETE FROM counterparty_contracts WHERE id = $1 OR id_1c = $2::uuid", [editorContractId ?? null, ids.contract]);
+    await pool.query("DELETE FROM nomenclature WHERE id = $1 OR id_1c = $2::uuid", [editorNomenclatureId ?? null, ids.nomenclature]);
+    await pool.query("DELETE FROM nomenclature_types WHERE id_1c = $1::uuid", [ids.nomenclatureType]);
+    await pool.query("DELETE FROM units_of_measure WHERE id_1c = $1::uuid", [ids.unit]);
     await pool.query("DELETE FROM suppliers WHERE id_1c = ANY($1::text[]) OR inn = ANY($2::text[])", [
       [ids.supplier, ids.matchedSupplier, ids.ambiguous],
       [inns.supplier, inns.matched, inns.ambiguous],
@@ -245,6 +256,86 @@ test("1C API authenticates, syncs counterparties, audits changes and paginates r
   const firstChangeIds = new Set(changePageOne.data.changes.map((item) => item.id));
   assert.ok(changePageTwo.data.changes.every((item) => !firstChangeIds.has(item.id)));
 
+  const syncedUnit = await fetchJson(`${apiRoot}/units-of-measure/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [{ id_1c: ids.unit, short_name: `u${suffix}`, full_name: `Unit ${suffix}`, status: "active" }] },
+  });
+  assert.equal(syncedUnit.response.status, 200);
+  assert.equal(syncedUnit.data.results[0].outcome, "created");
+  const syncedType = await fetchJson(`${apiRoot}/nomenclature-types/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [{ id_1c: ids.nomenclatureType, code: `1C-${suffix}`, name: `Kind ${suffix}`, status: "active" }] },
+  });
+  assert.equal(syncedType.data.results[0].outcome, "created");
+  const syncedNomenclature = await fetchJson(`${apiRoot}/nomenclature/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [{
+      id_1c: ids.nomenclature,
+      product_type: "kerosene",
+      nomenclature_type_id_1c: ids.nomenclatureType,
+      name: `1C Item ${suffix}`,
+      unit_id_1c: ids.unit,
+      is_default: false,
+      status: "active",
+    }] },
+  });
+  assert.equal(syncedNomenclature.response.status, 200);
+  assert.equal(syncedNomenclature.data.results[0].outcome, "created");
+  const syncedContract = await fetchJson(`${apiRoot}/contracts/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [{
+      id_1c: ids.contract,
+      contract_name: `1C contract ${suffix}`,
+      contract_number: `C-${suffix}`,
+      contract_date: "2026-11-05",
+      counterparty_type: "supplier",
+      counterparty_id_1c: ids.supplier,
+      status: "active",
+    }] },
+  });
+  assert.equal(syncedContract.response.status, 200);
+  assert.equal(syncedContract.data.results[0].outcome, "created");
+  const [contractFromDb, itemFromDb] = await Promise.all([
+    pool.query("SELECT * FROM counterparty_contracts WHERE id_1c = $1::uuid", [ids.contract]),
+    pool.query("SELECT * FROM nomenclature WHERE id_1c = $1::uuid", [ids.nomenclature]),
+  ]);
+  assert.equal(contractFromDb.rows[0].supplier_id, supplier.rows[0].id);
+  assert.equal(contractFromDb.rows[0].counterparty_id_1c, ids.supplier);
+  assert.equal(itemFromDb.rows[0].unit_id, (await pool.query("SELECT id FROM units_of_measure WHERE id_1c = $1::uuid", [ids.unit])).rows[0].id);
+  assert.equal(itemFromDb.rows[0].nomenclature_type_id, (await pool.query("SELECT id FROM nomenclature_types WHERE id_1c = $1::uuid", [ids.nomenclatureType])).rows[0].id);
+
+  const contractWithoutParty = await fetchJson(`${apiRoot}/contracts/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [{
+      id_1c: randomUUID(),
+      contract_name: "Договор с неизвестным контрагентом",
+      contract_number: `MISSING-${suffix}`,
+      contract_date: "2026-11-05",
+      counterparty_type: "supplier",
+      counterparty_id_1c: randomUUID(),
+    }] },
+  });
+  assert.equal(contractWithoutParty.data.results[0].code, "counterparty_not_linked");
+
+  const exportedCatalog = await fetchJson(`${apiRoot}/contracts`, { token: firstKey, cookie: null });
+  assert.ok(exportedCatalog.data.items.some((item) => item.id_1c === ids.contract));
+  const publicOpenApi = await fetchJson("/api/integrations/1c/openapi.json", { cookie: null });
+  assert.equal(publicOpenApi.response.status, 200);
+  assert.ok(publicOpenApi.data.paths["/contracts/sync"]);
+  const swaggerDocs = await fetch(new URL("/api/integrations/1c/docs/", baseUrl));
+  assert.equal(swaggerDocs.status, 200);
+  assert.match(await swaggerDocs.text(), /swagger-ui/);
+
   const adminEdit = await fetchJson(`/api/suppliers/${supplier.rows[0].id}`, {
     method: "PATCH",
     body: {
@@ -284,6 +375,47 @@ test("1C API authenticates, syncs counterparties, audits changes and paginates r
     "UPDATE users SET role_id = $1 WHERE email = $2",
     [testEditorRoleId, testEditorEmail],
   );
+  const linkedContractId = contractFromDb.rows[0].id;
+  const linkedNomenclatureId = itemFromDb.rows[0].id;
+  const linkedUnitId = (await pool.query("SELECT id FROM units_of_measure WHERE id_1c = $1::uuid", [ids.unit])).rows[0].id;
+  const linkedTypeId = (await pool.query("SELECT id FROM nomenclature_types WHERE id_1c = $1::uuid", [ids.nomenclatureType])).rows[0].id;
+  for (const [path, body] of [
+    [`/api/contracts/${linkedContractId}`, { contractName: "Не менять договор 1С" }],
+    [`/api/nomenclature/${linkedNomenclatureId}`, { name: "Не менять номенклатуру 1С" }],
+    [`/api/nomenclature-types/${linkedTypeId}`, { name: "Не менять вид 1С" }],
+    [`/api/units-of-measure/${linkedUnitId}`, { shortName: "Не менять единицу 1С" }],
+  ]) {
+    const forbiddenEdit = await fetchJson(path, { method: "PATCH", cookie: editorCookie, body });
+    assert.equal(forbiddenEdit.response.status, 403, `ordinary users cannot edit linked record ${path}`);
+    const forbiddenDelete = await fetchJson(path, { method: "DELETE", cookie: editorCookie });
+    assert.equal(forbiddenDelete.response.status, 403, `ordinary users cannot delete linked record ${path}`);
+  }
+  const manualContract = await fetchJson("/api/contracts", {
+    method: "POST",
+    cookie: editorCookie,
+    body: {
+      contractName: `Manual ${suffix}`,
+      contractNumber: `M-${suffix}`,
+      contractDate: "2026-11-05",
+      supplierId: supplier.rows[0].id,
+    },
+  });
+  assert.equal(manualContract.response.status, 201, "ordinary users can create an unlinked contract");
+  editorContractId = manualContract.data.id;
+  const updateManualContract = await fetchJson(`/api/contracts/${editorContractId}`, {
+    method: "PATCH",
+    cookie: editorCookie,
+    body: { contractName: `Manual updated ${suffix}` },
+  });
+  assert.equal(updateManualContract.response.status, 200, "ordinary users can update an unlinked contract");
+  const deleteManualContract = await fetchJson(`/api/contracts/${editorContractId}`, { method: "DELETE", cookie: editorCookie });
+  assert.equal(deleteManualContract.response.status, 200, "ordinary users can delete an unlinked contract");
+  const spoofedCatalogId = await fetchJson("/api/nomenclature", {
+    method: "POST",
+    cookie: editorCookie,
+    body: { id1c: randomUUID(), productType: "kerosene", name: "Spoofed", unitId: linkedUnitId },
+  });
+  assert.equal(spoofedCatalogId.response.status, 400, "1C identifiers can only be assigned by the integration API");
   const editOperationalField = await fetchJson(`/api/suppliers/${supplier.rows[0].id}`, {
     method: "PATCH",
     cookie: editorCookie,

@@ -39,6 +39,10 @@ const typeNames: Record<string, string> = {
   supplier: "Поставщик",
   customer: "Покупатель",
   carrier: "Перевозчик",
+  counterparty_contracts: "Договор",
+  nomenclature: "Номенклатура",
+  nomenclature_types: "Вид номенклатуры",
+  units_of_measure: "Единица измерения",
 };
 
 const typePluralNames: Record<string, string> = {
@@ -293,7 +297,7 @@ export default function Integration1CPage() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg"><KeyRound className="h-5 w-5" />API-ключ</CardTitle>
           <CardDescription className="max-w-4xl text-sm">
-            Ключ показывается один раз, в базе хранится только его хеш. При активном ключе обычные пользователи не могут менять мастер-поля, создавать или удалять записи; администраторы сохраняют полный доступ.
+            Ключ показывается один раз, в базе хранится только его хеш. Связанные с 1С записи справочников могут менять только администраторы; несвязанные записи остаются доступны по правам справочников.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -332,6 +336,40 @@ export default function Integration1CPage() {
               </AlertDescription>
             </Alert>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="min-w-0">
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 pb-3">
+          <div>
+            <CardTitle className="text-lg">API справочников</CardTitle>
+            <CardDescription className="mt-1 text-sm">Ключ 1С работает для всех v1-эндпоинтов. Для новых позиций сначала синхронизируйте зависимости.</CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <a href="/api/integrations/1c/docs" target="_blank" rel="noreferrer">
+              <Button size="sm" variant="outline">Swagger UI</Button>
+            </a>
+            <a href="/api/integrations/1c/openapi.json" target="_blank" rel="noreferrer">
+              <Button size="sm" variant="ghost">OpenAPI JSON</Button>
+            </a>
+          </div>
+        </CardHeader>
+        <CardContent className="grid min-w-0 gap-2 sm:grid-cols-2">
+          {[
+            ["Контрагенты", "/counterparties"],
+            ["Договоры", "/contracts"],
+            ["Виды номенклатуры", "/nomenclature-types"],
+            ["Единицы измерения", "/units-of-measure"],
+            ["Номенклатура", "/nomenclature"],
+          ].map(([label, path]) => (
+            <div key={path} className="flex min-w-0 flex-wrap items-center gap-x-2 rounded-md bg-muted/40 px-3 py-2 text-xs">
+              <span className="min-w-24 font-medium">{label}</span>
+              <code className="min-w-0 break-all text-muted-foreground">GET {path} · POST {path}/sync</code>
+            </div>
+          ))}
+          <p className="sm:col-span-2 text-xs text-muted-foreground">
+            Базовый адрес: <code className="break-all">/api/integrations/1c/v1</code>. Для POST используйте путь справочника с суффиксом <code>/sync</code>.
+          </p>
         </CardContent>
       </Card>
 

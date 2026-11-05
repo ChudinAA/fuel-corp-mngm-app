@@ -27,19 +27,24 @@ export const nomenclatureTypes = pgTable(
   "nomenclature_types",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    id1c: text("id_1c"),
+    id1c: uuid("id_1c"),
+    integrationStatus: text("integration_status"),
     code: text("code").notNull().unique(),
     name: text("name").notNull(),
     ...auditColumns(),
   },
-  (table) => ({ nameIdx: index("nomenclature_types_name_idx").on(table.name) }),
+  (table) => ({
+    nameIdx: index("nomenclature_types_name_idx").on(table.name),
+    id1cUnique: uniqueIndex("nomenclature_types_id_1c_unique").on(table.id1c).where(sql`${table.id1c} IS NOT NULL`),
+  }),
 );
 
 export const unitsOfMeasure = pgTable(
   "units_of_measure",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    id1c: text("id_1c"),
+    id1c: uuid("id_1c"),
+    integrationStatus: text("integration_status"),
     shortName: text("short_name").notNull(),
     fullName: text("full_name").notNull(),
     conversionFactor: decimal("conversion_factor", { precision: 18, scale: 6 }),
@@ -49,6 +54,7 @@ export const unitsOfMeasure = pgTable(
   },
   (table) => ({
     shortNameIdx: index("units_of_measure_short_name_idx").on(table.shortName),
+    id1cUnique: uniqueIndex("units_of_measure_id_1c_unique").on(table.id1c).where(sql`${table.id1c} IS NOT NULL`),
   }),
 );
 
@@ -56,7 +62,8 @@ export const nomenclature = pgTable(
   "nomenclature",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    id1c: text("id_1c"),
+    id1c: uuid("id_1c"),
+    integrationStatus: text("integration_status"),
     nomenclatureTypeId: uuid("nomenclature_type_id")
       .references(() => nomenclatureTypes.id),
     productType: text("product_type"),
@@ -66,6 +73,7 @@ export const nomenclature = pgTable(
     ...auditColumns(),
   },
   (table) => ({
+    id1cUnique: uniqueIndex("nomenclature_id_1c_unique").on(table.id1c).where(sql`${table.id1c} IS NOT NULL`),
     typeIdx: index("nomenclature_type_idx").on(table.nomenclatureTypeId),
     unitIdx: index("nomenclature_unit_idx").on(table.unitId),
     oneDefaultPerProductIdx: uniqueIndex("nomenclature_one_default_per_product_idx")

@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Express, Request, Response, NextFunction } from "express";
-import { and, desc, eq, inArray, isNull, lt, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../../db";
 import { requireAdministrator, requireAuth } from "../../../middleware/middleware";
@@ -14,13 +14,26 @@ import {
   type CounterpartyType,
 } from "../counterparty-sync-contract";
 import {
+  contractSyncBatchSchema,
+  nomenclatureSyncBatchSchema,
+  nomenclatureTypeSyncBatchSchema,
+  unitSyncBatchSchema,
+} from "../catalog-sync-contract";
+import { syncCatalogBatch } from "../catalog-sync";
+import { openApiSpec } from "../openapi";
+import swaggerUi from "swagger-ui-express";
+import {
+  counterpartyContracts,
   customers,
   integrationApiKeys,
   integrationChangeLogs,
   integrationRequestLogs,
   integrationSettings,
   logisticsCarriers,
+  nomenclature,
+  nomenclatureTypes,
   suppliers,
+  unitsOfMeasure,
 } from "@shared/schema";
 import { SSEService } from "../../../services/sse-service";
 
@@ -305,6 +318,7 @@ async function reviewPendingChanges(options: {
     const conditions = [
       eq(integrationChangeLogs.outcome, "created"),
       isNull(integrationChangeLogs.reviewedAt),
+      inArray(integrationChangeLogs.entityType, [...allowedEntities]),
     ];
     if (options.ids) conditions.push(inArray(integrationChangeLogs.id, options.ids));
     if (options.all && options.excludeIds?.length) {
@@ -384,6 +398,79 @@ export function registerIntegrationRoutes(app: Express) {
     }
   });
 
+  app.get(`${apiPrefix}/contracts`, authenticateIntegration, asyncRoute(async (req, res) => {
+    const rows = await db.select().from(counterpartyContracts)
+      .where(and(isNotNull(counterpartyContracts.id1c), isNull(counterpartyContracts.deletedAt)));
+    req.integrationItemCount = rows.length;
+    res.json({
+      count: rows.length,
+      items: rows.map((row) => ({
+        id_1c: row.id1c,
+        contract_name: row.contractName,
+        contract_number: row.contractNumber,
+        contract_date: row.contractDate,
+        counterparty_type: row.counterpartyType,
+        counterparty_id_1c: row.counterparty1cId,
+        parent_contract_id_1c: row.parent1cId,
+        status: row.integrationStatus,
+        updated_at: row.updatedAt ?? row.createdAt,
+      })),
+    });
+  }));
+
+  app.get(`${apiPrefix}/nomenclature-types`, authenticateIntegration, asyncRoute(async (req, res) => {
+    const rows = await db.select().from(nomenclatureTypes)
+      .where(and(isNotNull(nomenclatureTypes.id1c), isNull(nomenclatureTypes.deletedAt)));
+    req.integrationItemCount = rows.length;
+    res.json({ count: rows.length, items: rows.map((row) => ({
+      id_1c: row.id1c, code: row.code, name: row.name, status: row.integrationStatus, updated_at: row.updatedAt ?? row.createdAt,
+    })) });
+  }));
+
+  app.get(`${apiPrefix}/units-of-measure`, authenticateIntegration, asyncRoute(async (req, res) => {
+    const rows = await db.select().from(unitsOfMeasure)
+      .where(and(isNotNull(unitsOfMeasure.id1c), isNull(unitsOfMeasure.deletedAt)));
+    req.integrationItemCount = rows.length;
+    const referenceIds = rows.flatMap((row) => row.referenceUnitId ? [row.referenceUnitId] : []);
+    const referenceRows = referenceIds.length
+      ? await db.select({ id: unitsOfMeasure.id, id1c: unitsOfMeasure.id1c }).from(unitsOfMeasure).where(inArray(unitsOfMeasure.id, referenceIds))
+      : [];
+    const referenceIdByLocalId = new Map(referenceRows.map((row) => [row.id, row.id1c]));
+    res.json({ count: rows.length, items: rows.map((row) => ({
+      id_1c: row.id1c,
+      short_name: row.shortName,
+      full_name: row.fullName,
+      conversion_factor: row.conversionFactor,
+      reference_unit_id_1c: row.referenceUnitId ? referenceIdByLocalId.get(row.referenceUnitId) ?? null : null,
+      status: row.integrationStatus,
+      updated_at: row.updatedAt ?? row.createdAt,
+    })) });
+  }));
+
+  app.get(`${apiPrefix}/nomenclature`, authenticateIntegration, asyncRoute(async (req, res) => {
+    const rows = await db.select().from(nomenclature)
+      .where(and(isNotNull(nomenclature.id1c), isNull(nomenclature.deletedAt)));
+    req.integrationItemCount = rows.length;
+    const relatedTypeIds = rows.flatMap((row) => row.nomenclatureTypeId ? [row.nomenclatureTypeId] : []);
+    const relatedUnitIds = rows.map((row) => row.unitId);
+    const [typeRows, unitRows] = await Promise.all([
+      relatedTypeIds.length ? db.select({ id: nomenclatureTypes.id, id1c: nomenclatureTypes.id1c }).from(nomenclatureTypes).where(inArray(nomenclatureTypes.id, relatedTypeIds)) : [],
+      relatedUnitIds.length ? db.select({ id: unitsOfMeasure.id, id1c: unitsOfMeasure.id1c }).from(unitsOfMeasure).where(inArray(unitsOfMeasure.id, relatedUnitIds)) : [],
+    ]);
+    const typeIdByLocalId = new Map(typeRows.map((row) => [row.id, row.id1c]));
+    const unitIdByLocalId = new Map(unitRows.map((row) => [row.id, row.id1c]));
+    res.json({ count: rows.length, items: rows.map((row) => ({
+      id_1c: row.id1c,
+      product_type: row.productType,
+      nomenclature_type_id_1c: row.nomenclatureTypeId ? typeIdByLocalId.get(row.nomenclatureTypeId) ?? null : null,
+      name: row.name,
+      unit_id_1c: unitIdByLocalId.get(row.unitId) ?? null,
+      is_default: row.isDefault,
+      status: row.integrationStatus,
+      updated_at: row.updatedAt ?? row.createdAt,
+    })) });
+  }));
+
   app.post(`${apiPrefix}/counterparties/sync`, authenticateIntegration, asyncRoute(async (req, res) => {
     req.integrationItemCount = Array.isArray(req.body?.items) ? req.body.items.length : null;
     const parsed = counterpartySyncBatchSchema.safeParse(req.body);
@@ -419,6 +506,39 @@ export function registerIntegrationRoutes(app: Express) {
     res.json({ request_id: req.integrationRequestId, count: results.length, counts, results });
   }));
 
+  const catalogSyncEndpoints = [
+    { path: "contracts", type: "counterparty_contracts" as const, schema: contractSyncBatchSchema },
+    { path: "nomenclature-types", type: "nomenclature_types" as const, schema: nomenclatureTypeSyncBatchSchema },
+    { path: "units-of-measure", type: "units_of_measure" as const, schema: unitSyncBatchSchema },
+    { path: "nomenclature", type: "nomenclature" as const, schema: nomenclatureSyncBatchSchema },
+  ];
+  for (const endpoint of catalogSyncEndpoints) {
+    app.post(`${apiPrefix}/${endpoint.path}/sync`, authenticateIntegration, asyncRoute(async (req, res) => {
+      req.integrationItemCount = Array.isArray(req.body?.items) ? req.body.items.length : null;
+      const parsed = endpoint.schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          code: "invalid_payload",
+          message: parsed.error.issues[0]?.message ?? "Некорректный пакет данных",
+        });
+      }
+      req.integrationItemCount = parsed.data.items.length;
+      const response = await syncCatalogBatch(
+        endpoint.type,
+        parsed.data.items as any[],
+        req.integrationRequestId!,
+      );
+      if (response.results.some((item) => ["created", "updated", "deleted"].includes(item.outcome))) {
+        SSEService.notifyEntityChanged("directories");
+        SSEService.notifyEntityChanged("prices");
+      }
+      res.json(response);
+    }));
+  }
+
+  app.get("/api/integrations/1c/openapi.json", (_req, res) => res.json(openApiSpec));
+  app.use("/api/integrations/1c/docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
+
   const adminBase = "/api/admin/integrations/1c";
   app.get(`${adminBase}/status`, requireAdministrator, asyncRoute(async (_req, res) => {
     const [activeKey] = await db.select({
@@ -429,7 +549,11 @@ export function registerIntegrationRoutes(app: Express) {
       and(eq(integrationApiKeys.integration, "1c"), isNull(integrationApiKeys.revokedAt)),
     ).orderBy(desc(integrationApiKeys.createdAt)).limit(1);
     const [pending] = await db.select({ count: sql<number>`count(*)::int` }).from(integrationChangeLogs)
-      .where(and(eq(integrationChangeLogs.outcome, "created"), isNull(integrationChangeLogs.reviewedAt)));
+      .where(and(
+        eq(integrationChangeLogs.outcome, "created"),
+        isNull(integrationChangeLogs.reviewedAt),
+        inArray(integrationChangeLogs.entityType, [...allowedEntities]),
+      ));
     const pendingByType: Record<string, number> = {};
     for (const type of allowedEntities) {
       const [typeCount] = await db.select({ count: sql<number>`count(*)::int` }).from(integrationChangeLogs)
@@ -508,6 +632,7 @@ export function registerIntegrationRoutes(app: Express) {
     const conditions = [
       eq(integrationChangeLogs.outcome, "created"),
       isNull(integrationChangeLogs.reviewedAt),
+      inArray(integrationChangeLogs.entityType, [...allowedEntities]),
     ];
     if (cursor !== null) conditions.push(lt(integrationChangeLogs.id, cursor));
     const rows = await db.select().from(integrationChangeLogs)
