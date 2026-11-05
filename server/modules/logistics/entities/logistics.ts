@@ -115,6 +115,7 @@ export const logisticsDrivers = pgTable("logistics_drivers", {
   fullName: text("full_name").notNull(),
   phone: text("phone"),
   licenseNumber: text("license_number"),
+  licenseExpiry: date("license_expiry"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
