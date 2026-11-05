@@ -24,7 +24,7 @@ export function getCounterpartyStatusKind(status: string | null | undefined) {
   if (["deleted", "delete", "deletion_marked", "пометка удаления", "удален", "удалён"].includes(normalized)) {
     return "deleted" as const;
   }
-  if (["active", "enabled", "активен", "действующий"].includes(normalized)) {
+  if (["active", "updated", "enabled", "активен", "действующий"].includes(normalized)) {
     return "active" as const;
   }
   return "unknown" as const;

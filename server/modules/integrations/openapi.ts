@@ -1,13 +1,11 @@
+const schemaRef = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 const uuid = { type: "string", format: "uuid" };
-const status = {
-  type: "string",
-  enum: ["active", "enabled", "активен", "действующий", "deleted", "delete", "deletion_marked", "пометка удаления", "удален", "удалён"],
-  description: "Необязательный статус. Пустое значение не меняет локальный статус.",
-};
+const nullableUuid = { type: "string", format: "uuid", nullable: true };
+
 const batchResponse = {
   type: "object",
   properties: {
-    request_id: uuid,
+    request_id: schemaRef("Id1c"),
     count: { type: "integer" },
     counts: { type: "object", additionalProperties: { type: "integer" } },
     results: {
@@ -15,27 +13,28 @@ const batchResponse = {
       items: {
         type: "object",
         properties: {
-          id_1c: uuid,
-          type: { type: "string" },
+          id_1c: schemaRef("Id1c"),
+          type: schemaRef("IntegrationEntityType"),
           outcome: { type: "string", enum: ["created", "updated", "deleted", "skipped", "error"] },
           code: { type: "string" },
-          entity_id: uuid,
+          entity_id: schemaRef("Id1c"),
         },
       },
     },
   },
 };
-const syncRequest = (item: Record<string, unknown>) => ({
+const syncRequest = (schemaName: string) => ({
   required: ["items"],
   type: "object",
-  properties: { items: { type: "array", minItems: 1, maxItems: 500, items: item } },
+  properties: { items: { type: "array", minItems: 1, maxItems: 500, items: schemaRef(schemaName) } },
 });
-const syncOperation = (summary: string, item: Record<string, unknown>) => ({
+const syncOperation = (summary: string, tag: string, schemaName: string) => ({
   post: {
+    tags: [tag],
     summary,
     description: "Пакет до 500 элементов. Результат и аудит возвращаются отдельно по каждому Id_1c; повторный Id_1c в одном пакете считается ошибкой.",
     security: [{ bearerAuth: [] }],
-    requestBody: { required: true, content: { "application/json": { schema: syncRequest(item) } } },
+    requestBody: { required: true, content: { "application/json": { schema: syncRequest(schemaName) } } },
     responses: {
       "200": { description: "Обработка пакета завершена", content: { "application/json": { schema: batchResponse } } },
       "400": { description: "Некорректная структура запроса" },
@@ -43,8 +42,9 @@ const syncOperation = (summary: string, item: Record<string, unknown>) => ({
     },
   },
 });
-const readOperation = (summary: string) => ({
+const readOperation = (summary: string, tag: string) => ({
   get: {
+    tags: [tag],
     summary,
     description: "Возвращает только активные записи, уже связанные с Id_1c.",
     security: [{ bearerAuth: [] }],
@@ -77,7 +77,88 @@ export const openApiSpec = {
     },
     schemas: {
       Id1c: uuid,
-      Status: status,
+      CounterpartyType: {
+        type: "string",
+        description: "Вид контрагента. Используется в поле type и в паре с counterparty_id_1c.",
+        enum: ["supplier", "customer", "carrier"],
+      },
+      ProductType: {
+        type: "string",
+        description: "Тип продукта приложения: kerosene — керосин, pvkj — ПВКЖ, service — услуга.",
+        enum: ["kerosene", "pvkj", "service"],
+      },
+      Status: {
+        type: "string",
+        nullable: true,
+        description: "Состояние записи: active/updated обрабатываются как действующая запись; deleted выполняет мягкое удаление.",
+        enum: ["active", "updated", "deleted"],
+      },
+      IntegrationEntityType: {
+        type: "string",
+        description: "Тип сущности в результате обработки пакета.",
+        enum: ["supplier", "customer", "carrier", "counterparty_contracts", "nomenclature_types", "units_of_measure", "nomenclature"],
+      },
+      CounterpartySyncItem: {
+        type: "object",
+        required: ["type", "id_1c", "name"],
+        properties: {
+          type: schemaRef("CounterpartyType"),
+          id_1c: schemaRef("Id1c"),
+          inn: { type: "string", nullable: true, maxLength: 32 },
+          name: { type: "string", maxLength: 255 },
+          full_name: { type: "string", nullable: true, maxLength: 500 },
+          status: schemaRef("Status"),
+        },
+      },
+      ContractSyncItem: {
+        type: "object",
+        required: ["id_1c", "contract_name", "contract_number", "contract_date", "counterparty_type", "counterparty_id_1c"],
+        properties: {
+          id_1c: schemaRef("Id1c"),
+          contract_name: { type: "string", maxLength: 500 },
+          contract_number: { type: "string", maxLength: 120 },
+          contract_date: { type: "string", format: "date" },
+          counterparty_type: schemaRef("CounterpartyType"),
+          counterparty_id_1c: schemaRef("Id1c"),
+          parent_contract_id_1c: nullableUuid,
+          status: schemaRef("Status"),
+        },
+      },
+      NomenclatureTypeSyncItem: {
+        type: "object",
+        required: ["id_1c", "code", "name"],
+        properties: {
+          id_1c: schemaRef("Id1c"),
+          code: { type: "string", maxLength: 100 },
+          name: { type: "string", maxLength: 255 },
+          status: schemaRef("Status"),
+        },
+      },
+      UnitSyncItem: {
+        type: "object",
+        required: ["id_1c", "short_name", "full_name"],
+        properties: {
+          id_1c: schemaRef("Id1c"),
+          short_name: { type: "string", maxLength: 80 },
+          full_name: { type: "string", maxLength: 255 },
+          conversion_factor: { type: "number", exclusiveMinimum: 0, nullable: true },
+          reference_unit_id_1c: nullableUuid,
+          status: schemaRef("Status"),
+        },
+      },
+      NomenclatureSyncItem: {
+        type: "object",
+        required: ["id_1c", "product_type", "name", "unit_id_1c"],
+        properties: {
+          id_1c: schemaRef("Id1c"),
+          product_type: schemaRef("ProductType"),
+          nomenclature_type_id_1c: nullableUuid,
+          name: { type: "string", maxLength: 255 },
+          unit_id_1c: schemaRef("Id1c"),
+          is_default: { type: "boolean" },
+          status: schemaRef("Status"),
+        },
+      },
     },
   },
   paths: {
@@ -89,66 +170,15 @@ export const openApiSpec = {
         responses: { "200": { description: "API доступен" }, "401": { description: "Неверный API-ключ" } },
       },
     },
-    "/counterparties": readOperation("Получить контрагентов"),
-    "/counterparties/sync": syncOperation("Синхронизировать контрагентов", {
-      type: "object",
-      required: ["type", "id_1c", "name"],
-      properties: {
-        type: { type: "string", enum: ["supplier", "customer", "carrier"] },
-        id_1c: uuid,
-        inn: { type: "string", nullable: true, maxLength: 32 },
-        name: { type: "string", maxLength: 255 },
-        full_name: { type: "string", nullable: true, maxLength: 500 },
-        status,
-      },
-    }),
-    "/contracts": readOperation("Получить договоры контрагентов"),
-    "/contracts/sync": syncOperation("Синхронизировать договоры", {
-      type: "object",
-      required: ["id_1c", "contract_name", "contract_number", "contract_date", "counterparty_type", "counterparty_id_1c"],
-      properties: {
-        id_1c: uuid,
-        contract_name: { type: "string", maxLength: 500 },
-        contract_number: { type: "string", maxLength: 120 },
-        contract_date: { type: "string", format: "date" },
-        counterparty_type: { type: "string", enum: ["supplier", "customer", "carrier"] },
-        counterparty_id_1c: uuid,
-        parent_contract_id_1c: { ...uuid, nullable: true },
-        status,
-      },
-    }),
-    "/nomenclature-types": readOperation("Получить виды номенклатуры"),
-    "/nomenclature-types/sync": syncOperation("Синхронизировать виды номенклатуры", {
-      type: "object",
-      required: ["id_1c", "code", "name"],
-      properties: { id_1c: uuid, code: { type: "string", maxLength: 100 }, name: { type: "string", maxLength: 255 }, status },
-    }),
-    "/units-of-measure": readOperation("Получить единицы измерения"),
-    "/units-of-measure/sync": syncOperation("Синхронизировать единицы измерения", {
-      type: "object",
-      required: ["id_1c", "short_name", "full_name"],
-      properties: {
-        id_1c: uuid,
-        short_name: { type: "string", maxLength: 80 },
-        full_name: { type: "string", maxLength: 255 },
-        conversion_factor: { type: "number", exclusiveMinimum: 0, nullable: true },
-        reference_unit_id_1c: { ...uuid, nullable: true },
-        status,
-      },
-    }),
-    "/nomenclature": readOperation("Получить номенклатуру"),
-    "/nomenclature/sync": syncOperation("Синхронизировать номенклатуру", {
-      type: "object",
-      required: ["id_1c", "product_type", "name", "unit_id_1c"],
-      properties: {
-        id_1c: uuid,
-        product_type: { type: "string", enum: ["kerosene", "pvkj", "service"] },
-        nomenclature_type_id_1c: { ...uuid, nullable: true },
-        name: { type: "string", maxLength: 255 },
-        unit_id_1c: uuid,
-        is_default: { type: "boolean" },
-        status,
-      },
-    }),
+    "/counterparties": readOperation("Получить контрагентов", "Контрагенты"),
+    "/counterparties/sync": syncOperation("Синхронизировать контрагентов", "Контрагенты", "CounterpartySyncItem"),
+    "/contracts": readOperation("Получить договоры контрагентов", "Договоры"),
+    "/contracts/sync": syncOperation("Синхронизировать договоры", "Договоры", "ContractSyncItem"),
+    "/nomenclature-types": readOperation("Получить виды номенклатуры", "Номенклатура"),
+    "/nomenclature-types/sync": syncOperation("Синхронизировать виды номенклатуры", "Номенклатура", "NomenclatureTypeSyncItem"),
+    "/units-of-measure": readOperation("Получить единицы измерения", "Номенклатура"),
+    "/units-of-measure/sync": syncOperation("Синхронизировать единицы измерения", "Номенклатура", "UnitSyncItem"),
+    "/nomenclature": readOperation("Получить номенклатуру", "Номенклатура"),
+    "/nomenclature/sync": syncOperation("Синхронизировать номенклатуру", "Номенклатура", "NomenclatureSyncItem"),
   },
 } as const;

@@ -335,7 +335,7 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
       contract_date: "2026-11-05",
       counterparty_type: "supplier",
       counterparty_id_1c: ids.supplier,
-      status: "active",
+      status: "updated",
     }] },
   });
   assert.equal(syncedContract.response.status, 200);
@@ -410,6 +410,17 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
   const publicOpenApi = await fetchJson("/api/integrations/1c/openapi.json", { cookie: null });
   assert.equal(publicOpenApi.response.status, 200);
   assert.ok(publicOpenApi.data.paths["/contracts/sync"]);
+  for (const [path, methods] of Object.entries(publicOpenApi.data.paths)) {
+    for (const operation of Object.values(methods)) {
+      assert.ok(operation.tags?.length, `${path} is assigned to a Swagger category`);
+    }
+  }
+  assert.deepEqual(publicOpenApi.data.components.schemas.Status.enum, ["active", "updated", "deleted"]);
+  assert.deepEqual(publicOpenApi.data.components.schemas.CounterpartyType.enum, ["supplier", "customer", "carrier"]);
+  assert.deepEqual(publicOpenApi.data.components.schemas.ProductType.enum, ["kerosene", "pvkj", "service"]);
+  assert.equal(publicOpenApi.data.components.schemas.CounterpartySyncItem.properties.type.$ref, "#/components/schemas/CounterpartyType");
+  assert.equal(publicOpenApi.data.components.schemas.ContractSyncItem.properties.counterparty_type.$ref, "#/components/schemas/CounterpartyType");
+  assert.equal(publicOpenApi.data.components.schemas.NomenclatureSyncItem.properties.product_type.$ref, "#/components/schemas/ProductType");
   const swaggerDocs = await fetch(new URL("/api/integrations/1c/docs/", baseUrl));
   assert.equal(swaggerDocs.status, 200);
   assert.match(await swaggerDocs.text(), /swagger-ui/);
