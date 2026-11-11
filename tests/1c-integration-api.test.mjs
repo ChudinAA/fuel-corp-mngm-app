@@ -46,6 +46,12 @@ let editorNomenclatureId;
 let adminCookie;
 let testEditorRoleId;
 let previousKeroseneDefaultId;
+let localContractId;
+let localNomenclatureTypeId;
+let localUnitId;
+let localNomenclatureId;
+let localBaseId;
+let localPriceId;
 const testEditorEmail = `1c-editor-${suffix}@example.test`;
 
 async function fetchJson(path, { method = "GET", body, token, cookie = adminCookie } = {}) {
@@ -146,7 +152,9 @@ async function verifyCatalogMigration() {
     await assert.rejects(client.query(migrationSql), /non-UUID values/i);
     await client.query("ROLLBACK");
   } finally {
-    client.release();
+    // This connection created temporary tables while exercising the migration.
+    // Destroy it instead of returning temp-table names to the shared test pool.
+    client.release(true);
   }
 }
 
@@ -167,6 +175,12 @@ after(async () => {
     ]]);
     await pool.query("DELETE FROM counterparty_contracts WHERE id = $1 OR id_1c = $2::uuid", [editorContractId ?? null, ids.contract]);
     await pool.query("DELETE FROM nomenclature WHERE id = $1 OR id_1c = $2::uuid", [editorNomenclatureId ?? null, ids.nomenclature]);
+    if (localContractId) await pool.query("DELETE FROM counterparty_contracts WHERE id = $1", [localContractId]);
+    if (localNomenclatureId) await pool.query("DELETE FROM nomenclature WHERE id = $1", [localNomenclatureId]);
+    if (localNomenclatureTypeId) await pool.query("DELETE FROM nomenclature_types WHERE id = $1", [localNomenclatureTypeId]);
+    if (localUnitId) await pool.query("DELETE FROM units_of_measure WHERE id = $1", [localUnitId]);
+    if (localPriceId) await pool.query("DELETE FROM prices WHERE id = $1", [localPriceId]);
+    if (localBaseId) await pool.query("DELETE FROM bases WHERE id = $1", [localBaseId]);
     await pool.query("DELETE FROM exchange_rates WHERE id_1c = ANY($1::uuid[])", [[ids.existingRate, ids.newRate]]);
     await pool.query("DELETE FROM currencies WHERE id_1c = ANY($1::uuid[]) OR code = ANY($2::text[])", [
       [ids.currencyNew],
@@ -255,6 +269,42 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
     ["Старое название из справочника", "Старое полное название", inns.matched],
   );
   const matchedSupplierId = matchSeed.rows[0].id;
+  const localUnit = await pool.query(
+    "INSERT INTO units_of_measure (short_name, full_name) VALUES ($1, $2) RETURNING id",
+    [`LOCAL-${suffix}`, `Local unit ${suffix}`],
+  );
+  localUnitId = localUnit.rows[0].id;
+  const localType = await pool.query(
+    "INSERT INTO nomenclature_types (code, name) VALUES ($1, $2) RETURNING id",
+    [`LOCAL-${suffix}`, `Local type ${suffix}`],
+  );
+  localNomenclatureTypeId = localType.rows[0].id;
+  const localItem = await pool.query(
+    `INSERT INTO nomenclature (product_type, nomenclature_type_id, name, unit_id)
+     VALUES ('service', $1, $2, $3) RETURNING id`,
+    [localNomenclatureTypeId, `Local item ${suffix}`, localUnitId],
+  );
+  localNomenclatureId = localItem.rows[0].id;
+  const localContract = await pool.query(
+    `INSERT INTO counterparty_contracts (contract_name, contract_number, contract_date, supplier_id)
+     VALUES ($1, $2, '2026-11-10', $3) RETURNING id`,
+    [`Local contract ${suffix}`, `LOCAL-${suffix}`, matchedSupplierId],
+  );
+  localContractId = localContract.rows[0].id;
+
+  const localCatalogExports = await Promise.all([
+    fetchJson(`${apiRoot}/contracts`, { token: firstKey, cookie: null }),
+    fetchJson(`${apiRoot}/nomenclature-types`, { token: firstKey, cookie: null }),
+    fetchJson(`${apiRoot}/units-of-measure`, { token: firstKey, cookie: null }),
+    fetchJson(`${apiRoot}/nomenclature`, { token: firstKey, cookie: null }),
+  ]);
+  assert.ok(localCatalogExports[0].data.items.some((item) => item.contract_number === `LOCAL-${suffix}` && item.id_1c === null));
+  assert.ok(localCatalogExports[1].data.items.some((item) => item.name === `Local type ${suffix}` && item.id_1c === null));
+  assert.ok(localCatalogExports[2].data.items.some((item) => item.full_name === `Local unit ${suffix}` && item.id_1c === null));
+  assert.ok(localCatalogExports[3].data.items.some((item) => item.name === `Local item ${suffix}` && item.id_1c === null));
+  for (const result of localCatalogExports) {
+    assert.equal(result.data.count, result.data.items.length, "GET count matches records, including unlinked local rows");
+  }
 
   const batch = [
     { type: "supplier", id_1c: ids.supplier, inn: inns.supplier, name: "1С: новый поставщик", full_name: "Полное название поставщика", status: "active" },
@@ -401,6 +451,18 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
      RETURNING id`,
     [currencyCodes.existing, currencyCodes.target, localCurrencyIds.get(currencyCodes.existing), localCurrencyIds.get(currencyCodes.target)],
   );
+  const unlinkedCurrencies = await fetchJson(`${apiRoot}/currencies`, { token: firstKey, cookie: null });
+  const unlinkedRates = await fetchJson(`${apiRoot}/exchange-rates?limit=10`, { token: firstKey, cookie: null });
+  assert.equal(unlinkedCurrencies.data.count, unlinkedCurrencies.data.items.length);
+  assert.ok(unlinkedCurrencies.data.items.some((item) => item.code === currencyCodes.existing && item.id_1c === null));
+  assert.ok(unlinkedCurrencies.data.items.every((item) => !Object.hasOwn(item, "symbol")), "application-owned currency symbols are not exported");
+  assert.equal(unlinkedRates.data.total_count, 1);
+  assert.equal(unlinkedRates.data.items[0].id_1c, null);
+  assert.equal(unlinkedRates.data.total_count, unlinkedRates.data.items.length);
+  const invalidRatePage = await fetchJson(`${apiRoot}/exchange-rates?limit=501`, { token: firstKey, cookie: null });
+  const invalidPricePage = await fetchJson(`${apiRoot}/prices?limit=0`, { token: firstKey, cookie: null });
+  assert.equal(invalidRatePage.response.status, 400);
+  assert.equal(invalidPricePage.response.status, 400);
   const syncedCurrencies = await fetchJson(`${apiRoot}/currencies/sync`, {
     method: "POST",
     token: firstKey,
@@ -537,8 +599,25 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
   });
   assert.equal(contractWithoutParty.data.results[0].code, "counterparty_not_linked");
 
+  const localBase = await pool.query(
+    "INSERT INTO bases (name, base_type, location) VALUES ($1, 'wholesale', $2) RETURNING id",
+    [`Local base ${suffix}`, `Local location ${suffix}`],
+  );
+  localBaseId = localBase.rows[0].id;
+  const localPrice = await pool.query(
+    `INSERT INTO prices
+       (product_type, counterparty_type, basis, date_from, date_to, counterparty_id,
+        counterparty_role, price_values, volume, currency, basis_id, price_unit, volume_unit)
+     VALUES ('kerosene', 'wholesale', $1, '2026-11-01', '2026-12-31', $2,
+        'supplier', ARRAY['95000']::text[], 10, $3, $4, 'tonne', 'tonne') RETURNING id`,
+    [`Local base ${suffix}`, matchedSupplierId, currencyCodes.existing, localBaseId],
+  );
+  localPriceId = localPrice.rows[0].id;
+
   const exportedCatalog = await fetchJson(`${apiRoot}/contracts`, { token: firstKey, cookie: null });
   assert.ok(exportedCatalog.data.items.some((item) => item.id_1c === ids.contract));
+  assert.ok(exportedCatalog.data.items.some((item) => item.contract_number === `LOCAL-${suffix}` && item.id_1c === null));
+  assert.equal(exportedCatalog.data.count, exportedCatalog.data.items.length);
   const [exportedTypes, exportedUnits, exportedNomenclature] = await Promise.all([
     fetchJson(`${apiRoot}/nomenclature-types`, { token: firstKey, cookie: null }),
     fetchJson(`${apiRoot}/units-of-measure`, { token: firstKey, cookie: null }),
@@ -547,21 +626,33 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
   assert.ok(exportedTypes.data.items.some((item) => item.id_1c === ids.nomenclatureType));
   assert.ok(exportedUnits.data.items.some((item) => item.id_1c === ids.unit));
   assert.ok(exportedNomenclature.data.items.some((item) => item.id_1c === ids.nomenclature));
+  assert.ok(exportedTypes.data.items.some((item) => item.name === `Local type ${suffix}` && item.id_1c === null));
+  assert.ok(exportedUnits.data.items.some((item) => item.full_name === `Local unit ${suffix}` && item.id_1c === null));
+  assert.ok(exportedNomenclature.data.items.some((item) => item.name === `Local item ${suffix}` && item.id_1c === null));
+  for (const result of [exportedTypes, exportedUnits, exportedNomenclature]) {
+    assert.equal(result.data.count, result.data.items.length);
+  }
   const exportedCurrencies = await fetchJson(`${apiRoot}/currencies`, { token: firstKey, cookie: null });
   const exportedRatesFirstPage = await fetchJson(`${apiRoot}/exchange-rates?limit=1`, { token: firstKey, cookie: null });
   const exportedRatesSecondPage = await fetchJson(`${apiRoot}/exchange-rates?limit=1&offset=1`, { token: firstKey, cookie: null });
   const exportedBases = await fetchJson(`${apiRoot}/bases`, { token: firstKey, cookie: null });
   const exportedPrices = await fetchJson(`${apiRoot}/prices?limit=1`, { token: firstKey, cookie: null });
   assert.ok(exportedCurrencies.data.items.some((item) => item.id_1c === matchedCurrency.rows[0].id_1c));
+  assert.equal(exportedCurrencies.data.count, exportedCurrencies.data.items.length);
   assert.equal(exportedRatesFirstPage.data.items.length, 1);
   assert.equal(exportedRatesFirstPage.data.has_more, true);
+  assert.equal(exportedRatesFirstPage.data.total_count, 2);
   assert.equal(exportedRatesSecondPage.data.items.length, 1);
   assert.notEqual(exportedRatesFirstPage.data.items[0].id_1c, exportedRatesSecondPage.data.items[0].id_1c);
   assert.equal(exportedBases.response.status, 200);
   assert.ok(Array.isArray(exportedBases.data.items));
+  assert.equal(exportedBases.data.count, exportedBases.data.items.length);
+  assert.ok(exportedBases.data.items.some((item) => item.name === `Local base ${suffix}`));
   assert.equal(exportedPrices.response.status, 200);
   assert.equal(exportedPrices.data.limit, 1);
   assert.ok(Array.isArray(exportedPrices.data.items));
+  assert.ok(exportedPrices.data.items.some((item) => item.basis === `Local base ${suffix}`));
+  assert.equal(exportedPrices.data.total_count, 1);
   assert.equal(Object.hasOwn(exportedNomenclature.data.items.find((item) => item.id_1c === ids.nomenclature), "is_default"), false);
   const publicOpenApi = await fetchJson("/api/integrations/1c/openapi.json", { cookie: null });
   assert.equal(publicOpenApi.response.status, 200);

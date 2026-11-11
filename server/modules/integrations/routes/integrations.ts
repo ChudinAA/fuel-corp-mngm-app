@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Express, Request, Response, NextFunction } from "express";
-import { and, desc, eq, inArray, isNotNull, isNull, lt, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../../db";
 import { requireAdministrator, requireAuth } from "../../../middleware/middleware";
@@ -432,7 +432,7 @@ export function registerIntegrationRoutes(app: Express) {
 
   app.get(`${apiPrefix}/contracts`, authenticateIntegration, asyncRoute(async (req, res) => {
     const rows = await db.select().from(counterpartyContracts)
-      .where(and(isNotNull(counterpartyContracts.id1c), isNull(counterpartyContracts.deletedAt)));
+      .where(isNull(counterpartyContracts.deletedAt));
     req.integrationItemCount = rows.length;
     res.json({
       count: rows.length,
@@ -452,7 +452,7 @@ export function registerIntegrationRoutes(app: Express) {
 
   app.get(`${apiPrefix}/nomenclature-types`, authenticateIntegration, asyncRoute(async (req, res) => {
     const rows = await db.select().from(nomenclatureTypes)
-      .where(and(isNotNull(nomenclatureTypes.id1c), isNull(nomenclatureTypes.deletedAt)));
+      .where(isNull(nomenclatureTypes.deletedAt));
     req.integrationItemCount = rows.length;
     res.json({ count: rows.length, items: rows.map((row) => ({
       id_1c: row.id1c, code: row.code, name: row.name, status: row.integrationStatus, updated_at: row.updatedAt ?? row.createdAt,
@@ -461,7 +461,7 @@ export function registerIntegrationRoutes(app: Express) {
 
   app.get(`${apiPrefix}/units-of-measure`, authenticateIntegration, asyncRoute(async (req, res) => {
     const rows = await db.select().from(unitsOfMeasure)
-      .where(and(isNotNull(unitsOfMeasure.id1c), isNull(unitsOfMeasure.deletedAt)));
+      .where(isNull(unitsOfMeasure.deletedAt));
     req.integrationItemCount = rows.length;
     const referenceIds = rows.flatMap((row) => row.referenceUnitId ? [row.referenceUnitId] : []);
     const referenceRows = referenceIds.length
@@ -481,7 +481,7 @@ export function registerIntegrationRoutes(app: Express) {
 
   app.get(`${apiPrefix}/nomenclature`, authenticateIntegration, asyncRoute(async (req, res) => {
     const rows = await db.select().from(nomenclature)
-      .where(and(isNotNull(nomenclature.id1c), isNull(nomenclature.deletedAt)));
+      .where(isNull(nomenclature.deletedAt));
     req.integrationItemCount = rows.length;
     const relatedTypeIds = rows.flatMap((row) => row.nomenclatureTypeId ? [row.nomenclatureTypeId] : []);
     const relatedUnitIds = rows.map((row) => row.unitId);
@@ -504,7 +504,7 @@ export function registerIntegrationRoutes(app: Express) {
 
   app.get(`${apiPrefix}/currencies`, authenticateIntegration, asyncRoute(async (req, res) => {
     const rows = await db.select().from(currencies)
-      .where(and(isNotNull(currencies.id1c), isNull(currencies.deletedAt)))
+      .where(isNull(currencies.deletedAt))
       .orderBy(currencies.code);
     req.integrationItemCount = rows.length;
     res.json({ count: rows.length, items: rows.map((row) => ({
@@ -525,7 +525,7 @@ export function registerIntegrationRoutes(app: Express) {
         !Number.isSafeInteger(offset) || offset < 0) {
       return res.status(400).json({ code: "invalid_pagination", message: "Укажите limit от 1 до 500 и неотрицательный offset" });
     }
-    const filter = and(isNotNull(exchangeRates.id1c), isNull(exchangeRates.deletedAt));
+    const filter = isNull(exchangeRates.deletedAt);
     const [rows, totalResult] = await Promise.all([
       db.select().from(exchangeRates).where(filter)
         .orderBy(desc(exchangeRates.rateDate), desc(exchangeRates.id)).limit(limit).offset(offset),
