@@ -29,6 +29,9 @@ function allowOnlyUnlinkedForNonAdmin(getRecord: (id: string) => Promise<any>, l
       if (role?.name === "Админ" || role?.name === "Ген.дир") return next();
       const record = await getRecord(req.params.id);
       if (record?.id1c) {
+        if (linkedEditableFields.length === 0 || Object.keys(req.body ?? {}).length === 0) {
+          return res.status(403).json({ message: "Связанную с 1С запись может менять или удалять только администратор" });
+        }
         const disallowed = Object.keys(req.body ?? {}).filter((key) => !linkedEditableFields.includes(key));
         if (disallowed.length) {
           return res.status(403).json({ message: "Связанную с 1С запись может менять только администратор, кроме разрешённых локальных настроек" });

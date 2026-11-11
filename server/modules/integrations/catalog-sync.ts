@@ -315,10 +315,10 @@ export async function syncCurrency(item: SyncInput, requestId: string): Promise<
       const [existing] = await tx.select().from(currencies).where(eq(currencies.code, incoming.code)).limit(1);
       return existing;
     },
-    buildFields: async (_tx, incoming) => ({ fields: {
+    buildFields: async (_tx, incoming, current) => ({ fields: {
       code: incoming.code,
       name: incoming.name,
-      isActive: getCatalogStatusKind(incoming.status) === "deleted" ? false : true,
+      isActive: getCatalogStatusKind(incoming.status) === "active" ? true : current?.isActive ?? true,
     } }),
     onDeleted: async (tx, current) => {
       await tx.update(currencies).set({ isActive: false }).where(eq(currencies.id, current.id));
@@ -337,7 +337,7 @@ export async function syncExchangeRate(item: SyncInput, requestId: string): Prom
       )).limit(1);
       return existing;
     },
-    buildFields: async (tx, incoming) => {
+    buildFields: async (tx, incoming, current) => {
       const [baseCurrency] = await tx.select().from(currencies)
         .where(and(eq(currencies.code, incoming.currency_code), isNull(currencies.deletedAt))).limit(1);
       if (!baseCurrency) return { error: "currency_not_found", message: "Базовая валюта не найдена; синхронизируйте её первой" };
@@ -355,7 +355,7 @@ export async function syncExchangeRate(item: SyncInput, requestId: string): Prom
         rate: String(incoming.rate),
         rateDate: incoming.rate_date,
         source: "1С",
-        isActive: true,
+        isActive: getCatalogStatusKind(incoming.status) === "active" ? true : current?.isActive ?? true,
       } };
     },
     onDeleted: async (tx, current) => {

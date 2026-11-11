@@ -15,7 +15,7 @@ const batchResponse = {
         properties: {
           id_1c: schemaRef("Id1c"),
           type: schemaRef("IntegrationEntityType"),
-          outcome: { type: "string", enum: ["created", "updated", "deleted", "skipped", "error"] },
+          outcome: { type: "string", enum: ["created", "updated", "deleted", "skipped", "error", "conflict"] },
           code: { type: "string" },
           entity_id: schemaRef("Id1c"),
         },

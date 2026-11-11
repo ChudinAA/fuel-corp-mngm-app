@@ -511,7 +511,6 @@ export function registerIntegrationRoutes(app: Express) {
       id_1c: row.id1c,
       code: row.code,
       name: row.name,
-      symbol: row.symbol,
       status: row.integrationStatus,
       updated_at: row.updatedAt ?? row.createdAt,
     })) });
@@ -936,7 +935,7 @@ export async function enforceIntegrationMasterData(req: Request, res: Response, 
   try {
     if (!await getMasterDataMode()) return next();
     if (await isAdministrator(req.session.userId)) return next();
-    return res.status(403).json({ message: "Создание и удаление контрагентов доступно только администратору при включённом обмене с 1С" });
+    return res.status(403).json({ message: "Создание и удаление справочников, управляемых 1С, доступно только администратору при включённой интеграции" });
   } catch (error) {
     console.error("[1C integration] Master-data policy check failed:", (error as Error)?.message);
     return res.status(503).json({ message: "Не удалось проверить режим мастер-данных" });
