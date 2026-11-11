@@ -48,6 +48,7 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 
 interface ExchangeRate {
   id: string;
+  id1c?: string | null;
   currency: string;
   targetCurrency: string;
   currencyId: string;
@@ -61,6 +62,7 @@ interface ExchangeRate {
 
 interface Currency {
   id: string;
+  id1c?: string | null;
   code: string;
   name: string;
   symbol: string | null;
@@ -70,7 +72,7 @@ interface Currency {
 export function ExchangeRatesTab() {
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addCurrencyDialogOpen, setAddCurrencyDialogOpen] = useState(false);
@@ -101,6 +103,9 @@ export function ExchangeRatesTab() {
 
   const { data: currencies = [] } = useQuery<Currency[]>({
     queryKey: ["/api/currencies"],
+  });
+  const { data: integrationMode } = useQuery<{ counterpartyMasterDataEnabled: boolean }>({
+    queryKey: ["/api/integrations/1c/mode"],
   });
 
   const createMutation = useMutation({
@@ -133,7 +138,8 @@ export function ExchangeRatesTab() {
   const createCurrencyMutation = useMutation({
     mutationFn: async (data: typeof newCurrency) => {
       if (editingCurrency) {
-        return apiRequest("PATCH", `/api/currencies/${editingCurrency.id}`, data);
+        const payload = editingCurrency.id1c && !isAdmin ? { symbol: data.symbol } : data;
+        return apiRequest("PATCH", `/api/currencies/${editingCurrency.id}`, payload);
       }
       return apiRequest("POST", "/api/currencies", data);
     },
@@ -260,6 +266,7 @@ export function ExchangeRatesTab() {
   const canCreate = hasPermission("directories", "create");
   const canEdit = hasPermission("directories", "edit");
   const canDelete = hasPermission("directories", "delete");
+  const canManageLinkedCatalogs = isAdmin || !integrationMode?.counterpartyMasterDataEnabled;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -274,7 +281,7 @@ export function ExchangeRatesTab() {
               Управление курсами валют
             </p>
           </div>
-          {canCreate && (
+          {canCreate && canManageLinkedCatalogs && (
             <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) resetForm(); else setDialogOpen(true); }}>
               <DialogTrigger asChild>
                 <Button size="sm" data-testid="button-add-exchange-rate">
@@ -414,7 +421,7 @@ export function ExchangeRatesTab() {
                     <TableCell>{format(new Date(rate.rateDate), "dd.MM.yyyy", { locale: ru })}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        {canEdit && (
+                        {canEdit && (!rate.id1c || isAdmin) && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -424,7 +431,7 @@ export function ExchangeRatesTab() {
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
-                        {canDelete && (
+                        {canDelete && canManageLinkedCatalogs && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -455,7 +462,7 @@ export function ExchangeRatesTab() {
               Список используемых валют
             </p>
           </div>
-          {canCreate && (
+          {canCreate && canManageLinkedCatalogs && (
             <Dialog open={addCurrencyDialogOpen} onOpenChange={(open) => { if (!open) resetCurrencyForm(); else setAddCurrencyDialogOpen(true); }}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline" data-testid="button-add-currency">
@@ -472,6 +479,7 @@ export function ExchangeRatesTab() {
                     <Label>Код валюты</Label>
                     <Input
                       value={newCurrency.code}
+                      disabled={!!editingCurrency?.id1c && !isAdmin}
                       onChange={(e) => setNewCurrency({ ...newCurrency, code: e.target.value.toUpperCase() })}
                       placeholder="Например: KZT"
                       maxLength={10}
@@ -482,6 +490,7 @@ export function ExchangeRatesTab() {
                     <Label>Название</Label>
                     <Input
                       value={newCurrency.name}
+                      disabled={!!editingCurrency?.id1c && !isAdmin}
                       onChange={(e) => setNewCurrency({ ...newCurrency, name: e.target.value })}
                       placeholder="Например: Казахстанский тенге"
                       data-testid="input-currency-name"
@@ -531,7 +540,7 @@ export function ExchangeRatesTab() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {canEdit && (
+                        {canEdit && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -541,7 +550,7 @@ export function ExchangeRatesTab() {
                           <Pencil className="h-4 w-4" />
                         </Button>
                       )}
-                      {canDelete && (
+                        {canDelete && canManageLinkedCatalogs && (
                         <Button
                           variant="ghost"
                           size="icon"

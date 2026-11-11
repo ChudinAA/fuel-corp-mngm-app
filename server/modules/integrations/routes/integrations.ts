@@ -15,6 +15,8 @@ import {
 } from "../counterparty-sync-contract";
 import {
   contractSyncBatchSchema,
+  currencySyncBatchSchema,
+  exchangeRateSyncBatchSchema,
   nomenclatureSyncBatchSchema,
   nomenclatureTypeSyncBatchSchema,
   unitSyncBatchSchema,
@@ -25,6 +27,9 @@ import swaggerUi from "swagger-ui-express";
 import {
   counterpartyContracts,
   customers,
+  currencies,
+  exchangeRates,
+  bases,
   integrationApiKeys,
   integrationChangeLogs,
   integrationRequestLogs,
@@ -32,18 +37,38 @@ import {
   logisticsCarriers,
   nomenclature,
   nomenclatureTypes,
+  prices,
   suppliers,
   unitsOfMeasure,
 } from "@shared/schema";
 import { SSEService } from "../../../services/sse-service";
 
 const allowedEntities = allowedCounterpartyTypes;
+const reviewableEntityTypes = [
+  ...allowedCounterpartyTypes,
+  "counterparty_contracts",
+  "nomenclature",
+  "nomenclature_types",
+  "units_of_measure",
+  "currencies",
+  "exchange_rates",
+] as const;
 
 const tableByType = {
   supplier: suppliers,
   customer: customers,
   carrier: logisticsCarriers,
 } as const;
+
+const reviewTableByType: Record<string, any> = {
+  ...tableByType,
+  counterparty_contracts: counterpartyContracts,
+  nomenclature,
+  nomenclature_types: nomenclatureTypes,
+  units_of_measure: unitsOfMeasure,
+  currencies,
+  exchange_rates: exchangeRates,
+};
 
 function asyncRoute(handler: (req: Request, res: Response, next: NextFunction) => Promise<unknown>) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -318,7 +343,7 @@ async function reviewPendingChanges(options: {
     const conditions = [
       eq(integrationChangeLogs.outcome, "created"),
       isNull(integrationChangeLogs.reviewedAt),
-      inArray(integrationChangeLogs.entityType, [...allowedEntities]),
+      inArray(integrationChangeLogs.entityType, [...reviewableEntityTypes]),
     ];
     if (options.ids) conditions.push(inArray(integrationChangeLogs.id, options.ids));
     if (options.all && options.excludeIds?.length) {
@@ -330,33 +355,40 @@ async function reviewPendingChanges(options: {
       .for("update");
     if (!changes.length) return { count: 0, entityTypes: [] as CounterpartyType[] };
 
-    const groups = new Map<CounterpartyType, { entityIds: string[]; changeIds: number[] }>();
+    const changesByType = new Map<string, { entityIds: string[]; changeIds: number[] }>();
     for (const change of changes) {
-      const type = change.entityType as CounterpartyType;
-      if (!tableByType[type]) continue;
-      const group = groups.get(type) ?? { entityIds: [], changeIds: [] };
+      const type = change.entityType;
+      if (!reviewTableByType[type]) continue;
+      const group = changesByType.get(type) ?? { entityIds: [], changeIds: [] };
       if (change.entityId) group.entityIds.push(change.entityId);
       group.changeIds.push(change.id);
-      groups.set(type, group);
+      changesByType.set(type, group);
     }
 
-    for (const [type, group] of groups) {
-      const table: any = tableByType[type];
+    for (const [type, group] of changesByType) {
+      const table = reviewTableByType[type];
       if (group.entityIds.length) {
-        const entityPatch = options.action === "reject"
-          ? { deletedAt: sql`NOW()`, deletedById: options.userId, integrationPendingReview: false }
-          : { integrationPendingReview: false, updatedAt: sql`NOW()` };
+        const entityPatch: Record<string, unknown> = options.action === "reject"
+          ? { deletedAt: sql`NOW()`, deletedById: options.userId }
+          : { updatedAt: sql`NOW()` };
+        if (["supplier", "customer", "carrier"].includes(type)) entityPatch.integrationPendingReview = false;
+        if (options.action === "reject" && ["currencies", "exchange_rates"].includes(type)) entityPatch.isActive = false;
         await tx.update(table).set(entityPatch).where(inArray(table.id, group.entityIds));
       }
       await tx.update(integrationChangeLogs)
         .set({ reviewedAt: sql`NOW()`, reviewedById: options.userId })
         .where(inArray(integrationChangeLogs.id, group.changeIds));
     }
-    return { count: changes.length, entityTypes: [...groups.keys()] };
+    return { count: changes.length, entityTypes: [...changesByType.keys()] };
   });
 
   for (const type of reviewed.entityTypes) {
-    const topic = type === "supplier" ? "suppliers" : type === "customer" ? "customers" : "logistics-directories";
+    const topic = type === "supplier" ? "suppliers"
+      : type === "customer" ? "customers"
+        : type === "carrier" ? "logistics-directories"
+          : type === "exchange_rates" ? "exchange-rates"
+            : ["currencies", "counterparty_contracts", "nomenclature", "nomenclature_types", "units_of_measure"].includes(type)
+              ? "directories" : "prices";
     SSEService.notifyEntityChanged(topic);
   }
   return reviewed.count;
@@ -465,10 +497,115 @@ export function registerIntegrationRoutes(app: Express) {
       nomenclature_type_id_1c: row.nomenclatureTypeId ? typeIdByLocalId.get(row.nomenclatureTypeId) ?? null : null,
       name: row.name,
       unit_id_1c: unitIdByLocalId.get(row.unitId) ?? null,
-      is_default: row.isDefault,
       status: row.integrationStatus,
       updated_at: row.updatedAt ?? row.createdAt,
     })) });
+  }));
+
+  app.get(`${apiPrefix}/currencies`, authenticateIntegration, asyncRoute(async (req, res) => {
+    const rows = await db.select().from(currencies)
+      .where(and(isNotNull(currencies.id1c), isNull(currencies.deletedAt)))
+      .orderBy(currencies.code);
+    req.integrationItemCount = rows.length;
+    res.json({ count: rows.length, items: rows.map((row) => ({
+      id_1c: row.id1c,
+      code: row.code,
+      name: row.name,
+      symbol: row.symbol,
+      status: row.integrationStatus,
+      updated_at: row.updatedAt ?? row.createdAt,
+    })) });
+  }));
+
+  app.get(`${apiPrefix}/exchange-rates`, authenticateIntegration, asyncRoute(async (req, res) => {
+    const limitRaw = req.query.limit === undefined ? "100" : String(req.query.limit);
+    const offsetRaw = req.query.offset === undefined ? "0" : String(req.query.offset);
+    const limit = /^\d+$/.test(limitRaw) ? Number(limitRaw) : NaN;
+    const offset = /^\d+$/.test(offsetRaw) ? Number(offsetRaw) : NaN;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500 ||
+        !Number.isSafeInteger(offset) || offset < 0) {
+      return res.status(400).json({ code: "invalid_pagination", message: "Укажите limit от 1 до 500 и неотрицательный offset" });
+    }
+    const filter = and(isNotNull(exchangeRates.id1c), isNull(exchangeRates.deletedAt));
+    const [rows, totalResult] = await Promise.all([
+      db.select().from(exchangeRates).where(filter)
+        .orderBy(desc(exchangeRates.rateDate), desc(exchangeRates.id)).limit(limit).offset(offset),
+      db.select({ count: sql<number>`count(*)::int` }).from(exchangeRates).where(filter),
+    ]);
+    const totalCount = totalResult[0]?.count ?? 0;
+    req.integrationItemCount = rows.length;
+    res.json({ items: rows.map((row) => ({
+      id_1c: row.id1c,
+      currency_code: row.currency,
+      target_currency_code: row.targetCurrency,
+      rate: row.rate,
+      rate_date: row.rateDate,
+      source: row.source,
+      status: row.integrationStatus,
+      updated_at: row.updatedAt ?? row.createdAt,
+    })), total_count: totalCount, limit, offset, has_more: offset + rows.length < totalCount });
+  }));
+
+  app.get(`${apiPrefix}/bases`, authenticateIntegration, asyncRoute(async (req, res) => {
+    const rows = await db.select().from(bases).where(isNull(bases.deletedAt)).orderBy(bases.name);
+    req.integrationItemCount = rows.length;
+    res.json({ count: rows.length, items: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      base_type: row.baseType,
+      location: row.location,
+      iata_code: row.iataCode,
+      is_active: row.isActive,
+      updated_at: row.updatedAt ?? row.createdAt,
+    })) });
+  }));
+
+  app.get(`${apiPrefix}/prices`, authenticateIntegration, asyncRoute(async (req, res) => {
+    const limitRaw = req.query.limit === undefined ? "100" : String(req.query.limit);
+    const offsetRaw = req.query.offset === undefined ? "0" : String(req.query.offset);
+    const limit = /^\d+$/.test(limitRaw) ? Number(limitRaw) : NaN;
+    const offset = /^\d+$/.test(offsetRaw) ? Number(offsetRaw) : NaN;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500 ||
+        !Number.isSafeInteger(offset) || offset < 0) {
+      return res.status(400).json({ code: "invalid_pagination", message: "Укажите limit от 1 до 500 и неотрицательный offset" });
+    }
+    const filter = isNull(prices.deletedAt);
+    const [rows, totalResult] = await Promise.all([
+      db.select().from(prices).where(filter)
+        .orderBy(desc(prices.dateTo), desc(prices.id)).limit(limit).offset(offset),
+      db.select({ count: sql<number>`count(*)::int` }).from(prices).where(filter),
+    ]);
+    const totalCount = totalResult[0]?.count ?? 0;
+    req.integrationItemCount = rows.length;
+    res.json({ items: rows.map((row) => ({
+      id: row.id,
+      product_type: row.productType,
+      nomenclature_id: row.nomenclatureId,
+      counterparty_id: row.counterpartyId,
+      counterparty_type: row.counterpartyType,
+      counterparty_role: row.counterpartyRole,
+      basis: row.basis,
+      basis_id: row.basisId,
+      loading_basis_id: row.loadingBasisId,
+      price_values: row.priceValues,
+      volume: row.volume,
+      limit_type: row.limitType,
+      max_deal_amount: row.maxDealAmount,
+      date_from: row.dateFrom,
+      date_to: row.dateTo,
+      contract_number: row.contractNumber,
+      contract_id: row.contractId,
+      contract_appendix: row.contractAppendix,
+      notes: row.notes,
+      volume_unit: row.volumeUnit,
+      currency: row.currency,
+      currency_id: row.currencyId,
+      exchange_rate_id: row.exchangeRateId,
+      price_unit: row.priceUnit,
+      contract_limit_enabled: row.contractLimitEnabled,
+      is_active: row.isActive,
+      updated_at: row.updatedAt ?? row.createdAt,
+    })), total_count: totalCount, limit, offset, has_more: offset + rows.length < totalCount });
   }));
 
   app.post(`${apiPrefix}/counterparties/sync`, authenticateIntegration, asyncRoute(async (req, res) => {
@@ -511,6 +648,8 @@ export function registerIntegrationRoutes(app: Express) {
     { path: "nomenclature-types", type: "nomenclature_types" as const, schema: nomenclatureTypeSyncBatchSchema },
     { path: "units-of-measure", type: "units_of_measure" as const, schema: unitSyncBatchSchema },
     { path: "nomenclature", type: "nomenclature" as const, schema: nomenclatureSyncBatchSchema },
+    { path: "currencies", type: "currencies" as const, schema: currencySyncBatchSchema },
+    { path: "exchange-rates", type: "exchange_rates" as const, schema: exchangeRateSyncBatchSchema },
   ];
   for (const endpoint of catalogSyncEndpoints) {
     app.post(`${apiPrefix}/${endpoint.path}/sync`, authenticateIntegration, asyncRoute(async (req, res) => {
@@ -552,10 +691,10 @@ export function registerIntegrationRoutes(app: Express) {
       .where(and(
         eq(integrationChangeLogs.outcome, "created"),
         isNull(integrationChangeLogs.reviewedAt),
-        inArray(integrationChangeLogs.entityType, [...allowedEntities]),
+        inArray(integrationChangeLogs.entityType, [...reviewableEntityTypes]),
       ));
     const pendingByType: Record<string, number> = {};
-    for (const type of allowedEntities) {
+    for (const type of reviewableEntityTypes) {
       const [typeCount] = await db.select({ count: sql<number>`count(*)::int` }).from(integrationChangeLogs)
         .where(and(
           eq(integrationChangeLogs.outcome, "created"),
@@ -632,7 +771,7 @@ export function registerIntegrationRoutes(app: Express) {
     const conditions = [
       eq(integrationChangeLogs.outcome, "created"),
       isNull(integrationChangeLogs.reviewedAt),
-      inArray(integrationChangeLogs.entityType, [...allowedEntities]),
+      inArray(integrationChangeLogs.entityType, [...reviewableEntityTypes]),
     ];
     if (cursor !== null) conditions.push(lt(integrationChangeLogs.id, cursor));
     const rows = await db.select().from(integrationChangeLogs)
@@ -642,7 +781,7 @@ export function registerIntegrationRoutes(app: Express) {
     const hasMore = rows.length > pageSize;
     const pageRows = rows.slice(0, pageSize);
     const pendingItems = await Promise.all(pageRows.map(async (row) => {
-      const table: any = tableByType[row.entityType as CounterpartyType];
+      const table: any = reviewTableByType[row.entityType];
       if (!table || !row.entityId) return { ...row, currentEntity: null };
       const [currentEntity] = await db.select().from(table).where(eq(table.id, row.entityId)).limit(1);
       return { ...row, currentEntity: currentEntity ?? null };
@@ -694,10 +833,10 @@ export function registerIntegrationRoutes(app: Express) {
   }));
 
   app.post(`${adminBase}/entities/:type/:entityId/review`, requireAdministrator, asyncRoute(async (req, res) => {
-    const type = req.params.type as CounterpartyType;
+    const type = req.params.type;
     const action = req.body?.action;
-    if (!tableByType[type] || !["approve", "reject"].includes(action)) {
-      return res.status(400).json({ message: "Некорректное действие проверки контрагента" });
+    if (!reviewTableByType[type] || !["approve", "reject"].includes(action)) {
+      return res.status(400).json({ message: "Некорректное действие проверки записи из 1С" });
     }
     const [change] = await db.select({ id: integrationChangeLogs.id }).from(integrationChangeLogs)
       .where(and(
@@ -759,13 +898,21 @@ export function registerIntegrationRoutes(app: Express) {
     if (cursor !== null && (!Number.isSafeInteger(cursor) || cursor < 1)) {
       return res.status(400).json({ message: "Некорректный курсор журнала" });
     }
-    const pageSize = 50;
+    const rawLimit = req.query.limit;
+    const requestedPageSize = rawLimit === undefined ? 50 :
+      typeof rawLimit === "string" && /^\d+$/.test(rawLimit) ? Number(rawLimit) : NaN;
+    if (!Number.isSafeInteger(requestedPageSize) || requestedPageSize < 1 || requestedPageSize > 50) {
+      return res.status(400).json({ message: "Размер страницы должен быть от 1 до 50" });
+    }
+    const pageSize = requestedPageSize;
     const conditions = [eq(integrationRequestLogs.integration, "1c")];
     if (cursor !== null) conditions.push(lt(integrationRequestLogs.id, cursor));
     const rows = await db.select().from(integrationRequestLogs)
       .where(and(...conditions))
       .orderBy(desc(integrationRequestLogs.id))
       .limit(pageSize + 1);
+    const [totalResult] = await db.select({ count: sql<number>`count(*)::int` }).from(integrationRequestLogs)
+      .where(eq(integrationRequestLogs.integration, "1c"));
     const hasMoreRequests = rows.length > pageSize;
     const requests = rows.slice(0, pageSize);
     const changes = cursor === null
@@ -777,6 +924,7 @@ export function registerIntegrationRoutes(app: Express) {
     res.json({
       requests,
       changes,
+      totalCount: totalResult?.count ?? 0,
       pageSize,
       hasMoreRequests,
       nextCursor: hasMoreRequests ? requests[requests.length - 1]?.id ?? null : null,
@@ -793,6 +941,56 @@ export async function enforceIntegrationMasterData(req: Request, res: Response, 
     console.error("[1C integration] Master-data policy check failed:", (error as Error)?.message);
     return res.status(503).json({ message: "Не удалось проверить режим мастер-данных" });
   }
+}
+
+export function rejectIntegrationManagedFields(req: Request, res: Response, next: NextFunction) {
+  const managedKeys = ["id1c", "id_1c", "integrationStatus", "integration_status", "deletedAt", "deletedById"];
+  if (managedKeys.some((key) => Object.prototype.hasOwnProperty.call(req.body ?? {}, key))) {
+    return res.status(400).json({ message: "Связь с 1С и статус удаления можно менять только через API интеграции" });
+  }
+  next();
+}
+
+export function protectLinkedCurrencyFields(req: Request, res: Response, next: NextFunction) {
+  const managedKeys = ["id1c", "id_1c", "integrationStatus", "integration_status", "deletedAt", "deletedById"];
+  if (managedKeys.some((key) => Object.prototype.hasOwnProperty.call(req.body ?? {}, key))) {
+    return res.status(400).json({ message: "Поля синхронизации доступны только через API интеграции" });
+  }
+  void (async () => {
+    try {
+      if (await isAdministrator(req.session.userId)) return next();
+      const [currency] = await db.select().from(currencies).where(eq(currencies.id, req.params.id)).limit(1);
+      if (!currency?.id1c) return next();
+      const editableKeys = new Set(["symbol", "updatedById"]);
+      if (Object.keys(req.body ?? {}).some((key) => !editableKeys.has(key))) {
+        return res.status(403).json({ message: "Для связанной с 1С валюты доступно только редактирование символа" });
+      }
+      next();
+    } catch (error) {
+      console.error("[1C integration] Currency field guard failed:", (error as Error)?.message);
+      res.status(503).json({ message: "Не удалось проверить связь валюты с 1С" });
+    }
+  })();
+}
+
+export function protectLinkedExchangeRateFields(req: Request, res: Response, next: NextFunction) {
+  const managedKeys = ["id1c", "id_1c", "integrationStatus", "integration_status", "deletedAt", "deletedById"];
+  if (managedKeys.some((key) => Object.prototype.hasOwnProperty.call(req.body ?? {}, key))) {
+    return res.status(400).json({ message: "Поля синхронизации доступны только через API интеграции" });
+  }
+  void (async () => {
+    try {
+      if (await isAdministrator(req.session.userId)) return next();
+      const [rate] = await db.select().from(exchangeRates).where(eq(exchangeRates.id, req.params.id)).limit(1);
+      if (rate?.id1c) {
+        return res.status(403).json({ message: "Курс, связанный с 1С, может изменять только администратор" });
+      }
+      next();
+    } catch (error) {
+      console.error("[1C integration] Exchange-rate field guard failed:", (error as Error)?.message);
+      res.status(503).json({ message: "Не удалось проверить связь курса с 1С" });
+    }
+  })();
 }
 
 export function protectLinkedCounterpartyMasterFields(type: CounterpartyType) {

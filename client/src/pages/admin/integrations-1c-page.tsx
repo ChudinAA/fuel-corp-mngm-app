@@ -49,6 +49,12 @@ const typePluralNames: Record<string, string> = {
   supplier: "Поставщики",
   customer: "Покупатели",
   carrier: "Перевозчики",
+  counterparty_contracts: "Договоры",
+  nomenclature: "Номенклатура",
+  nomenclature_types: "Виды номенклатуры",
+  units_of_measure: "Единицы измерения",
+  currencies: "Валюты",
+  exchange_rates: "Курсы валют",
 };
 
 const outcomeNames: Record<string, string> = {
@@ -72,12 +78,71 @@ function formatBytes(value: number | null | undefined) {
   return value == null ? "—" : `${value} Б`;
 }
 
+function pendingRecordTitle(item: any) {
+  const data = item.incomingData ?? {};
+  return item.currentEntity?.name
+    ?? data.name
+    ?? data.code
+    ?? (data.currency_code ? `${data.currency_code}/${data.target_currency_code} · ${data.rate_date}` : null)
+    ?? data.contract_name
+    ?? data.short_name
+    ?? item.external1cId
+    ?? "Новая запись";
+}
+
+function pendingRecordDetails(item: any) {
+  const data = item.incomingData ?? {};
+  if (data.inn) return `ИНН: ${data.inn}`;
+  if (data.currency_code) return `Курс: ${data.rate} · ${data.rate_date}`;
+  if (data.code) return `Код: ${data.code}`;
+  if (data.contract_number) return `Договор: ${data.contract_number} · ${data.contract_date ?? ""}`;
+  if (data.short_name) return `${data.short_name} · ${data.full_name ?? ""}`;
+  if (data.product_type) return `Тип продукта: ${data.product_type}`;
+  return item.currentEntity?.fullName ?? "Новая запись из 1С";
+}
+
+function RequestLogEntry({ row, onShowDetails }: { row: any; onShowDetails: (row: any) => void }) {
+  return (
+    <article className="min-w-0 rounded-md border px-3 py-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="text-[11px] text-muted-foreground">{new Date(row.createdAt).toLocaleString("ru-RU")}</span>
+        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{row.method}</Badge>
+        <Badge variant={row.statusCode >= 400 ? "destructive" : "secondary"} className="h-5 px-1.5 text-[10px]">{row.statusCode}</Badge>
+        <code className="min-w-0 flex-1 break-all text-xs">{row.path}</code>
+        <span className="whitespace-nowrap text-[11px] text-muted-foreground">{row.durationMs} мс · {row.itemCount ?? "—"} эл.</span>
+      </div>
+      <div className="mt-1.5 grid min-w-0 grid-cols-1 gap-x-3 gap-y-1 text-[10px] text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+        <span className="min-w-0 break-all">IP: <span className="font-mono">{row.clientIp ?? "—"}</span></span>
+        <span>Трафик: {formatBytes(row.requestContentLength)} → {formatBytes(row.responseContentLength)}</span>
+        <span className="min-w-0 break-all">API-ключ: {row.apiKeyId ? row.apiKeyId.slice(0, 8) : "—"}</span>
+        <span className="min-w-0 break-words" title={row.userAgent ?? ""}>Клиент: {row.userAgent ?? "—"}</span>
+        <span className="min-w-0 break-all font-mono sm:col-span-2 lg:col-span-3">Request ID: {row.requestId}</span>
+        <span className="flex flex-wrap items-center gap-1">
+          {row.errorCode && <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">{row.errorCode}</Badge>}
+          {row.errorMessage && <span className="break-words">{row.errorMessage}</span>}
+          {row.responseSummary && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 px-1 text-[10px]"
+              onClick={() => onShowDetails(row)}
+            >
+              <Eye className="mr-1 h-3 w-3" />Ответ
+            </Button>
+          )}
+        </span>
+      </div>
+    </article>
+  );
+}
+
 export default function Integration1CPage() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
   const [newKey, setNewKey] = useState<string | null>(null);
   const [pendingDialogOpen, setPendingDialogOpen] = useState(false);
   const [changesDialogOpen, setChangesDialogOpen] = useState(false);
+  const [requestLogsDialogOpen, setRequestLogsDialogOpen] = useState(false);
   const [detailDialog, setDetailDialog] = useState<{ title: string; description: string; data: unknown } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [excludedIds, setExcludedIds] = useState<Set<number>>(new Set());
@@ -126,18 +191,23 @@ export default function Integration1CPage() {
     () => pendingQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [pendingQuery.data],
   );
-  const requestLogsQuery = useInfiniteQuery({
-    queryKey: ["/api/admin/integrations/1c/logs"],
-    initialPageParam: null as number | null,
-    queryFn: async ({ pageParam }) => {
-      const cursor = pageParam === null ? "" : `?beforeId=${pageParam}`;
-      return checkResponse(await apiRequest("GET", `/api/admin/integrations/1c/logs${cursor}`));
-    },
-    getNextPageParam: (lastPage: any) => lastPage.hasMoreRequests ? lastPage.nextCursor : undefined,
+  const requestLogsPreviewQuery = useQuery<any>({
+    queryKey: ["/api/admin/integrations/1c/logs", "preview"],
+    queryFn: async () => checkResponse(await apiRequest("GET", "/api/admin/integrations/1c/logs?limit=5")),
     enabled: isAdmin,
   });
-  const logPages = requestLogsQuery.data?.pages ?? [];
-  const requestLogs = logPages.flatMap((page: any) => page.requests ?? []);
+  const requestLogsQuery = useInfiniteQuery<any>({
+    queryKey: ["/api/admin/integrations/1c/logs", "pages"],
+    initialPageParam: null as number | null,
+    queryFn: async ({ pageParam }) => {
+      const cursor = pageParam === null ? "" : `&beforeId=${pageParam}`;
+      return checkResponse(await apiRequest("GET", `/api/admin/integrations/1c/logs?limit=50${cursor}`));
+    },
+    getNextPageParam: (lastPage: any) => lastPage.hasMoreRequests ? lastPage.nextCursor : undefined,
+    enabled: isAdmin && requestLogsDialogOpen,
+  });
+  const requestLogs = requestLogsQuery.data?.pages.flatMap((page: any) => page.requests ?? []) ?? [];
+  const requestLogPreviews = requestLogsPreviewQuery.data?.requests ?? [];
   const changePreviews = changesPreview?.changes ?? [];
   const selectedCount = allSelected
     ? Math.max(0, (status?.pendingReviewCount ?? 0) - excludedIds.size)
@@ -343,7 +413,7 @@ export default function Integration1CPage() {
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 pb-3">
           <div>
             <CardTitle className="text-lg">API справочников</CardTitle>
-            <CardDescription className="mt-1 text-sm">Ключ 1С работает для всех v1-эндпоинтов. Для новых позиций сначала синхронизируйте зависимости.</CardDescription>
+            <CardDescription className="mt-1 text-sm">Все методы, схемы и порядок обмена собраны в интерактивной документации.</CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
             <a href="/api/integrations/1c/docs" target="_blank" rel="noreferrer">
@@ -354,23 +424,6 @@ export default function Integration1CPage() {
             </a>
           </div>
         </CardHeader>
-        <CardContent className="grid min-w-0 gap-2 sm:grid-cols-2">
-          {[
-            ["Контрагенты", "/counterparties"],
-            ["Договоры", "/contracts"],
-            ["Виды номенклатуры", "/nomenclature-types"],
-            ["Единицы измерения", "/units-of-measure"],
-            ["Номенклатура", "/nomenclature"],
-          ].map(([label, path]) => (
-            <div key={path} className="flex min-w-0 flex-wrap items-center gap-x-2 rounded-md bg-muted/40 px-3 py-2 text-xs">
-              <span className="min-w-24 font-medium">{label}</span>
-              <code className="min-w-0 break-all text-muted-foreground">GET {path} · POST {path}/sync</code>
-            </div>
-          ))}
-          <p className="sm:col-span-2 text-xs text-muted-foreground">
-            Базовый адрес: <code className="break-all">/api/integrations/1c/v1</code>. Для POST используйте путь справочника с суффиксом <code>/sync</code>.
-          </p>
-        </CardContent>
       </Card>
 
       <Card className="min-w-0">
@@ -393,19 +446,19 @@ export default function Integration1CPage() {
             <p className="text-sm text-muted-foreground">Новых записей на проверку нет.</p>
           ) : (
             <div className="space-y-3">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {(["supplier", "customer", "carrier"] as const).map((type) => (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(status.pendingByType ?? {}).filter(([, count]) => count > 0).map(([type, count]) => (
                   <div key={type} className="flex min-w-0 items-center justify-between rounded-md bg-muted/50 px-3 py-2">
-                    <span className="truncate text-sm">{typePluralNames[type]}</span>
-                    <Badge variant="outline">{status.pendingByType?.[type] ?? 0}</Badge>
+                    <span className="truncate text-sm">{typePluralNames[type] ?? type}</span>
+                    <Badge variant="outline">{count}</Badge>
                   </div>
                 ))}
               </div>
               {previews.length > 0 && (
                 <div className="flex min-w-0 flex-wrap gap-2">
                   {previews.slice(0, 3).map((item) => (
-                    <span key={item.id} className="max-w-full truncate rounded-full border px-3 py-1 text-xs" title={item.currentEntity?.name ?? item.incomingData?.name ?? ""}>
-                      {item.currentEntity?.name ?? item.incomingData?.name ?? "Новая запись"}
+                    <span key={item.id} className="max-w-full truncate rounded-full border px-3 py-1 text-xs" title={pendingRecordTitle(item)}>
+                      {pendingRecordTitle(item)}
                     </span>
                   ))}
                   {status.pendingReviewCount > previews.length && (
@@ -419,84 +472,66 @@ export default function Integration1CPage() {
       </Card>
 
       <Card className="min-w-0">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Журнал запросов</CardTitle>
-          <CardDescription className="text-sm">
-            {requestLogs.length} запросов загружено · страницы по 50 · секреты и тела запросов не сохраняются.
-          </CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 pb-3">
+          <div className="min-w-0">
+            <CardTitle className="text-lg">Журнал запросов</CardTitle>
+            <CardDescription className="text-sm">
+              Последние {requestLogPreviews.length} из {requestLogsPreviewQuery.data?.totalCount ?? 0} запросов · токены и тела запросов не сохраняются.
+            </CardDescription>
+          </div>
+          <Button size="sm" variant="outline" disabled={!requestLogsPreviewQuery.data?.totalCount} onClick={() => setRequestLogsDialogOpen(true)}>
+            <Eye className="mr-2 h-4 w-4" />Вся история
+          </Button>
         </CardHeader>
-        <CardContent className="min-w-0 space-y-3">
-          {requestLogsQuery.isLoading ? (
+        <CardContent className="min-w-0 space-y-2">
+          {requestLogsPreviewQuery.isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Загрузка журнала…</div>
-          ) : requestLogs.length === 0 ? (
+          ) : requestLogPreviews.length === 0 ? (
             <p className="text-sm text-muted-foreground">Запросов пока не было.</p>
-          ) : requestLogs.map((row: any) => (
-            <article key={row.id} className="min-w-0 rounded-lg border p-3">
-              <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{row.method}</Badge>
-                    <Badge variant={row.statusCode >= 400 ? "destructive" : "secondary"}>{row.statusCode}</Badge>
-                    <code className="min-w-0 break-all text-xs sm:text-sm">{row.path}</code>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{new Date(row.createdAt).toLocaleString("ru-RU")}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-                  <span>{row.durationMs} мс</span>
-                  <span>·</span>
-                  <span>{row.itemCount ?? "—"} эл.</span>
-                </div>
-              </div>
-              <div className="mt-3 grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 text-xs sm:grid-cols-3">
-                <div className="min-w-0"><span className="text-muted-foreground">IP: </span><span className="break-all font-mono">{row.clientIp ?? "—"}</span></div>
-                <div className="min-w-0"><span className="text-muted-foreground">Трафик: </span>{formatBytes(row.requestContentLength)} → {formatBytes(row.responseContentLength)}</div>
-                <div className="min-w-0"><span className="text-muted-foreground">API-ключ: </span>{row.apiKeyId ? row.apiKeyId.slice(0, 8) : "—"}</div>
-                <div className="col-span-2 min-w-0 sm:col-span-3">
-                  <span className="text-muted-foreground">Клиент: </span>
-                  <span className="break-words" title={row.userAgent ?? ""}>{row.userAgent ?? "—"}</span>
-                </div>
-                <div className="col-span-2 min-w-0 sm:col-span-3">
-                  <span className="text-muted-foreground">Request ID: </span>
-                  <code className="break-all">{row.requestId}</code>
-                </div>
-              </div>
-              {row.errorCode && (
-                <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-sm">
-                  <Badge variant="destructive">{row.errorCode}</Badge>
-                  {row.errorMessage && <span className="break-words text-xs text-muted-foreground">{row.errorMessage}</span>}
-                </div>
-              )}
-              {row.responseSummary && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 h-auto p-0 text-xs hover:bg-transparent hover:underline"
-                  onClick={() => setDetailDialog({ title: "Ответ и результаты", description: `Запрос ${row.requestId}`, data: row.responseSummary })}
-                >
-                  <Eye className="mr-1 h-3.5 w-3.5" />Ответ и результаты
-                </Button>
-              )}
-            </article>
+          ) : requestLogPreviews.map((row: any) => (
+            <RequestLogEntry
+              key={row.id}
+              row={row}
+              onShowDetails={(item) => setDetailDialog({ title: "Ответ и результаты", description: `Запрос ${item.requestId}`, data: item.responseSummary })}
+            />
           ))}
-          {requestLogsQuery.hasNextPage && (
-            <Button
-              variant="outline"
-              onClick={() => requestLogsQuery.fetchNextPage()}
-              disabled={requestLogsQuery.isFetchingNextPage}
-              className="w-full gap-2"
-              data-testid="button-load-more-integration-requests"
-            >
-              {requestLogsQuery.isFetchingNextPage ? <><Loader2 className="h-4 w-4 animate-spin" />Загрузка…</> : "Загрузить ещё 50"}
-            </Button>
-          )}
         </CardContent>
       </Card>
+
+      <Dialog open={requestLogsDialogOpen} onOpenChange={setRequestLogsDialogOpen}>
+        <DialogContent className="flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="shrink-0 border-b px-5 py-4 pr-12 text-left">
+            <DialogTitle>История запросов 1С</DialogTitle>
+            <DialogDescription>
+              {requestLogsPreviewQuery.data?.totalCount ?? 0} запросов · страницы по 50. Токены и тела запросов не сохраняются.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-5 py-4">
+            {requestLogsQuery.isLoading ? (
+              <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Загрузка журнала…</div>
+            ) : requestLogs.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Запросов пока не было.</p>
+            ) : requestLogs.map((row: any) => (
+              <RequestLogEntry
+                key={row.id}
+                row={row}
+                onShowDetails={(item) => setDetailDialog({ title: "Ответ и результаты", description: `Запрос ${item.requestId}`, data: item.responseSummary })}
+              />
+            ))}
+            {requestLogsQuery.hasNextPage && (
+              <Button variant="outline" className="w-full gap-2" onClick={() => requestLogsQuery.fetchNextPage()} disabled={requestLogsQuery.isFetchingNextPage}>
+                {requestLogsQuery.isFetchingNextPage ? <><Loader2 className="h-4 w-4 animate-spin" />Загрузка…</> : "Загрузить ещё 50"}
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Card className="min-w-0">
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 pb-3">
           <div className="min-w-0">
             <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
-              Последние изменения контрагентов
+              Последние изменения
               <Badge variant={changesPreview?.totalCount ? "secondary" : "outline"}>{changesPreview?.totalCount ?? 0}</Badge>
             </CardTitle>
             <CardDescription className="mt-1 text-sm">Результаты синхронизации и изменения записей из 1С.</CardDescription>
@@ -529,7 +564,7 @@ export default function Integration1CPage() {
       <Dialog open={changesDialogOpen} onOpenChange={setChangesDialogOpen}>
         <DialogContent className="flex max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0">
           <DialogHeader className="shrink-0 border-b px-5 py-4 pr-12 text-left">
-            <DialogTitle>Последние изменения контрагентов</DialogTitle>
+            <DialogTitle>Последние изменения</DialogTitle>
             <DialogDescription>
               {changesPreview?.totalCount ?? 0} результатов · страницы по 50 записей. Нажмите «Поля», чтобы увидеть данные обработки.
             </DialogDescription>
@@ -614,7 +649,7 @@ export default function Integration1CPage() {
             ) : (
               <div className="space-y-2">
                 {visiblePendingItems.map((item) => {
-                  const name = item.currentEntity?.name ?? item.incomingData?.name ?? "Новая запись";
+                  const name = pendingRecordTitle(item);
                   const checked = allSelected ? !excludedIds.has(item.id) : selectedIds.has(item.id);
                   return (
                     <label key={item.id} className="flex min-w-0 cursor-pointer items-start gap-3 rounded-md border p-3 hover:bg-muted/40">
@@ -624,12 +659,10 @@ export default function Integration1CPage() {
                           <span className="break-words font-medium">{name}</span>
                           <Badge variant="outline">{typeNames[item.entityType] ?? item.entityType}</Badge>
                         </div>
-                        <p className="mt-1 break-words text-xs text-muted-foreground">
-                          {item.currentEntity?.fullName ?? item.incomingData?.full_name ?? "Полное название не указано"}
-                        </p>
+                        <p className="mt-1 break-words text-xs text-muted-foreground">{pendingRecordDetails(item)}</p>
                         <div className="mt-1 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                          <span>ИНН: <span className="font-mono">{item.currentEntity?.inn ?? item.incomingData?.inn ?? "—"}</span></span>
                           <span>{new Date(item.createdAt).toLocaleString("ru-RU")}</span>
+                          <span className="break-all">Id_1c: {item.external1cId}</span>
                         </div>
                       </div>
                     </label>

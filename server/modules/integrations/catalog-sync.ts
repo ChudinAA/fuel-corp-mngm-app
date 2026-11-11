@@ -3,6 +3,8 @@ import { db } from "../../db";
 import {
   counterpartyContracts,
   customers,
+  currencies,
+  exchangeRates,
   integrationChangeLogs,
   logisticsCarriers,
   nomenclature,
@@ -12,7 +14,13 @@ import {
 } from "@shared/schema";
 import { getCatalogStatusKind } from "./catalog-sync-contract";
 
-type CatalogType = "counterparty_contracts" | "nomenclature" | "nomenclature_types" | "units_of_measure";
+type CatalogType =
+  | "counterparty_contracts"
+  | "nomenclature"
+  | "nomenclature_types"
+  | "units_of_measure"
+  | "currencies"
+  | "exchange_rates";
 type SyncInput = Record<string, any> & { id_1c: string; status?: string | null };
 type SyncResult = { id_1c: string; type: CatalogType; outcome: string; code?: string; entity_id?: string | null };
 type BuiltFields = { fields: Record<string, unknown> } | { error: string; message: string };
@@ -57,6 +65,7 @@ async function syncRecord(options: {
   table: any;
   item: SyncInput;
   buildFields: (tx: any, item: SyncInput, current: any) => Promise<BuiltFields>;
+  findExisting?: (tx: any, item: SyncInput) => Promise<any>;
   beforeDelete?: (tx: any, current: any) => Promise<string | null>;
   onDeleted?: (tx: any, current: any) => Promise<void>;
 }): Promise<SyncResult> {
@@ -64,7 +73,8 @@ async function syncRecord(options: {
   const statusKind = getCatalogStatusKind(item.status);
   try {
     const result = await db.transaction(async (tx) => {
-      const [current] = await tx.select().from(table).where(eq(table.id1c, item.id_1c)).limit(1);
+      const [linked] = await tx.select().from(table).where(eq(table.id1c, item.id_1c)).limit(1);
+      const current = linked ?? await options.findExisting?.(tx, item);
       if (statusKind === "unknown") {
         await recordChange(tx, {
           requestId, type, entityId: current?.id, externalId: item.id_1c, operation: "sync",
@@ -82,6 +92,15 @@ async function syncRecord(options: {
       }
 
       const oldData = current ? { ...current } : null;
+      if (current?.id1c && current.id1c !== item.id_1c) {
+        await recordChange(tx, {
+          requestId, type, entityId: current.id, externalId: item.id_1c, operation: "match",
+          outcome: "conflict", incoming: item, oldData,
+          code: "record_linked_to_other_id_1c",
+          message: "Найденная запись уже связана с другим Id_1c",
+        });
+        return { outcome: "conflict", code: "record_linked_to_other_id_1c", entityId: current.id };
+      }
       if (current && statusKind === "deleted") {
         const deleteError = await options.beforeDelete?.(tx, current);
         if (deleteError) {
@@ -111,6 +130,7 @@ async function syncRecord(options: {
 
       const values = {
         ...fields,
+        id1c: item.id_1c,
         integrationStatus: item.status || current?.integrationStatus || null,
         deletedAt: statusKind === "deleted" ? current?.deletedAt ?? sql`NOW()` : statusKind === "active" ? null : current?.deletedAt ?? null,
         deletedById: statusKind === "active" ? null : current?.deletedById ?? null,
@@ -271,17 +291,11 @@ export async function syncNomenclatureItem(item: SyncInput, requestId: string): 
           nomenclatureTypeId = type.id;
         }
       }
-      const isDefault = incoming.is_default ?? current?.isDefault ?? false;
-      if (isDefault) {
-        await tx.update(nomenclature).set({ isDefault: false })
-          .where(and(eq(nomenclature.productType, incoming.product_type), isNull(nomenclature.deletedAt)));
-      }
       return { fields: {
         productType: incoming.product_type,
         nomenclatureTypeId,
         name: incoming.name,
         unitId: unit.id,
-        isDefault,
       } };
     },
     onDeleted: async (tx, current) => {
@@ -294,10 +308,68 @@ export async function syncNomenclatureItem(item: SyncInput, requestId: string): 
   });
 }
 
+export async function syncCurrency(item: SyncInput, requestId: string): Promise<SyncResult> {
+  return syncRecord({
+    requestId, type: "currencies", table: currencies, item,
+    findExisting: async (tx, incoming) => {
+      const [existing] = await tx.select().from(currencies).where(eq(currencies.code, incoming.code)).limit(1);
+      return existing;
+    },
+    buildFields: async (_tx, incoming) => ({ fields: {
+      code: incoming.code,
+      name: incoming.name,
+      isActive: getCatalogStatusKind(incoming.status) === "deleted" ? false : true,
+    } }),
+    onDeleted: async (tx, current) => {
+      await tx.update(currencies).set({ isActive: false }).where(eq(currencies.id, current.id));
+    },
+  });
+}
+
+export async function syncExchangeRate(item: SyncInput, requestId: string): Promise<SyncResult> {
+  return syncRecord({
+    requestId, type: "exchange_rates", table: exchangeRates, item,
+    findExisting: async (tx, incoming) => {
+      const [existing] = await tx.select().from(exchangeRates).where(and(
+        eq(exchangeRates.currency, incoming.currency_code),
+        eq(exchangeRates.targetCurrency, incoming.target_currency_code),
+        eq(exchangeRates.rateDate, incoming.rate_date),
+      )).limit(1);
+      return existing;
+    },
+    buildFields: async (tx, incoming) => {
+      const [baseCurrency] = await tx.select().from(currencies)
+        .where(and(eq(currencies.code, incoming.currency_code), isNull(currencies.deletedAt))).limit(1);
+      if (!baseCurrency) return { error: "currency_not_found", message: "Базовая валюта не найдена; синхронизируйте её первой" };
+      const [targetCurrency] = await tx.select().from(currencies)
+        .where(and(eq(currencies.code, incoming.target_currency_code), isNull(currencies.deletedAt))).limit(1);
+      if (!targetCurrency) return { error: "target_currency_not_found", message: "Целевая валюта не найдена; синхронизируйте её первой" };
+      if (incoming.currency_code === incoming.target_currency_code) {
+        return { error: "same_currency_pair", message: "Базовая и целевая валюты должны отличаться" };
+      }
+      return { fields: {
+        currency: incoming.currency_code,
+        targetCurrency: incoming.target_currency_code,
+        currencyId: baseCurrency.id,
+        targetCurrencyId: targetCurrency.id,
+        rate: String(incoming.rate),
+        rateDate: incoming.rate_date,
+        source: "1С",
+        isActive: true,
+      } };
+    },
+    onDeleted: async (tx, current) => {
+      await tx.update(exchangeRates).set({ isActive: false }).where(eq(exchangeRates.id, current.id));
+    },
+  });
+}
+
 export async function syncCatalogBatch(type: CatalogType, items: SyncInput[], requestId: string) {
   const sync = type === "counterparty_contracts" ? syncContract
     : type === "nomenclature" ? syncNomenclatureItem
-      : type === "nomenclature_types" ? syncNomenclatureType : syncUnit;
+      : type === "nomenclature_types" ? syncNomenclatureType
+        : type === "units_of_measure" ? syncUnit
+          : type === "currencies" ? syncCurrency : syncExchangeRate;
   const seen = new Set<string>();
   const results: SyncResult[] = [];
   for (const item of items) {

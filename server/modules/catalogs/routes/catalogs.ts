@@ -21,7 +21,7 @@ function rejectManaged1cFields(req: Request, res: Response, next: NextFunction) 
   next();
 }
 
-function allowOnlyUnlinkedForNonAdmin(getRecord: (id: string) => Promise<any>) {
+function allowOnlyUnlinkedForNonAdmin(getRecord: (id: string) => Promise<any>, linkedEditableFields: string[] = []) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = await storage.users.getUser(req.session.userId!);
@@ -29,7 +29,10 @@ function allowOnlyUnlinkedForNonAdmin(getRecord: (id: string) => Promise<any>) {
       if (role?.name === "Админ" || role?.name === "Ген.дир") return next();
       const record = await getRecord(req.params.id);
       if (record?.id1c) {
-        return res.status(403).json({ message: "Связанную с 1С запись может менять или удалять только администратор" });
+        const disallowed = Object.keys(req.body ?? {}).filter((key) => !linkedEditableFields.includes(key));
+        if (disallowed.length) {
+          return res.status(403).json({ message: "Связанную с 1С запись может менять только администратор, кроме разрешённых локальных настроек" });
+        }
       }
       next();
     } catch {
@@ -144,6 +147,7 @@ export function registerCatalogRoutes(app: Express) {
     create: (data) => storage.catalogs.createNomenclature(data),
     update: (id, data) => storage.catalogs.updateNomenclature(id, data),
     delete: (id, userId) => storage.catalogs.deleteNomenclature(id, userId),
+    linkedEditableFields: ["isDefault"],
   });
 }
 
@@ -156,6 +160,7 @@ function registerSimpleCatalog(app: Express, config: {
   create: (data: any) => Promise<any>;
   update: (id: string, data: any) => Promise<any>;
   delete: (id: string, userId: string) => Promise<any>;
+  linkedEditableFields?: string[];
 }) {
   app.post(config.path, requireAuth, requirePermission("directories", "create"), rejectManaged1cFields, auditLog({
     entityType: config.entityType,
@@ -169,7 +174,7 @@ function registerSimpleCatalog(app: Express, config: {
       res.status(error instanceof z.ZodError ? 400 : 500).json({ message: error instanceof z.ZodError ? error.errors[0]?.message : "Не удалось создать запись справочника" });
     }
   });
-  app.patch(`${config.path}/:id`, requireAuth, requirePermission("directories", "edit"), allowOnlyUnlinkedForNonAdmin(config.guard), rejectManaged1cFields, auditLog({
+  app.patch(`${config.path}/:id`, requireAuth, requirePermission("directories", "edit"), allowOnlyUnlinkedForNonAdmin(config.guard, config.linkedEditableFields), rejectManaged1cFields, auditLog({
     entityType: config.entityType,
     operation: AUDIT_OPERATIONS.UPDATE,
     getOldData: (req) => config.get(req.params.id),

@@ -20,6 +20,16 @@ const ids = {
   nomenclatureType: randomUUID(),
   unit: randomUUID(),
   nomenclature: randomUUID(),
+  existingCurrency: randomUUID(),
+  targetCurrency: randomUUID(),
+  currencyNew: randomUUID(),
+  existingRate: randomUUID(),
+  newRate: randomUUID(),
+};
+const currencyCodes = {
+  existing: `T${suffix}`,
+  target: `U${suffix}`,
+  new: `V${suffix}`,
 };
 const inns = {
   supplier: `1C-TEST-${suffix}-S`,
@@ -35,6 +45,7 @@ let editorContractId;
 let editorNomenclatureId;
 let adminCookie;
 let testEditorRoleId;
+let previousKeroseneDefaultId;
 const testEditorEmail = `1c-editor-${suffix}@example.test`;
 
 async function fetchJson(path, { method = "GET", body, token, cookie = adminCookie } = {}) {
@@ -152,9 +163,18 @@ after(async () => {
     await pool.query("DELETE FROM integration_change_logs WHERE id_1c = ANY($1::text[])", [[
       ids.supplier, ids.customer, ids.carrier, ids.matchedSupplier, ids.unknownDeletion, ids.ambiguous,
       ids.contract, ids.nomenclatureType, ids.unit, ids.nomenclature,
+      ids.existingCurrency, ids.targetCurrency, ids.currencyNew, ids.existingRate, ids.newRate,
     ]]);
     await pool.query("DELETE FROM counterparty_contracts WHERE id = $1 OR id_1c = $2::uuid", [editorContractId ?? null, ids.contract]);
     await pool.query("DELETE FROM nomenclature WHERE id = $1 OR id_1c = $2::uuid", [editorNomenclatureId ?? null, ids.nomenclature]);
+    await pool.query("DELETE FROM exchange_rates WHERE id_1c = ANY($1::uuid[])", [[ids.existingRate, ids.newRate]]);
+    await pool.query("DELETE FROM currencies WHERE id_1c = ANY($1::uuid[]) OR code = ANY($2::text[])", [
+      [ids.currencyNew],
+      Object.values(currencyCodes),
+    ]);
+    if (previousKeroseneDefaultId) {
+      await pool.query("UPDATE nomenclature SET is_default = true WHERE id = $1", [previousKeroseneDefaultId]);
+    }
     await pool.query("DELETE FROM nomenclature_types WHERE id_1c = $1::uuid", [ids.nomenclatureType]);
     await pool.query("DELETE FROM units_of_measure WHERE id_1c = $1::uuid", [ids.unit]);
     await pool.query("DELETE FROM suppliers WHERE id_1c = ANY($1::text[]) OR inn = ANY($2::text[])", [
@@ -318,12 +338,24 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
       nomenclature_type_id_1c: ids.nomenclatureType,
       name: `1C Item ${suffix}`,
       unit_id_1c: ids.unit,
-      is_default: false,
       status: "active",
     }] },
   });
   assert.equal(syncedNomenclature.response.status, 200);
   assert.equal(syncedNomenclature.data.results[0].outcome, "created");
+  const rejectedDefaultField = await fetchJson(`${apiRoot}/nomenclature/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [{
+      id_1c: ids.nomenclature,
+      product_type: "kerosene",
+      name: `1C Item ${suffix}`,
+      unit_id_1c: ids.unit,
+      is_default: true,
+    }] },
+  });
+  assert.equal(rejectedDefaultField.response.status, 400, "1C cannot send the app-only default flag");
   const syncedContract = await fetchJson(`${apiRoot}/contracts/sync`, {
     method: "POST",
     token: firstKey,
@@ -355,6 +387,78 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
     }] },
   });
   assert.equal(updatedContractSync.data.results[0].outcome, "updated", "repeated Id_1c updates the existing contract");
+  const localCurrencies = await pool.query(
+    `INSERT INTO currencies (code, name, symbol, is_active)
+     VALUES ($1, 'Local base name', '¤', true), ($2, 'Local target name', '¤¤', true)
+     RETURNING id, code`,
+    [currencyCodes.existing, currencyCodes.target],
+  );
+  const localCurrencyIds = new Map(localCurrencies.rows.map((row) => [row.code, row.id]));
+  const localRate = await pool.query(
+    `INSERT INTO exchange_rates
+       (currency, target_currency, currency_id, target_currency_id, rate, rate_date, source)
+     VALUES ($1, $2, $3, $4, '10.000000', '2026-11-05', 'local')
+     RETURNING id`,
+    [currencyCodes.existing, currencyCodes.target, localCurrencyIds.get(currencyCodes.existing), localCurrencyIds.get(currencyCodes.target)],
+  );
+  const syncedCurrencies = await fetchJson(`${apiRoot}/currencies/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [
+      { id_1c: ids.existingCurrency, code: currencyCodes.existing, name: `1C base ${suffix}`, status: "active" },
+      { id_1c: ids.targetCurrency, code: currencyCodes.target, name: `1C target ${suffix}`, status: "active" },
+      { id_1c: ids.currencyNew, code: currencyCodes.new, name: `1C new currency ${suffix}`, status: "active" },
+    ] },
+  });
+  assert.equal(syncedCurrencies.response.status, 200);
+  assert.deepEqual(syncedCurrencies.data.results.map((item) => item.outcome), ["updated", "updated", "created"]);
+  const currencyUpdateById = await fetchJson(`${apiRoot}/currencies/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [{ id_1c: ids.existingCurrency, code: currencyCodes.existing, name: `1C base updated ${suffix}`, status: "active" }] },
+  });
+  assert.equal(currencyUpdateById.data.results[0].outcome, "updated", "subsequent currency sync resolves by Id_1c");
+  const syncedRates = await fetchJson(`${apiRoot}/exchange-rates/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [
+      {
+        id_1c: ids.existingRate,
+        currency_code: currencyCodes.existing,
+        target_currency_code: currencyCodes.target,
+        rate: "11.125",
+        rate_date: "2026-11-05",
+        status: "active",
+      },
+      {
+        id_1c: ids.newRate,
+        currency_code: currencyCodes.existing,
+        target_currency_code: currencyCodes.target,
+        rate: "11.250",
+        rate_date: "2026-11-06",
+        status: "active",
+      },
+    ] },
+  });
+  assert.equal(syncedRates.response.status, 200);
+  assert.deepEqual(syncedRates.data.results.map((item) => item.outcome), ["updated", "created"]);
+  const rateUpdateById = await fetchJson(`${apiRoot}/exchange-rates/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [{
+      id_1c: ids.newRate,
+      currency_code: currencyCodes.existing,
+      target_currency_code: currencyCodes.target,
+      rate: "11.375",
+      rate_date: "2026-11-07",
+      status: "active",
+    }] },
+  });
+  assert.equal(rateUpdateById.data.results[0].outcome, "updated", "subsequent rate sync resolves by Id_1c");
   const [contractFromDb, itemFromDb] = await Promise.all([
     pool.query("SELECT * FROM counterparty_contracts WHERE id_1c = $1::uuid", [ids.contract]),
     pool.query("SELECT * FROM nomenclature WHERE id_1c = $1::uuid", [ids.nomenclature]),
@@ -364,15 +468,51 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
   assert.equal(contractFromDb.rows[0].counterparty_id_1c, ids.supplier);
   assert.equal(itemFromDb.rows[0].unit_id, (await pool.query("SELECT id FROM units_of_measure WHERE id_1c = $1::uuid", [ids.unit])).rows[0].id);
   assert.equal(itemFromDb.rows[0].nomenclature_type_id, (await pool.query("SELECT id FROM nomenclature_types WHERE id_1c = $1::uuid", [ids.nomenclatureType])).rows[0].id);
+  const matchedCurrency = await pool.query("SELECT * FROM currencies WHERE code = $1", [currencyCodes.existing]);
+  assert.equal(matchedCurrency.rows[0].id_1c, syncedCurrencies.data.results[0].id_1c);
+  assert.equal(matchedCurrency.rows[0].name, `1C base updated ${suffix}`);
+  assert.equal(matchedCurrency.rows[0].symbol, "¤", "local currency symbol is preserved by 1C sync");
+  const matchedRate = await pool.query("SELECT * FROM exchange_rates WHERE id = $1", [localRate.rows[0].id]);
+  assert.equal(matchedRate.rows[0].id_1c, ids.existingRate);
+  assert.equal(matchedRate.rows[0].rate, "11.125000");
+  assert.equal(matchedRate.rows[0].source, "1С");
+  const updatedRate = await pool.query("SELECT rate_date FROM exchange_rates WHERE id_1c = $1::uuid", [ids.newRate]);
+  const updatedRateDate = updatedRate.rows[0].rate_date;
+  assert.equal(updatedRateDate instanceof Date ? updatedRateDate.toISOString().slice(0, 10) : String(updatedRateDate).slice(0, 10), "2026-11-07", "rate date updates through the external UUID");
+  const existingDefault = await pool.query(
+    "SELECT id FROM nomenclature WHERE product_type = 'kerosene' AND is_default = true AND deleted_at IS NULL LIMIT 1",
+  );
+  previousKeroseneDefaultId = existingDefault.rows[0]?.id ?? null;
+  const markDefault = await fetchJson(`/api/nomenclature/${itemFromDb.rows[0].id}`, {
+    method: "PATCH",
+    body: { isDefault: true },
+  });
+  assert.equal(markDefault.response.status, 200, "administrators can set the app-only nomenclature default");
+  const nomenclatureSyncAgain = await fetchJson(`${apiRoot}/nomenclature/sync`, {
+    method: "POST",
+    token: firstKey,
+    cookie: null,
+    body: { items: [{
+      id_1c: ids.nomenclature,
+      product_type: "kerosene",
+      nomenclature_type_id_1c: ids.nomenclatureType,
+      name: `1C Item updated ${suffix}`,
+      unit_id_1c: ids.unit,
+      status: "active",
+    }] },
+  });
+  assert.equal(nomenclatureSyncAgain.data.results[0].outcome, "updated");
+  const localDefaultAfterSync = await pool.query("SELECT is_default FROM nomenclature WHERE id = $1", [itemFromDb.rows[0].id]);
+  assert.equal(localDefaultAfterSync.rows[0].is_default, true, "1C sync preserves the locally managed default flag");
   const id1cColumns = await pool.query(
     `SELECT table_name, data_type
      FROM information_schema.columns
      WHERE table_schema = current_schema()
        AND table_name = ANY($1::text[])
        AND column_name = 'id_1c'`,
-    [["counterparty_contracts", "nomenclature_types", "units_of_measure", "nomenclature"]],
+    [["counterparty_contracts", "nomenclature_types", "units_of_measure", "nomenclature", "currencies", "exchange_rates"]],
   );
-  assert.equal(id1cColumns.rows.length, 4);
+  assert.equal(id1cColumns.rows.length, 6);
   assert.ok(id1cColumns.rows.every((column) => column.data_type === "uuid"), "catalog Id_1c fields use UUID columns");
   const contractLinkColumns = await pool.query(
     `SELECT column_name, data_type FROM information_schema.columns
@@ -407,9 +547,30 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
   assert.ok(exportedTypes.data.items.some((item) => item.id_1c === ids.nomenclatureType));
   assert.ok(exportedUnits.data.items.some((item) => item.id_1c === ids.unit));
   assert.ok(exportedNomenclature.data.items.some((item) => item.id_1c === ids.nomenclature));
+  const exportedCurrencies = await fetchJson(`${apiRoot}/currencies`, { token: firstKey, cookie: null });
+  const exportedRatesFirstPage = await fetchJson(`${apiRoot}/exchange-rates?limit=1`, { token: firstKey, cookie: null });
+  const exportedRatesSecondPage = await fetchJson(`${apiRoot}/exchange-rates?limit=1&offset=1`, { token: firstKey, cookie: null });
+  const exportedBases = await fetchJson(`${apiRoot}/bases`, { token: firstKey, cookie: null });
+  const exportedPrices = await fetchJson(`${apiRoot}/prices?limit=1`, { token: firstKey, cookie: null });
+  assert.ok(exportedCurrencies.data.items.some((item) => item.id_1c === matchedCurrency.rows[0].id_1c));
+  assert.equal(exportedRatesFirstPage.data.items.length, 1);
+  assert.equal(exportedRatesFirstPage.data.has_more, true);
+  assert.equal(exportedRatesSecondPage.data.items.length, 1);
+  assert.notEqual(exportedRatesFirstPage.data.items[0].id_1c, exportedRatesSecondPage.data.items[0].id_1c);
+  assert.equal(exportedBases.response.status, 200);
+  assert.ok(Array.isArray(exportedBases.data.items));
+  assert.equal(exportedPrices.response.status, 200);
+  assert.equal(exportedPrices.data.limit, 1);
+  assert.ok(Array.isArray(exportedPrices.data.items));
+  assert.equal(Object.hasOwn(exportedNomenclature.data.items.find((item) => item.id_1c === ids.nomenclature), "is_default"), false);
   const publicOpenApi = await fetchJson("/api/integrations/1c/openapi.json", { cookie: null });
   assert.equal(publicOpenApi.response.status, 200);
   assert.ok(publicOpenApi.data.paths["/contracts/sync"]);
+  assert.ok(publicOpenApi.data.paths["/currencies/sync"]);
+  assert.ok(publicOpenApi.data.paths["/exchange-rates"]);
+  assert.ok(publicOpenApi.data.paths["/bases"]);
+  assert.ok(publicOpenApi.data.paths["/prices"]);
+  assert.equal(Object.hasOwn(publicOpenApi.data.components.schemas.NomenclatureSyncItem.properties, "is_default"), false);
   for (const [path, methods] of Object.entries(publicOpenApi.data.paths)) {
     for (const operation of Object.values(methods)) {
       assert.ok(operation.tags?.length, `${path} is assigned to a Swagger category`);
@@ -466,6 +627,8 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
   );
   const linkedContractId = contractFromDb.rows[0].id;
   const linkedNomenclatureId = itemFromDb.rows[0].id;
+  const linkedCurrencyId = matchedCurrency.rows[0].id;
+  const linkedRateId = matchedRate.rows[0].id;
   const linkedUnitId = (await pool.query("SELECT id FROM units_of_measure WHERE id_1c = $1::uuid", [ids.unit])).rows[0].id;
   const linkedTypeId = (await pool.query("SELECT id FROM nomenclature_types WHERE id_1c = $1::uuid", [ids.nomenclatureType])).rows[0].id;
   for (const [path, body] of [
@@ -505,6 +668,65 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
     body: { id1c: randomUUID(), productType: "kerosene", name: "Spoofed", unitId: linkedUnitId },
   });
   assert.equal(spoofedCatalogId.response.status, 400, "1C identifiers can only be assigned by the integration API");
+  const editNomenclatureDefault = await fetchJson(`/api/nomenclature/${linkedNomenclatureId}`, {
+    method: "PATCH",
+    cookie: editorCookie,
+    body: { isDefault: false },
+  });
+  assert.equal(editNomenclatureDefault.response.status, 200, "ordinary users can change the local default flag on linked nomenclature");
+  const setNomenclatureDefault = await fetchJson(`/api/nomenclature/${linkedNomenclatureId}`, {
+    method: "PATCH",
+    cookie: editorCookie,
+    body: { isDefault: true },
+  });
+  assert.equal(setNomenclatureDefault.response.status, 200, "ordinary users can set a linked nomenclature item as default");
+  const editCurrencySymbol = await fetchJson(`/api/currencies/${linkedCurrencyId}`, {
+    method: "PATCH",
+    cookie: editorCookie,
+    body: { symbol: "¤¤¤" },
+  });
+  assert.equal(editCurrencySymbol.response.status, 200, "ordinary users can edit the local symbol of a linked currency");
+  const editCurrencyName = await fetchJson(`/api/currencies/${linkedCurrencyId}`, {
+    method: "PATCH",
+    cookie: editorCookie,
+    body: { name: "Нельзя менять название 1С" },
+  });
+  assert.equal(editCurrencyName.response.status, 403, "ordinary users cannot edit 1C-owned currency fields");
+  const editLinkedRate = await fetchJson(`/api/exchange-rates/${linkedRateId}`, {
+    method: "PATCH",
+    cookie: editorCookie,
+    body: { rate: 999 },
+  });
+  assert.equal(editLinkedRate.response.status, 403, "ordinary users cannot edit a linked exchange rate");
+  const createCurrencyAsEditor = await fetchJson("/api/currencies", {
+    method: "POST",
+    cookie: editorCookie,
+    body: { code: `W${suffix}`, name: "Недоступная валюта" },
+  });
+  assert.equal(createCurrencyAsEditor.response.status, 403, "ordinary users cannot create currencies while 1C is connected");
+  const deleteCurrencyAsEditor = await fetchJson(`/api/currencies/${linkedCurrencyId}`, {
+    method: "DELETE",
+    cookie: editorCookie,
+  });
+  assert.equal(deleteCurrencyAsEditor.response.status, 403, "ordinary users cannot delete currencies while 1C is connected");
+  const createRateAsEditor = await fetchJson("/api/exchange-rates", {
+    method: "POST",
+    cookie: editorCookie,
+    body: {
+      currency: currencyCodes.existing,
+      targetCurrency: currencyCodes.target,
+      currencyId: matchedCurrency.rows[0].id,
+      targetCurrencyId: localCurrencyIds.get(currencyCodes.target),
+      rate: 1,
+      rateDate: "2026-11-07",
+    },
+  });
+  assert.equal(createRateAsEditor.response.status, 403, "ordinary users cannot create rates while 1C is connected");
+  const deleteRateAsEditor = await fetchJson(`/api/exchange-rates/${linkedRateId}`, {
+    method: "DELETE",
+    cookie: editorCookie,
+  });
+  assert.equal(deleteRateAsEditor.response.status, 403, "ordinary users cannot delete rates while 1C is connected");
   const editOperationalField = await fetchJson(`/api/suppliers/${supplier.rows[0].id}`, {
     method: "PATCH",
     cookie: editorCookie,
@@ -553,12 +775,23 @@ test("1C API authenticates and syncs counterparties, contracts and catalogs with
   assert.equal(customerAfterReview.rows[0].integration_pending_review, false);
   assert.ok(customerAfterReview.rows[0].deleted_at, "inline rejection softly deletes the new entity");
 
+  const newCurrencyRow = await pool.query("SELECT id FROM currencies WHERE id_1c = $1::uuid", [ids.currencyNew]);
+  const rejectCurrency = await fetchJson(`/api/admin/integrations/1c/entities/currencies/${newCurrencyRow.rows[0].id}/review`, {
+    method: "POST",
+    body: { action: "reject" },
+  });
+  assert.equal(rejectCurrency.response.status, 200, "the generic review endpoint handles currency entries");
+  const rejectedCurrencyRow = await pool.query("SELECT deleted_at, is_active FROM currencies WHERE id = $1", [newCurrencyRow.rows[0].id]);
+  assert.ok(rejectedCurrencyRow.rows[0].deleted_at, "rejecting a new currency softly deletes it");
+  assert.equal(rejectedCurrencyRow.rows[0].is_active, false);
+
+  const pendingBeforeApproveAll = await fetchJson("/api/admin/integrations/1c/status");
   const approveAllRemaining = await fetchJson("/api/admin/integrations/1c/changes/review-bulk", {
     method: "POST",
     body: { all: true, excludeIds: [], action: "approve" },
   });
   assert.equal(approveAllRemaining.response.status, 200);
-  assert.equal(approveAllRemaining.data.reviewed, 1, "select-all acts on all remaining pending records");
+  assert.equal(approveAllRemaining.data.reviewed, pendingBeforeApproveAll.data.pendingReviewCount, "select-all acts on all pending entity types");
   const pendingAfterReview = await fetchJson("/api/admin/integrations/1c/status");
   assert.equal(pendingAfterReview.data.pendingReviewCount, 0);
 

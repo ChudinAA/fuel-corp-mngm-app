@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { insertExchangeRateSchema } from "../entities/exchange-rates";
+import { enforceIntegrationMasterData, protectLinkedExchangeRateFields, rejectIntegrationManagedFields } from "../../integrations/routes/integrations";
 
 export function registerExchangeRatesRoutes(app: Express) {
   app.get(
@@ -89,6 +90,8 @@ export function registerExchangeRatesRoutes(app: Express) {
     "/api/exchange-rates",
     requireAuth,
     requirePermission("directories", "create"),
+    rejectIntegrationManagedFields,
+    enforceIntegrationMasterData,
     auditLog({
       entityType: ENTITY_TYPES.EXCHANGE_RATE,
       operation: AUDIT_OPERATIONS.CREATE,
@@ -141,6 +144,7 @@ export function registerExchangeRatesRoutes(app: Express) {
     "/api/exchange-rates/:id",
     requireAuth,
     requirePermission("directories", "edit"),
+    protectLinkedExchangeRateFields,
     auditLog({
       entityType: ENTITY_TYPES.EXCHANGE_RATE,
       operation: AUDIT_OPERATIONS.UPDATE,
@@ -191,6 +195,7 @@ export function registerExchangeRatesRoutes(app: Express) {
     "/api/exchange-rates/:id",
     requireAuth,
     requirePermission("directories", "delete"),
+    enforceIntegrationMasterData,
     auditLog({
       entityType: ENTITY_TYPES.EXCHANGE_RATE,
       operation: AUDIT_OPERATIONS.DELETE,

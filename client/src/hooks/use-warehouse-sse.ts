@@ -101,6 +101,11 @@ const ENTITY_QUERY_KEYS: Record<string, string[][]> = {
     ["/api/nomenclature"],
     ["/api/nomenclature-types"],
     ["/api/units-of-measure"],
+    ["/api/currencies"],
+    ["/api/exchange-rates"],
+  ],
+  "exchange-rates": [
+    ["/api/exchange-rates"],
   ],
 };
 

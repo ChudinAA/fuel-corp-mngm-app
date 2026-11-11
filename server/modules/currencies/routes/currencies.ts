@@ -3,6 +3,7 @@ import { storage } from "../../../storage/index";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { insertCurrencySchema } from "../entities/currencies";
+import { enforceIntegrationMasterData, protectLinkedCurrencyFields, rejectIntegrationManagedFields } from "../../integrations/routes/integrations";
 
 export function registerCurrenciesRoutes(app: Express) {
   app.get(
@@ -55,6 +56,8 @@ export function registerCurrenciesRoutes(app: Express) {
     "/api/currencies",
     requireAuth,
     requirePermission("directories", "create"),
+    rejectIntegrationManagedFields,
+    enforceIntegrationMasterData,
     async (req, res) => {
       try {
         const validatedData = insertCurrencySchema.parse(req.body);
@@ -85,6 +88,7 @@ export function registerCurrenciesRoutes(app: Express) {
     "/api/currencies/:id",
     requireAuth,
     requirePermission("directories", "edit"),
+    protectLinkedCurrencyFields,
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -112,6 +116,7 @@ export function registerCurrenciesRoutes(app: Express) {
     "/api/currencies/:id",
     requireAuth,
     requirePermission("directories", "delete"),
+    enforceIntegrationMasterData,
     async (req, res) => {
       try {
         const success = await storage.currencies.deleteCurrency(

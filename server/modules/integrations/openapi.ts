@@ -51,17 +51,31 @@ const readOperation = (summary: string, tag: string) => ({
     responses: { "200": { description: "Справочник получен" }, "401": { description: "Неверный API-ключ" } },
   },
 });
+const pagedReadOperation = (summary: string, tag: string, description = "Постраничная выгрузка записей. Параметры limit и offset; максимальный limit — 500.") => ({
+  get: {
+    tags: [tag],
+    summary,
+    description,
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 500, default: 100 } },
+      { name: "offset", in: "query", required: false, schema: { type: "integer", minimum: 0, default: 0 } },
+    ],
+    responses: { "200": { description: "Страница справочника получена" }, "400": { description: "Некорректные параметры страницы" }, "401": { description: "Неверный API-ключ" } },
+  },
+});
 
 export const openApiSpec = {
   openapi: "3.0.3",
   info: {
     title: "Авиасервис — API интеграции с 1С",
-    version: "1.1.0",
+    version: "1.2.0",
     description: [
       "API предназначен для серверного обмена справочниками между 1С и приложением.",
       "Все `/v1` методы требуют `Authorization: Bearer <key>`. Ключ выпускается администратором и показывается только один раз.",
-      "Сначала синхронизируйте контрагентов, затем договоры; перед номенклатурой передайте виды и единицы измерения.",
+      "Сначала синхронизируйте валюты до курсов, контрагентов до договоров, а виды номенклатуры и единицы измерения до номенклатуры.",
       "Id_1c должен быть UUID. Удаление в 1С выполняется мягко, история и связанные операции в приложении сохраняются.",
+      "Базисы и цены принадлежат приложению и доступны 1С только для чтения. Символ валюты и флаг номенклатуры по умолчанию являются локальными настройками приложения.",
     ].join("\n\n"),
   },
   servers: [{ url: "/api/integrations/1c/v1", description: "Текущий сервер приложения" }],
@@ -70,6 +84,8 @@ export const openApiSpec = {
     { name: "Контрагенты" },
     { name: "Договоры" },
     { name: "Номенклатура" },
+    { name: "Валюты и курсы" },
+    { name: "Справочники приложения" },
   ],
   components: {
     securitySchemes: {
@@ -96,7 +112,7 @@ export const openApiSpec = {
       IntegrationEntityType: {
         type: "string",
         description: "Тип сущности в результате обработки пакета.",
-        enum: ["supplier", "customer", "carrier", "counterparty_contracts", "nomenclature_types", "units_of_measure", "nomenclature"],
+        enum: ["supplier", "customer", "carrier", "counterparty_contracts", "nomenclature_types", "units_of_measure", "nomenclature", "currencies", "exchange_rates"],
       },
       CounterpartySyncItem: {
         type: "object",
@@ -155,7 +171,28 @@ export const openApiSpec = {
           nomenclature_type_id_1c: nullableUuid,
           name: { type: "string", maxLength: 255 },
           unit_id_1c: schemaRef("Id1c"),
-          is_default: { type: "boolean" },
+          status: schemaRef("Status"),
+        },
+      },
+      CurrencySyncItem: {
+        type: "object",
+        required: ["id_1c", "code", "name"],
+        properties: {
+          id_1c: schemaRef("Id1c"),
+          code: { type: "string", maxLength: 10 },
+          name: { type: "string", maxLength: 255 },
+          status: schemaRef("Status"),
+        },
+      },
+      ExchangeRateSyncItem: {
+        type: "object",
+        required: ["id_1c", "currency_code", "target_currency_code", "rate", "rate_date"],
+        properties: {
+          id_1c: schemaRef("Id1c"),
+          currency_code: { type: "string", maxLength: 10 },
+          target_currency_code: { type: "string", maxLength: 10 },
+          rate: { type: "number", exclusiveMinimum: 0 },
+          rate_date: { type: "string", format: "date" },
           status: schemaRef("Status"),
         },
       },
@@ -180,5 +217,23 @@ export const openApiSpec = {
     "/units-of-measure/sync": syncOperation("Синхронизировать единицы измерения", "Номенклатура", "UnitSyncItem"),
     "/nomenclature": readOperation("Получить номенклатуру", "Номенклатура"),
     "/nomenclature/sync": syncOperation("Синхронизировать номенклатуру", "Номенклатура", "NomenclatureSyncItem"),
+    "/currencies": readOperation("Получить валюты", "Валюты и курсы"),
+    "/currencies/sync": syncOperation("Синхронизировать валюты", "Валюты и курсы", "CurrencySyncItem"),
+    "/exchange-rates": pagedReadOperation("Получить курсы валют", "Валюты и курсы"),
+    "/exchange-rates/sync": syncOperation("Синхронизировать курсы валют", "Валюты и курсы", "ExchangeRateSyncItem"),
+    "/bases": {
+      get: {
+        tags: ["Справочники приложения"],
+        summary: "Получить базисы приложения",
+        description: "Возвращает базисы, не удалённые в приложении. Идентификатор id — UUID приложения.",
+        security: [{ bearerAuth: [] }],
+        responses: { "200": { description: "Базисы получены" }, "401": { description: "Неверный API-ключ" } },
+      },
+    },
+    "/prices": pagedReadOperation(
+      "Получить цены приложения",
+      "Справочники приложения",
+      "Постраничная выгрузка цен, не удалённых в приложении. Идентификатор id — UUID приложения; limit от 1 до 500, offset от 0.",
+    ),
   },
 } as const;

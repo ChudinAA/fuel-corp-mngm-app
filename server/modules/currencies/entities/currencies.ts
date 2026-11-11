@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -6,6 +6,7 @@ import {
   timestamp,
   uuid,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -15,6 +16,8 @@ export const currencies = pgTable(
   "currencies",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    id1c: uuid("id_1c"),
+    integrationStatus: text("integration_status"),
     code: text("code").notNull().unique(),
     name: text("name").notNull(),
     symbol: text("symbol"),
@@ -29,6 +32,7 @@ export const currencies = pgTable(
   (table) => ({
     codeIdx: index("currencies_code_idx").on(table.code),
     isActiveIdx: index("currencies_is_active_idx").on(table.isActive),
+    id1cUnique: uniqueIndex("currencies_id_1c_unique").on(table.id1c).where(sql`${table.id1c} IS NOT NULL`),
   })
 );
 

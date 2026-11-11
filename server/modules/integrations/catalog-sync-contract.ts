@@ -45,10 +45,27 @@ export const nomenclatureSyncItemSchema = z.object({
   nomenclature_type_id_1c: externalId.nullable().optional(),
   name: z.string().trim().min(1).max(255),
   unit_id_1c: externalId,
-  is_default: z.boolean().optional(),
   status,
 }).strict();
 export const nomenclatureSyncBatchSchema = batch(nomenclatureSyncItemSchema);
+
+export const currencySyncItemSchema = z.object({
+  id_1c: externalId,
+  code: z.string().trim().min(1).max(10),
+  name: z.string().trim().min(1).max(255),
+  status,
+}).strict();
+export const currencySyncBatchSchema = batch(currencySyncItemSchema);
+
+export const exchangeRateSyncItemSchema = z.object({
+  id_1c: externalId,
+  currency_code: z.string().trim().min(1).max(10),
+  target_currency_code: z.string().trim().min(1).max(10),
+  rate: positiveDecimal,
+  rate_date: z.string().date(),
+  status,
+}).strict();
+export const exchangeRateSyncBatchSchema = batch(exchangeRateSyncItemSchema);
 
 export function getCatalogStatusKind(value: string | null | undefined) {
   if (value == null || value === "") return "unchanged" as const;
